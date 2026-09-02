@@ -14,9 +14,24 @@ public sealed class PopupTests
         var anchor = new Button { Text = "Anchor" };
         Popup[] popups =
         [
-            new Popup { Anchor = anchor, Content = new ControlText("Popup") },
-            new Flyout { Anchor = anchor, Content = new ControlText("Flyout") },
-            new Tooltip { Anchor = anchor, Content = new ControlText("Tooltip") }
+            new Popup
+            {
+                Anchor = anchor,
+                Content = new ControlText("Popup"),
+                FadeInDuration = TimeSpan.FromMilliseconds(100)
+            },
+            new Flyout
+            {
+                Anchor = anchor,
+                Content = new ControlText("Flyout"),
+                FadeInDuration = TimeSpan.FromMilliseconds(100)
+            },
+            new Tooltip
+            {
+                Anchor = anchor,
+                Content = new ControlText("Tooltip"),
+                FadeInDuration = TimeSpan.FromMilliseconds(100)
+            }
         ];
         var root = new Overlay { Children = { anchor } };
 
@@ -28,6 +43,7 @@ public sealed class PopupTests
         await using var surface = await ComponentSurface.MountAsync(
             root,
             new Size(24, 8),
+            new ManualTimeProvider(),
             TestContext.Current.CancellationToken);
 
         foreach (var popup in popups)
@@ -48,6 +64,7 @@ public sealed class PopupTests
             thrown.ShouldBeSameAs(expected);
             popup.IsOpen.ShouldBeFalse();
             popup.HasLightDismissRegistration.ShouldBeFalse();
+            popup.HasActiveFadeTransition.ShouldBeFalse();
             popup.SurfaceBounds.ShouldBe(default);
             popup.Content.ShouldNotBeNull().Visibility.ShouldBe(Visibility.Collapsed);
             popup.Opened -= Failing;
@@ -121,6 +138,52 @@ public sealed class PopupTests
         first.SurfaceBounds.ShouldBe(default);
         opening.IsOpen.ShouldBeTrue();
         surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(opening);
+    }
+
+    /// <summary>Verifies exclusive replacement immediately finishes a peer exit that already
+    /// started, without publishing a second close lifecycle or retaining its modal barrier.</summary>
+    [Fact]
+    public async Task IsOpen_WhenReplacingPeerAlreadyExiting_CompletesExistingExitExactlyOnceAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true,
+            FadeOutDuration = TimeSpan.FromSeconds(10)
+        };
+        var opening = new Popup { Content = new ControlText("Opening") };
+        var root = new Overlay { Children = { first, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closing = 0;
+        var closed = 0;
+        first.Closing += (_, _) => closing++;
+        first.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(() => first.IsOpen = true, "open peer before its deferred exit");
+        await surface.UpdateAsync(() => first.IsOpen = false, "begin peer exit before replacement");
+
+        first.IsOpen.ShouldBeTrue();
+        first.SurfaceBounds.ShouldNotBe(default);
+        closing.ShouldBe(1);
+        closed.ShouldBe(0);
+
+        await surface.UpdateAsync(() => opening.IsOpen = true, "replace peer whose exit already started");
+
+        first.IsOpen.ShouldBeFalse();
+        first.SurfaceBounds.ShouldBe(default);
+        closing.ShouldBe(1);
+        closed.ShouldBe(1);
+        opening.IsOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(opening);
+
+        await surface.AdvanceAsync(TimeSpan.FromSeconds(10), "prove replaced peer timer was retired");
+        closing.ShouldBe(1);
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies one peer disposing another during closure cannot invalidate the remaining

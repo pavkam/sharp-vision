@@ -759,8 +759,10 @@ public sealed class ToastSurfaceTests
     [Fact]
     public async Task Show_WhenOpenedObserverFails_RollsBackAndRemainsReusableAsync()
     {
+        var clock = new ManualTimeProvider();
         var root = new Overlay();
         using var toast = CreateToast("one", ToastPosition.TopLeft);
+        toast.FadeInDuration = TimeSpan.FromMilliseconds(100);
         var expected = new InvalidOperationException("opened failed");
         void Failing(object? sender, EventArgs eventArgs)
         {
@@ -773,6 +775,7 @@ public sealed class ToastSurfaceTests
         await using var surface = await ComponentSurface.MountAsync(
             root,
             new Size(20, 10),
+            clock,
             TestContext.Current.CancellationToken);
 
         var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
@@ -780,6 +783,7 @@ public sealed class ToastSurfaceTests
 
         thrown.ShouldBeSameAs(expected);
         toast.IsOpen.ShouldBeFalse();
+        toast.HasActiveFadeTransition.ShouldBeFalse();
         toast.SurfaceBounds.ShouldBe(default);
         toast.Parent.ShouldBeNull();
         toast.Opened -= Failing;

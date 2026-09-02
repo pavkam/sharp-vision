@@ -27,12 +27,16 @@ public abstract class Dialog<TResult>: Window
     private readonly Lock _completionGate = new();
 
     private TaskCompletionSource<TResult>? _completion;
+    private Dispatcher? _abandonedCompletionDispatcher;
     private PresentationHost? _host;
     private CancellationTokenRegistration _externalCancellation;
     private bool _completed;
     private bool _completesWithCancellation;
+    private bool _finishAcceptedCompletionAfterDetach;
+    private bool _hasFinishedAcceptedCompletion;
     private bool _hasPendingResult;
     private bool _isFinishingCompletion;
+    private bool _isDetachmentPending;
     private bool _closingRequestObserved;
     private bool _scheduledInvoked;
     private long _selectedResultVersion;
@@ -317,19 +321,36 @@ public abstract class Dialog<TResult>: Window
         failure?.Throw();
     }
 
-    private FloatingSurfaceCloseOutcome ClosePresentedDialog() =>
-        _closingRequestObserved
+    private FloatingSurfaceCloseOutcome ClosePresentedDialog()
+    {
+        var dispatcher = Dispatcher ?? throw new InvalidOperationException(
+            "A presented dialog requires an attached dispatcher.");
+
+        return _closingRequestObserved
             ? CloseSurfaceAfterClosingRequestWithOutcome(
                 static () => { },
                 RemoveFromHost,
-                FinishAcceptedCompletion)
+                FinishAcceptedCompletion,
+                () => AbandonAcceptedCompletion(dispatcher))
             : CloseSurfaceWithOutcome(
                 static () => { },
                 RemoveFromHost,
-                FinishAcceptedCompletion);
+                FinishAcceptedCompletion,
+                () => AbandonAcceptedCompletion(dispatcher));
+    }
 
     private void FinishAcceptedCompletion()
     {
+        lock (_completionGate)
+        {
+            if (_hasFinishedAcceptedCompletion)
+            {
+                return;
+            }
+
+            _hasFinishedAcceptedCompletion = true;
+        }
+
         ExceptionDispatchInfo? failure = null;
         var wasFinishing = _isFinishingCompletion;
         _isFinishingCompletion = true;
@@ -345,6 +366,45 @@ public abstract class Dialog<TResult>: Window
 
         SettleCompletion();
         failure?.Throw();
+    }
+
+    private void AbandonAcceptedCompletion(Dispatcher dispatcher)
+    {
+        bool finishDetached;
+
+        lock (_completionGate)
+        {
+            if (_hasFinishedAcceptedCompletion)
+            {
+                return;
+            }
+
+            if (_isDetachmentPending)
+            {
+                _finishAcceptedCompletionAfterDetach = true;
+                _abandonedCompletionDispatcher = dispatcher;
+                return;
+            }
+
+            finishDetached = Dispatcher is null;
+        }
+
+        if (finishDetached)
+        {
+            ScheduleAcceptedCompletionAfterDetach(dispatcher);
+            return;
+        }
+
+        try
+        {
+            FinishAcceptedCompletion();
+        }
+        catch (Exception exception)
+        {
+            // The normal dispatcher callback reports through Dispatcher.UnhandledException.
+            // Its abandonment twin has no caller, so preserve the same bounded reporting path.
+            dispatcher.ReportRejectedBackgroundCompletion(exception);
+        }
     }
 
     /// <summary>Undoes a latched <see cref="TryBeginResult"/>/<see cref="TryBeginCancellation"/> commit
@@ -567,6 +627,14 @@ public abstract class Dialog<TResult>: Window
     {
         var dispatcher = Dispatcher;
 
+        if (reason == ReleaseReason.Detached)
+        {
+            lock (_completionGate)
+            {
+                _isDetachmentPending = true;
+            }
+        }
+
         if (reason == ReleaseReason.Detached &&
             !_isFinishingCompletion &&
             dispatcher is not null &&
@@ -575,7 +643,31 @@ public abstract class Dialog<TResult>: Window
             _ = ScheduleCompletion(dispatcher);
         }
 
-        base.OnUnavailable(reason);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
+        Dispatcher? abandonedCompletionDispatcher = null;
+
+        if (reason == ReleaseReason.Detached)
+        {
+            lock (_completionGate)
+            {
+                abandonedCompletionDispatcher = _finishAcceptedCompletionAfterDetach
+                    ? _abandonedCompletionDispatcher
+                    : null;
+                _finishAcceptedCompletionAfterDetach = false;
+                _abandonedCompletionDispatcher = null;
+                _isDetachmentPending = false;
+            }
+        }
+
+        if (abandonedCompletionDispatcher is not null)
+        {
+            CaptureFailure(
+                () => ScheduleAcceptedCompletionAfterDetach(abandonedCompletionDispatcher),
+                ref failure);
+        }
+
+        failure?.Throw();
     }
 
     #endregion
@@ -611,6 +703,24 @@ public abstract class Dialog<TResult>: Window
     #endregion
 
     #region Dispatcher scheduling
+
+    // Same-thread disposal before OnUnavailable returns would reenter the ownership publication
+    // that is still unwinding. A pool turn enters afterward or waits on its lifecycle gate, at
+    // which point this dialog is detached and its terminal cleanup is thread-safe.
+    private void ScheduleAcceptedCompletionAfterDetach(Dispatcher dispatcher) =>
+        _ = Task.Run(() => FinishAbandonedCompletion(dispatcher));
+
+    private void FinishAbandonedCompletion(Dispatcher dispatcher)
+    {
+        try
+        {
+            FinishAcceptedCompletion();
+        }
+        catch (Exception exception)
+        {
+            dispatcher.ReportRejectedBackgroundCompletion(exception);
+        }
+    }
 
     private bool ScheduleCompletion(Dispatcher dispatcher)
     {

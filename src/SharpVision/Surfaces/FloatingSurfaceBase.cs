@@ -21,6 +21,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     private static readonly TimeSpan _fadeRefreshInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly ModalSession _modalSession;
+    private Action? _deferredCloseAbandonment;
     private Action? _deferredCloseCompletion;
     private Action? _deferredUnavailableCommit;
     private EventHandler? _deferredClosedHandlers;
@@ -121,6 +122,31 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
 
+    /// <summary>Gets whether this surface retains a dispatcher timer or clock plan; exposed
+    /// internally to prove that terminal lifetime transitions retire both together.</summary>
+    internal bool HasActiveFadeTransition => _fadeTimer is not null || _fadeTransition is not null;
+
+    /// <summary>Gets whether this surface retains any deferred-close state; exposed internally to
+    /// prove that detach and disposal cannot strand cleanup or completion continuations.</summary>
+    internal bool HasDeferredSurfaceClosePlan =>
+        _deferredUnavailableCommit is not null ||
+        _deferredClosedHandlers is not null ||
+        _deferredWasPresented ||
+        _deferredCloseCompletion is not null ||
+        _deferredCloseAbandonment is not null;
+
+    /// <summary>Captures the exact current timer, clock plan, and presentation generation so tests
+    /// can deliver a genuinely stale in-flight tick after that presentation has been replaced.</summary>
+    /// <returns>A dispatcher-affine callback carrying the captured transition identity.</returns>
+    /// <exception cref="InvalidOperationException">No fade transition is active.</exception>
+    internal Action CaptureFadeTickForInvariant()
+    {
+        var timer = _fadeTimer ?? throw new InvalidOperationException("A fade transition must be active.");
+        var transition = _fadeTransition ?? throw new InvalidOperationException("A fade transition must be active.");
+        var presentationVersion = _fadePresentationVersion;
+        return () => ApplyFadeTimerTick(timer, transition, presentationVersion);
+    }
+
     /// <summary>Raises the inherited opened notification after the surface becomes presented.</summary>
     protected void RaiseSurfaceOpened() => Opened?.Invoke(this, EventArgs.Empty);
 
@@ -168,6 +194,8 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// is reentered, or the surface becomes unavailable during the family commit.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">An Opened subscriber or transition startup fails after the
+    /// family presentation has committed.</exception>
     protected void OpenSurface([InstantHandle] Action commitOpenState)
     {
         ArgumentNullException.ThrowIfNull(commitOpenState);
@@ -228,15 +256,20 @@ public abstract class FloatingSurfaceBase: ContentControl
             _isOpening = false;
         }
 
-        RaiseSurfaceOpened();
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(RaiseSurfaceOpened, ref failure);
 
         if (_isEnteringFade &&
             IsSurfacePresented &&
             presentationVersion == SurfacePresentationVersion &&
             Dispatcher is not null)
         {
-            StartFadeTransition(FadeProgress, 1, fadeInDuration, presentationVersion);
+            CaptureFailure(
+                () => StartFadeTransition(FadeProgress, 1, fadeInDuration, presentationVersion),
+                ref failure);
         }
+
+        failure?.Throw();
     }
 
     /// <summary>Closes one presented surface through the common ordered cleanup transaction.</summary>
@@ -272,6 +305,28 @@ public abstract class FloatingSurfaceBase: ContentControl
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion = null)
+        => CloseSurfaceWithOutcome(
+            commitClosingState,
+            commitUnavailableState,
+            completion,
+            completionAbandoned: null);
+
+    /// <summary>Closes one presented surface with separate dispatcher and abandonment continuations.</summary>
+    /// <param name="commitClosingState">Commits family state before Closing.</param>
+    /// <param name="commitUnavailableState">Makes family content structurally unavailable.</param>
+    /// <param name="completion">An optional exact-once callback after complete disappearance.</param>
+    /// <param name="completionAbandoned">Optional thread-safe retirement invoked if dispatcher
+    /// shutdown or queue rejection prevents <paramref name="completion"/> from running.</param>
+    /// <returns>The committed close outcome.</returns>
+    /// <exception cref="ArgumentNullException">A state callback is null.</exception>
+    /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
+    private protected FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(
+        [InstantHandle] Action commitClosingState,
+        [InstantHandle] Action commitUnavailableState,
+        [InstantHandle] Action? completion,
+        [InstantHandle] Action? completionAbandoned)
     {
         ArgumentNullException.ThrowIfNull(commitClosingState);
         ArgumentNullException.ThrowIfNull(commitUnavailableState);
@@ -283,7 +338,8 @@ public abstract class FloatingSurfaceBase: ContentControl
             publishCloseRequested: true,
             publishClosing: true,
             allowUnpresentedOpen: false,
-            completion);
+            completion,
+            completionAbandoned);
     }
 
     /// <summary>Closes one logical surface whose family state commits after Closing observers run.</summary>
@@ -333,7 +389,8 @@ public abstract class FloatingSurfaceBase: ContentControl
             publishCloseRequested: true,
             publishClosing: true,
             allowUnpresentedOpen: true,
-            completion);
+            completion,
+            completionAbandoned: null);
     }
 
     /// <summary>Completes closure after the concrete surface has already published its closing request.</summary>
@@ -373,6 +430,28 @@ public abstract class FloatingSurfaceBase: ContentControl
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion = null)
+        => CloseSurfaceAfterClosingRequestWithOutcome(
+            commitClosingState,
+            commitUnavailableState,
+            completion,
+            completionAbandoned: null);
+
+    /// <summary>Completes one pre-published close with separate dispatcher and abandonment continuations.</summary>
+    /// <param name="commitClosingState">Commits family closing state.</param>
+    /// <param name="commitUnavailableState">Makes family content structurally unavailable.</param>
+    /// <param name="completion">An optional exact-once callback after complete disappearance.</param>
+    /// <param name="completionAbandoned">Optional thread-safe retirement invoked if dispatcher
+    /// shutdown or queue rejection prevents <paramref name="completion"/> from running.</param>
+    /// <returns>The committed close outcome.</returns>
+    /// <exception cref="ArgumentNullException">A state callback is null.</exception>
+    /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
+    private protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(
+        [InstantHandle] Action commitClosingState,
+        [InstantHandle] Action commitUnavailableState,
+        [InstantHandle] Action? completion,
+        [InstantHandle] Action? completionAbandoned)
     {
         ArgumentNullException.ThrowIfNull(commitClosingState);
         ArgumentNullException.ThrowIfNull(commitUnavailableState);
@@ -384,7 +463,8 @@ public abstract class FloatingSurfaceBase: ContentControl
             publishCloseRequested: false,
             publishClosing: false,
             allowUnpresentedOpen: false,
-            completion);
+            completion,
+            completionAbandoned);
     }
 
     private FloatingSurfaceCloseOutcome CloseSurfaceCore(
@@ -395,7 +475,8 @@ public abstract class FloatingSurfaceBase: ContentControl
         bool publishCloseRequested,
         bool publishClosing,
         bool allowUnpresentedOpen,
-        [InstantHandle] Action? completion)
+        [InstantHandle] Action? completion,
+        [InstantHandle] Action? completionAbandoned)
     {
         Debug.Assert(commitUnavailableState is not null, "A close transaction requires unavailable-state cleanup.");
         Debug.Assert(
@@ -420,6 +501,7 @@ public abstract class FloatingSurfaceBase: ContentControl
             if (!publishCloseRequested && !publishClosing && completion is not null)
             {
                 _deferredCloseCompletion += completion;
+                _deferredCloseAbandonment += completionAbandoned;
                 return FloatingSurfaceCloseOutcome.Deferred;
             }
 
@@ -497,6 +579,16 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         if (!closureCompleted)
         {
+            if (IsSurfacePresented)
+            {
+                // A post-Closing family may hide and restore itself while the handler runs. That
+                // provisional reopen belongs only to the retention decision, not a second visual
+                // presentation; retire its timer and leave the retained Window fully visible.
+                DisposeFadeTimer();
+                _isEnteringFade = false;
+                SetFadeProgressCapturing(1, ref failure);
+            }
+
             failure?.Throw();
             return FloatingSurfaceCloseOutcome.Vetoed;
         }
@@ -511,7 +603,8 @@ public abstract class FloatingSurfaceBase: ContentControl
                 commitUnavailableState,
                 closedHandlers,
                 wasPresented,
-                completion);
+                completion,
+                completionAbandoned);
             return FloatingSurfaceCloseOutcome.Deferred;
         }
 
@@ -525,7 +618,8 @@ public abstract class FloatingSurfaceBase: ContentControl
         Action commitUnavailableState,
         EventHandler? closedHandlers,
         bool wasPresented,
-        Action? completion)
+        Action? completion,
+        Action? completionAbandoned)
     {
         DisposeFadeTimer();
         _isEnteringFade = false;
@@ -534,6 +628,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         _deferredClosedHandlers = closedHandlers;
         _deferredWasPresented = wasPresented;
         _deferredCloseCompletion = completion;
+        _deferredCloseAbandonment = completionAbandoned;
         ExceptionDispatchInfo? failure = null;
 
         CaptureFailure(OnSurfaceExitAccepted, ref failure);
@@ -565,6 +660,25 @@ public abstract class FloatingSurfaceBase: ContentControl
         ExceptionDispatchInfo? failure = null;
         CompleteDeferredClose(ref failure);
         failure?.Throw();
+    }
+
+    /// <summary>Immediately completes an already-accepted positive exit for an internal exclusive
+    /// surface replacement, without publishing another close request or Closing notification.</summary>
+    /// <returns>True when an active exit was completed; otherwise false.</returns>
+    /// <exception cref="InvalidOperationException">The attached surface is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    /// <exception cref="Exception">Deferred cleanup or a lifecycle subscriber fails after cleanup continues.</exception>
+    private protected bool CompleteSurfaceExitImmediately()
+    {
+        VerifyMutable();
+
+        if (!IsSurfaceExiting)
+        {
+            return false;
+        }
+
+        CompleteDeferredClose();
+        return true;
     }
 
     private void CompleteDeferredClose(ref ExceptionDispatchInfo? failure)
@@ -627,6 +741,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         _deferredClosedHandlers = null;
         _deferredWasPresented = false;
         _deferredCloseCompletion = null;
+        _deferredCloseAbandonment = null;
     }
 
     private void StartFadeTransition(
@@ -650,17 +765,26 @@ public abstract class FloatingSurfaceBase: ContentControl
     private void OnFadeTimerTick(object? sender, EventArgs eventArgs)
     {
         _ = eventArgs;
+        ApplyFadeTimerTick(sender, _fadeTransition, _fadePresentationVersion);
+    }
 
+    private void ApplyFadeTimerTick(
+        object? sender,
+        FloatingSurfaceTransition? capturedTransition,
+        long capturedPresentationVersion)
+    {
         if (!ReferenceEquals(sender, _fadeTimer) ||
             !IsSurfacePresented ||
             Dispatcher is null ||
-            _fadePresentationVersion != SurfacePresentationVersion ||
-            _fadeTransition is not { } transition)
+            capturedPresentationVersion != _fadePresentationVersion ||
+            capturedPresentationVersion != SurfacePresentationVersion ||
+            capturedTransition is not { } transition)
         {
             return;
         }
 
-        SetFadeProgress(transition.Progress);
+        ExceptionDispatchInfo? failure = null;
+        SetFadeProgressCapturing(transition.Progress, ref failure);
         var completed = IsSurfaceExiting ? FadeProgress <= 0 : FadeProgress >= 1;
 
         if (completed)
@@ -669,14 +793,15 @@ public abstract class FloatingSurfaceBase: ContentControl
 
             if (IsSurfaceExiting)
             {
-                CompleteDeferredClose();
+                CompleteDeferredClose(ref failure);
             }
             else
             {
                 _isEnteringFade = false;
-                OnSurfaceEntranceCompleted();
+                CaptureFailure(OnSurfaceEntranceCompleted, ref failure);
             }
 
+            failure?.Throw();
             return;
         }
 
@@ -686,6 +811,8 @@ public abstract class FloatingSurfaceBase: ContentControl
         {
             timer.Interval = interval;
         }
+
+        failure?.Throw();
     }
 
     private void UpdateFadeProgressFromClock()
@@ -715,6 +842,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     {
         var wasTransitioning = _isEnteringFade || IsSurfaceExiting || _fadeTimer is not null;
         var completion = _deferredCloseCompletion;
+        var completionAbandoned = _deferredCloseAbandonment;
         DisposeFadeTimer();
         _isEnteringFade = false;
         IsSurfaceExiting = false;
@@ -734,7 +862,9 @@ public abstract class FloatingSurfaceBase: ContentControl
                 }
                 else
                 {
-                    dispatcher.Post(completion);
+                    dispatcher.PostBackgroundCompletion(
+                        completion,
+                        completionAbandoned ?? (static () => { }));
                 }
             }
         }
@@ -766,8 +896,17 @@ public abstract class FloatingSurfaceBase: ContentControl
         NotifyPropertyChanged(nameof(FadeProgress), InvalidationImpact.None);
     }
 
-    private void SetFadeProgressCapturing(double value, ref ExceptionDispatchInfo? failure) =>
-        CaptureFailure(() => SetFadeProgress(value), ref failure);
+    private void SetFadeProgressCapturing(double value, ref ExceptionDispatchInfo? failure)
+    {
+        try
+        {
+            SetFadeProgress(value);
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+    }
 
     private void SetFadeDuration(ref TimeSpan field, TimeSpan value, string propertyName)
     {

@@ -755,6 +755,97 @@ public sealed class DialogTests
         scope.IsActive.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a FadeProgress observer failure at the final exit tick cannot prevent
+    /// Closed, structural cleanup, disposal, or typed result settlement.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenFinalFadeProgressObserverFails_CompletesCleanupBeforeReportingAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        var expected = new InvalidOperationException("final fade observer failed");
+        var observed = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+        var closed = 0;
+        surface.Application.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = observed.TrySetResult(eventArgs.Exception);
+        };
+        await surface.UpdateAsync(
+            () =>
+            {
+                dialog = new TestDialog { FadeOutDuration = TimeSpan.FromMilliseconds(100) };
+                dialog.Closed += (_, _) => closed++;
+                dialog.PropertyChanged += (_, eventArgs) =>
+                {
+                    if (eventArgs.PropertyName == nameof(dialog.FadeProgress) &&
+                        dialog.FadeProgress == 0)
+                    {
+                        throw expected;
+                    }
+                };
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+            },
+            "present dialog with failing final fade observer");
+        await surface.UpdateAsync(() => dialog!.Accept(true), "begin failing final dialog fade");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish dialog fade despite observer failure");
+
+        (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(expected);
+        pending!.IsCompleted.ShouldBeTrue();
+        (await pending).ShouldBeTrue();
+        closed.ShouldBe(1);
+        dialog!.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies direct disposal during a deferred dialog exit retires its timer, close
+    /// plan, and result continuation while settling the already-selected result exactly once.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenDisposedDuringFadeOut_ClearsPlanAndSettlesResultAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+        await surface.UpdateAsync(
+            () =>
+            {
+                dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+            },
+            "present dialog before disposal during exit");
+        await surface.UpdateAsync(() => dialog!.Accept(true), "begin dialog exit before disposal");
+
+        dialog!.HasActiveFadeTransition.ShouldBeTrue();
+        dialog.HasDeferredSurfaceClosePlan.ShouldBeTrue();
+        pending!.IsCompleted.ShouldBeFalse();
+
+        await surface.UpdateAsync(dialog.Dispose, "dispose dialog during deferred exit");
+
+        dialog.HasActiveFadeTransition.ShouldBeFalse();
+        dialog.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        dialog.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+        (await pending).ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromSeconds(20), "prove disposed dialog continuation cannot resume");
+        (await pending).ShouldBeTrue();
+    }
+
     /// <summary>Verifies direct detachment during a deferred dialog exit resolves its retained
     /// completion continuation instead of leaving the caller's task pending.</summary>
     [Fact]
@@ -788,6 +879,108 @@ public sealed class DialogTests
         dialog!.IsDisposed.ShouldBeTrue();
         dialog.Parent.ShouldBeNull();
         surface.Application.Modality.Active.ShouldBeNull();
+    }
+
+    /// <summary>Verifies direct detachment during a deferred exit still owns final cleanup when
+    /// dispatcher shutdown has already made the continuation post impossible.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenFadeAbortContinuationIsRejected_SettlesAndDisposesExactlyOnceAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () =>
+                {
+                    dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                    pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                },
+                "present dialog before rejected fade-abort continuation");
+            await surface.UpdateAsync(() => dialog!.Accept(true), "begin dialog exit before dispatcher rejection");
+
+            await surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    _ = surface.Application.Dispatcher.DisposeAsync().AsTask();
+                    ((Overlay) dialog!.Parent!).Children.Remove(dialog).ShouldBeTrue();
+                },
+                TestContext.Current.CancellationToken);
+
+            (await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBeTrue();
+            dialog!.IsDisposed.ShouldBeTrue();
+            dialog.Parent.ShouldBeNull();
+        }
+        finally
+        {
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    /// <summary>Verifies a deferred-exit continuation accepted by the dispatcher still retires the
+    /// dialog when shutdown cancels that queued work before it can execute.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenAcceptedFadeAbortContinuationIsCancelled_SettlesAndDisposesExactlyOnceAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () =>
+                {
+                    dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                    pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                },
+                "present dialog before cancelled fade-abort continuation");
+            await surface.UpdateAsync(() => dialog!.Accept(true), "begin dialog exit before queued cancellation");
+
+            await surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    ((Overlay) dialog!.Parent!).Children.Remove(dialog).ShouldBeTrue();
+                    _ = surface.Application.Dispatcher.DisposeAsync().AsTask();
+                },
+                TestContext.Current.CancellationToken);
+
+            (await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBeTrue();
+            dialog!.IsDisposed.ShouldBeTrue();
+            dialog.Parent.ShouldBeNull();
+        }
+        finally
+        {
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
     }
 
     /// <summary>Verifies a dialog presented through the ControlBase-based overload sets completion state

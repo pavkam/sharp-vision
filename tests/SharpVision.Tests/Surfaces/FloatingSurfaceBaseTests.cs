@@ -373,6 +373,46 @@ public sealed class FloatingSurfaceBaseTests
         probe.FadeProgress.ShouldBe(1);
     }
 
+    /// <summary>Verifies an already-captured tick carrying an old timer, clock plan, and
+    /// presentation version cannot update a later presentation of the same surface instance.</summary>
+    [Fact]
+    public async Task FadeTick_WhenCapturedPresentationIsReplaced_CannotAffectNewPresentationAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe { FadeInDuration = TimeSpan.FromMilliseconds(100) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        Action? staleTick = null;
+        var previousVersion = 0L;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 1, 4, 2));
+                previousVersion = probe.PresentationVersion;
+                staleTick = probe.CaptureFadeTickForInvariant();
+                var host = probe.Parent.ShouldBeOfType<Overlay>();
+                host.Children.Remove(probe).ShouldBeTrue();
+                probe.FadeInDuration = TimeSpan.FromMilliseconds(200);
+                host.Children.Add(probe);
+                probe.PublishBounds(new Rect(8, 1, 5, 2));
+            },
+            "replace one fading presentation before its captured tick runs");
+
+        probe.PresentationVersion.ShouldBeGreaterThan(previousVersion);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "advance only the replacement fade halfway");
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+
+        await surface.UpdateAsync(staleTick!, "deliver stale tick from replaced presentation");
+
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        probe.SurfaceBounds.ShouldBe(new Rect(8, 1, 5, 2));
+        probe.PresentationVersion.ShouldBeGreaterThan(previousVersion);
+    }
+
     /// <summary>Verifies direct detachment aborts transition resources and performs immediate
     /// structural cleanup without inventing lifecycle notifications.</summary>
     [Fact]
@@ -408,6 +448,62 @@ public sealed class FloatingSurfaceBaseTests
         closed.ShouldBe(0);
     }
 
+    /// <summary>Verifies disposal during either fade direction retires the owned timer and every
+    /// deferred close plan before a later clock advance can publish lifecycle work.</summary>
+    [Fact]
+    public async Task Dispose_WhenFadeIsEnteringOrExiting_ClearsTransitionAndDeferredPlanAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var entering = new FloatingSurfaceProbe { FadeInDuration = TimeSpan.FromSeconds(10) };
+        var exiting = new FloatingSurfaceProbe { FadeOutDuration = TimeSpan.FromSeconds(10) };
+        var root = new Overlay { Children = { entering, exiting } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var enteringClosed = 0;
+        var exitingClosed = 0;
+        entering.Closed += (_, _) => enteringClosed++;
+        exiting.Closed += (_, _) => exitingClosed++;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                entering.PublishBounds(new Rect(1, 1, 4, 2));
+                exiting.PublishBounds(new Rect(6, 1, 4, 2));
+                exiting.CloseForTest().ShouldBeTrue();
+            },
+            "start entering and exiting fades before disposal");
+
+        entering.HasActiveFadeTransition.ShouldBeTrue();
+        entering.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        exiting.HasActiveFadeTransition.ShouldBeTrue();
+        exiting.HasDeferredSurfaceClosePlan.ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                entering.Dispose();
+                exiting.Dispose();
+            },
+            "dispose both active fade directions");
+
+        entering.HasActiveFadeTransition.ShouldBeFalse();
+        entering.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        exiting.HasActiveFadeTransition.ShouldBeFalse();
+        exiting.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        entering.IsDisposed.ShouldBeTrue();
+        exiting.IsDisposed.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromSeconds(20), "prove disposed fade work cannot resume");
+
+        enteringClosed.ShouldBe(0);
+        exitingClosed.ShouldBe(0);
+        entering.FadeProgress.ShouldBe(0);
+        exiting.FadeProgress.ShouldBe(0);
+    }
+
     /// <summary>Verifies accepted exit immediately clears pointer state, consumes direct and
     /// application keyboard routes, retains existing focus, and blocks pointer click-through.</summary>
     [Fact]
@@ -424,9 +520,13 @@ public sealed class FloatingSurfaceBaseTests
         var actionClicks = 0;
         var backgroundClicks = 0;
         var routedKeys = 0;
+        var routedPastes = 0;
+        var routedText = 0;
         action.Click += (_, _) => actionClicks++;
         background.Click += (_, _) => backgroundClicks++;
         _ = action.AddHandler(Events.Key, (_, _) => routedKeys++, handledEventsToo: true);
+        _ = action.AddHandler(Events.Paste, (_, _) => routedPastes++, handledEventsToo: true);
+        _ = action.AddHandler(Events.Text, (_, _) => routedText++, handledEventsToo: true);
         await using var surface = await ComponentSurface.MountAsync(
             root,
             new Size(20, 6),
@@ -444,6 +544,8 @@ public sealed class FloatingSurfaceBaseTests
         surface.ShouldHaveCapture(action);
         action.IsPressed.ShouldBeTrue();
         RouteResult direct = default;
+        RouteResult directPaste = default;
+        RouteResult directText = default;
 
         await surface.UpdateAsync(
             () =>
@@ -458,11 +560,23 @@ public sealed class FloatingSurfaceBaseTests
                         nativeCode: 0,
                         Modifiers.None,
                         KeyAction.Press)));
+                directText = Router.Route(
+                    action,
+                    Events.Text,
+                    new TextEventArgs(new TerminalText(new Rune('x'))));
+                directPaste = Router.Route(
+                    action,
+                    Events.Paste,
+                    new PasteEventArgs(new Paste("y"u8)));
             },
             "begin exit and attempt direct route");
 
         direct.IsHandled.ShouldBeTrue();
+        directText.IsHandled.ShouldBeTrue();
+        directPaste.IsHandled.ShouldBeTrue();
         routedKeys.ShouldBe(0);
+        routedText.ShouldBe(0);
+        routedPastes.ShouldBe(0);
         surface.ShouldHaveCapture(null);
         surface.Application.Capture.Hovered.ShouldBeNull();
         action.IsPressed.ShouldBeFalse();
@@ -470,12 +584,16 @@ public sealed class FloatingSurfaceBaseTests
         var focusResolutionCount = surface.Application.Capture.FocusResolutionCount;
 
         await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.TypeAsync("x");
+        await surface.Keyboard.PasteAsync("y");
         await surface.Pointer.ReleaseAsync();
         await surface.Pointer.ClickAsync(action);
 
         actionClicks.ShouldBe(0);
         backgroundClicks.ShouldBe(0);
         routedKeys.ShouldBe(0);
+        routedText.ShouldBe(0);
+        routedPastes.ShouldBe(0);
         surface.ShouldHaveFocus(action);
         surface.Application.Capture.Hovered.ShouldBeNull();
         surface.Application.Capture.FocusResolutionCount.ShouldBe(focusResolutionCount);

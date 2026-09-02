@@ -1376,6 +1376,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <summary>Closes this Popup synchronously for internal peer and submenu replacement.</summary>
     internal void CloseImmediatelyForPeerTransition()
     {
+        if (CompleteSurfaceExitImmediately())
+        {
+            return;
+        }
+
         if (IsOpenTransitioning)
         {
             return;

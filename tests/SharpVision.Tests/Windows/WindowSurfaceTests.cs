@@ -1965,6 +1965,89 @@ public sealed class WindowSurfaceTests
         closed.ShouldBe(1);
     }
 
+    /// <summary>Verifies a committed Window presentation continues its positive entrance after an
+    /// Opened observer fails, while the initiating call still receives that observer failure.</summary>
+    [Fact]
+    public async Task Opened_WhenObserverFailsDuringPositiveFadeIn_CompletesCommittedEntranceAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var expected = new InvalidOperationException("opened failed");
+        var window = new Window
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        window.Opened += (_, _) => throw expected;
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(
+                () => window.Visibility = Visibility.Visible,
+                "show fading Window with failing Opened observer"));
+
+        thrown.ShouldBeSameAs(expected);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+        window.FadeProgress.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish committed Window entrance");
+
+        window.FadeProgress.ShouldBe(1);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Closing observer that hides and restores a Window does not leave the
+    /// retained presentation in a second provisional entrance transition.</summary>
+    [Fact]
+    public async Task Close_WhenClosingHandlerRestoresWindowDuringPositiveFade_RemainsStablyVisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var window = new Window
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        window.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin initial Window entrance");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish initial Window entrance");
+        window.Closing += (_, _) =>
+        {
+            window.Visibility = Visibility.Hidden;
+            window.Visibility = Visibility.Visible;
+        };
+
+        await surface.UpdateAsync(window.Close, "retain Window from Closing during positive fade");
+
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+        window.FadeProgress.ShouldBe(1);
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "prove retained Window owns no provisional fade");
+
+        window.FadeProgress.ShouldBe(1);
+        closed.ShouldBe(0);
+    }
+
     /// <summary>Verifies the complete Window frame and block shadow use one stable dissolve pattern
     /// at the entrance and exit endpoints and midpoint.</summary>
     [Fact]
