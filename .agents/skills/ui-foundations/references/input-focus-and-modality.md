@@ -18,7 +18,7 @@ directional navigation, access keys, modal planes, dismissal, or restoration.
 
 - Routed input values and services: `src/SharpVision/Input/`
 - Control event surface: `src/SharpVision/Controls/`
-- Focus and modality integration: `src/SharpVision/Runtime/`
+- Focus and modality integration: `src/SharpVision/Input/`
 - Tests: `tests/SharpVision.Tests/Input/` and modality/control surface tests
 
 ## Workflow
