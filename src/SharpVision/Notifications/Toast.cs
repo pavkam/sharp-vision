@@ -479,13 +479,21 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         var area = Math.Max(1L, (long) Bounds.Width * Bounds.Height);
         var threshold = (long) Math.Floor(AnimationProgress * area);
 
+        // Each cell gets a distinct reveal ordinal in [0, area): a row-major index multiplied by a
+        // step coprime with the area is a permutation, so exactly floor(progress * area) cells are
+        // revealed at every progress value and the dissolve advances at the animation's own pace.
+        // A fixed hash of the coordinates was not a permutation - its ordinals collided and left
+        // gaps for most sizes, so the reveal jumped ahead early and then stalled.
+        var step = DissolveStep(area);
+
         for (var y = Bounds.Y; y < Bounds.Bottom; y++)
         {
             for (var x = Bounds.X; x < Bounds.Right; x++)
             {
                 var relativeX = x - Bounds.X;
                 var relativeY = y - Bounds.Y;
-                var ordinal = (((long) relativeX * 37) + ((long) relativeY * 17)) % area;
+                var index = ((long) relativeY * Bounds.Width) + relativeX;
+                var ordinal = index * step % area;
 
                 if (ordinal >= threshold)
                 {
@@ -493,6 +501,33 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 }
             }
         }
+    }
+
+    [Pure]
+    private static long DissolveStep(long area)
+    {
+        // Start near the golden-ratio point so consecutive indexes land far apart, then walk down
+        // to the nearest value coprime with the area; 1 always qualifies.
+        for (var candidate = Math.Max(1L, (long) Math.Round(area * 0.618)); candidate > 1; candidate--)
+        {
+            if (GreatestCommonDivisor(candidate, area) == 1)
+            {
+                return candidate;
+            }
+        }
+
+        return 1;
+    }
+
+    [Pure]
+    private static long GreatestCommonDivisor(long left, long right)
+    {
+        while (right != 0)
+        {
+            (left, right) = (right, left % right);
+        }
+
+        return left;
     }
 
     #endregion
