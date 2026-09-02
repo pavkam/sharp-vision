@@ -167,7 +167,19 @@ export const selectCaptureRegion = (rect, state, baseline, frame) => {
 
     if (state.popup !== true) return interior;
 
-    return diffBounds(baseline, frame) ?? interior;
+    const changed = diffBounds(baseline, frame) ?? interior;
+
+    const padding = state.cropPadding;
+
+    if (padding === undefined) return changed;
+
+    const frameWidth = Math.max(0, ...frame.map((row) => expand(row).length));
+    return {
+        top: Math.max(1, changed.top - (padding.top ?? 0)),
+        left: Math.max(1, changed.left - (padding.left ?? 0)),
+        bottom: Math.min(frame.length, changed.bottom + (padding.bottom ?? 0)),
+        right: Math.min(frameWidth, changed.right + (padding.right ?? 0)),
+    };
 };
 
 const expand = (row) => {

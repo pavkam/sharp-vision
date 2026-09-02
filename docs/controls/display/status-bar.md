@@ -121,10 +121,12 @@ behavior.
 
 The inherited `Face` remains theme-owned: Bar supplies the normal background,
 the shared control appearance supplies foreground and state overlays, and
-retained text follows ambient inheritance. `StatusBarItem` uses the same Bar
-normal background while preserving disabled appearance and a complete local item
-style. Assign a complete local `Face` only for a deliberate product-specific
-treatment.
+retained text follows ambient inheritance. Physical hover keeps the continuous
+Bar background while applying the hovered foreground and decorations; authored
+focus, selection, press, disabled, and complete local-style backgrounds remain
+authoritative. `StatusBarItem` uses the same Bar normal background while
+preserving disabled appearance and a complete local item style. Assign a
+complete local `Face` only for a deliberate product-specific treatment.
 
 Applications may change the inherited control appearance, height, padding,
 border, and shadow properties. Multi-line or taller retained content is clipped

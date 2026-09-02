@@ -42,28 +42,130 @@ public sealed class CuratedThemesTests
     {
         var expected = new Dictionary<string, Color>(StringComparer.Ordinal)
         {
-            ["catppuccin-latte"] = Color.FromHex("#ccd0da"),
-            ["catppuccin-mocha"] = Color.FromHex("#313244"),
-            ["default-dark"] = Color.FromHex("#262626"),
-            ["default-light"] = Color.FromHex("#e5e5e5"),
-            ["dracula"] = Color.FromHex("#44475a"),
-            ["gruvbox-dark"] = Color.FromHex("#3c3836"),
-            ["gruvbox-light"] = Color.FromHex("#ebdbb2"),
-            ["monokai"] = Color.FromHex("#3e3d32"),
-            ["nord"] = Color.FromHex("#3b4252"),
-            ["one-dark"] = Color.FromHex("#2c323c"),
-            ["solarized-dark"] = Color.FromHex("#073642"),
-            ["solarized-light"] = Color.FromHex("#eee8d5"),
-            ["tokyo-night"] = Color.FromHex("#16161e"),
-            ["tokyo-night-day"] = Color.FromHex("#c4c8da"),
-            ["tokyo-night-storm"] = Color.FromHex("#292e42"),
-            ["turbo-vision"] = Color.FromHex("#aaaaaa")
+            ["catppuccin-latte"] = Color.FromHex("#c2d0e9"),
+            ["catppuccin-mocha"] = Color.FromHex("#1e2860"),
+            ["default-dark"] = Color.FromHex("#585858"),
+            ["default-light"] = Color.FromHex("#878787"),
+            ["dracula"] = Color.FromHex("#2d3c7c"),
+            ["gruvbox-dark"] = Color.FromHex("#5f574f"),
+            ["gruvbox-light"] = Color.FromHex("#d5c490"),
+            ["monokai"] = Color.FromHex("#6b6756"),
+            ["nord"] = Color.FromHex("#4c566a"),
+            ["one-dark"] = Color.FromHex("#17285c"),
+            ["solarized-dark"] = Color.FromHex("#001d40"),
+            ["solarized-light"] = Color.FromHex("#ffffff"),
+            ["tokyo-night"] = Color.FromHex("#030c3a"),
+            ["tokyo-night-day"] = Color.FromHex("#f8f9fc"),
+            ["tokyo-night-storm"] = Color.FromHex("#1a2658"),
+            ["turbo-vision"] = Color.FromHex("#ffffff")
         };
 
         foreach (var slug in ThemeCatalog.Slugs)
         {
             ThemeCatalog.Load(slug).ResolveColor(SemanticColor.Bar).ShouldBe(expected[slug], slug);
         }
+    }
+
+    /// <summary>Verifies each raised-navigation plane remains visibly distinct from ordinary
+    /// application, window, input-surface, and control backgrounds.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorResolves_IsDistinctFromOrdinaryPlanes()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var bar = theme.ResolveColor(SemanticColor.Bar);
+
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Window), $"{slug} Bar must differ from Window");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.WindowSurface), $"{slug} Bar must differ from WindowSurface");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Surface), $"{slug} Bar must differ from Surface");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Control), $"{slug} Bar must differ from Control");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.ActiveControl), $"{slug} Bar must differ from ActiveControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.PressedControl), $"{slug} Bar must differ from PressedControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.SelectedControl), $"{slug} Bar must differ from SelectedControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.DisabledControl), $"{slug} Bar must differ from DisabledControl");
+        }
+    }
+
+    /// <summary>Verifies each raised-navigation plane remains visibly distinct from ordinary
+    /// application, window, input-surface, and control backgrounds after xterm-256 projection.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorProjectsAtIndexed256Depth_IsDistinctFromOrdinaryPlanes()
+    {
+        var ordinaryPlanes = new[]
+        {
+            SemanticColor.Window,
+            SemanticColor.WindowSurface,
+            SemanticColor.Surface,
+            SemanticColor.Control,
+            SemanticColor.ActiveControl,
+            SemanticColor.PressedControl,
+            SemanticColor.SelectedControl,
+            SemanticColor.DisabledControl
+        };
+        var collisions = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var bar = TerminalPalette.Project(
+                theme.ResolveColor(SemanticColor.Bar),
+                ColorDepth.Indexed256);
+
+            foreach (var plane in ordinaryPlanes)
+            {
+                var ordinary = TerminalPalette.Project(
+                    theme.ResolveColor(plane),
+                    ColorDepth.Indexed256);
+
+                if (bar == ordinary)
+                {
+                    collisions.Add($"{slug} projects Bar onto {plane} at 256 colors");
+                }
+            }
+        }
+
+        collisions.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies resting and physically hovered bar text remains readable at the two
+    /// color depths used for curated RGB presentation.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
+    {
+        const double minimumContrastRatio = 4.5;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var foregrounds = new[]
+        {
+            SemanticColor.ControlText,
+            SemanticColor.ActiveText,
+            SemanticColor.Hotkey
+        };
+        var failures = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            foreach (var depth in depths)
+            {
+                var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), depth);
+
+                foreach (var foreground in foregrounds)
+                {
+                    var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
+                    var ratio = ContrastRatio(text, bar);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} {foreground} on Bar at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
+            }
+        }
+
+        failures.ShouldBeEmpty();
     }
 
     /// <summary>Verifies every curated theme's six well-known role sections ("control"/"input"/
@@ -194,7 +296,7 @@ public sealed class CuratedThemesTests
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aaaa"));
         theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aa00"));
-        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
+        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
         sunken.Relief.ShouldBe(BorderRelief.Sunken);
@@ -444,21 +546,63 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies every shipped palette provides a legible paired selection surface.</summary>
+    /// <summary>Verifies every shipped palette keeps ordinary and mnemonic selection text readable at
+    /// the two color depths used for curated RGB presentation.</summary>
     [Fact]
-    public void EveryTheme_UsesContrastingSelectionColors()
+    public void EveryTheme_WhenSelectionTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
     {
+        const double minimumContrastRatio = 4.5;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var foregrounds = new[] { SemanticColor.SelectedText, SemanticColor.Hotkey };
+        var failures = new List<string>();
+
         foreach (var slug in ThemeCatalog.Slugs)
         {
             var theme = ThemeCatalog.Load(slug);
-            var foreground = ThemeColorHelper.SelectionForeground(theme);
-            var background = ThemeColorHelper.SelectionBackground(theme);
 
-            if (foreground != Color.Default && background != Color.Default)
+            foreach (var depth in depths)
             {
-                foreground.ShouldNotBe(background, $"{slug} should keep selection text visible");
+                var selection = TerminalPalette.Project(
+                    theme.ResolveColor(SemanticColor.SelectedControl),
+                    depth);
+
+                foreach (var foreground in foregrounds)
+                {
+                    var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
+                    var ratio = ContrastRatio(text, selection);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} {foreground} on SelectedControl at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
             }
         }
+
+        failures.ShouldBeEmpty();
+    }
+
+    private static double ContrastRatio(Color first, Color second)
+    {
+        var firstLuminance = RelativeLuminance(first);
+        var secondLuminance = RelativeLuminance(second);
+        var lighter = Math.Max(firstLuminance, secondLuminance);
+        var darker = Math.Min(firstLuminance, secondLuminance);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private static double RelativeLuminance(Color color) =>
+        (0.2126 * Linearize(color.Red)) +
+        (0.7152 * Linearize(color.Green)) +
+        (0.0722 * Linearize(color.Blue));
+
+    private static double Linearize(byte component)
+    {
+        var normalized = component / 255d;
+        return normalized <= 0.04045
+            ? normalized / 12.92
+            : Math.Pow((normalized + 0.055) / 1.055, 2.4);
     }
 
     /// <summary>Verifies pressed colors remain distinct from hover while focus uses decoration and

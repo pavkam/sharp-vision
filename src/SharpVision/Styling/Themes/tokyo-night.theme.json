@@ -30,7 +30,7 @@
     "windowText": "fg",
     "surface": "bg-dark",
     "surfaceText": "fg",
-    "bar": "bg-dark",
+    "bar": "midnight",
     "control": "bg-dark",
     "controlText": "fg",
     "controlBorder": "comment",

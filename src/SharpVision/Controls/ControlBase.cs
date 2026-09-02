@@ -2919,8 +2919,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             InvalidateVisualStateCore();
         }
 
-        VisitChildren(child => child.SetSelectedState(value));
+        VisitChildren(child =>
+        {
+            if (child.ReceivesInheritedSelectionState)
+            {
+                child.SetSelectedState(value);
+            }
+        });
     }
+
+    /// <summary>Gets whether semantic selection propagated by an ancestor crosses into this owned branch.</summary>
+    /// <remarks>
+    /// Ordinary retained content participates so a selected row presents one coherent subtree.
+    /// Floating presentation surfaces start an independent interaction plane and stop that inherited
+    /// state before it can select their separately navigated content.
+    /// </remarks>
+    internal virtual bool ReceivesInheritedSelectionState => true;
 
     /// <summary>Propagates collection-current visual state through one realized item subtree.</summary>
     internal void SetCurrentState(bool value)

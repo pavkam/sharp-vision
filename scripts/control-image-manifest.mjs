@@ -161,7 +161,12 @@ export const controls = [
         page: "Menu",
         states: [
             {},
-            { name: "open", popup: true, actions: [{ click: "File" }] },
+            {
+                name: "open",
+                popup: true,
+                cropPadding: { right: 1 },
+                actions: [{ click: "File" }],
+            },
         ],
     },
     {

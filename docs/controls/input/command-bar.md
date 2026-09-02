@@ -178,8 +178,9 @@ The bar's padding, overflow glyph, and overflow color resolve through
 and passive divider glyph fallback belongs to
 [`CommandBarSeparator`](command-bar-separator.md#appearance-and-unicode). The
 bar, normal primary entries, overflow trigger, separators, gaps, and unused
-cells use `SemanticColor.Bar`; authored interactive states and complete local
-styles retain precedence.
+cells use `SemanticColor.Bar`. Physical hover retains that continuous background
+while changing the active foreground; authored focus, selection, press, and
+disabled states and complete local styles retain precedence.
 
 ## Example
 

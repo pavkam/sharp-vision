@@ -71,23 +71,26 @@ public sealed class CommandBarItemStyleTests
         item.ActualStyle.ShouldBe(local);
     }
 
-    /// <summary>Verifies Bar supplies the resting plane without erasing inherited focus,
-    /// selection, disabled, or complete local-style precedence.</summary>
+    /// <summary>Verifies Bar supplies the resting and hovered plane without erasing inherited
+    /// hover foreground, focus, selection, disabled, or complete local-style precedence.</summary>
     [Fact]
     public void ResolveAppearance_WhenBarAndStatesAreAuthored_PreservesStateAndLocalPrecedence()
     {
         var theme = ThemeCatalog.Parse(ThemeJson.Create(
             bar: "#345678",
             controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }""",
-            inputStates: """, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+            inputStates: """, "pointerOver": { "face": { "foreground":"activeText", "background":"activeControl" } }, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
         using var item = new CommandBarItem();
 
         var normal = item.ResolveAppearance(theme);
+        var hovered = item.ResolveAppearance(theme, VisualState.IsPointerOver);
         var focused = item.ResolveAppearance(theme, VisualState.Focused);
         var selected = item.ResolveAppearance(theme, VisualState.Selected);
         var disabled = item.ResolveAppearance(theme, VisualState.Disabled);
 
         normal.Face.Background.Literal.ShouldBe(theme.ResolveColor(SemanticColor.Bar));
+        hovered.Face.Background.ShouldBe(normal.Face.Background);
+        hovered.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.ActiveText));
         focused.Face.Background.ShouldBe(normal.Face.Background);
         focused.Face.Foreground.Literal.ShouldBe(theme.ResolveColor(SemanticColor.FocusedText));
         focused.Face.Attributes.Literal.ShouldBe(TerminalAttributes.Bold);
@@ -101,7 +104,13 @@ public sealed class CommandBarItemStyleTests
             Face = CommandBarItemStyle.Default.Face with { Background = localBackground }
         };
 
-        foreach (var state in new[] { VisualState.Focused, VisualState.Selected, VisualState.Disabled })
+        foreach (var state in new[]
+                 {
+                     VisualState.IsPointerOver,
+                     VisualState.Focused,
+                     VisualState.Selected,
+                     VisualState.Disabled
+                 })
         {
             item.ResolveAppearance(theme, state).Face.Background.Literal.ShouldBe(localBackground);
         }

@@ -45,6 +45,13 @@ public abstract class FloatingSurfaceBase: ContentControl
             OnSurfaceModalDismissRequested,
             OnSurfaceModalExited);
 
+    /// <summary>Gets whether an owning selected subtree may project selection into this surface.</summary>
+    /// <remarks>
+    /// A floating surface owns an independent interaction plane, so its content derives selection
+    /// only from the collection or navigator inside that surface.
+    /// </remarks>
+    internal override bool ReceivesInheritedSelectionState => false;
+
     #region Surface lifecycle
 
     /// <summary>Raised only after the surface becomes presented and its bounds commit.</summary>

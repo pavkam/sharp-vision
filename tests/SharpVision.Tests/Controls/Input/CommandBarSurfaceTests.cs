@@ -26,32 +26,39 @@ public sealed class CommandBarSurfaceTests
                 Face = CommandBarItemStyle.Default.Face with { Background = localBackground }
             }
         };
-        var bar = new CommandBar { Spacing = 0 };
+        var bar = new CommandBar { Spacing = 1 };
         bar.Items.Add(normal);
         bar.Items.Add(disabled);
         bar.Items.Add(local);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             bar,
-            new Size(28, 1),
+            new Size(30, 1),
+            options,
             TestContext.Current.CancellationToken);
 
         await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
 
-        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(normal.Bounds.Right, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth));
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+            TerminalPalette.Project(localBackground, colorDepth));
 
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.UpdateAsync(() => bar.SelectedItem = normal, "select normal command");
 
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
     }
 
     /// <summary>Verifies the ordinary row renders each semantic command once with an independently normalized separator.</summary>
@@ -103,6 +110,35 @@ public sealed class CommandBarSurfaceTests
         surface.ShouldHaveFocus(menu);
         ReadRow(surface, menu.Bounds.Y, 12).ShouldContain("Save");
         ReadRow(surface, menu.Bounds.Y + 1, 12).ShouldContain("Print");
+    }
+
+    /// <summary>Verifies physical hover keeps the private overflow trigger on the continuous Bar plane.</summary>
+    [Fact]
+    public async Task Pointer_WhenMovedOverOverflowTrigger_PreservesBarPlaneAsync()
+    {
+        // Arrange
+        var bar = CreateBar(out _, out _, out _);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var expectedBar = TerminalPalette.Project(
+            bar.Theme.ShouldNotBeNull().ResolveColor(SemanticColor.Bar),
+            colorDepth);
+
+        // Act
+        await surface.Pointer.MoveToAsync(trigger);
+
+        // Assert
+        trigger.IsPointerOver.ShouldBeTrue();
+        surface.Cell(new Point(trigger.Bounds.X, trigger.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
     }
 
     /// <summary>Verifies a CommandBar overflow below its trigger remains a fully framed menu surface.</summary>

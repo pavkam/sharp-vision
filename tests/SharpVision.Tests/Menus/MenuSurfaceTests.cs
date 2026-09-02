@@ -26,34 +26,41 @@ public sealed class MenuSurfaceTests
                 Face = MenuItemStyle.Default.Face with { Background = localBackground }
             }
         };
-        var menu = new Menu { Orientation = Orientation.Vertical };
+        var menu = new Menu { Orientation = Orientation.Vertical, Spacing = 1 };
         menu.Items.Add(normal);
         menu.Items.Add(disabled);
         menu.Items.Add(local);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             menu,
-            new Size(14, 3),
+            new Size(14, 5),
+            options,
             TestContext.Current.CancellationToken);
 
         await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
 
-        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
         var expectedDisabled = TerminalPalette.Project(
             theme.ResolveColor(SemanticColor.DisabledControl),
-            ColorDepth.Basic16);
+            colorDepth);
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(menu.Bounds.X, normal.Bounds.Bottom)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedDisabled);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+            TerminalPalette.Project(localBackground, colorDepth));
 
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.UpdateAsync(() => menu.SelectedIndex = 0, "select normal menu item");
 
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
     }
 
     /// <summary>Verifies an owner-managed submenu opening does not close an unrelated
@@ -86,6 +93,44 @@ public sealed class MenuSurfaceTests
         // Assert
         help.IsSubmenuOpen.ShouldBeTrue();
         pinned.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an owning menu item's selected state stops at the floating-surface
+    /// boundary instead of selecting every row inside its submenu.</summary>
+    [Fact]
+    public async Task Submenu_WhenOpened_KeepsUnselectedRowsOnBarPlaneAsync()
+    {
+        // Arrange
+        var first = new MenuItem { Text = "New" };
+        var second = new MenuItem { Text = "Open" };
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(first);
+        submenu.Items.Add(second);
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(24, 8),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(file);
+
+        // Assert
+        surface.ShouldHaveFocus(submenu);
+        submenu.SelectedItem.ShouldBeSameAs(first);
+        surface.Cell(new Point(first.Bounds.X, first.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth));
     }
 
     /// <summary>Verifies SubmenuChrome's border override reaches the rendered open submenu frame,

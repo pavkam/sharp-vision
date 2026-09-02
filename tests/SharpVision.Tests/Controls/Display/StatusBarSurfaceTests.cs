@@ -27,22 +27,29 @@ public sealed class StatusBarSurfaceTests
         bar.Items.Add(normal);
         bar.Items.Add(disabled);
         bar.Items.Add(local);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
         await using var surface = await ComponentSurface.MountAsync(
             bar,
             new Size(28, 1),
+            options,
             TestContext.Current.CancellationToken);
 
         await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
 
-        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), ColorDepth.Basic16);
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
         surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(normal.Bounds.Right, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(bar.Bounds.Right - 1, 0)).Style.Background.ShouldBe(expectedBar);
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth));
         surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
         surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
-            TerminalPalette.Project(localBackground, ColorDepth.Basic16));
+            TerminalPalette.Project(localBackground, colorDepth));
     }
 
     /// <summary>Verifies exact edge layout while the bar and item remain passive focus exclusions.</summary>

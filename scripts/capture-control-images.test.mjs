@@ -148,6 +148,28 @@ test("selectCaptureRegion_WhenPopupIsContained_UsesInsetExampleBounds", () => {
     );
 });
 
+test("selectCaptureRegion_WhenPopupAddsCropPadding_IncludesNeighboringContext", () => {
+    const before = parseCapture("..........\n..........\n..........\n..........\n..........");
+    const after = parseCapture("..........\n...X......\n..........\n..........\n.....Y....");
+
+    assert.deepEqual(
+        captureHelpers.selectCaptureRegion(
+            { top: 2, left: 2, bottom: 4, right: 8 },
+            { popup: true, cropPadding: { right: 1 } },
+            before,
+            after,
+        ),
+        { top: 2, left: 4, bottom: 5, right: 7 },
+    );
+});
+
+test("Menu open capture_IncludesTheCompletePrimaryBarWidth", () => {
+    const entry = controls.find(({ doc }) => doc === "controls/menus/menu");
+    const open = entry.states.find(({ name }) => name === "open");
+
+    assert.deepEqual(open.cropPadding, { right: 1 });
+});
+
 test("InfoBar capture_WhenMultipleExamplesExist_SelectsInteractiveSpecimen", () => {
     const entry = controls.find(
         ({ doc }) => doc === "controls/notifications/info-bar",

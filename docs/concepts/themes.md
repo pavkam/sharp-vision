@@ -67,9 +67,15 @@ the typed public lookup.
 `bar` is the normal raised-navigation background for `Menu`, `MenuItem`,
 `MenuSeparator`, `CommandBar`, `CommandBarItem`, `CommandBarSeparator`,
 `StatusBar`, and `StatusBarItem`. Each bundled theme maps it deliberately to a
-palette tier that remains readable with `controlText` and distinct from its
-authored active, selected, pressed, and disabled faces. State-authored faces and
-complete local styles continue to win over the normal Bar value.
+palette tier that retains at least 4.5:1 contrast with `controlText`,
+`activeText`, and `hotkey` at truecolor and xterm-256 depth, and stays distinct
+from ordinary planes and the active, selected, pressed, and disabled fills used
+around it. Physical hover retains the Bar background while inheriting active
+foreground and decoration; authored focus, selection, press, and disabled faces
+and complete local styles continue to win over the normal Bar value. Every
+bundled `selectedControl` pairing likewise retains at least 4.5:1 contrast with
+`selectedText` and `hotkey` at truecolor and xterm-256 depth so a selected bar
+row does not make either its caption or mnemonic disappear.
 
 `attributes` requires these nine properties:
 
@@ -372,6 +378,7 @@ own appearance. Both are public and require no internal access; see
     "ink": "#e7e9ee",
     "surface": "#181b24",
     "panel": "#202431",
+    "barSurface": "#242938",
     "outline": "#596170",
     "shadow": "#050608",
     "highlight": "#283044",
@@ -394,6 +401,7 @@ own appearance. Both are public and require no internal access; see
     "windowText": "ink",
     "surface": "surface",
     "surfaceText": "ink",
+    "bar": "barSurface",
     "control": "panel",
     "controlText": "ink",
     "controlBorder": "outline",
