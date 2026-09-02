@@ -1788,6 +1788,8 @@ public sealed class InputDecoderTests
     [InlineData("[15;1:2~", Code.F5, Modifiers.None, KeyAction.Repeat, 15)]
     [InlineData("[2;1:3~", Code.Insert, Modifiers.None, KeyAction.Release, 2)]
     [InlineData("[3;2:1~", Code.Delete, Modifiers.Shift, KeyAction.Press, 3)]
+    [InlineData("[3;9:2~", Code.Delete, Modifiers.Super, KeyAction.Repeat, 3)]
+    [InlineData("[3;9:3~", Code.Delete, Modifiers.Super, KeyAction.Release, 3)]
     public void Decode_WhenTildeKeyHasEventTypeColon_DecodesEventAction(
         string input,
         Code code,
@@ -3510,6 +3512,52 @@ public sealed class InputDecoderTests
         stroke.Character.ShouldBe(new Rune('s'));
         stroke.Modifiers.ShouldBe(Modifiers.None);
         sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('s'));
+
+        // The interrupting Escape abandons the pending SS3 continuation exactly once, reported
+        // immediately at that byte: earlier, the pending flag stayed dangling instead, so this
+        // same abandonment was only ever noticed once a later byte incidentally cleared it -
+        // producing two near-identical diagnostics for what was really one occurrence. Here, the
+        // second diagnostic is a genuinely distinct occurrence: the interrupting Escape itself,
+        // replayed alongside the following byte, is its own malformed two-byte escape attempt
+        // (0xC3 is not a valid Escape final byte), so it is expected to be reported on its own.
+        sink.Diagnostics.Count.ShouldBe(2);
+        sink.Diagnostics[0].Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Diagnostics[0].Kind.ShouldBe(SequenceKind.Escape);
+        sink.Diagnostics[1].Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Diagnostics[1].Kind.ShouldBe(SequenceKind.Escape);
+
+        // The two entries must be at genuinely different stream offsets: same-offset duplicates
+        // would mean the old bug (one occurrence reported twice) survived; different offsets
+        // confirm these are the two distinct occurrences described above.
+        sink.Diagnostics[0].Offset.ShouldNotBe(sink.Diagnostics[1].Offset);
+    }
+
+    /// <summary>
+    /// Verifies a second, immediately-repeated Escape between an SS3-abandoning Escape and the
+    /// byte that actually needs Alt-detection protection does not let that latch leak away early
+    /// and misfire the guard on an unrelated byte.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenRepeatedEscapeFollowsSs3Interruption_StillDoesNotArmLaterText()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+
+        // ESC O arms SS3-pending; the first ESC abandons it and arms the one-byte latch; a
+        // SECOND, immediately-repeated Escape must not consume that latch itself, since only the
+        // byte that finally follows the repeated-Escape run is a candidate for the Alt guard. The
+        // second Escape is itself a genuine repeated keypress (correctly emitted as its own Escape
+        // stroke, unrelated to this latch), so 's' is the THIRD stroke's worth of input, not the
+        // only one - what this test actually pins down is that it carries no leaked Alt modifier.
+        decoder.Decode([0x1b, (byte) 'O', 0x1b, 0x1b, 0xc3, (byte) 's']);
+        decoder.Complete();
+
+        sink.Strokes.Count.ShouldBe(2);
+        sink.Strokes[0].Code.ShouldBe(Code.Escape);
+        var stroke = sink.Strokes[1];
+        stroke.Character.ShouldBe(new Rune('s'));
+        stroke.Modifiers.ShouldBe(Modifiers.None);
+        sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('s'));
     }
 
     /// <summary>
@@ -3532,6 +3580,25 @@ public sealed class InputDecoderTests
         stroke.Character.ShouldBe(new Rune('s'));
         stroke.Modifiers.ShouldBe(Modifiers.None);
         sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('s'));
+
+        // The interrupting Escape abandons the pending X10 mouse continuation exactly once,
+        // reported immediately at that byte: earlier, the pending flag stayed dangling instead,
+        // so this same abandonment was only ever noticed once a later byte incidentally cleared
+        // it - producing two near-identical diagnostics for what was really one occurrence. Here,
+        // the second diagnostic is a genuinely distinct occurrence: the interrupting Escape
+        // itself, replayed alongside the following byte, is its own malformed two-byte escape
+        // attempt (0xC3 is not a valid Escape final byte), so it is expected to be reported on its
+        // own.
+        sink.Diagnostics.Count.ShouldBe(2);
+        sink.Diagnostics[0].Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Diagnostics[0].Kind.ShouldBe(SequenceKind.Csi);
+        sink.Diagnostics[1].Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Diagnostics[1].Kind.ShouldBe(SequenceKind.Escape);
+
+        // The two entries must be at genuinely different stream offsets: same-offset duplicates
+        // would mean the old bug (one occurrence reported twice) survived; different offsets
+        // confirm these are the two distinct occurrences described above.
+        sink.Diagnostics[0].Offset.ShouldNotBe(sink.Diagnostics[1].Offset);
     }
 
     /// <summary>

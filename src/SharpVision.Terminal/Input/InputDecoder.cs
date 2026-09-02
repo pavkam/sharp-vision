@@ -41,6 +41,7 @@ public sealed class InputDecoder: IDisposable
     private bool _kittyKeyboardDisambiguationEnabled;
     private bool _cursorPositionQueryPending;
     private bool _ss3Pending;
+    private bool _pendingContinuationJustInterrupted;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
     /// <param name="sink">The non-null event sink.</param>
@@ -349,6 +350,21 @@ public sealed class InputDecoder: IDisposable
 
     private void BeginEscape()
     {
+        // A literal Escape arriving while an SS3 (ESC O) or X10 mouse (ESC [ M) continuation is
+        // still pending abandons that continuation: unlike every other transition point in this
+        // file (HandleControl, HandleEscape, HandleCsi, HandleSequence, AcceptDcs, ExpireEscape,
+        // Complete), a bare Escape from Ground was the one place that left the pending flag
+        // dangling instead of resetting it here and reporting the abandonment exactly once. The
+        // latch set below lets the Alt-detection guard a few bytes down still treat this next byte
+        // as if the continuation were live, so the byte-for-byte Stroke/Text outcome for it is
+        // unchanged; the latch is cleared once that byte has been fully processed.
+        if (_ss3Pending || _mouseDecoder.Pending)
+        {
+            _mouseDecoder.EndIfPending();
+            EndSs3IfPending();
+            _pendingContinuationJustInterrupted = true;
+        }
+
         _escapePending = true;
         _escapeDeadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
     }
@@ -382,12 +398,21 @@ public sealed class InputDecoder: IDisposable
             }
         }
 
+        var wasEscapePending = _escapePending;
+
         if (_escapePending)
         {
             if (value == ControlBytes.Escape)
             {
                 _skippedBytes = checked(_skippedBytes + 1);
                 EmitEscape();
+
+                // A repeated Escape is not itself a candidate for the Alt-detection guard below (it
+                // never reaches that check), so it must leave any latch armed by an earlier
+                // interruption untouched rather than consuming it: the byte that actually needs the
+                // latch's protection is whichever non-Escape byte finally follows this run of
+                // repeated Escapes, however many there are. BeginEscape still re-arms the latch
+                // itself if *this* Escape newly abandons a still-live SS3/mouse continuation.
                 BeginEscape();
                 return;
             }
@@ -401,8 +426,16 @@ public sealed class InputDecoder: IDisposable
             // and attach Alt to an unrelated later keystroke. The range is also narrowed
             // to valid UTF-8 lead bytes (0xC2..0xF4): a continuation byte (0x80..0xBF) can never
             // begin a scalar, so treating one as the start of Alt+text would swallow the Escape
-            // and still never produce text.
-            if (value is >= 0xc2 and <= 0xf4 && !_ss3Pending && !_mouseDecoder.Pending)
+            // and still never produce text. _pendingContinuationJustInterrupted covers the same
+            // hazard for the one byte immediately following an Escape that itself just abandoned a
+            // pending SS3/mouse continuation: by the time this byte is examined, BeginEscape has
+            // already reset _ss3Pending/_mouseDecoder.Pending to false (so a third interruption is
+            // not mistaken for a second), so those two flags alone can no longer see the danger
+            // this latch preserves.
+            if (value is >= 0xc2 and <= 0xf4 &&
+                !_ss3Pending &&
+                !_mouseDecoder.Pending &&
+                !_pendingContinuationJustInterrupted)
             {
                 _skippedBytes = checked(_skippedBytes + 1);
                 _nextTextModifiers = Modifiers.Alt;
@@ -441,6 +474,14 @@ public sealed class InputDecoder: IDisposable
 
         Span<byte> one = [value];
         ParseCore(one, ref adapter);
+
+        // The latch only ever needs to survive for the single byte immediately following the
+        // Escape that set it, whose full processing (including whatever it just fed into the real
+        // parser above) has now finished; clear it so it cannot affect any later, unrelated byte.
+        if (wasEscapePending)
+        {
+            _pendingContinuationJustInterrupted = false;
+        }
     }
 
     private bool CanStartMatcher(byte value) =>
@@ -920,8 +961,13 @@ public sealed class InputDecoder: IDisposable
         }
 
         // See the matching remap in TryReadCsiModifiers: Kitty's own bit 3 is Super, but this
-        // legacy ANSI grammar (guarded by UseAnsiKeyGrammar above) defines bit 3 as Meta.
-        RemapLegacySuperToMeta(ref modifiers);
+        // legacy ANSI grammar (guarded by UseAnsiKeyGrammar above) defines bit 3 as Meta - except
+        // reaching here already guarantees HasKittyEventType(parameters), where bit 3 is Super.
+        if (!HasKittyEventType(parameters))
+        {
+            RemapLegacySuperToMeta(ref modifiers);
+        }
+
         return true;
     }
 
