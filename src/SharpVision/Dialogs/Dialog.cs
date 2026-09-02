@@ -746,12 +746,12 @@ public abstract class Dialog<TResult>: Window
 
         try
         {
-            dispatcher.Post(RunScheduledCompletion);
+            dispatcher.Post(RunScheduledCompletion, OnScheduledCompletionCancelled);
             return true;
         }
         catch (ObjectDisposedException)
         {
-            CancelScheduledCompletion();
+            OnScheduledCompletionCancelled();
             return false;
         }
         catch (InvalidOperationException)
@@ -796,10 +796,54 @@ public abstract class Dialog<TResult>: Window
         FinishCompletion();
     }
 
-    // Runs when the owning dispatcher was already stopping by the time Post itself
-    // rejected the scheduled completion. Unlike RunScheduledCompletion's FinishCompletion
-    // call, this settles the result directly instead of also attempting the dispatcher-
-    // dependent close/cleanup FinishCompletion performs, which would fail the same way.
+    private void OnScheduledCompletionCancelled()
+    {
+        Dispatcher? dispatcher;
+        EventHandler? idle;
+        bool finishAcceptedCompletion;
+
+        lock (_completionGate)
+        {
+            if (_scheduledInvoked)
+            {
+                return;
+            }
+
+            _scheduledInvoked = true;
+            dispatcher = _scheduledDispatcher;
+            idle = _scheduledIdle;
+            _scheduledDispatcher = null;
+            _scheduledIdle = null;
+            finishAcceptedCompletion =
+                _isDetachmentPending ||
+                Dispatcher is null ||
+                (dispatcher is not null && dispatcher.CheckAccess());
+
+            if (!finishAcceptedCompletion && dispatcher is not null)
+            {
+                // Off-dispatcher shutdown cannot mutate an attached tree. Retain cleanup authority
+                // so a later detach finishes disposal, while the selected result may settle now.
+                _finishAcceptedCompletionAfterDetach = true;
+                _abandonedCompletionDispatcher = dispatcher;
+            }
+        }
+
+        if (dispatcher is not null && idle is not null)
+        {
+            dispatcher.Idle -= idle;
+        }
+
+        if (finishAcceptedCompletion && dispatcher is not null)
+        {
+            AbandonAcceptedCompletion(dispatcher);
+            return;
+        }
+
+        SettleCompletion();
+    }
+
+    // Disposal has already completed structural cleanup, so it only needs to retire any queued
+    // scheduler state and settle the selected result.
     private void CancelScheduledCompletion()
     {
         Dispatcher? dispatcher;

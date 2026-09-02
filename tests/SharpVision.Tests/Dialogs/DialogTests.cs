@@ -983,6 +983,57 @@ public sealed class DialogTests
         }
     }
 
+    /// <summary>Verifies shutdown cannot discard an accepted result after the dialog detaches but
+    /// before its queued completion has created the deferred fade-close plan.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenAcceptedCompletionDetachesBeforeFadePlanAndQueuedWorkIsCancelled_SettlesAndDisposesAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        try
+        {
+            await surface.UpdateAsync(
+                () =>
+                {
+                    dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                    pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+                },
+                "present dialog before pre-plan completion cancellation");
+
+            await surface.Application.Dispatcher.InvokeAsync(
+                () =>
+                {
+                    dialog!.Accept(true).ShouldBeTrue();
+                    ((Overlay) dialog.Parent!).Children.Remove(dialog).ShouldBeTrue();
+                    _ = surface.Application.Dispatcher.DisposeAsync().AsTask();
+                },
+                TestContext.Current.CancellationToken);
+
+            (await pending!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBeTrue();
+            dialog!.IsDisposed.ShouldBeTrue();
+            dialog.Parent.ShouldBeNull();
+        }
+        finally
+        {
+            try
+            {
+                await surface.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
     /// <summary>Verifies a dialog presented through the ControlBase-based overload sets completion state
     /// correctly, so Escape completes it with the cancelled result instead of silently bubbling as
     /// modeless input would.</summary>
