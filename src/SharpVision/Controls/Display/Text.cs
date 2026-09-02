@@ -120,7 +120,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     /// <see cref="ControlBase.CellPolicy"/>.</summary>
     /// <remarks>
     /// This always tracks the ambient policy the rest of the render pipeline uses - it cannot be
-    /// overridden per-instance. <see cref="Terminal.Rendering.TerminalCanvas"/> classifies every
+    /// overridden per-instance. <see cref="TerminalCanvas"/> classifies every
     /// rune it draws against the frame's single ambiguous-width policy, so a <see cref="Text"/>
     /// whose own layout diverged from that policy could format an ellipsis or wrap boundary using
     /// a cell width the canvas would then measure differently, which is unsound.
