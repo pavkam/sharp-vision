@@ -6,6 +6,99 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies breadcrumb layout, rendering, focus, and routed input through a mounted application.</summary>
 public sealed class BreadcrumbSurfaceTests
 {
+    /// <summary>Verifies default separators paint one Breadcrumb-plane cell before and after the glyph.</summary>
+    [Fact]
+    public async Task Render_WhenPathUsesDefaultSeparatorSpacing_DrawsSymmetricGapsAsync()
+    {
+        var breadcrumb = new Breadcrumb();
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Root" });
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Docs" });
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Leaf" });
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(18, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("Root › Docs › Leaf");
+    }
+
+    /// <summary>Verifies asymmetric spacing drives item positions and paints only the separator slot.</summary>
+    [Fact]
+    public async Task Render_WhenSeparatorSpacingIsAsymmetric_ArrangesAndPaintsExactExtentAsync()
+    {
+        var breadcrumb = CreateWithSpacing(2, 1, "Root", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(12, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("Root  › Leaf");
+        breadcrumb.Items[0].Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        breadcrumb.Items[1].Bounds.ShouldBe(new Rect(8, 0, 4, 1));
+    }
+
+    /// <summary>Verifies zero spacing preserves direct glyph adjacency.</summary>
+    [Fact]
+    public async Task Render_WhenSeparatorSpacingIsZero_DrawsOnlyGlyphBetweenItemsAsync()
+    {
+        var breadcrumb = CreateWithSpacing(0, 0, "Root", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+
+        surface.ShouldRender("Root›Leaf");
+    }
+
+    /// <summary>Verifies separator and gap cells belong to the owner rather than adjacent item targets.</summary>
+    [Fact]
+    public async Task Pointer_WhenAddressingSeparatorExtent_DoesNotActivateAdjacentItemsAsync()
+    {
+        var breadcrumb = new Breadcrumb();
+        var rootInvoked = 0;
+        var leafInvoked = 0;
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Root" });
+        breadcrumb.Items.Add(new BreadcrumbItem { Text = "Leaf" });
+        breadcrumb.Items[0].Invoked += (_, _) => rootInvoked++;
+        breadcrumb.Items[1].Invoked += (_, _) => leafInvoked++;
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(11, 1),
+            TestContext.Current.CancellationToken);
+
+        foreach (var x in new[] { 4, 5, 6 })
+        {
+            breadcrumb.HitTest(new Point(x, 0)).ShouldBeSameAs(breadcrumb);
+            await surface.Pointer.MoveToAsync(new Point(x, 0));
+            await surface.Pointer.PressAsync();
+            await surface.Pointer.ReleaseAsync();
+        }
+
+        rootInvoked.ShouldBe(0);
+        leafInvoked.ShouldBe(0);
+        breadcrumb.CurrentItem.ShouldBeSameAs(breadcrumb.Items[1]);
+    }
+
+    /// <summary>Verifies a style transition recomputes overflow projection and restores default spacing.</summary>
+    [Fact]
+    public async Task Style_WhenSpacingChanges_ReprojectsCurrentPathAndRepaintsOwnerPlaneAsync()
+    {
+        var breadcrumb = CreateWithSpacing(0, 0, "Root", "Leaf");
+        await using var surface = await ComponentSurface.MountAsync(
+            breadcrumb,
+            new Size(9, 1),
+            ThemeCatalog.Dark,
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("Root›Leaf");
+
+        await surface.UpdateAsync(() => breadcrumb.Style = null, "restore theme-owned breadcrumb style");
+
+        surface.ShouldRender("… › Leaf ");
+        breadcrumb.Layout.OverflowItems.Select(item => item.Text).ShouldBe(["Root"]);
+        surface.Cell(new Point(1, 0)).Style.Background.ShouldBe(
+            surface.Cell(new Point(8, 0)).Style.Background);
+    }
+
     /// <summary>Verifies clicking an ancestor after mount rearranges the retained items to the new projection.</summary>
     [Fact]
     public async Task Render_WhenAncestorIsClicked_RearrangesProjectedWindowAsync()
@@ -106,7 +199,7 @@ public sealed class BreadcrumbSurfaceTests
         breadcrumb.Items[0].Visibility = Visibility.Hidden;
         await using var surface = await ComponentSurface.MountAsync(
             breadcrumb,
-            new Size(9, 1),
+            new Size(11, 1),
             TestContext.Current.CancellationToken);
 
         surface.ShouldRender("     Leaf");
@@ -155,14 +248,14 @@ public sealed class BreadcrumbSurfaceTests
         };
         await using var surface = await ComponentSurface.MountAsync(
             breadcrumb,
-            new Size(9, 1),
+            new Size(11, 1),
             TerminalOptions.Minimal with
             {
                 Capabilities = TerminalCapabilities.Conservative with { AmbiguousWidth = Ambiguous.Wide }
             },
             TestContext.Current.CancellationToken);
 
-        surface.ShouldRender("Root-Leaf");
+        surface.ShouldRender("Root - Leaf");
     }
 
     /// <summary>Verifies disabled overflow omissions never acquire menu projections.</summary>
@@ -438,9 +531,18 @@ public sealed class BreadcrumbSurfaceTests
         breadcrumb.Items[2].IsPressed.ShouldBeFalse();
     }
 
-    private static Breadcrumb Create(params string[] captions)
+    private static Breadcrumb Create(params string[] captions) => CreateWithSpacing(0, 0, captions);
+
+    private static Breadcrumb CreateWithSpacing(int before, int after, params string[] captions)
     {
-        var breadcrumb = new Breadcrumb();
+        var breadcrumb = new Breadcrumb
+        {
+            Style = BreadcrumbStyle.Default with
+            {
+                SeparatorSpacingBefore = before,
+                SeparatorSpacingAfter = after
+            }
+        };
 
         foreach (var caption in captions)
         {

@@ -3569,9 +3569,11 @@ namespace SharpVision.Navigation
     }
     public sealed class BreadcrumbStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.BreadcrumbStyle>
     {
-        public BreadcrumbStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph separatorGlyph, SharpVision.Styling.ControlColor separatorColor) { }
+        public BreadcrumbStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph separatorGlyph, SharpVision.Styling.ControlColor separatorColor, int separatorSpacingBefore, int separatorSpacingAfter) { }
         public required SharpVision.Styling.ControlColor SeparatorColor { get; init; }
         public required SharpVision.Styling.ControlGlyph SeparatorGlyph { get; init; }
+        public required int SeparatorSpacingAfter { get; init; }
+        public required int SeparatorSpacingBefore { get; init; }
         public new static SharpVision.Navigation.BreadcrumbStyle Default { get; }
     }
     public sealed class NavigationView : SharpVision.Controls.CompositeControlBase

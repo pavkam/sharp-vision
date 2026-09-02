@@ -82,7 +82,9 @@ internal sealed class BreadcrumbPane: CompositeControlBase
             Style = BreadcrumbStyle.Default with
             {
                 SeparatorGlyph = new ControlGlyph(new Rune('/'), new Rune('>')),
-                SeparatorColor = SemanticColor.Accent
+                SeparatorColor = SemanticColor.Accent,
+                SeparatorSpacingBefore = 2,
+                SeparatorSpacingAfter = 0
             }
         };
         overflow.Items.Add(new BreadcrumbItem { Text = "Wo&rkspace" });
@@ -133,12 +135,14 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                 "Finite width preserves complete entries and separators. The retained overflow trigger projects omitted available sources without reparenting them.",
                 new DocExample(
                     "Automatic overflow",
-                    "This 18-cell path keeps the current suffix and exposes earlier available locations through one menu. Its local style uses an accent slash separator.",
+                    "This 18-cell path keeps the current suffix and exposes earlier available locations through one menu. Its local style uses an accent slash with two cells before it and none after it.",
                     overflow,
                     "path.Style = BreadcrumbStyle.Default with\n" +
                     "{\n" +
                     "    SeparatorGlyph = new ControlGlyph(new Rune('/'), new Rune('>')),\n" +
-                    "    SeparatorColor = SemanticColor.Accent\n" +
+                    "    SeparatorColor = SemanticColor.Accent,\n" +
+                    "    SeparatorSpacingBefore = 2,\n" +
+                    "    SeparatorSpacingAfter = 0\n" +
                     "};")),
             new DocSection(
                 "👁️",

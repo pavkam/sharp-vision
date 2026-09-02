@@ -144,6 +144,7 @@ export const controls = [
         states: [
             {},
             { name: "overflow", actions: [{ click: "Narrow path" }] },
+            { name: "spacing", example: 2 },
         ],
     },
     { doc: "navigation/breadcrumb-item", page: "BreadcrumbItem" },

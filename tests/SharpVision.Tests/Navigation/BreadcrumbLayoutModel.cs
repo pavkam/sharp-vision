@@ -26,9 +26,18 @@ internal static class BreadcrumbLayoutModel
                 breadcrumb.Items[index].Measure(new Constraint(width: null, 1));
             }
 
-            var layout = BreadcrumbLayout.Create(breadcrumb, width, triggerWidth: 1, operationIndex + 1);
+            var separatorExtent = breadcrumb.ActualStyle.SeparatorSpacingBefore
+                .Add(1)
+                .Add(breadcrumb.ActualStyle.SeparatorSpacingAfter);
+            var layout = BreadcrumbLayout.Create(
+                breadcrumb,
+                width,
+                triggerWidth: 1,
+                breadcrumb.ActualStyle.SeparatorSpacingBefore,
+                separatorExtent,
+                operationIndex + 1);
             var actual = EncodeActual(layout);
-            var expected = EncodeExpected(breadcrumb, width);
+            var expected = EncodeExpected(breadcrumb, width, separatorExtent);
 
             if (!string.Equals(actual, expected, StringComparison.Ordinal))
             {
@@ -46,7 +55,7 @@ internal static class BreadcrumbLayoutModel
 
     private static string Apply(Random random, Breadcrumb breadcrumb, ref int width, ref int nextIdentity)
     {
-        var operation = random.Next(0, 9);
+        var operation = random.Next(0, 10);
         var count = breadcrumb.Items.Count;
 
         switch (operation)
@@ -106,6 +115,15 @@ internal static class BreadcrumbLayoutModel
                 var disposed = breadcrumb.Items[random.Next(count)];
                 disposed.Dispose();
                 return $"dispose:{disposed.Tag}";
+            case 9:
+                var before = random.Next(0, 4);
+                var after = random.Next(0, 4);
+                breadcrumb.Style = BreadcrumbStyle.Default with
+                {
+                    SeparatorSpacingBefore = before,
+                    SeparatorSpacingAfter = after
+                };
+                return $"spacing:{before},{after}";
             default:
                 return "noop";
         }
@@ -122,7 +140,7 @@ internal static class BreadcrumbLayoutModel
         return $"P[{primary}]O[{overflow}]T[{layout.TriggerBounds.X}:{layout.TriggerBounds.Width}:{layout.TriggerPrecedesPrimary}]";
     }
 
-    private static string EncodeExpected(Breadcrumb breadcrumb, int width)
+    private static string EncodeExpected(Breadcrumb breadcrumb, int width, int separatorExtent)
     {
         var participants = Enumerable.Range(0, breadcrumb.Items.Count)
             .Where(index => breadcrumb.Items[index].Visibility != Visibility.Collapsed)
@@ -130,7 +148,7 @@ internal static class BreadcrumbLayoutModel
         var widths = Enumerable.Range(0, breadcrumb.Items.Count)
             .Select(index => breadcrumb.Items[index].DesiredSize.Width.Add(breadcrumb.Items[index].Margin.Horizontal))
             .ToArray();
-        var natural = Sum(participants, widths);
+        var natural = Sum(participants, widths, separatorExtent);
         var current = breadcrumb.CurrentIndex;
         List<int> primary = [];
         var trigger = false;
@@ -148,7 +166,8 @@ internal static class BreadcrumbLayoutModel
             {
                 var candidate = participants.GetRange(start, currentPosition - start + 1);
                 var omitted = HasAvailableOmission(breadcrumb, candidate);
-                var candidateWidth = Sum(candidate, widths).Add(omitted ? 2 : 0);
+                var candidateWidth = Sum(candidate, widths, separatorExtent)
+                    .Add(omitted ? 1.Add(separatorExtent) : 0);
 
                 if (candidateWidth <= width)
                 {
@@ -170,7 +189,9 @@ internal static class BreadcrumbLayoutModel
                 var candidate = participants.GetRange(0, length);
 
                 if (HasAvailableOmission(breadcrumb, candidate) &&
-                    Sum(candidate, widths).Add(1).Add(candidate.Count > 0 ? 1 : 0) <= width)
+                    Sum(candidate, widths, separatorExtent)
+                        .Add(1)
+                        .Add(candidate.Count > 0 ? separatorExtent : 0) <= width)
                 {
                     primary.AddRange(candidate);
                     trigger = true;
@@ -184,7 +205,7 @@ internal static class BreadcrumbLayoutModel
                 {
                     var candidate = participants.GetRange(0, length);
 
-                    if (Sum(candidate, widths) <= width)
+                    if (Sum(candidate, widths, separatorExtent) <= width)
                     {
                         primary.AddRange(candidate);
                         break;
@@ -196,27 +217,27 @@ internal static class BreadcrumbLayoutModel
         var overflow = Enumerable.Range(0, breadcrumb.Items.Count)
             .Where(index => !primary.Contains(index) && IsAvailable(breadcrumb.Items[index]))
             .ToArray();
-        var x = trigger && precedes ? 1 + (primary.Count > 0 ? 1 : 0) : 0;
+        var x = trigger && precedes ? 1.Add(primary.Count > 0 ? separatorExtent : 0) : 0;
         List<string> encodedPrimary = [];
 
         for (var position = 0; position < primary.Count; position++)
         {
             var index = primary[position];
             encodedPrimary.Add($"{breadcrumb.Items[index].Tag}@{x}:{widths[index]}");
-            x = x.Add(widths[index]).Add(position + 1 < primary.Count ? 1 : 0);
+            x = x.Add(widths[index]).Add(position + 1 < primary.Count ? separatorExtent : 0);
         }
 
         var triggerX = 0;
 
         if (trigger)
         {
-            triggerX = precedes ? 0 : x.Add(primary.Count > 0 ? 1 : 0);
+            triggerX = precedes ? 0 : x.Add(primary.Count > 0 ? separatorExtent : 0);
         }
 
         return $"P[{string.Join(",", encodedPrimary)}]O[{string.Join(",", overflow.Select(index => breadcrumb.Items[index].Tag))}]T[{triggerX}:{(trigger ? 1 : 0)}:{precedes}]";
     }
 
-    private static int Sum(IEnumerable<int> indices, int[] widths)
+    private static int Sum(IEnumerable<int> indices, int[] widths, int separatorExtent)
     {
         var sum = 0;
         var count = 0;
@@ -227,7 +248,7 @@ internal static class BreadcrumbLayoutModel
             count++;
         }
 
-        return sum.Add(Math.Max(0, count - 1));
+        return sum.Add(Math.Max(0, count - 1).Multiply(separatorExtent));
     }
 
     private static bool HasAvailableOmission(Breadcrumb breadcrumb, IReadOnlyCollection<int> primary)

@@ -38,7 +38,7 @@ internal sealed class BreadcrumbHost: Container
             participants++;
         }
 
-        width = width.Add(Math.Max(0, participants - 1));
+        width = width.Add(Math.Max(0, participants - 1).Multiply(Owner.MeasuredSeparatorExtent));
         return new Size(width, height);
     }
 

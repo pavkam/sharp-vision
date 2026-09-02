@@ -8,7 +8,7 @@ namespace SharpVision.Navigation;
 internal sealed class BreadcrumbLayout
 {
     /// <summary>Gets the initial empty layout.</summary>
-    internal static BreadcrumbLayout Empty { get; } = new([], [], [], default, false, 0, 0);
+    internal static BreadcrumbLayout Empty { get; } = new([], [], [], default, false, 0, 0, 0, 0);
 
     private BreadcrumbLayout(
         BreadcrumbLayoutEntry[] entries,
@@ -16,6 +16,8 @@ internal sealed class BreadcrumbLayout
         BreadcrumbItem[] overflowItems,
         Rect triggerBounds,
         bool triggerPrecedesPrimary,
+        int separatorSpacingBefore,
+        int separatorExtent,
         int occupiedWidth,
         long generation)
     {
@@ -24,6 +26,8 @@ internal sealed class BreadcrumbLayout
         OverflowItems = overflowItems;
         TriggerBounds = triggerBounds;
         TriggerPrecedesPrimary = triggerPrecedesPrimary;
+        SeparatorSpacingBefore = separatorSpacingBefore;
+        SeparatorExtent = separatorExtent;
         OccupiedWidth = occupiedWidth;
         Generation = generation;
     }
@@ -43,6 +47,12 @@ internal sealed class BreadcrumbLayout
     /// <summary>Gets whether the trigger is laid out before rather than after the primary items.</summary>
     internal bool TriggerPrecedesPrimary { get; }
 
+    /// <summary>Gets the cells before each separator glyph in this committed generation.</summary>
+    internal int SeparatorSpacingBefore { get; }
+
+    /// <summary>Gets the complete before-gap, glyph, and after-gap cell extent.</summary>
+    internal int SeparatorExtent { get; }
+
     /// <summary>Gets the occupied row width.</summary>
     internal int OccupiedWidth { get; }
 
@@ -50,10 +60,26 @@ internal sealed class BreadcrumbLayout
     internal long Generation { get; }
 
     /// <summary>Builds a whole-item layout under an optional finite cell width.</summary>
-    internal static BreadcrumbLayout Create(Breadcrumb owner, int? availableWidth, int triggerWidth, long generation)
+    internal static BreadcrumbLayout Create(
+        Breadcrumb owner,
+        int? availableWidth,
+        int triggerWidth,
+        int separatorSpacingBefore,
+        int separatorExtent,
+        long generation)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentOutOfRangeException.ThrowIfNegative(triggerWidth);
+        ArgumentOutOfRangeException.ThrowIfNegative(separatorSpacingBefore);
+        ArgumentOutOfRangeException.ThrowIfNegative(separatorExtent);
+
+        if (separatorSpacingBefore > separatorExtent)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(separatorSpacingBefore),
+                separatorSpacingBefore,
+                "The leading separator spacing cannot exceed the complete separator extent.");
+        }
 
         var count = owner.ItemCount;
         var widths = new int[count];
@@ -74,7 +100,7 @@ internal sealed class BreadcrumbLayout
             participants.Add(index);
         }
 
-        natural = natural.Add(Math.Max(0, participants.Count - 1));
+        natural = natural.Add(Math.Max(0, participants.Count - 1).Multiply(separatorExtent));
         var limit = availableWidth ?? natural;
         var primary = new HashSet<int>();
         var currentIndex = owner.CurrentIndex;
@@ -96,7 +122,8 @@ internal sealed class BreadcrumbLayout
                 {
                     var candidate = participants.GetRange(start, currentPosition - start + 1);
                     var omitted = HasAvailableOmission(owner, candidate);
-                    var width = Measure(candidate, widths).Add(omitted ? triggerWidth.Add(1) : 0);
+                    var width = Measure(candidate, widths, separatorExtent)
+                        .Add(omitted ? triggerWidth.Add(separatorExtent) : 0);
 
                     if (width <= limit)
                     {
@@ -124,7 +151,9 @@ internal sealed class BreadcrumbLayout
                     continue;
                 }
 
-                var width = Measure(candidate, widths).Add(triggerWidth).Add(candidate.Count > 0 ? 1 : 0);
+                var width = Measure(candidate, widths, separatorExtent)
+                    .Add(triggerWidth)
+                    .Add(candidate.Count > 0 ? separatorExtent : 0);
 
                 if (width <= limit)
                 {
@@ -140,7 +169,7 @@ internal sealed class BreadcrumbLayout
                 {
                     var candidate = participants.GetRange(0, length);
 
-                    if (Measure(candidate, widths) <= limit)
+                    if (Measure(candidate, widths, separatorExtent) <= limit)
                     {
                         primary.UnionWith(candidate);
                         break;
@@ -160,7 +189,7 @@ internal sealed class BreadcrumbLayout
         if (trigger && triggerPrecedes)
         {
             triggerBounds = new Rect(x, 0, triggerWidth, 1);
-            x = x.Add(triggerWidth).Add(primaryIndices.Length > 0 ? 1 : 0);
+            x = x.Add(triggerWidth).Add(primaryIndices.Length > 0 ? separatorExtent : 0);
         }
 
         foreach (var index in primaryIndices)
@@ -170,12 +199,12 @@ internal sealed class BreadcrumbLayout
                 new Rect(x, 0, widths[index], 1),
                 isPrimary: true,
                 isOverflowed: false);
-            x = x.Add(widths[index]).Add(index == primaryIndices[^1] ? 0 : 1);
+            x = x.Add(widths[index]).Add(index == primaryIndices[^1] ? 0 : separatorExtent);
         }
 
         if (trigger && !triggerPrecedes)
         {
-            x = x.Add(primaryIndices.Length > 0 ? 1 : 0);
+            x = x.Add(primaryIndices.Length > 0 ? separatorExtent : 0);
             triggerBounds = new Rect(x, 0, triggerWidth, 1);
             x = x.Add(triggerWidth);
         }
@@ -201,6 +230,8 @@ internal sealed class BreadcrumbLayout
             [.. overflowIndices.Select(owner.ItemAt)],
             triggerBounds,
             triggerPrecedes,
+            separatorSpacingBefore,
+            separatorExtent,
             x,
             generation);
     }
@@ -228,6 +259,8 @@ internal sealed class BreadcrumbLayout
 
         if (TriggerBounds != other.TriggerBounds ||
             TriggerPrecedesPrimary != other.TriggerPrecedesPrimary ||
+            SeparatorSpacingBefore != other.SeparatorSpacingBefore ||
+            SeparatorExtent != other.SeparatorExtent ||
             Entries.Count != other.Entries.Count)
         {
             return false;
@@ -259,7 +292,7 @@ internal sealed class BreadcrumbLayout
         return false;
     }
 
-    private static int Measure(IEnumerable<int> indices, int[] widths)
+    private static int Measure(IEnumerable<int> indices, int[] widths, int separatorExtent)
     {
         var width = 0;
         var count = 0;
@@ -270,6 +303,6 @@ internal sealed class BreadcrumbLayout
             count++;
         }
 
-        return width.Add(Math.Max(0, count - 1));
+        return width.Add(Math.Max(0, count - 1).Multiply(separatorExtent));
     }
 }

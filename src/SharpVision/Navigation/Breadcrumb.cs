@@ -111,6 +111,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     /// <summary>Gets the immutable layout shared by presentation and input for the current pass.</summary>
     internal BreadcrumbLayout Layout { get; private set; } = BreadcrumbLayout.Empty;
 
+    /// <summary>Gets the complete separator extent resolved for the active measurement pass.</summary>
+    internal int MeasuredSeparatorExtent { get; private set; }
+
     /// <summary>Gets the current semantic ownership generation.</summary>
     internal long CollectionGeneration { get; private set; }
 
@@ -463,12 +466,23 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
+        var separator = ResolveControlGlyph(ActualStyle.SeparatorGlyph);
+        Span<char> separatorBuffer = stackalloc char[2];
+        var separatorLength = separator.EncodeToUtf16(separatorBuffer);
+        var separatorGlyphWidth = Terminal.Unicode.Width.Measure(
+            separatorBuffer[..separatorLength],
+            CellPolicy.AmbiguousWidth).Cells;
+        MeasuredSeparatorExtent = ActualStyle.SeparatorSpacingBefore
+            .Add(separatorGlyphWidth)
+            .Add(ActualStyle.SeparatorSpacingAfter);
         var natural = base.MeasureOverride(constraint);
         _ = MeasureChild(_overflowButton, new Constraint(width: null, 1));
         var candidate = BreadcrumbLayout.Create(
             this,
             constraint.Width,
             _overflowButton.DesiredSize.Width,
+            ActualStyle.SeparatorSpacingBefore,
+            MeasuredSeparatorExtent,
             _layoutGeneration + 1);
 
         var windowChanged = !Layout.HasSameWindow(candidate);
@@ -538,11 +552,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
                 var x = Layout.TriggerPrecedesPrimary
                     ? Layout.TriggerBounds.Right
                     : Layout.EntryFor(adjacent).Bounds.Right;
-                canvas.DrawRune(
-                    separator,
-                    new Point(ContentBounds.X.Add(x), ContentBounds.Y),
-                    style,
-                    BackgroundMode.Transparent);
+                PaintSeparator(canvas, x, separator, style);
             }
         }
 
@@ -557,12 +567,23 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             }
 
             var entry = Layout.EntryFor(item);
-            canvas.DrawRune(
-                separator,
-                new Point(ContentBounds.X.Add(entry.Bounds.Right), ContentBounds.Y),
-                style,
-                BackgroundMode.Transparent);
+            PaintSeparator(canvas, entry.Bounds.Right, separator, style);
         }
+    }
+
+    private void PaintSeparator(TerminalCanvas canvas, int relativeX, Rune separator, TerminalStyle style)
+    {
+        var slot = new Rect(
+            ContentBounds.X.Add(relativeX),
+            ContentBounds.Y,
+            Layout.SeparatorExtent,
+            1);
+        canvas.Fill(slot, new Rune(' '), NormalStyle);
+        canvas.DrawRune(
+            separator,
+            new Point(slot.X.Add(Layout.SeparatorSpacingBefore), slot.Y),
+            style,
+            BackgroundMode.Transparent);
     }
 
     /// <inheritdoc/>

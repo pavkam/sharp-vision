@@ -11,7 +11,7 @@ roving keyboard target, so moving with arrow keys does not claim that the
 application navigated.
 
 The path automatically compresses at finite widths. Complete Unicode entries and
-one-cell separators remain on the primary row while omitted available locations
+separator extents remain on the primary row while omitted available locations
 are projected into one private overflow menu. Projection never reparents an
 original item or copies its command state. Attached mutations are
 dispatcher-affine, public values are validated before mutation, and unavailable
@@ -51,9 +51,9 @@ owned item. The caller may set an earlier owned item when navigating an ancestor
 and remains responsible for trimming obsolete later entries. An explicit `-1` or
 null state lasts until a later path or availability mutation requires repair.
 
-`BreadcrumbStyle` is a complete immutable style record with required
-`SeparatorGlyph` and `SeparatorColor` values. The color must be paintable, and
-the glyph validates preferred and fallback scalars as printable one-cell values.
+`BreadcrumbStyle` is a complete immutable style record. The color must be
+paintable, each glyph validates as printable and one cell under the narrow-width
+policy, and spacing values reject negative cells before the replacement commits.
 
 ### BreadcrumbItemCollection
 
@@ -107,9 +107,12 @@ disabled sources expose no primary or overflow access-key target.
 
 ## Layout and overflow
 
-At normal width the breadcrumb arranges every participating item in source order
-with one resolved separator between adjacent visible entries. Under a finite
-constraint it chooses only whole entries and separators:
+At normal width the breadcrumb arranges every participating item in source
+order. Each separator extent is `SeparatorSpacingBefore` plus the resolved
+glyph's live measured width plus `SeparatorSpacingAfter`. The same extent drives
+natural measurement, overflow candidates, arrangement, rendering, clipping, and
+pointer bounds. Under a finite constraint it chooses only whole entries and
+separators:
 
 1. With a current item, it keeps that complete target and the nearest preceding
    entries that fit, producing a contiguous suffix in an ordinary path. Any
@@ -135,13 +138,26 @@ stale projection inert. A resize that changes the visible window also cancels
 any in-progress pointer press, so a physical cell cannot be reinterpreted as a
 different item on release.
 
+Separator gap cells repaint the breadcrumb's background plane. The complete
+before-gap, glyph, and after-gap extent belongs to neither adjacent item nor
+overflow-trigger hit target.
+
 ## Styling and Unicode
 
-`BreadcrumbStyle.Default` uses the navigation current marker and control-border
-color. At measure and render time, the preferred separator is used only when it
-is one terminal cell under the live cell-width policy. Otherwise its portable
-fallback is used; if neither is one cell, both the separator and its reserved
-cell are omitted. Item-specific presentation and caption geometry belong to the
+`BreadcrumbStyle.Default` uses the navigation current marker, control-border
+color, and one cell of spacing on each side of the glyph.
+
+| Style value              | Type           | Default                       | Description                                   |
+| ------------------------ | -------------- | ----------------------------- | --------------------------------------------- |
+| `SeparatorGlyph`         | `ControlGlyph` | Navigation current marker     | Preferred separator plus fallback.            |
+| `SeparatorColor`         | `ControlColor` | `SemanticColor.ControlBorder` | Paintable separator foreground.               |
+| `SeparatorSpacingBefore` | `int`          | `1`                           | Non-negative cells before the resolved glyph. |
+| `SeparatorSpacingAfter`  | `int`          | `1`                           | Non-negative cells after the resolved glyph.  |
+
+At measure and render time, the preferred separator is used only when it is one
+terminal cell under the live cell-width policy. Otherwise its fallback is used,
+and that resolved glyph's live measured width contributes to the separator
+extent. Item-specific presentation and caption geometry belong to the
 [`BreadcrumbItem` styling rules](breadcrumb-item.md#styling-and-unicode).
 
 ## Example
@@ -150,8 +166,15 @@ cell are omitted. Item-specific presentation and caption geometry belong to the
 
 ![The Breadcrumb overflow menu trigger at a narrow width](../../images/controls/breadcrumb-overflow.png)
 
+![The Breadcrumb with asymmetric separator spacing](../../images/controls/breadcrumb-spacing.png)
+
 ```csharp
 var breadcrumb = new Breadcrumb();
+breadcrumb.Style = BreadcrumbStyle.Default with
+{
+    SeparatorSpacingBefore = 2,
+    SeparatorSpacingAfter = 0
+};
 breadcrumb.Items.Add(new BreadcrumbItem { Text = "&Home" });
 breadcrumb.Items.Add(new BreadcrumbItem { Text = "Pr&ojects" });
 breadcrumb.Items.Add(new BreadcrumbItem { Text = "界 &Design" });
@@ -181,7 +204,9 @@ host, trigger, or menu. Application commands own navigation and path mutation.
   pointer, access-key, programmatic, and overflow-menu activation.
 - Wide, narrow, tiny, zero-width, hidden, collapsed, disabled, explicitly
   nonfinal-current, and no-current paths preserve whole-entry geometry and exact
-  separator adjacency.
+  configured separator extents.
+- Separator gap and glyph cells use the breadcrumb plane and never activate an
+  adjacent item.
 - Moves preserve current item identity while updating its numeric index.
 - Adding any item selects the final available item when one exists, even when
   the added item is unavailable or the prior current item remains available.
