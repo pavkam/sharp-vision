@@ -1353,7 +1353,7 @@ namespace SharpVision.Controls.Display
         public SharpVision.Controls.ControlBase? AccessKeyTarget { get; set; }
         protected override string? AccessKeyText { get; }
         public SharpVision.Controls.Display.TextStyle ActualStyle { get; }
-        public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; set; }
+        public SharpVision.Terminal.Unicode.Ambiguous AmbiguousWidth { get; }
         public string Content { get; set; }
         public SharpVision.Text.Overflow Overflow { get; set; }
         public SharpVision.Controls.Display.TextStyle? Style { get; set; }

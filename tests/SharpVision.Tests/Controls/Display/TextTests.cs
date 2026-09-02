@@ -37,6 +37,23 @@ public sealed class TextTests
     public void Constructor_WhenContentIsNull_Throws() =>
         Should.Throw<ArgumentNullException>(() => new ControlText(null!));
 
+    /// <summary>Verifies AmbiguousWidth has no independent per-instance state and always tracks
+    /// whatever the ambient CellPolicy currently reports, since it is a read-only passthrough -
+    /// unlike every other control, Text used to allow this to diverge from the frame's actual
+    /// policy, which could make TerminalCanvas throw when rendering a truncation glyph resolved
+    /// under the stale, diverged value.</summary>
+    [Fact]
+    public void AmbiguousWidth_WhenAmbientCellPolicyChanges_TracksItExactly()
+    {
+        var text = new ControlText("hello");
+
+        text.AmbiguousWidth.ShouldBe(Ambiguous.Narrow);
+
+        text.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
+
+        text.AmbiguousWidth.ShouldBe(Ambiguous.Wide);
+    }
+
     /// <summary>Verifies TextChanged fires when Content changes and does not fire for identical assignment.</summary>
     [Fact]
     public void TextChanged_WhenContentChanges_Fires()
@@ -63,7 +80,6 @@ public sealed class TextTests
         _ = Should.Throw<ArgumentNullException>(() => text.Content = null!);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => text.Overflow = (Overflow) 99);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => text.TextAlignment = (Alignment) 99);
-        _ = Should.Throw<ArgumentOutOfRangeException>(() => text.AmbiguousWidth = (Ambiguous) 99);
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             text.Face = AppearanceTestValues.Face(attributes: (TerminalAttributes) int.MaxValue));
 
@@ -157,7 +173,8 @@ public sealed class TextTests
     [Fact]
     public void Render_WhenEllipsisIsAmbiguousWide_UsesThemeFallback()
     {
-        var text = new ControlText("abcde") { Overflow = Overflow.Ellipsis, AmbiguousWidth = Ambiguous.Wide };
+        var text = new ControlText("abcde") { Overflow = Overflow.Ellipsis };
+        text.SetCellPolicy(new UnicodePolicy(Ambiguous.Wide));
         new LayoutEngine().Layout(text, new Size(4, 1));
         using Frame frame = new(new Size(4, 1), ambiguousWidth: Ambiguous.Wide);
 
