@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import {
   excludedAbstractDocSlugs,
+  galleryCatalogEntries,
+  galleryGroupNames,
   galleryPaneSlugs,
   toKebabCase,
   validateControlImageCoverage,
@@ -44,6 +46,89 @@ test("galleryPaneSlugs_WhenSourceHasNoCatalogEntries_Throws", () => {
   );
 });
 
+test("galleryCatalogEntries_WhenSourceListsCatalogEntries_ReturnsGroupsPagesAndPanes", () => {
+  const source = `
+    private static readonly string[] _groups = ["Charts", "Navigation"];
+    private static readonly (string Group, string Name, Func<CompositeControlBase> Create)[] _catalog =
+    [
+        ("Charts", HorizontalBarChartPane.Title, static () => new HorizontalBarChartPane()),
+        ("Navigation", MenuPane.Title, static () => new MenuPane()),
+    ];`;
+
+  assert.deepEqual(galleryCatalogEntries(source), [
+    {
+      group: "Charts",
+      page: "HorizontalBarChart",
+      pane: "HorizontalBarChartPane",
+    },
+    { group: "Navigation", page: "Menu", pane: "MenuPane" },
+  ]);
+  assert.deepEqual(galleryGroupNames(source), ["Charts", "Navigation"]);
+});
+
+test("repositoryGallery_WhenScanned_HasThePrimaryPageCatalog", async () => {
+  const root = join(import.meta.dirname, "..");
+  const source = await readFile(
+    join(root, "examples", "Showcase", "Gallery.cs"),
+    "utf8",
+  );
+  const entries = galleryCatalogEntries(source);
+  const groups = galleryGroupNames(source);
+  const pages = entries.map(({ page }) => page);
+
+  assert.equal(entries.length, 68);
+  assert.deepEqual(
+    Object.fromEntries(
+      groups.map((group) => [
+        group,
+        entries.filter((entry) => entry.group === group).length,
+      ]),
+    ),
+    {
+      Concepts: 5,
+      Input: 17,
+      Collections: 5,
+      Navigation: 4,
+      Layout: 9,
+      Display: 10,
+      Charts: 5,
+      Progress: 3,
+      Notifications: 2,
+      Dialogs: 3,
+      Windows: 5,
+    },
+  );
+  assert.deepEqual(groups, [
+    "Concepts",
+    "Input",
+    "Collections",
+    "Navigation",
+    "Layout",
+    "Display",
+    "Charts",
+    "Progress",
+    "Notifications",
+    "Dialogs",
+    "Windows",
+  ]);
+  assert.equal(new Set(pages).size, pages.length);
+  assert.deepEqual(
+    pages.filter((page) =>
+      [
+        "BreadcrumbItem",
+        "CommandBarItem",
+        "CommandBarSeparator",
+        "MenuItem",
+        "FilePicker",
+      ].includes(page),
+    ),
+    [],
+  );
+  assert.ok(pages.includes("MessageBox"));
+  assert.ok(pages.includes("OpenFilePicker"));
+  assert.ok(pages.includes("SaveFilePicker"));
+});
+
 /**
  * Builds an isolated fixture tree with a Gallery catalog, a manifest, and one documentation page,
  * so the fixture below can prove both the green and the red path without touching the real repo.
@@ -69,7 +154,7 @@ async function buildFixture({ includeManifestEntry, includeAsset, includeReferen
 
   await mkdir(join(root, "scripts"), { recursive: true });
   const manifestEntries = includeManifestEntry
-    ? `export const controls = [{ doc: "charts/horizontal-bar-chart", page: "HorizontalBarChart" }];`
+    ? `export const controls = [{ doc: "controls/charts/horizontal-bar-chart", page: "HorizontalBarChart" }];`
     : "export const controls = [];";
   await writeFile(join(root, "scripts", "control-image-manifest.mjs"), manifestEntries);
 
@@ -82,6 +167,7 @@ async function buildFixture({ includeManifestEntry, includeAsset, includeReferen
     `# HorizontalBarChart\n\n## Example\n\n${reference}`,
   );
   await writeFile(join(root, "docs", "controls", "charts", "index.md"), "# Charts\n");
+  await mkdir(join(root, "docs", "dialogs"), { recursive: true });
 
   await mkdir(join(root, "docs", "images", "controls"), { recursive: true });
 
@@ -117,7 +203,10 @@ test("validateControlImageCoverage_WhenManifestAssetAndReferenceAreAllMissing_Re
     const errors = await validateControlImageCoverage(root);
 
     assert.equal(errors.length, 3);
-    assert.match(errors[0], /has no "horizontal-bar-chart" entry/);
+    assert.match(
+      errors[0],
+      /has no "controls\/charts\/horizontal-bar-chart" entry/,
+    );
     assert.match(errors[1], /horizontal-bar-chart\.png does not exist/);
     assert.match(errors[2], /does not reference images\/controls\/horizontal-bar-chart\.png/);
   } finally {
@@ -136,8 +225,8 @@ test("validateControlImageCoverage_WhenOnlyTheManifestEntryIsMissing_ReportsOnly
     const errors = await validateControlImageCoverage(root);
 
     assert.deepEqual(errors, [
-      "docs/controls/charts/horizontal-bar-chart.md: HorizontalBarChartPane has a dedicated " +
-        'Gallery page but scripts/control-image-manifest.mjs has no "horizontal-bar-chart" entry',
+      "docs/controls/charts/horizontal-bar-chart.md: " +
+        'scripts/control-image-manifest.mjs has no "controls/charts/horizontal-bar-chart" entry',
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -171,8 +260,63 @@ test("validateControlImageCoverage_WhenAnExcludedAbstractPageHasAMatchingCatalog
     );
 
     await mkdir(join(root, "docs", "images", "controls"), { recursive: true });
+    await mkdir(join(root, "docs", "dialogs"), { recursive: true });
 
     assert.deepEqual(await validateControlImageCoverage(root), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("validateControlImageCoverage_WhenPrimaryPagesOwnHelperAndDialogDocs_ValidatesBothFullPaths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "control-image-coverage-"));
+
+  try {
+    await mkdir(join(root, "examples", "Showcase"), { recursive: true });
+    await writeFile(
+      join(root, "examples", "Showcase", "Gallery.cs"),
+      `
+      private static readonly (string Group, string Name, Func<CompositeControlBase> Create)[] _catalog =
+      [
+          ("Navigation", BreadcrumbPane.Title, static () => new BreadcrumbPane()),
+          ("Dialogs", MessageBoxPane.Title, static () => new MessageBoxPane()),
+      ];`,
+    );
+
+    await mkdir(join(root, "scripts"), { recursive: true });
+    await writeFile(
+      join(root, "scripts", "control-image-manifest.mjs"),
+      `export const controls = [
+        { doc: "controls/navigation/breadcrumb-item", page: "Breadcrumb" },
+        { doc: "dialogs/message-box", page: "MessageBox" },
+      ];`,
+    );
+
+    await mkdir(join(root, "docs", "controls", "navigation"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(root, "docs", "controls", "navigation", "breadcrumb-item.md"),
+      "# BreadcrumbItem\n\n## Example\n",
+    );
+    await mkdir(join(root, "docs", "dialogs"), { recursive: true });
+    await writeFile(
+      join(root, "docs", "dialogs", "message-box.md"),
+      "# MessageBox\n\n## Example\n",
+    );
+    await mkdir(join(root, "docs", "images", "controls"), {
+      recursive: true,
+    });
+
+    assert.deepEqual(await validateControlImageCoverage(root), [
+      "docs/controls/navigation/breadcrumb-item.md: " +
+        "docs/images/controls/breadcrumb-item.png does not exist",
+      "docs/controls/navigation/breadcrumb-item.md: does not reference " +
+        "images/controls/breadcrumb-item.png in an Example image",
+      "docs/dialogs/message-box.md: docs/images/controls/message-box.png does not exist",
+      "docs/dialogs/message-box.md: does not reference " +
+        "images/controls/message-box.png in an Example image",
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -186,6 +330,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
       "container",
       "content-control",
       "headered-content-control",
+      "input-base",
       "items-control",
       "pressable",
     ],

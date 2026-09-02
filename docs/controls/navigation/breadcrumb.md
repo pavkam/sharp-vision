@@ -166,6 +166,8 @@ extent. Item-specific presentation and caption geometry belong to the
 
 ![The Breadcrumb overflow menu trigger at a narrow width](../../images/controls/breadcrumb-overflow.png)
 
+![The Breadcrumb overflow menu opened from the bounded path](../../images/controls/breadcrumb-overflow-open.png)
+
 ![The Breadcrumb with asymmetric separator spacing](../../images/controls/breadcrumb-spacing.png)
 
 ```csharp

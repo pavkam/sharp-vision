@@ -262,6 +262,8 @@ header and Escape policy are kept by every shipped dialog.
 
 ![The Window control rendered in the live showcase](../../images/controls/window.png)
 
+![The Window default action applied from a focused descendant](../../images/controls/window-default-action.png)
+
 ```csharp
 var window = new Window
 {

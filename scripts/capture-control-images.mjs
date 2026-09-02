@@ -59,23 +59,28 @@ export const locateExampleBox = (rows, occurrence = 1) => {
 
 /// Finds the complete Example group box selected by a capture state. A numeric
 /// selector chooses the visible occurrence; a string selector chooses the box
-/// containing that marker. States default to the first example.
+/// containing that marker or whose visible heading immediately precedes it.
+/// States default to the first example.
 export const locateStateExampleBox = (rows, state) => {
     const selector = state.example ?? 1;
 
     if (typeof selector === "number")
         return locateExampleBox(rows, selector);
 
+    let previousBottom = 0;
+
     for (let occurrence = 1; ; occurrence += 1) {
         const rect = locateExampleBox(rows, occurrence);
 
         if (rect === null) return null;
 
-        for (let index = rect.top - 1; index < rect.bottom; index += 1) {
+        for (let index = previousBottom; index < rect.bottom; index += 1) {
             const column = findColumn(rows[index], selector);
 
-            if (column >= rect.left && column <= rect.right) return rect;
+            if (column > 0) return rect;
         }
+
+        previousBottom = rect.bottom;
     }
 };
 

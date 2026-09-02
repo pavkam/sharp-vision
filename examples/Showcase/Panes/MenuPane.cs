@@ -26,7 +26,7 @@ internal sealed class MenuPane: CompositeControlBase
         var fileRecentSubmenu = new Menu
         {
             Orientation = Orientation.Vertical,
-            MinWidth = Length.Cells(14),
+            MinWidth = Length.Cells(15),
             MaxWidth = Length.Percent(75)
         };
         fileRecentSubmenu.Items.Add(fileRecentToday);
@@ -223,6 +223,60 @@ internal sealed class MenuPane: CompositeControlBase
 
         var affixFrame = AutoSizedFrame(affixMenu);
 
+        var roleStatus = new Text("Select an entry to see the invoked action.");
+        var roleSubmenu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MaxWidth = Length.Cells(18)
+        };
+        roleSubmenu.Items.Add(new MenuItem { Text = "&Details" });
+        roleSubmenu.Items.Add(new MenuItem { Text = "&About" });
+        var roleMenu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        roleMenu.Items.Add(new MenuItem { Text = "&New" });
+        roleMenu.Items.Add(new MenuItem { Text = "More &options", Submenu = roleSubmenu });
+        roleMenu.Items.Add(new MenuSeparator());
+        roleMenu.Items.Add(new MenuItem { Text = "&Save", ShortcutText = "Ctrl+S" });
+        roleMenu.Items.Add(new MenuItem { Text = "&Undo", ShortcutText = "Ctrl+Z" });
+        roleMenu.Items.Add(new MenuItem
+        {
+            Text = "Au&to save",
+            Kind = MenuItemKind.Check,
+            IsChecked = true
+        });
+        roleMenu.Items.Add(new MenuItem
+        {
+            Text = "&Compact",
+            Kind = MenuItemKind.Radio,
+            GroupName = "density",
+            IsChecked = true
+        });
+        roleMenu.Items.Add(new MenuItem
+        {
+            Text = "Co&mfortable",
+            Kind = MenuItemKind.Radio,
+            GroupName = "density"
+        });
+        roleMenu.Items.Add(new MenuItem { Text = "&Deploy", IsEnabled = false });
+        roleMenu.ItemInvoked += (_, eventArgs) =>
+            roleStatus.Content = $"Invoked: {Label(eventArgs.Item)} ({eventArgs.Cause})";
+        var roleFrame = new Dock
+        {
+            Width = Length.Cells(44),
+            LastChildFills = false,
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Rounded,
+                SemanticColor.ControlBorder,
+                Color.Transparent,
+                SemanticDecoration.Border),
+            Padding = new Thickness(1),
+            Children = { roleMenu }
+        };
+
         return new DocPage(
             Title,
             "<info>Menu</info> arranges command, check, radio, and separator items with keyboard navigation, submenus, and selection tracking.",
@@ -234,7 +288,21 @@ internal sealed class MenuPane: CompositeControlBase
                     "Application menu bar",
                     "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
                     new DocColumn(barFrame, barStatus),
-                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(14),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"To&day\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
+                    "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(15),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"To&day\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
+            new DocSection(
+                "🧾",
+                "Menu entry roles",
+                "One deterministic roster keeps every MenuItem and MenuSeparator role on the primary Menu page while the public helper types remain independently documented.",
+                new DocExample(
+                    "Every item role",
+                    "Open More options to inspect the submenu. The roster also includes a plain command, separator, aligned shortcuts, a checked item, a two-way radio group, and a disabled action.",
+                    new DocColumn(roleFrame, roleStatus),
+                    "menu.Items.Add(new MenuItem { Text = \"&New\" });\n" +
+                    "menu.Items.Add(new MenuItem { Text = \"More &options\", Submenu = submenu });\n" +
+                    "menu.Items.Add(new MenuSeparator());\n" +
+                    "menu.Items.Add(new MenuItem { Text = \"&Save\", ShortcutText = \"Ctrl+S\" });\n" +
+                    "menu.Items.Add(new MenuItem\n{\n    Text = \"Au&to save\",\n    Kind = MenuItemKind.Check,\n    IsChecked = true,\n});\n" +
+                    "menu.Items.Add(new MenuItem { Text = \"&Deploy\", IsEnabled = false });")),
             new DocSection(
                 "🧰",
                 "Building a menu with MenuBuilder",

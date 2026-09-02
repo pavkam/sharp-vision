@@ -66,6 +66,35 @@ test("locateStateExampleBox selects an example by visible marker", () => {
     );
 });
 
+test("locateStateExampleBox selects an example by its visible heading above the box", () => {
+    const rows = parseCapture(
+        [
+            "Item activation and availability",
+            "Description",
+            " ┌ Example ────┐ ",
+            " │ [ Invoke ]  │ ",
+            " └─────────────┘ ",
+            "Separator styling and participation",
+            "Description",
+            " ┌ Example ────┐ ",
+            " │ [ Toggle ]  │ ",
+            " └─────────────┘ ",
+        ].join("\n"),
+    );
+
+    assert.deepEqual(
+        captureHelpers.locateStateExampleBox(rows, {
+            example: "Separator styling and participation",
+        }),
+        {
+            top: 8,
+            left: 2,
+            bottom: 10,
+            right: 16,
+        },
+    );
+});
+
 test("locateExampleBox returns null for a box without a bottom border", () => {
     const rows = parseCapture("┌ Example ──┐\n│ cut off");
 
@@ -94,7 +123,9 @@ test("locateExampleBox rejects a box whose bottom is hidden behind the next box"
 });
 
 test("SuggestionInput open capture_WhenPopupIsContained_UsesStableExampleBounds", () => {
-    const entry = controls.find(({ doc }) => doc === "input/suggestion-input");
+    const entry = controls.find(
+        ({ doc }) => doc === "controls/input/suggestion-input",
+    );
     const open = entry.states.find(({ name }) => name === "open");
 
     assert.equal(open.popup, undefined);
@@ -116,8 +147,115 @@ test("selectCaptureRegion_WhenPopupIsContained_UsesInsetExampleBounds", () => {
 });
 
 test("InfoBar capture_WhenMultipleExamplesExist_SelectsInteractiveSpecimen", () => {
-    const entry = controls.find(({ doc }) => doc === "notifications/info-bar");
+    const entry = controls.find(
+        ({ doc }) => doc === "controls/notifications/info-bar",
+    );
     const [defaultState] = entry.states;
 
-    assert.equal(defaultState.example, "Deployment requires attention");
+    assert.equal(defaultState.example, "Allow close");
+});
+
+test("manifest_WhenHelperDocsSharePrimaryPages_UsesStableNamedExamples", () => {
+    const expected = new Map([
+        [
+            "controls/navigation/breadcrumb-item",
+            ["Breadcrumb", "Invoke Design", false],
+        ],
+        [
+            "controls/input/command-bar-item",
+            ["CommandBar", "Invoke Deploy", false],
+        ],
+        [
+            "controls/input/command-bar-separator",
+            ["CommandBar", "Cycle glyph", false],
+        ],
+        ["controls/menus/menu-item", ["Menu", "More options", true]],
+    ]);
+
+    for (const [doc, [pageName, example, popup]] of expected) {
+        const entry = controls.find((candidate) => candidate.doc === doc);
+
+        assert.equal(entry.page, pageName);
+        assert.equal(entry.states[0].example, example);
+        assert.equal(entry.states[0].popup === true, popup);
+    }
+});
+
+test("manifest_WhenDialogsAreCaptured_MapsEachDialogDocToItsPrimaryPage", () => {
+    const expected = new Map([
+        ["dialogs/message-box", ["MessageBox", "Yes / No", "Yes / No"]],
+        [
+            "dialogs/file-picker-dialog",
+            ["OpenFilePicker", "Open one file", "Open one file"],
+        ],
+        [
+            "dialogs/save-file-dialog",
+            ["SaveFilePicker", "Overwrite report", "Overwrite report"],
+        ],
+    ]);
+
+    for (const [doc, [pageName, example, action]] of expected) {
+        const entry = controls.find((candidate) => candidate.doc === doc);
+        const [state] = entry.states;
+
+        assert.equal(entry.page, pageName);
+        assert.equal(state.example, example);
+        assert.equal(state.popup, true);
+        assert.deepEqual(state.actions, [{ click: action }]);
+    }
+});
+
+test("manifest_WhenFocusedExamplesMutate_CapturesBothWrapAxesAndWindowDefault", () => {
+    const wrap = controls.find(({ doc }) => doc === "controls/layout/wrap");
+    const window = controls.find(({ doc }) => doc === "controls/windows/window");
+
+    assert.deepEqual(wrap.states, [
+        {},
+        {
+            name: "horizontal-reflow",
+            example: "Narrow rows",
+            actions: [{ click: "Narrow rows" }],
+        },
+        {
+            name: "vertical-reflow",
+            example: "Shorten columns",
+            actions: [{ click: "Shorten columns" }],
+        },
+    ]);
+    assert.deepEqual(window.states, [
+        {},
+        {
+            name: "default-action",
+            example: "Focus command target",
+            actions: [{ click: "Focus command target" }, { key: "Enter" }],
+        },
+    ]);
+});
+
+test("manifest_WhenOverflowSurfacesOpen_UsesPopupCaptureAndSourceExamples", () => {
+    const breadcrumb = controls.find(
+        ({ doc }) => doc === "controls/navigation/breadcrumb",
+    );
+    const commandBar = controls.find(
+        ({ doc }) => doc === "controls/input/command-bar",
+    );
+    const breadcrumbOverflow = breadcrumb.states.find(
+        ({ name }) => name === "overflow",
+    );
+    const breadcrumbOverflowOpen = breadcrumb.states.find(
+        ({ name }) => name === "overflow-open",
+    );
+    const commandBarOverflow = commandBar.states.find(
+        ({ name }) => name === "open",
+    );
+
+    assert.equal(breadcrumbOverflow.example, "Clear current");
+    assert.equal(breadcrumbOverflow.popup, undefined);
+    assert.deepEqual(breadcrumbOverflow.actions, [{ click: "Narrow path" }]);
+    assert.equal(breadcrumbOverflowOpen.example, "Widen path");
+    assert.equal(breadcrumbOverflowOpen.popup, true);
+    assert.deepEqual(breadcrumbOverflowOpen.actions, [{ click: " …" }]);
+    assert.equal(commandBarOverflow.example, "Narrow bar");
+    assert.equal(commandBarOverflow.popup, true);
+    assert.deepEqual(commandBarOverflow.actions, [{ click: " …" }]);
 });

@@ -15,38 +15,52 @@ internal sealed class WindowPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        // Static role comparison: normal versus dialog defaults.
-        var normalRole = new Window
+        // A practical Window keeps default and cancel roles inside the real routed surface.
+        var defaultStatus = new Text("Action: waiting") { Overflow = Overflow.Wrap };
+        var releaseNotes = new CheckBox { Text = "&Include release notes" };
+        var commandTarget = new Text("Enter applies · Escape cancels")
+        {
+            IsFocusable = true,
+            IsTabStop = true
+        };
+        var focusCommand = new Button { Text = "&Focus command target" };
+        var applyRelease = new Button { Text = "Apply relea&se", IsDefault = true };
+        var cancelRelease = new Button { Text = "Cancel chan&ges", IsCancel = true };
+        applyRelease.Click += (_, eventArgs) =>
+            defaultStatus.Content = $"Action: applied ({eventArgs.Cause})";
+        cancelRelease.Click += (_, eventArgs) =>
+            defaultStatus.Content = $"Action: cancelled ({eventArgs.Cause})";
+        var actionWindow = new Window
         {
             UseMnemonic = false,
-            Width = Length.Cells(24),
-            Height = Length.Cells(7),
-            Header = "Normal",
-            CanClose = true,
-            CanResize = true,
-            Content = RoleDescription("Movable, resizable application surface", "Paired frame · left title")
-        };
-        var dialogRole = new Window
-        {
+            Width = Length.Cells(40),
+            Height = Length.Auto,
+            Header = "Release settings",
             CanMove = false,
-            CanClose = true,
-            CloseOnEscape = true,
-            HeaderPlacement = WindowTitlePlacement.Center,
-            UseMnemonic = false,
-            Width = Length.Cells(24),
-            Height = Length.Cells(7),
-            Header = "Dialog",
-            Content = RoleDescription("Focused decision surface", "Paired frame · centered title")
+            CanClose = false,
+            Content = new DocColumn(
+                new Text("Target: staging"),
+                releaseNotes,
+                commandTarget,
+                focusCommand,
+                new DocRow(applyRelease, cancelRelease),
+                defaultStatus)
         };
-        var roleRow = new DocRow(
-            FrameStage(normalRole, 29, 10),
-            FrameStage(dialogRole, 29, 10));
+        focusCommand.Click += (_, _) => _ = commandTarget.Focus();
+        Place(actionWindow, 2, 0);
+        var actionStage = new Overlay
+        {
+            Width = Length.Cells(44),
+            Height = Length.Cells(18),
+            ClipToBounds = true,
+            Children = { actionWindow }
+        };
 
         // Draggable normal window with reopen control on a framed workspace canvas.
         var draggable = new Window
         {
             UseMnemonic = false,
-            Width = Length.Cells(40),
+            Width = Length.Cells(38),
             Height = Length.Auto,
             Header = "Draggable settings",
             CanClose = true,
@@ -55,7 +69,7 @@ internal sealed class WindowPane: CompositeControlBase
         var activityWindow = new Window
         {
             UseMnemonic = false,
-            Width = Length.Cells(24),
+            Width = Length.Cells(20),
             Height = Length.Cells(7),
             Header = "Activity",
             Content = RoleDescription("Modeless activity", "Click the title to activate")
@@ -63,7 +77,7 @@ internal sealed class WindowPane: CompositeControlBase
         var windowStatus = new Text("Window: open");
         var activationStatus = new Text("Active Window: none");
         var reopenWindow = new Button { Text = "Reopen &window" };
-        var closeWindow = new Button { Text = "C&lose via API" };
+        var closeWindow = new Button { Text = "C&lose settings" };
         void ReportWindowStatus() => windowStatus.Content = draggable.IsOpen
             ? "Window: open"
             : "Window: closed";
@@ -108,9 +122,9 @@ internal sealed class WindowPane: CompositeControlBase
             handledEventsToo: true);
         Place(draggable, 0, 1);
         Place(activityWindow, 0, 16);
-        Place(reopenWindow, 25, 16);
-        Place(closeWindow, 25, 19);
-        Place(windowStatus, 25, 22);
+        Place(reopenWindow, 21, 16);
+        Place(closeWindow, 21, 19);
+        Place(windowStatus, 21, 22);
         Place(activationStatus, 0, 24);
 
         var dragSurface = new Text(
@@ -119,7 +133,7 @@ internal sealed class WindowPane: CompositeControlBase
         { IsHitTestVisible = false };
         var dragStage = new Overlay
         {
-            Width = Length.Cells(46),
+            Width = Length.Cells(44),
             Height = Length.Cells(30),
             ClipToBounds = true,
             Border = new Border(
@@ -192,11 +206,11 @@ internal sealed class WindowPane: CompositeControlBase
         Place(workspaceStatus, 2, 13);
 
         var dialogSurface = Workspace("Application workspace\n\nReady");
-        dialogSurface.Width = Length.Cells(46);
+        dialogSurface.Width = Length.Cells(44);
         dialogSurface.Height = Length.Cells(15);
         var dialogStage = new Overlay
         {
-            Width = Length.Cells(46),
+            Width = Length.Cells(44),
             Height = Length.Cells(15),
             ClipToBounds = true,
             Children =
@@ -273,16 +287,18 @@ internal sealed class WindowPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>Window</info> provides explicit normal and dialog roles, compact bracketed title-bar chrome, movement, and modal presentation.",
+            "<info>Window</info> provides routed default and cancel actions, compact bracketed title-bar chrome, movement, and explicit modal presentation.",
             new DocSection(
-                "🪟",
-                "Normal and dialog roles",
-                "Window chrome and interaction defaults are ordinary mutable properties; modality remains explicit.",
+                "↵",
+                "Conventional actions",
+                "A Window resolves Enter to its default descendant and Escape to its cancel descendant while focus remains anywhere inside the same routed surface.",
                 new DocExample(
-                    "Role defaults",
-                    "Normal is movable. Dialog is fixed, closable, and centered. Both use the unmistakable paired frame by default.",
-                    roleRow,
-                    "var normal = new Window();\nvar dialog = new Window { CanMove = false, CanClose = true, CloseOnEscape = true };")),
+                    "Default and cancel actions",
+                    "Focus the command target, then press Enter to apply through the real IsDefault action. Escape invokes the IsCancel action without decorative proxy tiles.",
+                    actionStage,
+                    "var apply = new Button { Text = \"Apply\", IsDefault = true };\n" +
+                    "var cancel = new Button { Text = \"Cancel\", IsCancel = true };\n" +
+                    "window.Content = new Stack { Children = { editor, apply, cancel } };")),
             new DocSection(
                 "↔",
                 "Move, close, and reopen",

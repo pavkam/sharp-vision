@@ -34,7 +34,7 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                 string.Join('\n', activityEntries.Select(static value => Text.Escape($"• {value}")));
         }
 
-        var interactive = new Breadcrumb { Width = Length.Percent(100) };
+        var interactive = new Breadcrumb { Width = Length.Cells(44) };
         var home = CreateItem("&Home", "Home", AppendActivity);
         var projects = CreateItem("Pr&ojects", "Projects", AppendActivity);
         var design = CreateItem("界 &Design", "界 Design", AppendActivity);
@@ -65,16 +65,61 @@ internal sealed class BreadcrumbPane: CompositeControlBase
         toggleWidth.Click += (_, _) =>
         {
             var isNarrow = interactive.Width == Length.Cells(18);
-            interactive.Width = isNarrow ? Length.Percent(100) : Length.Cells(18);
+            interactive.Width = Length.Cells(isNarrow ? 44 : 18);
             toggleWidth.Text = isNarrow ? "&Narrow path" : "&Widen path";
             AppendActivity(isNarrow
-                ? "Width: live reading column restored."
+                ? "Width: bounded 44-cell path restored."
                 : "Width: narrow overflow projection active.");
         };
         var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
         actions.Children.Add(clearCurrent);
         actions.Children.Add(restoreLeaf);
         actions.Children.Add(toggleWidth);
+
+        var itemLog = new Text("BreadcrumbItem.Invoked: waiting") { Overflow = Overflow.Wrap };
+        var currentLog = new Text("Breadcrumb.CurrentChanged: waiting") { Overflow = Overflow.Wrap };
+        var commandLog = new Text("ICommand: waiting") { Overflow = Overflow.Wrap };
+        var availabilityLog = new Text("Design availability: enabled") { Overflow = Overflow.Wrap };
+        var itemHome = new BreadcrumbItem { Text = "&Start" };
+        var itemArchive = new BreadcrumbItem { Text = "&Archive", IsEnabled = false };
+        var itemDesign = new BreadcrumbItem
+        {
+            Text = "界 &Design 🚀",
+            Style = BreadcrumbItemStyle.Default with
+            {
+                Face = BreadcrumbItemStyle.Default.Face with
+                {
+                    Foreground = SemanticColor.Accent,
+                    Attributes = TerminalAttributes.Bold
+                }
+            },
+            CommandParameter = "design-system"
+        };
+        itemDesign.Invoked += (_, eventArgs) =>
+            itemLog.Content = $"BreadcrumbItem.Invoked: 界 Design 🚀 ({eventArgs.Cause})";
+        itemDesign.Command = new ShowcaseCommand(
+            parameter => commandLog.Content = $"ICommand: navigated to {parameter}",
+            static _ => true);
+        var itemPath = new Breadcrumb { Width = Length.Cells(42) };
+        itemPath.Items.Add(itemHome);
+        itemPath.Items.Add(itemArchive);
+        itemPath.Items.Add(itemDesign);
+        itemPath.CurrentChanged += (_, eventArgs) =>
+            currentLog.Content =
+                $"Breadcrumb.CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}";
+        var invokeDesign = new Button { Text = "Invoke &Design" };
+        invokeDesign.Click += (_, _) => itemDesign.PerformInvoke();
+        var toggleDesign = new Button { Text = "Toggle Design availabilit&y" };
+        toggleDesign.Click += (_, _) =>
+        {
+            itemDesign.IsEnabled = !itemDesign.IsEnabled;
+            availabilityLog.Content = itemDesign.IsEnabled
+                ? "Design availability: enabled"
+                : "Design availability: disabled · activation is inert";
+        };
+        var itemActions = new Wrap { Width = Length.Cells(42), Spacing = 1, LineSpacing = 1 };
+        itemActions.Children.Add(invokeDesign);
+        itemActions.Children.Add(toggleDesign);
 
         var overflow = new Breadcrumb
         {
@@ -119,8 +164,8 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                 "Current path and commands",
                 "Use the mnemonic keys or focus the owner and move with arrows. Activation commits current before publishing the item event and captured command.",
                 new DocExample(
-                    "Unicode project path",
-                    "The path follows the live reading-column width. Clear current to reveal prefix-first overflow behavior; restore the leaf to return to the conventional final location.",
+                    "Bounded project path",
+                    "The path is explicitly bounded at 44 cells. Clear current to reveal prefix-first overflow behavior, narrow it to 18 cells, or restore the leaf to return to the conventional final location.",
                     new DocColumn(
                         interactive,
                         actions,
@@ -128,7 +173,21 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                     "var path = new Breadcrumb();\n" +
                     "path.Items.Add(new BreadcrumbItem { Text = \"&Home\" });\n" +
                     "path.Items.Add(new BreadcrumbItem { Text = \"界 &Design\" });\n" +
-                    "path.CurrentChanged += (_, args) => Navigate(args.CurrentItem);")),
+                    "path.CurrentChanged += (_, args) => Navigate(args.CurrentItem);"),
+                new DocExample(
+                    "Item activation and availability",
+                    "Activate Start or Design through the owner, invoke Design programmatically, or disable it. The readouts distinguish current-state commit, the named item's event, and captured ICommand execution.",
+                    new DocColumn(
+                        itemPath,
+                        itemActions,
+                        availabilityLog,
+                        currentLog,
+                        itemLog,
+                        commandLog),
+                    "var item = new BreadcrumbItem { Text = \"界 &Design 🚀\" };\n" +
+                    "item.Invoked += (_, args) => Log(args.Cause);\n" +
+                    "path.Items.Add(item);\n" +
+                    "item.PerformInvoke();")),
             new DocSection(
                 "📐",
                 "Automatic overflow",
@@ -136,7 +195,9 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                 new DocExample(
                     "Automatic overflow",
                     "This 18-cell path keeps the current suffix and exposes earlier available locations through one menu. Its local style uses an accent slash with two cells before it and none after it.",
-                    overflow,
+                    new DocColumn(
+                        overflow,
+                        new Text("Spacing: before 2 · after 0")),
                     "path.Style = BreadcrumbStyle.Default with\n" +
                     "{\n" +
                     "    SeparatorGlyph = new ControlGlyph(new Rune('/'), new Rune('>')),\n" +

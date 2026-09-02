@@ -13,11 +13,64 @@ export const excludedAbstractDocSlugs = new Set([
   "container",
   "content-control",
   "headered-content-control",
+  "input-base",
   "items-control",
   "pressable",
 ]);
 
-const galleryCatalogEntry = /\(\s*"[^"]+"\s*,\s*(?<pane>[A-Za-z0-9_]+)\.Title\s*,/gu;
+const galleryCatalogEntry =
+  /\(\s*"(?<group>[^"]+)"\s*,\s*(?<pane>[A-Za-z0-9_]+)\.Title\s*,/gu;
+const galleryGroupsDeclaration =
+  /private\s+static\s+readonly\s+string\[\]\s+_groups\s*=\s*\[(?<body>[\s\S]*?)\];/u;
+
+/**
+ * Extracts the stable sidebar-group order from the Gallery declaration.
+ *
+ * @param {string} gallerySource The contents of `examples/Showcase/Gallery.cs`.
+ * @returns {string[]} Group names in sidebar order.
+ * @throws {Error} The source contains no recognizable group declaration.
+ */
+export function galleryGroupNames(gallerySource) {
+  const match = galleryGroupsDeclaration.exec(gallerySource);
+  const body = match?.groups?.body;
+
+  if (body === undefined) {
+    throw new Error("Gallery.cs does not contain a recognizable group declaration.");
+  }
+
+  return [...body.matchAll(/"(?<group>[^"]+)"/gu)].map(
+    (groupMatch) => groupMatch.groups.group,
+  );
+}
+
+/**
+ * Extracts the stable group, page, and pane identity from every Gallery catalog entry.
+ *
+ * @param {string} gallerySource The contents of `examples/Showcase/Gallery.cs`.
+ * @returns {{group: string, page: string, pane: string}[]} Catalog entries in source order.
+ * @throws {Error} The source contains no catalog entries.
+ */
+export function galleryCatalogEntries(gallerySource) {
+  const entries = [];
+
+  for (const match of gallerySource.matchAll(galleryCatalogEntry)) {
+    const group = match.groups?.group;
+    const pane = match.groups?.pane;
+
+    if (group === undefined || pane === undefined) {
+      continue;
+    }
+
+    const page = pane.endsWith("Pane") ? pane.slice(0, -"Pane".length) : pane;
+    entries.push({ group, page, pane });
+  }
+
+  if (entries.length === 0) {
+    throw new Error("Gallery.cs does not contain a recognizable catalog entry.");
+  }
+
+  return entries;
+}
 
 /**
  * Converts a PascalCase control/pane name to the kebab-case slug its documentation file and
@@ -47,20 +100,8 @@ export function toKebabCase(pascal) {
 export function galleryPaneSlugs(gallerySource) {
   const slugs = new Map();
 
-  for (const match of gallerySource.matchAll(galleryCatalogEntry)) {
-    const paneClass = match.groups?.pane;
-
-    if (paneClass === undefined) {
-      continue;
-    }
-
-    const name = paneClass.endsWith("Pane") ? paneClass.slice(0, -"Pane".length) : paneClass;
-
-    slugs.set(toKebabCase(name), paneClass);
-  }
-
-  if (slugs.size === 0) {
-    throw new Error("Gallery.cs does not contain a recognizable catalog entry.");
+  for (const entry of galleryCatalogEntries(gallerySource)) {
+    slugs.set(toKebabCase(entry.page), entry.pane);
   }
 
   return slugs;
@@ -93,51 +134,58 @@ async function fileExists(path) {
 }
 
 /**
- * Finds every concrete control documentation page whose control has a dedicated Gallery capture
- * target but is missing its manifest entry, its rendered PNG asset, or the Markdown reference to
- * that asset. Ordinary link validation only follows references that already exist, so a page
- * missing both the asset and the reference - the exact gap a newly documented control can fall
- * into silently - is invisible to it; this walks the Gallery catalog outward instead, so a
- * concrete control can never finish undocumented by simply never being mentioned.
+ * Finds every concrete control and dialog documentation page that is missing its full-path
+ * manifest entry, live primary Gallery page, rendered PNG asset, or Markdown reference to that
+ * asset. Ordinary link validation only follows references that already exist, so a page missing
+ * both the asset and the reference is otherwise invisible. Helper controls may deliberately map
+ * to a named example on their primary owner page instead of receiving duplicate catalog entries.
  *
  * @param {string} root The repository root.
  * @returns {Promise<string[]>} Validation messages; an empty array means every dedicated Gallery
- * page has a manifest entry, an asset, and a Markdown reference.
+ * page has a valid primary-page manifest entry, an asset, and a Markdown reference.
  */
 export async function validateControlImageCoverage(root) {
   const gallerySource = await readFile(
     join(root, "examples", "Showcase", "Gallery.cs"),
     "utf8",
   );
-  const paneSlugs = galleryPaneSlugs(gallerySource);
+  const catalogEntries = galleryCatalogEntries(gallerySource);
+  const catalogPages = new Set(catalogEntries.map(({ page }) => page));
 
   const manifestModule = await import(
     pathToFileURL(join(root, "scripts", "control-image-manifest.mjs")).href
   );
   const manifestByDoc = new Map(
-    manifestModule.controls.map((entry) => [basename(entry.doc), entry]),
+    manifestModule.controls.map((entry) => [entry.doc, entry]),
   );
 
-  const controlsRoot = join(root, "docs", "controls");
-  const docFiles = (await findMarkdownFiles(controlsRoot)).filter(
+  const docsRoot = join(root, "docs");
+  const controlDocs = (await findMarkdownFiles(join(docsRoot, "controls"))).filter(
     (path) => basename(path) !== "index.md",
   );
+  const dialogDocs = (await findMarkdownFiles(join(docsRoot, "dialogs"))).filter(
+    (path) => basename(path) !== "index.md",
+  );
+  const docFiles = [...controlDocs, ...dialogDocs];
 
   const errors = [];
 
   for (const docPath of docFiles) {
     const slug = basename(docPath, ".md");
 
-    if (excludedAbstractDocSlugs.has(slug)) {
-      continue;
-    }
-
-    if (!paneSlugs.has(slug)) {
+    if (
+      docPath.startsWith(join(docsRoot, "controls")) &&
+      excludedAbstractDocSlugs.has(slug)
+    ) {
       continue;
     }
 
     const relativeDoc = relative(root, docPath).split(sep).join("/");
-    const manifestEntry = manifestByDoc.get(slug);
+    const manifestDoc = relative(docsRoot, docPath)
+      .split(sep)
+      .join("/")
+      .slice(0, -".md".length);
+    const manifestEntry = manifestByDoc.get(manifestDoc);
     const assetPath = join(root, "docs", "images", "controls", `${slug}.png`);
     const hasAsset = await fileExists(assetPath);
     const docContent = await readFile(docPath, "utf8");
@@ -145,8 +193,11 @@ export async function validateControlImageCoverage(root) {
 
     if (manifestEntry === undefined) {
       errors.push(
-        `${relativeDoc}: ${paneSlugs.get(slug)} has a dedicated Gallery page but ` +
-          `scripts/control-image-manifest.mjs has no "${slug}" entry`,
+        `${relativeDoc}: scripts/control-image-manifest.mjs has no "${manifestDoc}" entry`,
+      );
+    } else if (!catalogPages.has(manifestEntry.page)) {
+      errors.push(
+        `${relativeDoc}: manifest page "${manifestEntry.page}" is not a Gallery catalog page`,
       );
     }
 
@@ -170,8 +221,8 @@ async function main() {
 
   if (errors.length === 0) {
     console.log(
-      "Every concrete control doc page with a dedicated Gallery page has a manifest entry, " +
-        "asset, and Markdown reference.",
+      "Every concrete control and dialog doc has a full-path manifest entry, asset, " +
+        "Markdown reference, and live Gallery page.",
     );
     return;
   }

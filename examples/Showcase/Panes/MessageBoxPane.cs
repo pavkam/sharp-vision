@@ -30,7 +30,13 @@ internal sealed class MessageBoxPane: CompositeControlBase
             "wraps its prose within that width, and separates the message from the action row " +
             "with a horizontal divider.");
         var localized = CreateLocalizedLauncher(status);
-        var launchers = new DocRow(ok, okCancel, yesNo, yesNoCancel, longMessage, localized) { Spacing = 1 };
+        var launchers = new Wrap
+        {
+            Width = Length.Cells(44),
+            Spacing = 1,
+            LineSpacing = 1,
+            Children = { ok, okCancel, yesNo, yesNoCancel, longMessage, localized }
+        };
 
         return new DocPage(
             Title,
@@ -39,7 +45,15 @@ internal sealed class MessageBoxPane: CompositeControlBase
                 "💬",
                 "Standard button layouts",
                 "Open each variant to present a centered dialog over the complete showcase. <reverse>Tab</reverse> moves between buttons; <reverse>Escape</reverse> dismisses without a positive result. \"Long message\" demonstrates the responsive width cap - the dialog grows toward, but never past, 80% of the available presentation width, wrapping by grapheme cluster and separating the message from its action row with a divider. \"Localized (options)\" demonstrates the MessageBoxOptions carrier: custom captions and a local style configured in one call, without exposing the generated Buttons or divider.",
-                new DocColumn(launchers, status)));
+                new DocExample(
+                    "Standard message dialogs",
+                    "Open a layout to exercise the real modal surface, default action, Escape result, focus confinement, and restored launcher focus.",
+                    new DocColumn(launchers, status),
+                    "var result = await MessageBox.ShowAsync(\n" +
+                    "    owner,\n" +
+                    "    \"Save changes before leaving?\",\n" +
+                    "    \"MessageBox\",\n" +
+                    "    MessageBoxButtons.YesNoCancel);")));
     }
 
     private static Button CreateLauncher(

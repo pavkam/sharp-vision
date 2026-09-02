@@ -70,6 +70,10 @@ scrolls. Cross-axis overflow follows the ordinary
 
 ![The Wrap control rendered in the live showcase](../../images/controls/wrap.png)
 
+![Horizontal Wrap reflow after narrowing the live lane](../../images/controls/wrap-horizontal-reflow.png)
+
+![Vertical Wrap reflow after shortening the live lane](../../images/controls/wrap-vertical-reflow.png)
+
 ```csharp
 var commands = new Wrap { Spacing = 1, LineSpacing = 1 };
 commands.Children.Add(new Button { Text = "Save" });

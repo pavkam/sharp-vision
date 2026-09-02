@@ -16,17 +16,33 @@ internal sealed class WrapPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var horizontal = new Wrap { Width = Length.Cells(44), Spacing = 1, LineSpacing = 1 };
+        var horizontalWidth = 44;
+        var horizontal = new Wrap
+        {
+            Width = Length.Cells(horizontalWidth),
+            Spacing = 1,
+            LineSpacing = 1
+        };
         horizontal.Children.Add(Card("Build", BorderGlyphStyle.Light, 10));
         horizontal.Children.Add(Card("Test", BorderGlyphStyle.Heavy, 10));
         horizontal.Children.Add(Card("Publish", BorderGlyphStyle.Paired, 12));
         horizontal.Children.Add(Card("Inspect", BorderGlyphStyle.Rounded, 12));
+        var horizontalStatus = new Text(
+            "Width: 44 cells\nSource order: Build → Test → Publish → Inspect")
+        {
+            Overflow = Overflow.Wrap
+        };
+        var narrow = new Button { Text = "&Narrow rows" };
+        var widen = new Button { Text = "&Widen rows" };
+        narrow.Click += (_, _) => ResizeHorizontal(-20);
+        widen.Click += (_, _) => ResizeHorizontal(20);
 
+        var verticalHeight = 8;
         var vertical = new Wrap
         {
             Orientation = Orientation.Vertical,
             Width = Length.Cells(44),
-            Height = Length.Cells(8),
+            Height = Length.Cells(verticalHeight),
             Spacing = 1,
             LineSpacing = 2
         };
@@ -34,6 +50,15 @@ internal sealed class WrapPane: CompositeControlBase
         vertical.Children.Add(Card("Two", BorderGlyphStyle.Heavy, 10));
         vertical.Children.Add(Card("Three", BorderGlyphStyle.Paired, 10));
         vertical.Children.Add(Card("Four", BorderGlyphStyle.Rounded, 10));
+        var verticalStatus = new Text(
+            "Height: 8 cells\nSource order: One → Two → Three → Four")
+        {
+            Overflow = Overflow.Wrap
+        };
+        var shorten = new Button { Text = "&Shorten columns" };
+        var lengthen = new Button { Text = "&Lengthen columns" };
+        shorten.Click += (_, _) => ResizeVertical(-2);
+        lengthen.Click += (_, _) => ResizeVertical(2);
 
         var reflow = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
         reflow.Children.Add(Card("Tag", BorderGlyphStyle.Light, 8));
@@ -75,18 +100,24 @@ internal sealed class WrapPane: CompositeControlBase
                 "Horizontal rows",
                 "Spacing separates children in a row; LineSpacing separates the rows created by the finite width.",
                 new DocExample(
-                    "Commands in source order",
-                    "Shrink the reading column to watch the next command begin a fresh row without changing ownership order.",
-                    horizontal,
-                    "var wrap = new Wrap { Spacing = 1, LineSpacing = 1 };")),
+                    "Horizontal reflow controls",
+                    "Narrow or widen the explicit lane. Cards move between rows while the status keeps the unchanged source order visible.",
+                    new DocColumn(
+                        horizontal,
+                        new DocRow(narrow, widen),
+                        horizontalStatus),
+                    "var wrap = new Wrap\n{\n    Width = Length.Cells(44),\n    Spacing = 1,\n    LineSpacing = 1\n};")),
             new DocSection(
                 "↕️",
                 "Vertical columns",
                 "Vertical orientation makes height the wrapping lane and places each newly wrapped line in the next column.",
                 new DocExample(
-                    "Short vertical lane",
-                    "The four cards fill downward, then continue into the next column with two cells between columns.",
-                    vertical)),
+                    "Vertical reflow controls",
+                    "Shorten or lengthen the explicit lane. Cards fill downward, then continue into the next column without changing source order.",
+                    new DocColumn(
+                        vertical,
+                        new DocRow(shorten, lengthen),
+                        verticalStatus))),
             new DocSection(
                 "📏",
                 "Full-lane reflow",
@@ -103,6 +134,22 @@ internal sealed class WrapPane: CompositeControlBase
                     "Optional command",
                     "Cycle through visible, hidden, and collapsed to compare retained and released participation.",
                     new DocColumn(cycle, status, participation))));
+
+        void ResizeHorizontal(int delta)
+        {
+            horizontalWidth = Math.Clamp(horizontalWidth + delta, 24, 44);
+            horizontal.Width = Length.Cells(horizontalWidth);
+            horizontalStatus.Content =
+                $"Width: {horizontalWidth} cells\nSource order: Build → Test → Publish → Inspect";
+        }
+
+        void ResizeVertical(int delta)
+        {
+            verticalHeight = Math.Clamp(verticalHeight + delta, 4, 10);
+            vertical.Height = Length.Cells(verticalHeight);
+            verticalStatus.Content =
+                $"Height: {verticalHeight} cells\nSource order: One → Two → Three → Four";
+        }
     }
 
     private static Dock Card(string text, BorderGlyphStyle glyphs, int width)
