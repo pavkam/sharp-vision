@@ -271,7 +271,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         {
             Alignment.Start => face.X,
             Alignment.Center => face.X.SaturatingAdd((face.Width - width) / 2),
-            Alignment.End => face.Right - width,
+            Alignment.End => face.Right.SaturatingSubtract(width),
             _ => throw new UnreachableException()
         };
         ArrangeChild(
