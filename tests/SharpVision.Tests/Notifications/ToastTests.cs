@@ -22,6 +22,9 @@ public sealed class ToastTests
         toast.IsDismissible.ShouldBeTrue();
         toast.IsOpen.ShouldBeFalse();
         toast.AnimationProgress.ShouldBe(0);
+        toast.FadeInDuration.ShouldBe(TimeSpan.Zero);
+        toast.FadeOutDuration.ShouldBe(TimeSpan.Zero);
+        toast.FadeProgress.ShouldBe(0);
         toast.IsFocusable.ShouldBeTrue();
     }
 

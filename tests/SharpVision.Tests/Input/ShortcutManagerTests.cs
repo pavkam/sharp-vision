@@ -6,6 +6,40 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies modal-aware discovery and semantic dispatch of MenuItem shortcuts.</summary>
 public sealed class ShortcutManagerTests
 {
+    /// <summary>Verifies shortcut discovery excludes every item owned by an accepted exiting surface.</summary>
+    [Fact]
+    public async Task Process_WhenMatchingItemBelongsToExitingSurface_DeclinesWithoutInvocationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu();
+            var item = new MenuItem { Text = "Save", Shortcut = CtrlS };
+            menu.Items.Add(item);
+            var floating = new FloatingSurfaceProbe
+            {
+                Content = menu,
+                FadeOutDuration = TimeSpan.FromSeconds(10)
+            };
+            using var root = new Stack { Children = { floating } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var manager = new ShortcutManager(root, focus, modality);
+            var invocations = 0;
+            item.Invoked += (_, _) => invocations++;
+            floating.PublishBounds(new Rect(0, 0, 8, 1));
+            floating.CloseForTest().ShouldBeTrue();
+
+            var handled = manager.Process(Ctrl('s'));
+
+            handled.ShouldBeFalse();
+            invocations.ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a matching chord invokes the target item with a keyboard activation cause.</summary>
     [Fact]
     public async Task Process_WhenGestureMatches_InvokesTargetItemAsync()

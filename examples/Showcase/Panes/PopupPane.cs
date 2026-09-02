@@ -132,7 +132,13 @@ internal sealed class PopupPane: CompositeControlBase
         // Closing runs while content is still available; Closed follows afterward.
         var lifecycleStatus = new Text("Lifecycle: closed");
         var lifecycleAnchor = new Button { Text = "&Show lifecycle popup" };
-        var lifecyclePopup = new Popup { Anchor = lifecycleAnchor, Content = new Text("Lifecycle content") };
+        var lifecyclePopup = new Popup
+        {
+            Anchor = lifecycleAnchor,
+            Content = new Text("Lifecycle content"),
+            FadeInDuration = TimeSpan.FromMilliseconds(160),
+            FadeOutDuration = TimeSpan.FromMilliseconds(220)
+        };
         lifecyclePopup.Closing += (_, _) => lifecycleStatus.Content = "Lifecycle: Closing";
         lifecyclePopup.Closed += (_, _) => lifecycleStatus.Content += " → Closed";
         lifecycleAnchor.Click += (_, _) =>
@@ -207,12 +213,12 @@ internal sealed class PopupPane: CompositeControlBase
             new DocSection(
                 "🔄",
                 "Lifecycle",
-                "Closing runs while child content is still available; Closed follows after it becomes unavailable.",
+                "Closing runs while child content is still available; a shared cell fade retains the modal surface until Closed follows at visual disappearance.",
                 new DocExample(
                     "Ordered close notifications",
                     "Activate Show lifecycle popup to open it, then activate again and observe Closing → Closed from the public events.",
                     lifecycleStage,
-                    "popup.Closing += RestoreFocus;\npopup.Closed += ReportClosed;\npopup.IsOpen = false;")),
+                    "popup.FadeInDuration = TimeSpan.FromMilliseconds(160);\npopup.FadeOutDuration = TimeSpan.FromMilliseconds(220);\npopup.Closing += ObserveExit;\npopup.Closed += ReportClosed;\npopup.IsOpen = false;")),
             new DocSection(
                 "📐",
                 "Resize",

@@ -5,6 +5,7 @@ namespace SharpVision.Input;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
@@ -233,6 +234,18 @@ public sealed class PointerManager: IDisposable
         CaptureFailure(
             () => SetPointerPath(targets.HoverTarget, targets.HoverBoundary),
             ref failure);
+
+        // The physical exiting surface remains the topmost barrier even when target resolution
+        // produced no hover/delivery target. Consume before activation, focus, press, capture, or
+        // click bookkeeping so a non-modal Toast cannot expose the background underneath it.
+        if (FloatingSurfaceBase.SuppressesInteraction(targets.PhysicalLeaf))
+        {
+            CompletePress(pointer);
+            BreakClickChainOnSwallowedPress(pointer);
+
+            failure?.Throw();
+            return null;
+        }
 
         if (!IsInteractionSnapshotValid(targets))
         {
@@ -621,6 +634,11 @@ public sealed class PointerManager: IDisposable
     /// result, honoring the active modal scope exactly as <see cref="ResolveTargets"/> does.</summary>
     private (ControlBase? Target, ControlBase? Boundary) ResolveHoverTarget(ControlBase? physical, ModalScope? scope)
     {
+        if (FloatingSurfaceBase.SuppressesInteraction(physical))
+        {
+            return (null, null);
+        }
+
         var hoverBoundary = scope is null
             ? physical is null ? null : Root
             : physical is null ? null : scope.BoundaryFor(physical);
@@ -783,7 +801,9 @@ public sealed class PointerManager: IDisposable
         { IsDisposed: false, Dispatcher: not null, EffectiveIsVisible: true, EffectiveIsEnabled: true };
 
     private bool IsEligibleInteraction(ControlBase? control) =>
-        IsEligible(control) && Root.ModalityOwner?.Allows(control) is not false;
+        IsEligible(control) &&
+        !FloatingSurfaceBase.SuppressesInteraction(control) &&
+        Root.ModalityOwner?.Allows(control) is not false;
 
     private bool IsInteractionSnapshotValid(in InteractionTargets targets)
     {
@@ -802,7 +822,7 @@ public sealed class PointerManager: IDisposable
 
         var target = targets.DeliveryTarget;
         return target is null ||
-            (IsEligible(target) && modality?.Allows(target) is not false);
+            (IsEligibleInteraction(target) && modality?.Allows(target) is not false);
     }
 
     private bool IsOperational =>
@@ -1000,7 +1020,7 @@ public sealed class PointerManager: IDisposable
         var modality = Root.ModalityOwner;
         var scope = modality?.Active;
         var (hoverTarget, hoverBoundary) = ResolveHoverTarget(physical, scope);
-        var capture = IsEligible(Captured) &&
+        var capture = IsEligibleInteraction(Captured) &&
             (scope is null || scope.BoundaryFor(Captured!) is not null)
             ? Captured
             : null;
@@ -1017,7 +1037,8 @@ public sealed class PointerManager: IDisposable
             deliveryBoundary,
             capture,
             modality,
-            scope);
+            scope,
+            scope is not null && (physical is null || scope.BoundaryFor(physical) is null));
     }
 
     /// <summary>Gets the total number of ancestry walks <see cref="FindFocusTarget"/> has performed

@@ -1780,22 +1780,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             }
             else
             {
-                var appearanceState = GetAppearanceState();
-                var chrome = GetChromeRenderOptions();
-                this.RenderUnderlay(visual, appearanceState, chrome);
-                OnRenderContent(visual);
-                var descendantBounds = DescendantRenderBounds;
-                var descendantClip = ClipsChildren
-                    ? ControlChrome.ResolveClipBox(contentClip, Bounds, descendantBounds, canvas.Bounds)
-                        .Intersect(descendantBounds)
-                    : contentClip;
-                var descendantCanvas = ClipsDescendantVisualOverflow
-                    ? canvas.Clip(descendantBounds)
-                    : canvas;
-                RenderChildren(descendantCanvas, descendantClip);
-                OnRenderAdornment(visual);
-                this.RenderBorder(visual, appearanceState, chrome);
-                RenderOverlay(visual);
+                if (RequiresCompleteRenderEffect)
+                {
+                    RenderFreshWithCompleteEffect(canvas, visual, contentClip);
+                }
+                else
+                {
+                    RenderFresh(canvas, visual, contentClip);
+                }
             }
 
             if (Parent is null)
@@ -1812,6 +1804,26 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             IsRendering = false;
         }
+    }
+
+    private void RenderFresh(TerminalCanvas canvas, TerminalCanvas visual, Rect contentClip)
+    {
+        var appearanceState = GetAppearanceState();
+        var chrome = GetChromeRenderOptions();
+        this.RenderUnderlay(visual, appearanceState, chrome);
+        OnRenderContent(visual);
+        var descendantBounds = DescendantRenderBounds;
+        var descendantClip = ClipsChildren
+            ? ControlChrome.ResolveClipBox(contentClip, Bounds, descendantBounds, canvas.Bounds)
+                .Intersect(descendantBounds)
+            : contentClip;
+        var descendantCanvas = ClipsDescendantVisualOverflow
+            ? canvas.Clip(descendantBounds)
+            : canvas;
+        RenderChildren(descendantCanvas, descendantClip);
+        OnRenderAdornment(visual);
+        this.RenderBorder(visual, appearanceState, chrome);
+        RenderOverlay(visual);
     }
 
     // Narrow, maintainer-approved scope: reuse is safe only for a subtree whose own
@@ -3119,6 +3131,28 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Configures the framework-owned chrome surrounding this control's content.</summary>
     /// <returns>The narrow set of chrome adjustments required by a specialized frame.</returns>
     protected virtual ChromeRenderOptions GetChromeRenderOptions() => default;
+
+    /// <summary>Gets whether one complete render callback must be surrounded by a control-owned effect.</summary>
+    /// <remarks>
+    /// This internal derivation seam is evaluated only on fresh renders. Implementations return
+    /// true only while an effect is active so ordinary controls keep the allocation-free render path.
+    /// </remarks>
+    private protected virtual bool RequiresCompleteRenderEffect => false;
+
+    /// <summary>Renders this control's complete underlay, content, descendants, adornment,
+    /// border, and overlay inside a control-owned effect.</summary>
+    /// <param name="canvas">The parent canvas used for descendant overflow.</param>
+    /// <param name="visual">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
+    /// <param name="contentClip">The resolved content clip.</param>
+    /// <remarks>
+    /// The default implementation keeps the ordinary fresh-render behavior. The separate virtual
+    /// path prevents effect callback closures from allocating for controls with no active effect.
+    /// </remarks>
+    private protected virtual void RenderFreshWithCompleteEffect(
+        TerminalCanvas canvas,
+        TerminalCanvas visual,
+        Rect contentClip) =>
+        RenderFresh(canvas, visual, contentClip);
 
     /// <summary>Draws this control's own content into its clipped visual bounds.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>

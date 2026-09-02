@@ -496,6 +496,134 @@ public sealed class Frame: IDisposable
         }
     }
 
+    /// <summary>Draws and dissolves one clipped surface against the underlay already stored in this frame.</summary>
+    /// <param name="region">The effective frame clip.</param>
+    /// <param name="progress">The inclusive zero-through-one reveal progress.</param>
+    /// <param name="revealNewImages">Whether callback-authored placements remain visible.</param>
+    /// <param name="draw">The validated synchronous drawing callback.</param>
+    /// <remarks>
+    /// Snapshot cells keep their original arena offsets and mutation revisions. The frame text
+    /// arena is append-only during one render, so those offsets remain valid and restoring them
+    /// also preserves the paint ordering of image placements that belong to the underlay.
+    /// </remarks>
+    internal void DrawWithCurrentFrameDissolve(
+        Rect region,
+        double progress,
+        bool revealNewImages,
+        Action draw)
+    {
+        Debug.Assert(double.IsFinite(progress) && progress is >= 0 and <= 1, "Dissolve progress is validated by the canvas.");
+        Debug.Assert(draw is not null, "A current-frame dissolve requires a drawing callback.");
+        ThrowIfDisposed();
+        var target = Bounds.Intersect(region);
+
+        if (target.Width == 0 || target.Height == 0)
+        {
+            draw();
+            return;
+        }
+
+        var rowWidth = Size.Width;
+        var snapshotLength = checked(rowWidth * target.Height);
+        var snapshot = ArrayPool<Cell>.Shared.Rent(Math.Max(1, snapshotLength));
+        var placementCheckpoint = _placementCount;
+
+        try
+        {
+            for (var y = target.Y; y < target.Bottom; y++)
+            {
+                Cells.Slice(checked(y * rowWidth), rowWidth)
+                    .CopyTo(snapshot.AsSpan(checked((y - target.Y) * rowWidth), rowWidth));
+            }
+
+            draw();
+
+            if (!revealNewImages)
+            {
+                TruncatePlacements(placementCheckpoint);
+            }
+
+            if (progress == 1)
+            {
+                return;
+            }
+
+            var restored = false;
+
+            for (var y = target.Y; y < target.Bottom; y++)
+            {
+                var snapshotRow = checked((y - target.Y) * rowWidth);
+                var frameRow = checked(y * rowWidth);
+
+                for (var x = 0; x < rowWidth;)
+                {
+                    var groupStart = x;
+                    var groupEnd = x + 1;
+                    var cursor = x;
+
+                    while (cursor < groupEnd)
+                    {
+                        ExpandOwner(snapshot, snapshotRow, rowWidth, cursor, ref groupStart, ref groupEnd);
+                        ExpandOwner(Cells, frameRow, rowWidth, cursor, ref groupStart, ref groupEnd);
+                        cursor++;
+                    }
+
+                    var intersectsEffect = groupEnd > target.X && groupStart < target.Right;
+
+                    if (intersectsEffect && !IsDissolveGroupRevealed(groupStart, y, progress))
+                    {
+                        snapshot.AsSpan(snapshotRow + groupStart, groupEnd - groupStart)
+                            .CopyTo(Cells.Slice(frameRow + groupStart, groupEnd - groupStart));
+                        restored = true;
+                    }
+
+                    x = groupEnd;
+                }
+            }
+
+            if (restored)
+            {
+                _rowFingerprintsValid = false;
+            }
+        }
+        finally
+        {
+            ArrayPool<Cell>.Shared.Return(snapshot, clearArray: true);
+        }
+    }
+
+    private static void ExpandOwner(
+        ReadOnlySpan<Cell> cells,
+        int rowStart,
+        int rowWidth,
+        int column,
+        ref int groupStart,
+        ref int groupEnd)
+    {
+        var cell = cells[rowStart + column];
+        var lead = cell.IsContinuation ? cell.LeadIndex % rowWidth : column;
+        var leadCell = cells[rowStart + lead];
+        groupStart = Math.Min(groupStart, lead);
+        groupEnd = Math.Max(groupEnd, Math.Min(rowWidth, lead + Math.Max(1, (int) leadCell.Width)));
+    }
+
+    private static bool IsDissolveGroupRevealed(int x, int y, double progress)
+    {
+        if (progress == 0)
+        {
+            return false;
+        }
+
+        var value = unchecked(((uint) x * 0x9e3779b9u) ^ ((uint) y * 0x85ebca6bu) ^ 0xc2b2ae35u);
+        value ^= value >> 16;
+        value *= 0x7feb352du;
+        value ^= value >> 15;
+        value *= 0x846ca68bu;
+        value ^= value >> 16;
+        var threshold = value / ((double) uint.MaxValue + 1);
+        return threshold < progress;
+    }
+
     private static bool IsCompleteWithinRow(in Cell cell, int x, int rowStart, Rect target)
     {
         // A continuation owns nothing itself; it is only valid while its lead travels with it.
@@ -1029,6 +1157,13 @@ public sealed class Frame: IDisposable
     {
         _placements.AsSpan(0, _placementCount).Clear();
         _placementCount = 0;
+    }
+
+    private void TruncatePlacements(int count)
+    {
+        Debug.Assert(count >= 0 && count <= _placementCount, "A placement checkpoint belongs to this active frame.");
+        _placements.AsSpan(count, _placementCount - count).Clear();
+        _placementCount = count;
     }
 
     private void EnsurePlacementCapacity(int required)

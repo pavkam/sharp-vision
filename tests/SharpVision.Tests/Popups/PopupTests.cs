@@ -95,6 +95,34 @@ public sealed class PopupTests
         root.Children.ShouldNotContain(first);
     }
 
+    /// <summary>Verifies internal peer replacement bypasses a configured exit fade so exclusive
+    /// popup planes never overlap.</summary>
+    [Fact]
+    public async Task IsOpen_WhenReplacingExclusivePeer_BypassesPeerFadeAsync()
+    {
+        var first = new Popup
+        {
+            Content = new ControlText("First"),
+            SuppressCloseOtherPopups = true,
+            FadeOutDuration = TimeSpan.FromSeconds(10)
+        };
+        var opening = new Popup { Content = new ControlText("Opening") };
+        var root = new Overlay { Children = { first, opening } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            new ManualTimeProvider(),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => first.IsOpen = true, "open fading peer");
+        await surface.UpdateAsync(() => opening.IsOpen = true, "replace fading peer");
+
+        first.IsOpen.ShouldBeFalse();
+        first.SurfaceBounds.ShouldBe(default);
+        opening.IsOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(opening);
+    }
+
     /// <summary>Verifies one peer disposing another during closure cannot invalidate the remaining
     /// stable snapshot or prevent the initiating Popup from opening.</summary>
     [Fact]

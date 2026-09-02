@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using SharpVision.Surfaces;
+
 /// <summary>Dispatches typed events over stable ancestry and handler snapshots.</summary>
 [PublicAPI]
 public static class Router
@@ -66,6 +68,24 @@ public static class Router
         if (modality?.Active is not null && boundary is null)
         {
             throw new InvalidOperationException("The routed target is outside the active modal plane.");
+        }
+
+        if (FloatingSurfaceBase.SuppressesInteraction(target))
+        {
+            eventArgs.Begin(target);
+
+            try
+            {
+                eventArgs.IsHandled = true;
+                return new RouteResult(
+                    handled: true,
+                    PostRouteCommand.None,
+                    eventArgs.OriginalSource);
+            }
+            finally
+            {
+                eventArgs.End();
+            }
         }
 
         var depth = 0;

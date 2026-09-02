@@ -5,6 +5,7 @@
 [assembly: InternalsVisibleTo("SharpVision.Terminal.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.Terminal.Probe")]
 [assembly: InternalsVisibleTo("SharpVision.Tests")]
+[assembly: InternalsVisibleTo("SharpVision")]
 
 namespace SharpVision.Terminal;
 

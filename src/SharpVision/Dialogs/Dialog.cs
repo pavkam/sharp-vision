@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
+using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
 using SharpVision.Windows;
 
@@ -16,6 +17,8 @@ using SharpVision.Windows;
 /// <remarks>
 /// The dialog object is the retained, presented, modal, and disposed surface identity. Presentation
 /// owns a temporary host edge and one modal scope until completion, cancellation, or disposal.
+/// A configured dismissal fade keeps the result task pending and the dialog attached, modal, and
+/// undisposed until visual disappearance commits.
 /// </remarks>
 [PublicAPI]
 public abstract class Dialog<TResult>: Window
@@ -281,7 +284,7 @@ public abstract class Dialog<TResult>: Window
     private void FinishCompletion()
     {
         ExceptionDispatchInfo? failure = null;
-        var vetoed = false;
+        var outcome = FloatingSurfaceCloseOutcome.Ignored;
 
         _isFinishingCompletion = true;
 
@@ -289,23 +292,21 @@ public abstract class Dialog<TResult>: Window
         {
             if (IsSurfacePresented && !IsDisposed)
             {
-                var closed = true;
-                CaptureFailure(() => closed = ClosePresentedDialog(), ref failure);
-
-                // A handler vetoing CloseRequested reports failure through the returned bool, not
-                // an exception, so only a clean (non-exceptional) false counts as a veto. An actual
-                // exception from the close attempt still falls through to the unconditional cleanup
-                // below, preserving the existing exception-aggregation behavior for that case.
-                vetoed = failure is null && !closed;
+                CaptureFailure(() => outcome = ClosePresentedDialog(), ref failure);
             }
 
-            if (vetoed)
+            if (failure is not null)
+            {
+                CleanupPresentation(dispose: true, ref failure);
+                SettleCompletion();
+            }
+            else if (outcome == FloatingSurfaceCloseOutcome.Vetoed)
             {
                 RollbackPendingCompletion();
             }
-            else
+            else if (outcome == FloatingSurfaceCloseOutcome.Ignored)
             {
-                CleanupPresentation(dispose: true, ref failure);
+                FinishAcceptedCompletion();
             }
         }
         finally
@@ -313,18 +314,38 @@ public abstract class Dialog<TResult>: Window
             _isFinishingCompletion = false;
         }
 
-        if (!vetoed)
-        {
-            SettleCompletion();
-        }
-
         failure?.Throw();
     }
 
-    private bool ClosePresentedDialog() =>
+    private FloatingSurfaceCloseOutcome ClosePresentedDialog() =>
         _closingRequestObserved
-            ? CloseSurfaceAfterClosingRequest(static () => { }, RemoveFromHost)
-            : CloseSurface(static () => { }, RemoveFromHost);
+            ? CloseSurfaceAfterClosingRequestWithOutcome(
+                static () => { },
+                RemoveFromHost,
+                FinishAcceptedCompletion)
+            : CloseSurfaceWithOutcome(
+                static () => { },
+                RemoveFromHost,
+                FinishAcceptedCompletion);
+
+    private void FinishAcceptedCompletion()
+    {
+        ExceptionDispatchInfo? failure = null;
+        var wasFinishing = _isFinishingCompletion;
+        _isFinishingCompletion = true;
+
+        try
+        {
+            CleanupPresentation(dispose: true, ref failure);
+        }
+        finally
+        {
+            _isFinishingCompletion = wasFinishing;
+        }
+
+        SettleCompletion();
+        failure?.Throw();
+    }
 
     /// <summary>Undoes a latched <see cref="TryBeginResult"/>/<see cref="TryBeginCancellation"/> commit
     /// after the close attempt it was staged for turned out to be vetoed by a <c>CloseRequested</c>

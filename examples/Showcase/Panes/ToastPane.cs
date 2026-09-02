@@ -76,12 +76,12 @@ internal sealed class ToastPane: CompositeControlBase
             new DocSection(
                 "🎛️",
                 "Position and animation",
-                "Choose any edge slot and entrance. The default 200 millisecond duration is elapsed-time based, and the visible lifetime begins only after entrance completes.",
+                "Choose any edge slot and entrance. Fade uses the shared surface dissolve; Slide and Expand compose with it. The visible lifetime begins only after every entrance effect completes.",
                 new DocExample(
                     "Interactive notification",
                     "Select a position, animation, and style, then activate Show toast. Repeated activations stack newest nearest the selected edge.",
                     new DocCard(selector),
-                    "toast.Position = ToastPosition.TopRight;\ntoast.Animation = ToastAnimation.Fade;\ntoast.Show(owner);")),
+                    "toast.Position = ToastPosition.TopRight;\ntoast.Animation = ToastAnimation.Fade;\ntoast.FadeOutDuration = TimeSpan.FromMilliseconds(160);\ntoast.Show(owner);")),
             new DocSection(
                 "🚨",
                 "Semantic styles",
@@ -124,6 +124,8 @@ internal sealed class ToastPane: CompositeControlBase
             Adornment = new Affix(styleName == "Error" ? "!" : "●", "*"),
             Position = position,
             Animation = animation,
+            FadeInDuration = TimeSpan.FromMilliseconds(120),
+            FadeOutDuration = TimeSpan.FromMilliseconds(160),
             DisplayDuration = TimeSpan.FromSeconds(8),
             Style = style,
             Content = new Stack

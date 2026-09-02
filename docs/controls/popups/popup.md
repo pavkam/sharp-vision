@@ -64,6 +64,9 @@ classDiagram
 | Inherited `ActualBorder`                                                                       | `Border`                                       | Resolved                        | Read-only; the current theme-, state-, and caller-composed border.                                            |
 | Inherited `ActualShadow`                                                                       | `Shadow`                                       | Resolved                        | Read-only; the current theme-, state-, and caller-composed shadow.                                            |
 | Inherited `SurfaceBounds`                                                                      | `Rect`                                         | Empty                           | Read-only; the committed framed rectangle while open.                                                         |
+| Inherited `FadeInDuration`                                                                     | `TimeSpan`                                     | Zero                            | Sets an optional complete-surface entrance dissolve.                                                          |
+| Inherited `FadeOutDuration`                                                                    | `TimeSpan`                                     | Zero                            | Sets an optional dismissal dissolve that retains presentation until invisible.                                |
+| Inherited `FadeProgress`                                                                       | `double`                                       | `0`                             | Reports shared cell visibility from zero through one.                                                         |
 | `OpenModal(OutsideInteraction outsideInteraction = Dismiss, ControlBase? initialFocus = null)` | `ModalScope`                                   | —                               | Opens a closed surface and enters an application-owned modal scope, for a non-default policy or focus target. |
 | Inherited `Opened`                                                                             | `EventHandler`                                 | —                               | Raised only after the surface becomes presented and its bounds commit.                                        |
 | Inherited `CloseRequested`                                                                     | `EventHandler<SurfaceCloseRequestedEventArgs>` | —                               | Raised before anything commits; a handler can veto by setting `Cancel`.                                       |
@@ -172,7 +175,10 @@ then Popup commits `IsOpen` to false. Reattachment does not invent public close
 events; a later explicit open creates a fresh presentation.
 
 An ordinary close raises `Closing` while its modal scope and content are still
-available, then exits the scope before content becomes unavailable. Disposing
+available. With a positive `FadeOutDuration`, `IsOpen`, content, bounds, focus,
+and that scope remain committed while `FadeProgress` decreases; input is
+consumed at the Popup plane without reaching its descendants or the background.
+The scope exits and content collapses only when progress reaches zero. Disposing
 the returned or application-visible scope closes the Popup, so an attached
 transient surface never falls back to accidental modeless interaction. A failed
 modal entry closes only a popup exposed by that call and rethrows the initiating
@@ -228,21 +234,21 @@ never collapses an ancestor before the descendant input route completes.
 ## Lifecycle
 
 `Closing` is raised before content is collapsed, which gives a composite owner
-the chance to restore focus. `IsOpen` is already false at that point, so the
-surface no longer renders or hit-tests, even though the previous `SurfaceBounds`
-remains committed and readable during the event. `Closed` follows after content
-becomes unavailable and `SurfaceBounds` has cleared.
+the chance to observe the still-coherent presentation. The default zero-duration
+path preserves synchronous compatibility: `IsOpen` commits false before
+`Closing`, then modality, content, and bounds become unavailable before
+`Closed`. A positive-duration path publishes `Closing` with `IsOpen == true`,
+then suppresses input while the complete surface dissolves over the current
+frame. At progress zero Popup commits `IsOpen == false`, collapses content,
+restores modal focus, clears `SurfaceBounds`, and raises `Closed`.
 
-An `IsOpen` change commits, invalidates, and publishes `PropertyChanged` before
-any dependent work. Opening then exposes the current content and requests focus.
-Closing begins with `IsOpen == false`: it raises `Closing` while the current
-content retains its pre-close availability and the previous bounds remain
-readable, but the surface is already ineligible for rendering and hit testing.
-It then collapses the current content and releases its focus and capture, clears
-`SurfaceBounds`, and raises `Closed`, in that order. Every stage still runs
-after a callback failure, and the earliest failure is rethrown once the complete
-transition finishes. A callback cannot reenter `IsOpen`; attempting to do so
-throws `InvalidOperationException` without reversing the outer transition.
+Opening with a positive `FadeInDuration` commits `IsOpen`, content, bounds, and
+`Opened` at progress zero, then reveals complete grapheme owners toward one.
+Border and shadow participate in the same stable absolute-cell pattern. Popup
+images are omitted until entrance completes and as soon as exit is accepted.
+Duration properties cannot change while presented or exiting. Every cleanup
+stage still runs after a callback failure; deferred failures use dispatcher
+error reporting. A callback cannot reenter the public open-state transition.
 
 Exclusive Popup-family opening resolves the current ownership root and closes
 peers from stable identity snapshots before and after family-specific setup.
@@ -250,7 +256,10 @@ Each candidate is revalidated for open state, family, current root, modality,
 and ancestor exclusion immediately before closure. If a callback reparents or
 disposes a peer, opens another peer, or supersedes the initiating opening, the
 stale traversal cannot continue under the newer identity. Peer failures are
-aggregated without skipping other eligible cleanup.
+aggregated without skipping other eligible cleanup. Internal exclusive peer
+replacement and submenu switching force the zero-duration path so two elevated
+interaction planes never overlap; public close and light dismiss honor the
+configured fade.
 
 Popup also owns any framework-configured light-dismiss registration. It installs
 the handler only after presentation and `Opened` commit, preserves the focus
@@ -316,6 +325,8 @@ popup.IsOpen = true;
 - Owner-managed menu, input, and CommandPalette popups do not run the global
   sibling sweep, so opening one leaves unrelated owner-managed surfaces open.
 - Focus discovery crosses private slots on open, and closing restores focus.
+- Positive entrance and dismissal fades retain coherent open state, bounds, and
+  modality at their documented endpoints while suppressing exit input.
 - A failing `Opened` observer rolls back public and common presentation state so
   the same instance can reopen. Later callback failures complete cleanup, the
   first failure is rethrown, and reentering `IsOpen` from a callback is

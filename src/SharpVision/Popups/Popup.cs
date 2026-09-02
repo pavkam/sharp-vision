@@ -220,9 +220,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     private bool _isOpen;
     private bool _isOpeningModal;
+    private bool _bypassFadeOut;
     private ulong _closeCommitVersion;
     private ulong _publishedCloseCommitVersion;
     private ulong _openStateVersion;
+    private ulong? _pendingCloseTransitionVersion;
 
     /// <summary>Gets whether this popup is inside its public open-state transition.</summary>
     private protected bool IsOpenTransitioning { get; private set; }
@@ -261,11 +263,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <summary>Gets or sets whether the popup owns its visible default dismissing modal presentation.</summary>
     /// <remarks>
     /// A changed value commits and publishes first. Opening then exposes the current content, enters
-    /// a default dismissing modal scope, and selects focus inside the plane. Closing therefore raises
-    /// <see cref="FloatingSurfaceBase.Closing"/> after this property is false:
-    /// current content retains its pre-close availability and the previous <see cref="FloatingSurfaceBase.SurfaceBounds"/>
-    /// remains readable, while the surface is already ineligible for rendering and hit testing. The
-    /// transition raises <see cref="FloatingSurfaceBase.Closing"/> while the automatic modal scope is still active, then exits
+    /// a default dismissing modal scope, and selects focus inside the plane. A zero-duration close
+    /// preserves the synchronous contract and raises <see cref="FloatingSurfaceBase.Closing"/>
+    /// after this property becomes false. A positive dismissal fade raises Closing while this
+    /// property, content, bounds, focus, and modality remain committed, suppresses surface input,
+    /// and commits false only when shared fade progress reaches zero. The transition then exits
     /// modality, collapses current content, clears the surface bounds, and raises
     /// <see cref="FloatingSurfaceBase.Closed"/>. Every stage completes when a callback fails, after which the earliest
     /// failure is rethrown. Reentrant open-state transitions are rejected.
@@ -305,8 +307,9 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <remarks>
     /// One popup may own only one live modal presentation. The returned scope owns modality, not
     /// visual lifetime: disposing it externally closes the popup so an attached surface never remains
-    /// modeless accidentally. Closing the popup ordinarily raises <see cref="FloatingSurfaceBase.Closing"/>,
-    /// then disposes its live scope before content becomes unavailable. When this call exposes a closed
+    /// modeless accidentally. Closing the popup ordinarily raises <see cref="FloatingSurfaceBase.Closing"/>;
+    /// a positive dismissal fade retains the live scope until disappearance, then disposes it before
+    /// content becomes unavailable. When this call exposes a closed
     /// popup, it defers legacy <see cref="FocusOnOpen"/> behavior so modal entry can snapshot and then
     /// replace background focus transactionally. A failed entry recloses only a popup exposed by this
     /// call; cleanup callback failures never replace the initiating exception.
@@ -957,7 +960,18 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     else if (IsSurfacePresented)
                     {
                         ClearAvailabilityAncestor();
-                        _ = CloseSurface(CommitClosedState, CollapseContent);
+
+                        if (ResolveFadeOutDuration() == TimeSpan.Zero)
+                        {
+                            _ = CloseSurface(CommitClosedState, CollapseContent);
+                        }
+                        else
+                        {
+                            _ = CloseSurfaceWithOutcome(
+                                static () => { },
+                                CommitClosedAndCollapseContent,
+                                PublishCloseTransitionCompleted);
+                        }
                     }
                     else
                     {
@@ -972,7 +986,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             IsOpenTransitioning = false;
         }
 
-        if (wasOpen && !_isOpen)
+        if (_pendingCloseTransitionVersion is { } pendingCloseTransitionVersion)
+        {
+            _pendingCloseTransitionVersion = null;
+            CaptureFailure(
+                () => RaiseCloseTransitionCompleted(pendingCloseTransitionVersion),
+                ref failure);
+        }
+        else if (wasOpen && !_isOpen)
         {
             CaptureFailure(() => RaiseCloseTransitionCompleted(_closeCommitVersion), ref failure);
         }
@@ -990,6 +1011,17 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
         _publishedCloseCommitVersion = closeCommitVersion;
         CloseTransitionCompleted?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void PublishCloseTransitionCompleted()
+    {
+        if (IsOpenTransitioning)
+        {
+            _pendingCloseTransitionVersion = _closeCommitVersion;
+            return;
+        }
+
+        RaiseCloseTransitionCompleted(_closeCommitVersion);
     }
 
     private void PresentOpen(bool suppressFocusOnOpen, bool notifyOpenState)
@@ -1258,6 +1290,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     private void CommitClosedState() => CommitClosedState(captureCommit: null);
 
+    private void CommitClosedAndCollapseContent()
+    {
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(CommitClosedState, ref failure);
+        CaptureFailure(CollapseContent, ref failure);
+        failure?.Throw();
+    }
+
     private void CommitClosedState(Action<ulong, ulong>? captureCommit)
     {
         _isOpen = false;
@@ -1326,6 +1366,31 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         else if (preserveOpen && IsOpen)
         {
             TrackUnavailableAncestor();
+        }
+    }
+
+    /// <inheritdoc/>
+    private protected override TimeSpan ResolveFadeOutDuration() =>
+        _bypassFadeOut ? TimeSpan.Zero : base.ResolveFadeOutDuration();
+
+    /// <summary>Closes this Popup synchronously for internal peer and submenu replacement.</summary>
+    internal void CloseImmediatelyForPeerTransition()
+    {
+        if (IsOpenTransitioning)
+        {
+            return;
+        }
+
+        var previous = _bypassFadeOut;
+        _bypassFadeOut = true;
+
+        try
+        {
+            IsOpen = false;
+        }
+        finally
+        {
+            _bypassFadeOut = previous;
         }
     }
 
@@ -1643,7 +1708,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                 continue;
             }
 
-            CaptureFailure(() => popup.IsOpen = false, ref failure);
+            CaptureFailure(popup.CloseImmediatelyForPeerTransition, ref failure);
         }
 
         return IsCurrentPeerExclusion(root, openStateVersion);

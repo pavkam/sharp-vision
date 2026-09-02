@@ -64,6 +64,8 @@ internal sealed class WindowPane: CompositeControlBase
             Height = Length.Auto,
             Header = "Draggable settings",
             CanClose = true,
+            FadeInDuration = TimeSpan.FromMilliseconds(160),
+            FadeOutDuration = TimeSpan.FromMilliseconds(220),
             Content = CreateSettingsForm()
         };
         var activityWindow = new Window
@@ -82,11 +84,8 @@ internal sealed class WindowPane: CompositeControlBase
             ? "Window: open"
             : "Window: closed";
 
-        draggable.Closing += (_, _) =>
-        {
-            draggable.Visibility = Visibility.Collapsed;
-            ReportWindowStatus();
-        };
+        draggable.Closing += (_, _) => windowStatus.Content = "Window: fading out";
+        draggable.Closed += (_, _) => ReportWindowStatus();
         reopenWindow.Click += (_, _) =>
         {
             draggable.Visibility = Visibility.Visible;
@@ -157,6 +156,8 @@ internal sealed class WindowPane: CompositeControlBase
             Width = Length.Cells(40),
             Height = Length.Auto,
             Header = "Confirm deployment",
+            FadeInDuration = TimeSpan.FromMilliseconds(160),
+            FadeOutDuration = TimeSpan.FromMilliseconds(220),
             Visibility = Visibility.Collapsed
         };
         var dialogStatus = new Text("Dialog: closed");
@@ -176,13 +177,14 @@ internal sealed class WindowPane: CompositeControlBase
 
         void CloseDialog(string status)
         {
-            dialog.Visibility = Visibility.Collapsed;
             dialogStatus.Content = status;
+            dialog.Close();
         }
 
         closeButton.Click += (_, _) => CloseDialog("Dialog: cancelled; focus restored");
         okButton.Click += (_, _) => CloseDialog("Dialog: confirmed; focus restored");
-        dialog.Closing += (_, _) => CloseDialog("Dialog: frame close; focus restored");
+        dialog.Closing += (_, _) => dialogStatus.Content = "Dialog: fading out; focus confined";
+        dialog.Closed += (_, _) => dialogStatus.Content = "Dialog: closed; focus restored";
         dialog.Content = new DocColumn(
             new Text("Proceed with deployment?") { Overflow = Overflow.Wrap },
             new DocRow(okButton, closeButton));
@@ -302,12 +304,12 @@ internal sealed class WindowPane: CompositeControlBase
             new DocSection(
                 "↔",
                 "Move, close, and reopen",
-                "Click either modeless Window to switch the Application's active Window. Dragging unoccupied title chrome preserves its resolved size; disabling movement ends the gesture.",
+                "Click either modeless Window to switch the Application's active Window. Dragging unoccupied title chrome preserves its resolved size; close and reopen demonstrate shared entrance and dismissal fades.",
                 new DocExample(
                     "Active modeless Windows",
                     "Click either title to switch the active border without stealing focus, then drag, close, and reopen the retained settings Window.",
                     dragStage,
-                    "Window? active = application.ActiveWindow;\nbool isThisWindowActive = window.IsActive;\nbool isThisWindowOpen = window.IsOpen;\nwindow.Closing += (_, _) => window.Visibility = Visibility.Collapsed;")),
+                    "Window? active = application.ActiveWindow;\nbool isThisWindowActive = window.IsActive;\nbool isThisWindowOpen = window.IsOpen;\nwindow.FadeOutDuration = TimeSpan.FromMilliseconds(220);\nwindow.Close();")),
             new DocSection(
                 "◈",
                 "Modal dialog",
@@ -316,7 +318,7 @@ internal sealed class WindowPane: CompositeControlBase
                     "Focus confinement and restoration",
                     "Open the dialog, try the background action, cycle focus, then use Enter, Escape, or the title-bar close control.",
                     dialogStage,
-                    "var dialog = new Window { CanMove = false, CanClose = true, CloseOnEscape = true };\nvar scope = dialog.ShowModal(OutsideInteraction.Ignore, deployButton);")),
+                    "var dialog = new Window { CanMove = false, CanClose = true, CloseOnEscape = true, FadeOutDuration = TimeSpan.FromMilliseconds(220) };\nvar scope = dialog.ShowModal(OutsideInteraction.Ignore, deployButton);")),
             new DocSection(
                 "╬",
                 "Border and title chrome",

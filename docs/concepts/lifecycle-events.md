@@ -16,11 +16,13 @@ and skips `Closing`/`Closed` entirely when set — both the shared `CloseSurface
 engine (the whole `Popup` family, and `Dialog<TResult>`'s typed completion) and
 Window's own close affordance, `CloseOnEscape`, and modal dismiss raise it
 through the same `FloatingSurfaceBase.RaiseCloseRequested` helper. `Popup` then
-publishes `Closing` and `Closed`. `Window` publishes a `Closing` request and, by
-default, collapses itself afterward: the visibility transaction completes the
-common cleanup and the close request then publishes `Closed`. A `Closing`
-handler that itself changes visibility takes responsibility for the outcome
-instead — if it leaves the Window visible and presented, `Closed` is suppressed.
+publishes `Closing` and `Closed`. `Window` publishes `Closing` and, by default,
+accepts collapse. With a positive `FadeOutDuration`, Popup and Window retain
+their family state, bounds, focus, and modality while the shared surface becomes
+visually absent; cleanup and `Closed` occur at progress zero. A `Closing`
+handler that itself changes Window visibility takes responsibility for the
+outcome instead — if it leaves the Window visible and presented, `Closed` is
+suppressed and no exit starts.
 
 > [!WARNING]
 >
@@ -28,8 +30,7 @@ instead — if it leaves the Window visible and presented, `Closed` is suppresse
 > publishing `CloseRequested`, `Closing`, or `Closed`. A handler guarding
 > unsaved work on those events is silently skipped when code collapses the
 > Window through `Visibility` instead of requesting a close. Window's three
-> close entry points still hand-roll their own sequence around that shared veto
-> hook rather than routing through the `CloseSurface` engine itself — see
+> close entry points route through the shared `CloseSurface` engine — see
 > [floating-surfaces.md](floating-surfaces.md#shared-lifecycle). Modal scopes
 > publish `DismissRequested` and one committed `Exited` notification under the
 > [modal lifetime contract](modality.md#nested-scopes-and-lifetime).

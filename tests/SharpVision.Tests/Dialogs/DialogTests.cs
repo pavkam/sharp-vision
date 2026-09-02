@@ -715,6 +715,81 @@ public sealed class DialogTests
         dialog.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a presented dialog latches its result but keeps its task, host edge,
+    /// modality, and lifetime pending until a configured exit fade completes.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenDialogCompletesWithFadeOut_DefersResultAndCleanupUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                dialog = new TestDialog { FadeOutDuration = TimeSpan.FromMilliseconds(100) };
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+            },
+            "present fading dialog");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        await surface.UpdateAsync(() => dialog!.Accept(true), "accept fading dialog");
+
+        pending!.IsCompleted.ShouldBeFalse();
+        dialog!.IsDisposed.ShouldBeFalse();
+        _ = dialog.Parent.ShouldNotBeNull();
+        scope.IsActive.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish fading dialog close");
+
+        (await pending).ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+        dialog.IsDisposed.ShouldBeTrue();
+        scope.IsActive.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies direct detachment during a deferred dialog exit resolves its retained
+    /// completion continuation instead of leaving the caller's task pending.</summary>
+    [Fact]
+    public async Task PresentAsync_WhenDialogDetachesDuringFadeOut_SettlesAndDisposesAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(48, 14),
+            clock,
+            TestContext.Current.CancellationToken);
+        Task<bool>? pending = null;
+        TestDialog? dialog = null;
+        await surface.UpdateAsync(
+            () =>
+            {
+                dialog = new TestDialog { FadeOutDuration = TimeSpan.FromSeconds(10) };
+                pending = dialog.Present(opener, initialFocus: null, CancellationToken.None);
+            },
+            "present detachable fading dialog");
+        await surface.UpdateAsync(() => dialog!.Accept(true), "begin detachable dialog exit");
+
+        await surface.UpdateAsync(
+            () => ((Overlay) dialog!.Parent!).Children.Remove(dialog).ShouldBeTrue(),
+            "detach dialog during exit");
+        await surface.UpdateAsync(static () => { }, "settle detached dialog continuation");
+
+        (await pending!).ShouldBeTrue();
+        dialog!.IsDisposed.ShouldBeTrue();
+        dialog.Parent.ShouldBeNull();
+        surface.Application.Modality.Active.ShouldBeNull();
+    }
+
     /// <summary>Verifies a dialog presented through the ControlBase-based overload sets completion state
     /// correctly, so Escape completes it with the cancelled result instead of silently bubbling as
     /// modeless input would.</summary>

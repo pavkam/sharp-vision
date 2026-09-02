@@ -39,8 +39,10 @@ plane, stacks by screen edge, and supplies its own `ToastStyle` contract.
 ## Shared lifecycle
 
 `FloatingSurfaceBase` owns the replaceable `Content`, the committed
-`SurfaceBounds`, the ordered `Closing` and `Closed` lifecycle, focus and
-pointer-capture cleanup, and at most one application-owned `ModalScope`. Each
+`SurfaceBounds`, `FadeInDuration`, `FadeOutDuration`, read-only `FadeProgress`,
+the ordered `Closing` and `Closed` lifecycle, focus and pointer-capture cleanup,
+and at most one application-owned `ModalScope`. Both duration properties default
+to zero and may change only while the surface is not presented or exiting. Each
 concrete family owns its public open state and chrome:
 
 - `Window` uses `Visibility` and titled window chrome.
@@ -96,12 +98,25 @@ failure.
 
 Before any of that commits, `FloatingSurfaceBase` raises `CloseRequested` with a
 `SurfaceCloseRequestedEventArgs.Cancel` flag a handler can set to veto the
-request: nothing changes, and neither `Closing` nor `Closed` follows. Popup-
-family closure first makes the family ineligible for rendering and input, then
-publishes `Closing`, exits modality, makes the content unavailable, clears
-`SurfaceBounds`, and publishes `Closed`. Changing a Window's visibility away
-from visible performs the same common cleanup directly but publishes neither
-lifecycle event.
+request: nothing changes, and neither `Closing` nor `Closed` follows. An
+accepted close publishes `Closing` synchronously. With zero fade-out, existing
+family cleanup remains synchronous. With a positive fade-out, logical family
+state, content, `SurfaceBounds`, focus, and modality remain committed while
+`FadeProgress` decreases from its current value to zero. The exiting subtree is
+still the topmost pointer barrier but consumes routed, direct, shortcut,
+access-key, text, paste, and pointer input without invoking descendants. At zero
+the family becomes unavailable, modality and focus restore, bounds clear, and
+`Closed` publishes exactly once. Changing a Window's visibility away from
+visible performs immediate common cleanup directly and publishes none of those
+requested-close events.
+
+A positive entrance commits family state first, initializes `FadeProgress` to
+zero, raises `Opened`, and then advances toward one on the dispatcher monotonic
+clock. Closing during entrance reverses from the current value. Timers use at
+most 16 millisecond intervals, bind one presentation generation, and are
+cancelled by direct hide, detachment, disposal, or replacement. Failures during
+deferred finalization complete every cleanup stage and reach the application's
+dispatcher failure policy; request and `Closing` failures remain synchronous.
 
 Veto also preserves source-specific lifetime machinery. In particular, a Toast
 display timeout remains scheduled after cancellation and may request dismissal
@@ -119,30 +134,37 @@ the outer request remains authoritative, while reentry from the later `Closing`
 transaction remains invalid.
 
 Toast raises the same vetoable request before manual, keyboard, pointer, or
-timer dismissal. Showing does not enter modality or transfer focus. Its display
-timer starts only after entrance completes, and detach or disposal releases the
-timer and stack registration.
+timer dismissal. Showing does not enter modality or transfer focus. Legacy
+`ToastAnimation.Fade` delegates to the shared entrance dissolve and mirrors
+`FadeProgress`; Slide and Expand geometry may compose with an inherited fade.
+Its display timer starts only after every entrance effect completes, and detach
+or disposal releases the timers and stack registration.
 
 An ordinary Window close affordance, Escape action, or modal dismiss request
 first raises `CloseRequested`; an uncancelled request then publishes `Closing`,
-then, by default, collapses the Window itself: the visibility transaction
-performs the common cleanup and the close request then publishes `Closed`. A
-`Closing` handler that itself changes visibility (hiding it to a different
-state, restoring it, or disposing the Window) takes responsibility for the
-outcome instead — if it leaves the Window visible and presented, the Window
-stays open and `Closed` is not published. Cleanup attempts every stage even
-after a callback failure and rethrows the earliest failure once state is
+then, by default, accepts collapse. A positive dismissal fade delays that
+collapse, modal exit, focus restoration, and `Closed` until visual
+disappearance. A `Closing` handler that itself changes visibility (hiding it to
+a different state, restoring it, or disposing the Window) takes responsibility
+for the outcome instead — if it leaves the Window visible and presented, the
+Window stays open and `Closed` is not published. Cleanup attempts every stage
+even after a callback failure and rethrows the earliest failure once state is
 coherent. Detachment and disposal release modal, focus, and capture state even
 when no normal close path was requested.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Presented
+    [*] --> Entering: open with positive FadeInDuration
+    [*] --> Presented: open with zero FadeInDuration
+    Entering --> Presented: FadeProgress = 1
     Presented --> RequestingClose: Close initiated
+    Entering --> RequestingClose: Close initiated at current progress
     RequestingClose --> Presented: CloseRequested.Cancel = true (veto)
     RequestingClose --> ClosingPublished: not cancelled
     ClosingPublished --> Presented: family commit fails (closureCompleted = false) — rollback, no Closed
-    ClosingPublished --> Unavailable: family commit succeeds
+    ClosingPublished --> Exiting: positive FadeOutDuration
+    Exiting --> Unavailable: FadeProgress = 0
+    ClosingPublished --> Unavailable: zero FadeOutDuration
     Unavailable --> Closed: bounds cleared, IsSurfacePresented = false
     Closed --> [*]
 ```
@@ -219,6 +241,17 @@ passed to control rendering hooks. It draws graphemes, lines, boxes, fills,
 images, and styles; it is not a `Container`, owns no children, and performs no
 layout. To put controls above custom drawing, compose the drawing control and
 those controls in an Overlay.
+
+The shared dissolve surrounds the complete surface render, including content,
+descendants, adornment, border, shadow, and family overlay. It snapshots the
+underlay already drawn in the current frame rather than copying the previous
+frame. A stable absolute-cell hash chooses complete unions of rendered and
+underlay grapheme owners, so increasing progress only reveals cells, decreasing
+progress only hides them, and a wide cluster is never split during movement,
+resize, clipping, or reflow. Surface-authored semantic images are omitted until
+entrance completes and immediately omitted when exit is accepted; underlying
+image placements remain available because terminal image protocols have no
+portable per-cell alpha.
 
 ## Expected behavior
 

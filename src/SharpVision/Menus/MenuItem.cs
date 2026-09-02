@@ -121,7 +121,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         if (_submenuPopup is not null)
         {
             _submenuPopup.ContentDisposalRequested -= OnSubmenuContentDisposalRequested;
-            _submenuPopup.IsOpen = false;
+            _submenuPopup.CloseImmediatelyForPeerTransition();
             _ = _submenuSlot.Remove(_submenuPopup);
             _submenuPopup.Content = null;
             _submenuPopup.Dispose();
@@ -874,7 +874,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     {
         if (_submenuPopup?.IsOpen == true)
         {
-            _submenuPopup.IsOpen = false;
+            _submenuPopup.CloseImmediatelyForPeerTransition();
         }
     }
 

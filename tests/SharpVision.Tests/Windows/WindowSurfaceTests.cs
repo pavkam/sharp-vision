@@ -1920,6 +1920,123 @@ public sealed class WindowSurfaceTests
         window.Visibility.ShouldBe(Visibility.Hidden);
     }
 
+    /// <summary>Verifies an accepted modal Window close retains visibility, focus, bounds, and
+    /// modality until its configured terminal-cell fade reaches zero.</summary>
+    [Fact]
+    public async Task Close_WhenFadeOutIsPositive_DefersWindowCleanupUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var action = new Button { Text = "Action" };
+        var window = new Window
+        {
+            Content = action,
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        window.Closed += (_, _) => closed++;
+        ModalScope? scope = null;
+        await surface.UpdateAsync(() => scope = window.ShowModal(), "show fading Window");
+        var bounds = window.SurfaceBounds;
+
+        await surface.UpdateAsync(window.Close, "begin fading Window close");
+
+        window.IsOpen.ShouldBeTrue();
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.SurfaceBounds.ShouldBe(bounds);
+        surface.Application.Focus.Focused.ShouldBeSameAs(action);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish fading Window close");
+
+        window.IsOpen.ShouldBeFalse();
+        window.Visibility.ShouldBe(Visibility.Collapsed);
+        window.SurfaceBounds.ShouldBe(default);
+        scope.IsActive.ShouldBeFalse();
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies the complete Window frame and block shadow use one stable dissolve pattern
+    /// at the entrance and exit endpoints and midpoint.</summary>
+    [Fact]
+    public async Task Render_WhenWindowFades_DissolvesCompleteChromeAtStableCellsAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var window = new Window
+        {
+            CanClose = false,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 1),
+                glyph: new Rune('▓')),
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin Window entrance fade");
+        surface.ShouldRender(string.Empty);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Window entrance halfway");
+        surface.ShouldRender("""
+                             ╔═    ═
+                                      ║
+                                      ║
+                                ══ ═══╝
+                              ▓▓▓▓▓  ▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Window entrance fade");
+        surface.ShouldRender("""
+                             ╔════════╗
+                             ║        ║▓
+                             ║        ║▓
+                             ╚════════╝▓
+                              ▓▓▓▓▓▓▓▓▓▓
+                             """);
+
+        await surface.UpdateAsync(window.Close, "begin Window exit fade");
+        surface.ShouldRender("""
+                             ╔════════╗
+                             ║        ║▓
+                             ║        ║▓
+                             ╚════════╝▓
+                              ▓▓▓▓▓▓▓▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Window exit halfway");
+        surface.ShouldRender("""
+                             ╔═    ═
+                                      ║
+                                      ║
+                                ══ ═══╝
+                              ▓▓▓▓▓  ▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Window exit fade");
+        surface.ShouldRender(string.Empty);
+    }
+
     /// <summary>Verifies dragging a modal window preserves the modal scope and pointer capture.</summary>
     [Fact]
     public async Task Drag_WhenModalWindowIsDragged_PreservesModalScopeAsync()

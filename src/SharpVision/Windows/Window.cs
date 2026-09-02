@@ -137,7 +137,8 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <see cref="FloatingSurfaceBase.Closing"/> and, by default, collapses and closes the Window afterward,
     /// ending its modal presentation; a <see cref="FloatingSurfaceBase.Closing"/> handler that itself changes
     /// <see cref="Visibility"/> (hiding, restoring, or disposing the Window) takes responsibility for the
-    /// outcome instead. This call suppresses only the legacy visibility autofocus transaction,
+    /// outcome instead. A configured positive dismissal fade keeps the accepted Window visible,
+    /// focused, and modal until it becomes visually absent. This call suppresses only the legacy visibility autofocus transaction,
     /// allowing modal entry to snapshot background focus and select <paramref name="initialFocus"/> once.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -727,7 +728,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <remarks>
     /// Raises <see cref="FloatingSurfaceBase.CloseRequested"/> first; a handler that cancels leaves the
     /// Window untouched. Otherwise raises <see cref="FloatingSurfaceBase.Closing"/> and, by default,
-    /// collapses the Window - unless a <see cref="FloatingSurfaceBase.Closing"/> handler already took
+    /// collapses the Window - synchronously by default or after a configured dismissal fade - unless a <see cref="FloatingSurfaceBase.Closing"/> handler already took
     /// responsibility for <see cref="Visibility"/> itself, in which case
     /// <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>, which only
     /// gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts to
@@ -753,17 +754,15 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             VisibilityChanged -= OnVisibilityChangedDuringClosing;
 
-            if (visibilityTouchedByHandler)
-            {
-                return !IsSurfacePresented;
-            }
+            return !visibilityTouchedByHandler || !IsSurfacePresented;
+        }
 
-            if (IsSurfacePresented)
+        void CommitUnavailableState()
+        {
+            if (IsSurfacePresented && Visibility == Visibility.Visible)
             {
                 Visibility = Visibility.Collapsed;
             }
-
-            return true;
         }
 
         try
@@ -771,7 +770,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             _ = CloseSurfaceAfterClosing(
                 PrepareClosingState,
                 CommitClosingState,
-                static () => { });
+                CommitUnavailableState);
         }
         finally
         {

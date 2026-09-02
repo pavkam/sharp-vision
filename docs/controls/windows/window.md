@@ -47,6 +47,9 @@ classDiagram
 | Inherited `ActualBorder`                                                                      | `Border`                                       | Resolved                           | Read-only; the current theme-, state-, and caller-composed border.                                    |
 | Inherited `ActualShadow`                                                                      | `Shadow`                                       | Resolved                           | Read-only; the current theme-, state-, and caller-composed shadow.                                    |
 | Inherited `SurfaceBounds`                                                                     | `Rect`                                         | Empty                              | Read-only; the committed window rectangle while presented.                                            |
+| Inherited `FadeInDuration`                                                                    | `TimeSpan`                                     | Zero                               | Sets an optional complete-surface entrance dissolve.                                                  |
+| Inherited `FadeOutDuration`                                                                   | `TimeSpan`                                     | Zero                               | Sets an optional close dissolve that retains visibility and modality until invisible.                 |
+| Inherited `FadeProgress`                                                                      | `double`                                       | `0`                                | Reports shared cell visibility from zero through one.                                                 |
 | `Close()`                                                                                     | `void`                                         | —                                  | Requests closure, the same veto-and-collapse sequence as the affordance, Escape, and modal dismissal. |
 | `ShowModal(OutsideInteraction outsideInteraction = Ignore, ControlBase? initialFocus = null)` | `ModalScope`                                   | —                                  | Makes the Window visible and enters one application-owned modal presentation rooted at it.            |
 | `Shown`                                                                                       | `EventHandler`                                 | —                                  | Raised after this Window becomes visible.                                                             |
@@ -143,17 +146,20 @@ closure through the shared
 [`CloseRequested`/`Closing`/`Closed` sequence](../../concepts/floating-surfaces.md#overview):
 a `CloseRequested` handler can veto the request outright by setting
 `SurfaceCloseRequestedEventArgs.Cancel`, otherwise the Window raises `Closing`
-and, by default, collapses itself before raising `Closed`. A `Closing` handler
-that itself changes `Visibility` — hiding it to a different state, restoring it,
-or disposing the Window — takes responsibility for the outcome instead of the
-default collapse. `Close()` runs the identical sequence programmatically,
-regardless of `CanClose`, matching Escape and modal outside-dismissal. A failing
-`CloseRequested` observer propagates its exception without poisoning the
-reentrancy guard, so a later close request can retry normally. The shared
-floating-surface close engine owns that guard, the logical-open state used by
-never-attached Windows, callback failure aggregation, retention, common cleanup,
-and final `Closed` publication; Window supplies only its visibility-specific
-post-`Closing` commit.
+and, by default, accepts collapse. With a positive `FadeOutDuration`,
+visibility, `IsOpen`, bounds, focus, and modality remain committed until
+`FadeProgress` reaches zero; the exiting Window consumes input without invoking
+its subtree. The final transition collapses it and raises `Closed`. A `Closing`
+handler that itself changes `Visibility` — hiding it to a different state,
+restoring it, or disposing the Window — takes responsibility for the outcome
+instead of the default collapse. `Close()` runs the identical sequence
+programmatically, regardless of `CanClose`, matching Escape and modal
+outside-dismissal. A failing `CloseRequested` observer propagates its exception
+without poisoning the reentrancy guard, so a later close request can retry
+normally. The shared floating-surface close engine owns that guard, the
+logical-open state used by never-attached Windows, callback failure aggregation,
+retention, common cleanup, and final `Closed` publication; Window supplies only
+its visibility-specific post-`Closing` commit.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
 mark can still react independently while its target is hovered or pressed. Its
@@ -242,10 +248,13 @@ use its focus manager.
 returns its application-owned `ModalScope`. The default
 `OutsideInteraction.Ignore` consumes outside input without requesting closure.
 `Dismiss` requests closure the same way — `CloseRequested` then `Closing` — and,
-unless vetoed, by default collapses and closes the Window afterward, ending its
-modal presentation. One Window cannot own two live modal presentations.
-Disposing the returned scope from outside ends modality without changing
-visibility, so the same surface can continue modelessly. The shared
+unless vetoed, closes the Window afterward. A configured dismissal fade retains
+the modal plane and its current focus until disappearance, then collapses the
+Window and restores focus. A `Closing` handler that hides, restores, or disposes
+the Window performs immediate direct-visibility cleanup and starts no fade. One
+Window cannot own two live modal presentations. Disposing the returned scope
+from outside ends modality without changing visibility, so the same surface can
+continue modelessly. The shared
 [modality contract](../../concepts/modality.md#popup-and-window-presentations)
 owns validation, confinement, nesting, and focus restoration.
 

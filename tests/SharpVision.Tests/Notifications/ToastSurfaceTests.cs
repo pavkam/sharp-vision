@@ -384,6 +384,88 @@ public sealed class ToastSurfaceTests
         surface.Cell(new Point(16, 8)).Text.ShouldBe("o");
     }
 
+    /// <summary>Verifies legacy Fade delegates to the shared transition clock, mirrors progress
+    /// and notifications, and owns no second Toast-specific animation timer.</summary>
+    [Fact]
+    public async Task AdvanceAsync_WhenToastFades_UsesSharedProgressAndOneTimerAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        toast.Animation = ToastAnimation.Fade;
+        toast.AnimationDuration = TimeSpan.FromMilliseconds(200);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var baselineTimers = clock.ActiveTimerCount;
+        var progressNotifications = new List<string>();
+        toast.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName is nameof(Toast.AnimationProgress) or nameof(Toast.FadeProgress))
+            {
+                progressNotifications.Add(eventArgs.PropertyName);
+            }
+        };
+
+        await surface.UpdateAsync(() => toast.Show(root), "show shared-fade Toast");
+
+        clock.ActiveTimerCount.ShouldBe(baselineTimers + 1);
+        toast.AnimationProgress.ShouldBe(toast.FadeProgress);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "advance shared Toast fade halfway");
+
+        toast.AnimationProgress.ShouldBe(0.5, tolerance: 0.001);
+        toast.AnimationProgress.ShouldBe(toast.FadeProgress, tolerance: 0.001);
+        progressNotifications.ShouldContain(nameof(Toast.AnimationProgress));
+        progressNotifications.ShouldContain(nameof(Toast.FadeProgress));
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish shared Toast fade");
+
+        toast.AnimationProgress.ShouldBe(1);
+        toast.FadeProgress.ShouldBe(1);
+        clock.ActiveTimerCount.ShouldBe(baselineTimers);
+    }
+
+    /// <summary>Verifies Slide and Expand geometry compose with the inherited cell fade and the
+    /// visible-lifetime timer waits until both entrance effects finish.</summary>
+    [Theory]
+    [InlineData(ToastAnimation.SlideTop)]
+    [InlineData(ToastAnimation.Expand)]
+    public async Task AdvanceAsync_WhenGeometryAndFadeCompose_StartsDisplayTimerAfterBothAsync(
+        ToastAnimation animation)
+    {
+        var clock = new ManualTimeProvider();
+        var root = new Overlay();
+        using var toast = CreateToast("one", ToastPosition.BottomRight);
+        toast.Animation = animation;
+        toast.AnimationDuration = TimeSpan.FromMilliseconds(100);
+        toast.FadeInDuration = TimeSpan.FromMilliseconds(200);
+        toast.DisplayDuration = TimeSpan.FromMilliseconds(50);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => toast.Show(root), $"show composed {animation} Toast");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), $"finish {animation} geometry");
+
+        toast.AnimationProgress.ShouldBe(1);
+        toast.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        toast.IsOpen.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(99), "remain inside composed fade");
+        toast.IsOpen.ShouldBeTrue();
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(1), "finish composed fade");
+        toast.IsOpen.ShouldBeTrue();
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(49), "remain inside display lifetime");
+        toast.IsOpen.ShouldBeTrue();
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(1), "finish display lifetime");
+        toast.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies automatic lifetime begins after animation instead of consuming visible time during entrance.</summary>
     [Fact]
     public async Task AdvanceAsync_WhenDisplayDurationExpiresAfterEntrance_DismissesThenAsync()
@@ -540,6 +622,44 @@ public sealed class ToastSurfaceTests
         toast.IsOpen.ShouldBeFalse();
         toast.Parent.ShouldBeNull();
         root.Children.ShouldNotContain(toast);
+    }
+
+    /// <summary>Verifies optional Toast exit fade retains the topmost surface as a consumed input
+    /// barrier, then removes it exactly when shared progress reaches zero.</summary>
+    [Fact]
+    public async Task Dismiss_WhenFadeOutIsPositive_BlocksClickThroughUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var background = new Button { Text = "Background" };
+        var root = new Overlay { Children = { background } };
+        using var toast = CreateToast("one", ToastPosition.TopLeft);
+        toast.FadeOutDuration = TimeSpan.FromMilliseconds(100);
+        var backgroundClicks = 0;
+        var closed = 0;
+        background.Click += (_, _) => backgroundClicks++;
+        toast.Closed += (_, _) => closed++;
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show exit-fading Toast");
+
+        await surface.UpdateAsync(toast.Dismiss, "begin Toast exit fade");
+        await surface.Pointer.ClickAsync(root, new Point(1, 1));
+
+        toast.IsOpen.ShouldBeTrue();
+        toast.Parent.ShouldBeSameAs(root);
+        toast.AnimationProgress.ShouldBe(toast.FadeProgress);
+        backgroundClicks.ShouldBe(0);
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish Toast exit fade");
+
+        toast.IsOpen.ShouldBeFalse();
+        toast.Parent.ShouldBeNull();
+        toast.AnimationProgress.ShouldBe(0);
+        closed.ShouldBe(1);
     }
 
     /// <summary>Verifies Closed observes final host ownership and can immediately begin a distinct

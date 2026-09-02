@@ -3390,6 +3390,8 @@ namespace SharpVision.Menus
     {
         public ContextMenu() { }
         public ContextMenu(SharpVision.Menus.Menu menu) { }
+        public System.TimeSpan FadeInDuration { get; set; }
+        public System.TimeSpan FadeOutDuration { get; set; }
         public bool IsOpen { get; }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
@@ -4486,6 +4488,9 @@ namespace SharpVision.Surfaces
     public abstract class FloatingSurfaceBase : SharpVision.Controls.ContentControl
     {
         protected FloatingSurfaceBase() { }
+        public System.TimeSpan FadeInDuration { get; set; }
+        public System.TimeSpan FadeOutDuration { get; set; }
+        public double FadeProgress { get; }
         protected bool HasActiveSurfaceModal { get; }
         protected bool IsSurfacePresented { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
