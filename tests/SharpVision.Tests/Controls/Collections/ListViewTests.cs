@@ -590,6 +590,51 @@ public sealed class ListViewTests
         control.SelectedIndex.ShouldBe(1);
     }
 
+    /// <summary>Verifies Ctrl+A selects every item in Multiple mode, including indexes virtualization
+    /// has never realized because they sit outside the current viewport window - the same optimistic
+    /// availability ApplySelection already grants an unrealized index applies here too.</summary>
+    [Fact]
+    public void Dispatch_WhenCtrlAIsPressedWithUnrealizedVirtualizedRows_SelectsEveryItem()
+    {
+        // Arrange
+        var control = CreateNavigationList(ListSelectionMode.Multiple);
+        var expected = Enumerable.Range(0, 12).Select(index => (object?) $"Item {index}").ToArray();
+
+        // The 3-row viewport over 12 items leaves most rows unrealized - a genuine virtualization
+        // case, not just a nominal RowHeight setting.
+        OwnedTree.FindAll<ListItem>(control).Count.ShouldBeLessThan(expected.Length);
+
+        // Act
+        var key = CharacterKeyWithModifiers(control, new Rune('a'), Modifiers.Control);
+
+        // Assert
+        key.IsHandled.ShouldBeTrue();
+        control.SelectedItems.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies SelectAll refuses to run outside Multiple selection mode, since a single
+    /// or none-selection ListView has no way to represent the result, and leaves selection state
+    /// untouched.</summary>
+    [Theory]
+    [InlineData(ListSelectionMode.Single)]
+    [InlineData(ListSelectionMode.None)]
+    public void SelectAll_WhenModeIsNotMultiple_ThrowsInvalidOperationExceptionAndPreservesSelection(
+        ListSelectionMode mode)
+    {
+        // Arrange
+        var control = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            Items = new object?[] { "A", "B", "C" }
+        };
+        _ = control.SetSelected(0, true);
+        control.SelectionMode = mode;
+
+        // Act & Assert
+        _ = Should.Throw<InvalidOperationException>(control.SelectAll);
+        control.SelectedItems.ShouldBe(mode == ListSelectionMode.Single ? new object?[] { "A" } : []);
+    }
+
     /// <summary>Verifies assigning a disabled SelectedIndex preserves the existing valid selection.</summary>
     [Fact]
     public void SelectedIndex_WhenTargetIsDisabled_PreservesExistingSelection()

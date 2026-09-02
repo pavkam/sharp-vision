@@ -898,6 +898,7 @@ namespace SharpVision.Controls.Collections
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        public void SelectAll() { }
         public bool SetSelected(int index, bool selected) { }
     }
     public sealed class TabCloseRequestedEventArgs : System.EventArgs

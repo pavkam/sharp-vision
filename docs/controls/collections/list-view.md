@@ -67,6 +67,7 @@ classDiagram
 | `ScrollBy(x, y, cause)`        | `bool`                                         | —                        | Applies signed cell deltas with saturation and endpoint clamping.                                                                                                                           |
 | `BringIntoView(index)`         | `bool`                                         | —                        | Scrolls minimally to expose the item at a valid index.                                                                                                                                      |
 | `SetSelected(index, selected)` | `bool`                                         | —                        | Changes one index without replacing the rest of a `Multiple` selection; selecting makes that row current and minimally reveals it.                                                          |
+| `SelectAll()`                  | `void`                                         | —                        | Selects every available item; requires `Multiple` selection mode.                                                                                                                           |
 | `SelectionChanging`            | `EventHandler<ListSelectionChangingEventArgs>` | No subscribers           | Raised before a changed selection commits; cancellable.                                                                                                                                     |
 | `SelectionChanged`             | `EventHandler<ListSelectionChangedEventArgs>`  | No subscribers           | Raised after a changed selection commits.                                                                                                                                                   |
 | `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`           | No subscribers           | Raised after Enter or an eligible pointer invocation.                                                                                                                                       |
@@ -81,6 +82,7 @@ classDiagram
 | Page Up / Page Down | Moves by at least one item, otherwise by one visible page.       |
 | Space               | Applies the current selection gesture without invoking the item. |
 | Enter               | Invokes the active item without changing selection.              |
+| Ctrl+A              | Selects every available item in `Multiple` mode.                 |
 
 ## Behavior
 

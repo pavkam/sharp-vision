@@ -530,6 +530,21 @@ public sealed class ListView: ItemsControl
         return changed;
     }
 
+    /// <summary>Selects every available item when multiple selection is enabled.</summary>
+    /// <exception cref="InvalidOperationException">The selection mode is not multiple.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public void SelectAll()
+    {
+        VerifyMutable();
+
+        if (SelectionMode != ListSelectionMode.Multiple)
+        {
+            throw new InvalidOperationException("SelectAll requires multiple selection mode.");
+        }
+
+        _ = ApplySelection([.. Enumerable.Range(0, _items.Count)], cancellable: true);
+    }
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
@@ -1940,6 +1955,18 @@ public sealed class ListView: ItemsControl
                 ActivationCause.Keyboard,
                 eventArgs.Stroke.Code,
                 eventArgs.Stroke.Modifiers);
+            return;
+        }
+
+        if (eventArgs.IsInitialKeyDown &&
+            eventArgs.Stroke.Code == Code.Character &&
+            eventArgs.Stroke.Character is { } character &&
+            Rune.ToLowerInvariant(character) == new Rune('a') &&
+            KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.Control) &&
+            SelectionMode == ListSelectionMode.Multiple)
+        {
+            SelectAll();
+            eventArgs.IsHandled = true;
             return;
         }
 
