@@ -27,6 +27,11 @@ internal static class SurfaceKeys
     public static Task ShiftDeleteAsync(this ComponentSurface surface) =>
         surface.SendAsync("\u001b[3;2~"u8.ToArray(), "press Shift+Delete");
 
+    /// <summary>Presses PageUp with the Shift modifier (<c>CSI 5;2~</c>).</summary>
+    /// <param name="surface">The mounted surface.</param>
+    public static Task ShiftPageUpAsync(this ComponentSurface surface) =>
+        surface.SendAsync("\u001b[5;2~"u8.ToArray(), "press Shift+PageUp");
+
     /// <summary>Repeats one printable character through a Kitty repeat action, so the routed key
     /// carries <see cref="KeyAction.Repeat"/> rather than <see cref="KeyAction.Press"/>.</summary>
     /// <param name="surface">The mounted surface.</param>
