@@ -1452,7 +1452,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (IsProgressive)
         {
-            OnProgressivePointerRouted(point);
+            OnProgressivePointerRouted(point, eventArgs.Pointer.Modifiers);
             return;
         }
 
@@ -1542,7 +1542,10 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         columnIndex < row.Cells.Count &&
         !row.Cells[columnIndex].IsDisposed;
 
-    private void OnProgressivePointerRouted(Point point)
+    // The pointer's Shift/Control modifiers drive the same range and toggle gestures the eager
+    // path hands to SelectRow - dropping them here silently degraded every modified click to a
+    // plain single selection while progressive.
+    private void OnProgressivePointerRouted(Point point, TerminalInput.Modifiers modifiers)
     {
         if (Progressive is not { } controller || !controller.TryResolvePoint(point, out var index, out _))
         {
@@ -1550,7 +1553,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
 
         var dispatcher = Dispatcher;
-        SelectIndex(index);
+        SelectIndex(index, modifiers);
 
         if (!IsDisposed &&
             ReferenceEquals(Dispatcher, dispatcher) &&
