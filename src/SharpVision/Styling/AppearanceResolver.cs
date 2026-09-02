@@ -18,7 +18,8 @@ internal static class AppearanceResolver
                 control.Theme,
                 control.ResolvedAppearanceStates,
                 parentAmbientFace: null,
-                useExplicitAmbient: false);
+                useExplicitAmbient: false,
+                useContinuousBackground: control.UsesContinuousBackground);
         }
 
         /// <summary>Resolves one state from an explicit ambient parent without touching appearance caches.</summary>
@@ -35,6 +36,24 @@ internal static class AppearanceResolver
                 control.ResolvedAppearanceStates,
                 parentAmbientFace);
         }
+
+        /// <summary>Resolves one state from explicit ambient and continuous-background context.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="parentAmbientFace">The explicitly resolved parent ambient face, or null at a root.</param>
+        /// <param name="useContinuousBackground">Whether an ancestor owns the continuous background plane.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        internal ResolvedAppearance ResolveSnapshot(
+            VisualState visualState,
+            Face? parentAmbientFace,
+            bool useContinuousBackground) =>
+            Resolve(
+                control,
+                visualState,
+                control.Theme,
+                control.ResolvedAppearanceStates,
+                parentAmbientFace,
+                useExplicitAmbient: true,
+                useContinuousBackground);
 
         /// <summary>Resolves one prospective visual state from an explicit Theme, appearance states, and ambient context.</summary>
         /// <param name="visualState">The exact defined visual-state flags.</param>
@@ -57,7 +76,34 @@ internal static class AppearanceResolver
                 theme,
                 states,
                 parentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
+        }
+
+        /// <summary>Resolves one prospective state from explicit appearance and continuous-background context.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="theme">The prospective inherited Theme, or null.</param>
+        /// <param name="states">The non-null prospective appearance states.</param>
+        /// <param name="parentAmbientFace">The explicit parent ambient face, or null at a root.</param>
+        /// <param name="useContinuousBackground">Whether an ancestor owns the continuous background plane.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        internal ResolvedAppearance ResolveSnapshot(
+            VisualState visualState,
+            Theme? theme,
+            AppearanceStates states,
+            Face? parentAmbientFace,
+            bool useContinuousBackground)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            ArgumentNullException.ThrowIfNull(states);
+            return Resolve(
+                control,
+                visualState,
+                theme,
+                states,
+                parentAmbientFace,
+                useExplicitAmbient: true,
+                useContinuousBackground);
         }
 
         /// <summary>Compares the active visual state using explicit old and new ambient parent faces.</summary>
@@ -88,14 +134,16 @@ internal static class AppearanceResolver
                 previousTheme,
                 previousStates,
                 previousParentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
             var current = Resolve(
                 control,
                 state,
                 currentTheme,
                 currentStates,
                 currentParentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
             return control.GetAppearanceChangeImpact(previous, current);
         }
     }
@@ -110,7 +158,8 @@ internal static class AppearanceResolver
         Theme? theme,
         AppearanceStates states,
         Face? parentAmbientFace,
-        bool useExplicitAmbient)
+        bool useExplicitAmbient,
+        bool useContinuousBackground)
     {
         var normal = states.Normal;
 
@@ -143,6 +192,14 @@ internal static class AppearanceResolver
             new ControlAppearance(inheritedFace, normal.Border, normal.Shadow));
 
         var face = ResolveFace(theme, authoredAppearance.Face);
+        if (useContinuousBackground && !control.AuthorsLocalBackground(visualState))
+        {
+            // A status-like strip owns one continuous paint plane. Framework defaults may still
+            // contribute their foreground, decorations, and interaction state, but their opaque
+            // control background must not punch rectangular holes through that plane. Explicit
+            // local face, style, and state-background authoring remain authoritative.
+            face = face with { Background = Color.Transparent };
+        }
         var border = ResolveBorder(theme, authoredAppearance.Border);
         var shadow = ResolveShadow(theme, authoredAppearance.Shadow);
         return CreateResolved(theme, face, border, shadow, borderForegroundAuthored);

@@ -7,11 +7,7 @@ namespace SharpVision.Controls.Display;
 internal sealed class StatusBarHost: Container
 {
     /// <summary>Initializes a host that consumes the status bar's complete horizontal slot.</summary>
-    public StatusBarHost()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        Face = ControlStyle.Default.Face;
-    }
+    public StatusBarHost() => HorizontalAlignment = HorizontalAlignment.Stretch;
 
     /// <summary>Gets or sets the non-negative cells between adjacent visible status items.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>

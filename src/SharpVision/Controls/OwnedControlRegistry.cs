@@ -945,6 +945,7 @@ internal sealed class OwnedControlRegistry
                     null,
                     previousAppearance,
                     currentParentAmbientFace: null,
+                    useContinuousBackground: false,
                     propagateContext: true));
             }
 
@@ -965,6 +966,7 @@ internal sealed class OwnedControlRegistry
                         owner.InheritedTheme,
                         previousAppearance,
                         ownerAmbientFace,
+                        AppearanceSnapshot.ResolveContinuousBackground(owner),
                         propagateContext: true));
                 }
             }

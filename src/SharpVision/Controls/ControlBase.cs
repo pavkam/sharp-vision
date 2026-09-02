@@ -1289,6 +1289,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 null,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -5320,6 +5321,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             configure?.Invoke();
@@ -5996,6 +5998,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             theme,
             previousAppearance,
             AppearanceSnapshot.ResolveParentAmbient(Parent),
+            AppearanceSnapshot.ResolveContinuousBackground(Parent),
             propagateContext: false);
         plan.Commit();
         var appearanceChanges = AppearanceChange.CreateChanges(
@@ -6025,6 +6028,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -6046,6 +6050,37 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether local visual-state changes can affect inherited descendant face values.</summary>
     internal virtual bool StateAffectsAmbientAppearance => false;
+
+    /// <summary>Gets whether this control establishes a continuous background plane that
+    /// framework-owned descendant backgrounds must leave visible.</summary>
+    internal virtual bool ProvidesContinuousBackground => false;
+
+    /// <summary>Gets whether the active state locally authors the background and therefore opts out
+    /// of a continuous ancestor plane.</summary>
+    /// <param name="state">The exact active visual state.</param>
+    /// <returns>True when a complete local face or style, or an active local overlay, authors the background.</returns>
+    internal bool AuthorsLocalBackground(VisualState state)
+    {
+        if (LocalFaceValue is not null || _primaryStyle?.HasLocalValue == true)
+        {
+            return true;
+        }
+
+        foreach (var overlay in VisualStateOrder.OrderedOverlays)
+        {
+            if ((state & overlay) != 0 &&
+                _appearanceSets.TryGetValue(overlay, out var localSet) &&
+                localSet.Face?.Background is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Gets whether any ancestor establishes a continuous background plane for this control.</summary>
+    internal bool UsesContinuousBackground => AppearanceSnapshot.ResolveContinuousBackground(Parent);
 
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;

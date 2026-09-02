@@ -30,6 +30,8 @@ internal sealed class StyleSlotRegistration<TStyle>: StyleSlotBase
 
     internal override bool OwnsAppearance => _slot.OwnsAppearance;
 
+    internal override bool HasLocalValue => _slot.LocalValue is not null;
+
     internal override AppearanceStates GetAppearance(Theme? theme) => _slot.GetAppearance(theme);
 
     internal override InvalidationImpact GetThemeImpact(

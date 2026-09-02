@@ -119,14 +119,19 @@ is not focusable and is not a Tab stop. `StatusBarItem` is also non-focusable by
 default. Interactive retained content keeps its own normal input and focus
 behavior.
 
-The inherited `Face` remains theme-owned: Bar supplies the normal background,
-the shared control appearance supplies foreground and state overlays, and
-retained text follows ambient inheritance. Physical hover keeps the continuous
-Bar background while applying the hovered foreground and decorations.
-Disablement restores Bar while every other theme-authored state member applies.
-A complete local style bypasses those theme overlays and wins unchanged in every
-state. `StatusBarItem` follows the same rule. Assign a complete local `Face`
-only for a deliberate product-specific treatment.
+The inherited `Face` remains theme-owned: Bar supplies the one continuous
+background plane, while the shared control appearance supplies foreground and
+state overlays. Framework-owned backgrounds on `StatusBarItem` and all retained
+descendants become transparent inside that plane, so nested layouts, passive
+content, a playing `Spinner`, and an interactive `CheckBox` do not create
+control-colored rectangles. Physical hover and disablement change ink and
+decorations without replacing the Bar fill.
+
+A locally assigned complete `Face` or `Style`, or a local state overlay that
+authors a background, remains authoritative for that control. This lets an
+application deliberately place a contrasting badge or input surface in a status
+item without losing it to ambient composition. Descendants without such local
+background authoring continue to reveal the nearest painted surface.
 
 Applications may change the inherited control appearance, height, padding,
 border, and shadow properties. Multi-line or taller retained content is clipped
@@ -221,7 +226,7 @@ Dock.SetSide(status, DockSide.Bottom);
 - The showcase includes ordinary document status, right-aligned mode and
   position parts, a disabled read-only indicator, a playing activity spinner, a
   live pointer-coordinate item, and a retained CheckBox inside a full editor
-  workspace. Its surface tests show that a CheckBox needs no local appearance
-  configuration, that the theme preserves contrast through the normal, hover,
-  focus, checked, and disabled states, and that transient activity copy
-  preserves the adjacent branch geometry.
+  workspace. Its surface tests show that nested default content keeps one
+  continuous Bar background through normal, hover, focus, checked, and disabled
+  states, that a locally authored child background still wins, and that
+  transient activity copy preserves the adjacent branch geometry.
