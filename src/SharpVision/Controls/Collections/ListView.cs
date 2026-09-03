@@ -1646,15 +1646,16 @@ public sealed class ListView: ItemsControl
     /// <returns><see langword="true"/> when the key moved current item; otherwise, <see langword="false"/>.</returns>
     internal bool MoveCurrent(Code code)
     {
-        var target = ResolveMove(code);
+        var index = ResolveMove(code);
 
-        if (target is null)
+        if (index < 0)
         {
             return false;
         }
 
-        CommitCurrent(target);
-        return true;
+        // A popup-hosted list always scrolls vertically, so the row is realized here; the
+        // index-only branch merely keeps the owner-level path aligned with MoveSelection.
+        return TryCommitCurrent(Realize(index), index);
     }
 
     /// <summary>Handles one delegated navigation stroke by moving only the current item.</summary>
@@ -1794,7 +1795,12 @@ public sealed class ListView: ItemsControl
 
         if (realized is null)
         {
-            return false;
+            // The vertical axis cannot scroll the active row into the realizable window. The
+            // activation still runs against the logical index - Enter invokes and Space applies
+            // the selection gesture - because those are index contracts that hold identically in
+            // eager mode, where every row is realized regardless of the scroll range.
+            RunActivation(item: null, index, cause, key, modifiers, clickCount: 0);
+            return true;
         }
 
         realized.ActivateFromOwner(cause, key, modifiers);
@@ -1804,32 +1810,51 @@ public sealed class ListView: ItemsControl
     private void OnActivated(object? sender, ActivationEventArgs eventArgs)
     {
         var item = (ListItem) sender!;
+        RunActivation(item, item.Index, eventArgs.Cause, item.LastKey, item.LastModifiers, item.LastClickCount);
+    }
+
+    /// <summary>Runs one activation transaction for a logical index, whether or not its row is
+    /// realized.</summary>
+    /// <param name="item">The realized row, or null when the index has no wrapper.</param>
+    /// <param name="index">The activated logical index.</param>
+    /// <param name="cause">The semantic activation source.</param>
+    /// <param name="key">The activating key, or null for pointer activation.</param>
+    /// <param name="modifiers">The modifiers captured with the activation.</param>
+    /// <param name="clickCount">The pointer click count, or zero for keyboard activation.</param>
+    private void RunActivation(
+        ListItem? item,
+        int index,
+        ActivationCause cause,
+        Code? key,
+        Modifiers modifiers,
+        int clickCount)
+    {
         var dispatcher = Dispatcher;
 
-        if (!IsActivatedItemCurrent(item, dispatcher))
+        if (!IsActivationCurrent(item, index, dispatcher))
         {
             return;
         }
 
         var activation = new ItemInvokedEventArgs(
-            item.Index,
-            Items[item.Index],
-            eventArgs.Cause,
+            index,
+            Items[index],
+            cause,
             ++_activationGeneration);
         ItemActivationStarting?.Invoke(this, activation);
 
-        if (!IsActivatedItemCurrent(item, dispatcher))
+        if (!IsActivationCurrent(item, index, dispatcher))
         {
             return;
         }
 
-        SetActiveIndex(item.Index);
+        SetActiveIndex(index);
 
-        if (item.LastKey == Code.Enter)
+        if (key == Code.Enter)
         {
             // An incidental modifier still applies the current-item tracking above, but does not
             // commit an invocation the user did not intend.
-            if (item.LastModifiers.IsActivationEligible())
+            if (modifiers.IsActivationEligible())
             {
                 ItemInvoked?.Invoke(this, activation);
             }
@@ -1837,14 +1862,13 @@ public sealed class ListView: ItemsControl
             return;
         }
 
-        var modifiers = item.LastModifiers;
         var isSpaceToggle = SelectionMode == ListSelectionMode.Multiple &&
-                            eventArgs.Cause == ActivationCause.Keyboard &&
+                            cause == ActivationCause.Keyboard &&
                             (modifiers & (Modifiers.Control | Modifiers.Shift)) == 0;
 
-        _ = ApplyInputSelection(item.Index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
+        _ = ApplyInputSelection(index, isSpaceToggle ? modifiers | Modifiers.Control : modifiers);
 
-        if (!IsActivatedItemCurrent(item, dispatcher))
+        if (!IsActivationCurrent(item, index, dispatcher))
         {
             return;
         }
@@ -1854,13 +1878,23 @@ public sealed class ListView: ItemsControl
         // selection, application, and host command chords remain available to their owners.
         var isPlainPointerGesture = KeyboardModifierPolicy.MatchesCommand(modifiers, Modifiers.None);
 
-        if (eventArgs.Cause == ActivationCause.Pointer &&
+        if (cause == ActivationCause.Pointer &&
             (ItemInvocation == ListItemInvocation.SingleClick ||
-                (item.LastClickCount >= 2 && isPlainPointerGesture)))
+                (clickCount >= 2 && isPlainPointerGesture)))
         {
             ItemInvoked?.Invoke(this, activation);
         }
     }
+
+    [Pure]
+    private bool IsActivationCurrent(ListItem? item, int index, Dispatcher? dispatcher) =>
+        item is null
+            ? !IsDisposed &&
+              ReferenceEquals(Dispatcher, dispatcher) &&
+              EffectiveIsVisible &&
+              EffectiveIsEnabled &&
+              IsIndexAvailable(index)
+            : IsActivatedItemCurrent(item, dispatcher);
 
     [Pure]
     private bool IsActivatedItemCurrent(ListItem item, Dispatcher? dispatcher) =>
@@ -2044,16 +2078,22 @@ public sealed class ListView: ItemsControl
     /// <see langword="false"/>.</returns>
     internal bool MoveSelection(Code code)
     {
-        var target = ResolveMove(code);
+        var index = ResolveMove(code);
 
-        if (target is null)
+        if (index < 0)
         {
             return false;
         }
 
+        // Realize before the selection transaction so a subscriber observes the same scrolled
+        // window eager mode presents. A null row means the vertical axis cannot scroll the target
+        // into the realizable window; the index model still commits below, because selection and
+        // the active row are pure index state that behaves identically in both modes.
+        var target = Realize(index);
+
         if (SelectionMode != ListSelectionMode.None)
         {
-            var accepted = ApplyInputSelection(target.Index, Modifiers.None);
+            var accepted = ApplyInputSelection(index, Modifiers.None);
 
             // ApplyInputSelection can synchronously reach a subscriber that disposes the control -
             // matches the guard the SelectedIndex setter already applies before this same
@@ -2067,24 +2107,44 @@ public sealed class ListView: ItemsControl
             {
                 if (SelectionMode == ListSelectionMode.None)
                 {
-                    _ = TryCommitCurrent(target);
+                    _ = TryCommitCurrent(target, index);
                 }
 
                 return true;
             }
         }
 
-        _ = TryCommitCurrent(target);
+        _ = TryCommitCurrent(target, index);
         return true;
     }
 
-    private ListItem? ResolveMove(Code code)
+    private int ResolveMove(Code code)
     {
         var current = ActiveIndex >= 0 && ActiveIndex < _items.Count && IsIndexAvailable(ActiveIndex)
             ? ActiveIndex
             : FindEligible(0, 1);
 
-        return current < 0 ? null : ResolveNavigation(current, code);
+        return current < 0 ? -1 : ResolveNavigation(current, code);
+    }
+
+    private bool TryCommitCurrent(ListItem? target, int index)
+    {
+        if (target is not null)
+        {
+            return TryCommitCurrent(target);
+        }
+
+        // Without a realized row there is no wrapper identity to re-check after the selection
+        // transaction, so the index is re-validated against the live collection instead: a handler
+        // that shrank the snapshot below the target leaves the active row alone, exactly as a
+        // replaced wrapper does in the realized branch.
+        if (index >= _items.Count || !IsIndexAvailable(index))
+        {
+            return false;
+        }
+
+        SetActiveIndex(index);
+        return true;
     }
 
     private bool TryCommitCurrent(ListItem target)
@@ -2141,9 +2201,10 @@ public sealed class ListView: ItemsControl
         _ = BringIntoView(index);
     }
 
-    private ListItem? ResolveNavigation(int currentIndex, Code code)
-    {
-        var target = code is Code.Up or Code.Left
+    /// <summary>Resolves one navigation key to its eligible logical target index, or -1.</summary>
+    [Pure]
+    private int ResolveNavigation(int currentIndex, Code code) =>
+        code is Code.Up or Code.Left
             ? FindEligible(currentIndex - 1, -1)
             : code is Code.Down or Code.Right
             ? FindEligible(currentIndex + 1, 1)
@@ -2154,9 +2215,6 @@ public sealed class ListView: ItemsControl
             : code == Code.PageUp
             ? FindEligible(StepPage(currentIndex, -1), -1)
             : code == Code.PageDown ? FindEligible(StepPage(currentIndex, 1), 1) : -1;
-
-        return target < 0 ? null : Realize(target);
-    }
 
     // In eager mode every realized row's arranged Bounds.Height is already available, so a page
     // step accumulates realized row heights from the current index until the sum reaches the

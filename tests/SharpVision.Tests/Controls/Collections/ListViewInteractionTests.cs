@@ -12,7 +12,9 @@ public sealed class ListViewInteractionTests
     private static readonly object?[] _letters = ["A", "B", "C", "D", "E"];
 
     /// <summary>Verifies each navigation key moves the active row identically in every mode
-    /// while only Single and Multiple also move the exclusive selection with it.</summary>
+    /// while only Single and Multiple also move the exclusive selection with it. Twelve rows in a
+    /// five-row viewport keep a page step (five rows, one retained overlap row) distinct from the
+    /// Home/End endpoints.</summary>
     /// <param name="mode">The selection mode under test.</param>
     [Theory]
     [InlineData(ListSelectionMode.None)]
@@ -22,38 +24,52 @@ public sealed class ListViewInteractionTests
     {
         // Arrange
         var list = CreateList(mode);
+        list.Items = Enumerable.Range(0, 12).Select(value => (object?) $"R{value}").ToArray();
+        list.ScrollBars = ScrollBars.Vertical;
         await using var surface = await ComponentSurface.MountAsync(list, new Size(8, 5), TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveFocus(list);
         var selects = mode != ListSelectionMode.None;
 
+        void ShouldSitOn(int index)
+        {
+            list.ActiveIndex.ShouldBe(index);
+            list.SelectedIndex.ShouldBe(selects ? index : -1);
+            list.SelectedItems.Count.ShouldBe(selects ? 1 : 0);
+        }
+
         // Act and assert each binding in turn
         await surface.Keyboard.PressAsync(Code.Down);
         await surface.Keyboard.PressAsync(Code.Down);
-        list.ActiveIndex.ShouldBe(2);
-        list.SelectedIndex.ShouldBe(selects ? 2 : -1);
+        ShouldSitOn(2);
 
         await surface.Keyboard.PressAsync(Code.End);
-        list.ActiveIndex.ShouldBe(4);
-        list.SelectedIndex.ShouldBe(selects ? 4 : -1);
+        ShouldSitOn(11);
+        list.VerticalOffset.ShouldBe(7);
 
         await surface.Keyboard.PressAsync(Code.Home);
-        list.ActiveIndex.ShouldBe(0);
-        list.SelectedIndex.ShouldBe(selects ? 0 : -1);
+        ShouldSitOn(0);
+        list.VerticalOffset.ShouldBe(0);
 
         await surface.Keyboard.PressAsync(Code.Right);
-        list.ActiveIndex.ShouldBe(1);
+        ShouldSitOn(1);
         await surface.Keyboard.PressAsync(Code.Left);
-        list.ActiveIndex.ShouldBe(0);
+        ShouldSitOn(0);
         await surface.Keyboard.PressAsync(Code.Up);
-        list.ActiveIndex.ShouldBe(0);
+        ShouldSitOn(0);
 
         await surface.Keyboard.PressAsync(Code.PageDown);
-        list.ActiveIndex.ShouldBe(4);
+        ShouldSitOn(5);
+        list.VerticalOffset.ShouldBe(1);
+        await surface.Keyboard.PressAsync(Code.PageDown);
+        ShouldSitOn(10);
+        list.VerticalOffset.ShouldBe(6);
         await surface.Keyboard.PressAsync(Code.PageUp);
-        list.ActiveIndex.ShouldBe(0);
-        list.SelectedIndex.ShouldBe(selects ? 0 : -1);
-        list.SelectedItems.Count.ShouldBe(selects ? 1 : 0);
+        ShouldSitOn(5);
+        list.VerticalOffset.ShouldBe(5);
+        await surface.Keyboard.PressAsync(Code.PageUp);
+        ShouldSitOn(0);
+        list.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies key repeat reports continue navigation exactly like initial presses.</summary>
@@ -382,7 +398,7 @@ public sealed class ListViewInteractionTests
         list.SelectedIndex.ShouldBe(-1);
         surface.Cell(new Point(0, 1)).Style.Background.ShouldNotBe(selectionBackground);
         changes.ShouldBe(["1:", "3:", ":3", ":1"]);
-        (realized[1].Parent.ShouldNotBeNull().GetAppearanceState() & VisualState.Selected).ShouldBe(VisualState.Normal);
+        surface.Cell(new Point(0, 3)).Style.Background.ShouldNotBe(selectionBackground);
     }
 
     /// <summary>Verifies Control- and Shift-clicks in Single mode replace the selection rather
@@ -712,6 +728,50 @@ public sealed class ListViewInteractionTests
         list.ActiveIndex.ShouldBe(2);
         surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(selectionBackground);
         surface.Cell(new Point(0, 1)).Style.Background.ShouldNotBe(selectionBackground);
+    }
+
+    /// <summary>Verifies swapping the application theme while a mounted list holds a selection
+    /// repaints the selected row in the new theme's selection colour and the other rows in its
+    /// ordinary colours, then restores the original colours when the first theme returns.</summary>
+    [Fact]
+    public async Task Theme_WhenSwappedWhileMountedWithSelection_RepaintsRowsInTheNewColorsAsync()
+    {
+        // Arrange
+        var list = CreateList(ListSelectionMode.Single);
+        await using var surface = await ComponentSurface.MountAsync(list, new Size(8, 5), TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(list, new Point(0, 1));
+        list.SelectedIndex.ShouldBe(1);
+        var original = surface.Application.Theme;
+        var originalSelection = TerminalPalette.Project(ThemeColorHelper.SelectionBackground(original), ColorDepth.Basic16);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(originalSelection);
+        var swapped = ThemeCatalog.Load("turbo-vision");
+        var swappedSelection = TerminalPalette.Project(ThemeColorHelper.SelectionBackground(swapped), ColorDepth.Basic16);
+        swappedSelection.ShouldNotBe(originalSelection);
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = swapped, "apply Turbo Vision");
+
+        // Assert the selected row follows the new theme while its text and state survive
+        list.SelectedIndex.ShouldBe(1);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(swappedSelection);
+        surface.Cell(new Point(0, 1)).Text.ShouldBe("B");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldNotBe(swappedSelection);
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldNotBe(originalSelection);
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("C");
+
+        // Act keyboard selection after the swap keeps painting with the new theme
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        list.SelectedIndex.ShouldBe(2);
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(swappedSelection);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldNotBe(swappedSelection);
+
+        // Act restore
+        await surface.UpdateAsync(() => surface.Application.Theme = original, "restore the original theme");
+
+        // Assert
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(originalSelection);
+        surface.Cell(new Point(0, 1)).Style.Background.ShouldNotBe(originalSelection);
     }
 
     private static UiListView CreateList(ListSelectionMode mode, List<ControlText>? realized = null) => new()
