@@ -24,18 +24,211 @@ public sealed class TextInputInteractionTests
             ? ComponentSurface.MountAsync(control, new Size(width, height), TestThemes.BorderlessInput, TestContext.Current.CancellationToken)
             : ComponentSurface.MountAsync(control, new Size(width, height), time, TestThemes.BorderlessInput, TestContext.Current.CancellationToken);
 
-    /// <summary>Verifies clicking each column places the caret at the nearest grapheme boundary,
-    /// clamps past the end, focuses the editor, and moves the terminal cursor.</summary>
-    [Theory]
-    [InlineData(0, 0)]
-    [InlineData(1, 1)]
-    [InlineData(2, 2)]
-    [InlineData(3, 3)]
-    [InlineData(5, 3)]
-    public async Task Pointer_WhenColumnIsClicked_PlacesCaretAtNearestBoundaryAsync(int column, int expectedCaret)
+    private static TextInput RailEditor(string text, int width, int height) => new()
+    {
+        AcceptsReturn = true,
+        Text = text,
+        ScrollBars = ScrollBars.Vertical,
+        ShowScrollBars = ShowScrollBars.Always,
+        ScrollBarStyle = ScrollBarStyle.ThinLine,
+        Width = Length.Cells(width),
+        Height = Length.Cells(height)
+    };
+
+    /// <summary>Verifies the showcase editor shape - multiline with an always-shown vertical rail -
+    /// keeps the caret inside the rail-deflated viewport: focus chases the caret to the last row,
+    /// typing on the last usable row and column stays visible left of the rail, Enter at the end
+    /// scrolls a fresh row in, and the rail itself keeps its column throughout.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEditingBesideTheScrollRail_KeepsCaretInsideTheDeflatedViewportAsync()
     {
         // Arrange
-        var input = Editor("abc", 6);
+        var input = RailEditor("one\ntwo\nthree\nfour\nfive", 8, 3);
+        await using var surface = await MountAsync(input, 8, 3);
+        input.HitTest(new Point(7, 1)).ShouldBeOfType<ScrollBar>().Orientation.ShouldBe(Orientation.Vertical);
+        input.HitTest(new Point(6, 1)).ShouldBeSameAs(input);
+
+        // Act focus chases the end-of-text caret
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert the last three lines show, the caret sits after "five", the rail is untouched
+        input.VerticalOffset.ShouldBe(2);
+        RowText(surface, 0, 7).ShouldBe("three  ");
+        RowText(surface, 2, 7).ShouldBe("five   ");
+        surface.ShouldHaveCursor(new Point(4, 2), visible: true);
+        RailColumnShouldBeRail(surface, input, 7, 3);
+
+        // Act fill the last usable row up to the rail
+        await surface.Keyboard.TypeAsync("xy");
+
+        // Assert the caret stops on the last usable column, never on the rail
+        input.Text.ShouldEndWith("fivexy");
+        RowText(surface, 2, 7).ShouldBe("fivexy ");
+        surface.ShouldHaveCursor(new Point(6, 2), visible: true);
+        RailColumnShouldBeRail(surface, input, 7, 3);
+
+        // Act one more character than the row can hold
+        await surface.Keyboard.TypeAsync("z");
+
+        // Assert the row scrolls horizontally so the cursor stays on the last usable column,
+        // never on the rail
+        input.Text.ShouldEndWith("fivexyz");
+        input.HorizontalOffset.ShouldBe(1);
+        RowText(surface, 2, 7).ShouldBe("ivexyz ");
+        surface.ShouldHaveCursor(new Point(6, 2), visible: true);
+        RailColumnShouldBeRail(surface, input, 7, 3);
+
+        // Act Enter at the end scrolls a new row in
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.TypeAsync("6");
+
+        // Assert
+        input.VerticalOffset.ShouldBe(3);
+        RowText(surface, 2, 7).ShouldBe("6      ");
+        surface.ShouldHaveCursor(new Point(1, 2), visible: true);
+        RailColumnShouldBeRail(surface, input, 7, 3);
+    }
+
+    /// <summary>Verifies pointer input beside the rail: a click on a text cell hit-tests against the
+    /// rail-deflated columns, a click on the rail neither moves the caret nor steals the editor's
+    /// focus, and a wheel notch scrolls the rows without moving the caret.</summary>
+    [Fact]
+    public async Task Pointer_WhenClickingAndWheelingBesideTheScrollRail_TargetsTheDeflatedViewportAsync()
+    {
+        // Arrange
+        var input = RailEditor("one\ntwo\nthree\nfour\nfive", 8, 3);
+        await using var surface = await MountAsync(input, 8, 3);
+
+        // Act click the second row
+        await surface.Pointer.ClickAsync(input, new Point(2, 1));
+
+        // Assert the caret is on "two" at column 2 and nothing scrolled
+        surface.ShouldHaveFocus(input);
+        input.CaretIndex.ShouldBe(6);
+        input.VerticalOffset.ShouldBe(0);
+        surface.ShouldHaveCursor(new Point(2, 1), visible: true);
+
+        // Act click past the end of a short row, then click the rail's track past its thumb
+        await surface.Pointer.ClickAsync(input, new Point(6, 0));
+        input.CaretIndex.ShouldBe(3);
+        surface.ShouldHaveCursor(new Point(3, 0), visible: true);
+        await surface.Pointer.ClickAsync(input, new Point(7, 2));
+
+        // Assert the rail click never resolved a text-cell caret placement - it paged the
+        // scrollbar's own track instead, scrolling the editor and moving focus off the editor
+        // entirely, and the caret then chased the new viewport like any other scroll
+        _ = surface.Application.Focus.Focused.ShouldBeOfType<ScrollBar>();
+        surface.ShouldHaveCapture(null);
+        input.VerticalOffset.ShouldBe(2);
+
+        // Act refocus the editor and wheel back to the top before continuing
+        await surface.Pointer.ClickAsync(input, new Point(2, 0));
+        surface.ShouldHaveFocus(input);
+        await surface.Pointer.WheelAsync(input, new Point(2, 1), wheelY: 1);
+        await surface.Pointer.WheelAsync(input, new Point(2, 1), wheelY: 1);
+        input.VerticalOffset.ShouldBe(0);
+        await surface.Pointer.ClickAsync(input, new Point(3, 0));
+        input.CaretIndex.ShouldBe(3);
+
+        // Act wheel down over the text
+        await surface.Pointer.WheelAsync(input, new Point(2, 1), wheelY: -1);
+
+        // Assert the rows scrolled while the caret index stayed
+        input.VerticalOffset.ShouldBe(1);
+        input.CaretIndex.ShouldBe(3);
+        RowText(surface, 0, 7).ShouldBe("two    ");
+        RowText(surface, 2, 7).ShouldBe("four   ");
+        RailColumnShouldBeRail(surface, input, 7, 3);
+
+        // Act PageDown moves the caret a page and reveals it
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        // Assert the caret moved three rows to "four" at the same column and stayed in view
+        input.CaretIndex.ShouldBe(17);
+        input.VerticalOffset.ShouldBe(1);
+        surface.ShouldHaveCursor(new Point(3, 2), visible: true);
+        RailColumnShouldBeRail(surface, input, 7, 3);
+    }
+
+    /// <summary>Verifies a mounted resize that shrinks the rail editor keeps the caret row inside
+    /// the smaller viewport and the rail on the new last column, and growing back restores the
+    /// rows.</summary>
+    [Fact]
+    public async Task Resize_WhenRailEditorShrinksAndGrows_KeepsCaretVisibleBesideTheRailAsync()
+    {
+        // Arrange
+        var input = new TextInput
+        {
+            AcceptsReturn = true,
+            Text = "one\ntwo\nthree\nfour\nfive",
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            ScrollBarStyle = ScrollBarStyle.ThinLine,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await MountAsync(input, 8, 4);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        input.VerticalOffset.ShouldBe(1);
+        surface.ShouldHaveCursor(new Point(4, 3), visible: true);
+
+        // Act shrink
+        await surface.ResizeAsync(new Size(6, 2));
+
+        // Assert the caret row is still inside the two-row viewport beside the rail
+        input.VerticalOffset.ShouldBe(3);
+        surface.ShouldHaveCursor(new Point(4, 1), visible: true);
+        RowText(surface, 1, 5).ShouldBe("five ");
+        RailColumnShouldBeRail(surface, input, 5, 2);
+
+        // Act grow back
+        await surface.ResizeAsync(new Size(8, 4));
+
+        // Assert
+        surface.ShouldHaveCursor(new Point(4, 3), visible: true);
+        RowText(surface, 3, 7).ShouldBe("five   ");
+        RailColumnShouldBeRail(surface, input, 7, 4);
+    }
+
+    private static void RailColumnShouldBeRail(ComponentSurface surface, TextInput input, int column, int height)
+    {
+        for (var y = 0; y < height; y++)
+        {
+            _ = input.HitTest(new Point(column, y)).ShouldBeOfType<ScrollBar>($"cell ({column},{y}) should be the rail");
+            surface.Cell(new Point(column, y)).Text.ShouldNotBeOneOf(["o", "e", "x", "y", "z", "6", "f", "r", "t", "h", "n", "w", "u", "i", "v"]);
+        }
+    }
+
+    private static string RowText(ComponentSurface surface, int y, int width)
+    {
+        var text = new StringBuilder();
+
+        for (var x = 0; x < width; x++)
+        {
+            _ = text.Append(surface.Cell(new Point(x, y)).Text);
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>Verifies clicking each column of "a界b" places the caret at the nearest grapheme
+    /// boundary - the leading half of the wide glyph snaps before it, the trailing half after it -
+    /// clamps past the end, focuses the editor, and moves the terminal cursor to the boundary's
+    /// cell.</summary>
+    /// <param name="column">The clicked cell column.</param>
+    /// <param name="expectedCaret">The expected UTF-16 caret index.</param>
+    /// <param name="expectedCursorColumn">The expected terminal cursor column.</param>
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(1, 1, 1)]
+    [InlineData(2, 2, 3)]
+    [InlineData(3, 2, 3)]
+    [InlineData(4, 3, 4)]
+    [InlineData(5, 3, 4)]
+    public async Task Pointer_WhenColumnIsClicked_PlacesCaretAtNearestBoundaryAsync(int column, int expectedCaret, int expectedCursorColumn)
+    {
+        // Arrange
+        var input = Editor("a界b", 6);
         await using var surface = await MountAsync(input, 6);
         input.IsFocused.ShouldBeFalse();
 
@@ -46,7 +239,7 @@ public sealed class TextInputInteractionTests
         surface.ShouldHaveFocus(input);
         input.CaretIndex.ShouldBe(expectedCaret);
         input.SelectionLength.ShouldBe(0);
-        surface.ShouldHaveCursor(new Point(expectedCaret, 0), visible: true);
+        surface.ShouldHaveCursor(new Point(expectedCursorColumn, 0), visible: true);
         surface.ShouldHaveCapture(null);
     }
 
@@ -533,10 +726,11 @@ public sealed class TextInputInteractionTests
         surface.ShouldHaveCursor(new Point(4, 0), visible: true);
     }
 
-    /// <summary>Verifies an explicit line break under word wrap starts a new visual row, and
-    /// Home/End move within the visual row only.</summary>
+    /// <summary>Verifies an explicit line break under word wrap starts a new visual row, while
+    /// Home/End address the logical line: from the wrapped tail, Home returns to the very start
+    /// of the wrapped line and End lands after its last character, crossing visual rows.</summary>
     [Fact]
-    public async Task Keyboard_WhenWrappedTextHasHardBreaks_HomeAndEndStayOnTheVisualRowAsync()
+    public async Task Keyboard_WhenWrappedTextHasHardBreaks_HomeAndEndAddressTheLogicalLineAsync()
     {
         // Arrange
         var input = Editor("abcdef\nxy", 4, 3, multiline: true, wrap: true);

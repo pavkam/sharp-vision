@@ -85,9 +85,9 @@ public sealed class TabControlInteractionTests
         // Act collapse the disabled page
         await surface.UpdateAsync(() => tabs.Items[1].Visibility = Visibility.Collapsed, "collapse page");
 
-        // Assert the strip reflows
+        // Assert the strip reflows and the collapsed header owns no cell to click
         RowText(surface, 0, 22).ShouldBe(" One │ Three          ");
-        tabs.HeaderAt(1).Bounds.Width.ShouldBe(0);
+        RowText(surface, 0, 22).ShouldNotContain("Two");
 
         // Act click where Three now sits
         await surface.Pointer.ClickAsync(tabs.HeaderAt(2));
@@ -283,6 +283,122 @@ public sealed class TabControlInteractionTests
 
         tabs.SelectedIndex.ShouldBe(0);
         changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies Delete on the only remaining closeable page empties the strip and body,
+    /// clears the selection, keeps focus on the TabControl, and leaves every later key inert.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDeleteClosesTheLastRemainingTab_EmptiesStripAndBodyAsync()
+    {
+        // Arrange
+        var tabs = CreateTabs("Only");
+        tabs.Items[0].IsClosable = true;
+        var selections = new List<(int Previous, int Current)>();
+        tabs.SelectionChanged += (_, eventArgs) => selections.Add((eventArgs.PreviousIndex, eventArgs.CurrentIndex));
+        var failures = new List<Exception>();
+        await using var surface = await ComponentSurface.MountAsync(tabs, new Size(20, 4), TestContext.Current.CancellationToken);
+        surface.Application.UnhandledException += (_, eventArgs) => failures.Add(eventArgs.Exception);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        RowText(surface, 0, 20).ShouldBe(" Only               ");
+        RowText(surface, 2, 20).ShouldBe("Only content        ");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Delete);
+
+        // Assert
+        failures.ShouldBeEmpty();
+        tabs.Items.Count.ShouldBe(0);
+        tabs.SelectedIndex.ShouldBe(-1);
+        tabs.SelectedItem.ShouldBeNull();
+        selections.ShouldBe([(0, -1)]);
+        surface.ShouldHaveFocus(tabs);
+        RowText(surface, 0, 20).ShouldBe("                    ");
+        RowText(surface, 2, 20).ShouldBe("                    ");
+        RowText(surface, 3, 20).ShouldBe("                    ");
+
+        // Act every navigation key on the empty control
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Left);
+        await surface.Keyboard.PressAsync(Code.End);
+        await surface.Keyboard.PressAsync(Code.Delete);
+
+        // Assert
+        failures.ShouldBeEmpty();
+        tabs.SelectedIndex.ShouldBe(-1);
+        selections.Count.ShouldBe(1);
+        RowText(surface, 0, 20).ShouldBe("                    ");
+        RowText(surface, 2, 20).ShouldBe("                    ");
+    }
+
+    /// <summary>Verifies Delete on the last-index page repairs the selection to its nearest
+    /// predecessor, re-rendering the strip without the closed header and the body with the
+    /// predecessor's content.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDeleteClosesTheLastIndexPage_RepairsToThePredecessorAsync()
+    {
+        // Arrange
+        var tabs = CreateTabs("One", "Two", "Three");
+
+        foreach (var item in tabs.Items)
+        {
+            item.IsClosable = true;
+        }
+
+        var selections = new List<(int Previous, int Current)>();
+        tabs.SelectionChanged += (_, eventArgs) => selections.Add((eventArgs.PreviousIndex, eventArgs.CurrentIndex));
+        await using var surface = await ComponentSurface.MountAsync(tabs, new Size(30, 4), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.End);
+        tabs.SelectedIndex.ShouldBe(2);
+        RowText(surface, 2, 22).ShouldBe("Three content         ");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Delete);
+
+        // Assert
+        tabs.Items.Count.ShouldBe(2);
+        tabs.SelectedIndex.ShouldBe(1);
+        tabs.SelectedItem.ShouldNotBeNull().HeaderText.ShouldBe("Two");
+        selections.ShouldBe([(0, 2), (2, 1)]);
+        RowText(surface, 0, 22).ShouldBe(" One │ Two            ");
+        RowText(surface, 2, 22).ShouldBe("Two content           ");
+
+        // Act again from the new last index
+        await surface.Keyboard.PressAsync(Code.Delete);
+
+        // Assert
+        tabs.Items.Count.ShouldBe(1);
+        tabs.SelectedIndex.ShouldBe(0);
+        RowText(surface, 0, 22).ShouldBe(" One                  ");
+        RowText(surface, 2, 22).ShouldBe("One content           ");
+    }
+
+    /// <summary>Verifies a header only partly inside the strip under the Scroll policy still
+    /// selects from its visible cells, and the selection reveals the whole header.</summary>
+    [Fact]
+    public async Task Pointer_WhenPartiallyClippedHeaderIsClicked_SelectsAndRevealsItAsync()
+    {
+        // Arrange
+        var tabs = CreateTabs("Alpha", "Bravo", "Charlie", "Delta", "Echo");
+        tabs.HeaderOverflowPolicy = TabHeaderOverflowPolicy.Scroll;
+        await using var surface = await ComponentSurface.MountAsync(tabs, new Size(18, 4), TestContext.Current.CancellationToken);
+        var charlie = tabs.HeaderAt(2).Bounds;
+        charlie.X.ShouldBeLessThan(18);
+        charlie.Right.ShouldBeGreaterThan(18);
+        surface.Cell(new Point(charlie.X + 1, 0)).Text.ShouldBe("C");
+
+        // Act
+        await surface.Pointer.ClickAsync(tabs, new Point(charlie.X + 1, 0));
+
+        // Assert
+        tabs.SelectedIndex.ShouldBe(2);
+        var revealed = tabs.HeaderAt(2).Bounds;
+        revealed.X.ShouldBeGreaterThanOrEqualTo(0);
+        revealed.Right.ShouldBeLessThanOrEqualTo(18);
+        surface.Cell(new Point(revealed.X + 1, 0)).Text.ShouldBe("C");
+        surface.Cell(new Point(revealed.X + 7, 0)).Text.ShouldBe("e");
+        RowText(surface, 2, 15).ShouldBe("Charlie content");
+        tabs.HeaderAt(0).Bounds.X.ShouldBeLessThan(0);
     }
 
     private static TabControl CreateTabs(params string[] headers)

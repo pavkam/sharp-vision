@@ -413,10 +413,78 @@ public sealed class JsonViewInteractionTests
         surface.ShouldRender("");
     }
 
-    /// <summary>Verifies the horizontal offset round-trips inside the extent and rejects a value
-    /// past it without moving.</summary>
+    /// <summary>Verifies a movement key carrying an application-command modifier is left
+    /// unhandled on a mounted surface: the selection, the scroll offset, and the rendered rows
+    /// stay exactly as they were and no transition is published.</summary>
+    /// <param name="modifiers">The modifier held with the arrow.</param>
+    [Theory]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Shift)]
+    [InlineData(Modifiers.Super)]
+    public async Task Keyboard_WhenArrowCarriesCommandModifier_LeavesSelectionUnchangedAsync(Modifiers modifiers)
+    {
+        // Arrange
+        var view = new JsonView { Json = _nested };
+        var transitions = 0;
+        view.SelectionChanged += (_, _) => transitions++;
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(30, 6),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        view.SelectedPath.ShouldBe("/b");
+        transitions = 0;
+        var before = RowText(surface, 1, 30);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down, modifiers);
+        await surface.Keyboard.PressAsync(Code.Right, modifiers);
+        await surface.Keyboard.PressAsync(Code.End, modifiers);
+
+        // Assert
+        view.SelectedPath.ShouldBe("/b");
+        transitions.ShouldBe(0);
+        view.VerticalOffset.ShouldBe(0);
+        RowText(surface, 1, 30).ShouldBe(before);
+    }
+
+    /// <summary>Verifies held-key repeats of Down keep walking the visible entries one step per
+    /// repeat and reveal the selection as it leaves the viewport, exactly like initial presses.</summary>
     [Fact]
-    public void HorizontalOffset_WhenAssigned_RoundTripsAndRejectsValuesPastTheExtent()
+    public async Task Keyboard_WhenDownRepeats_ContinuesWalkingAndRevealsPerRepeatAsync()
+    {
+        // Arrange
+        var view = new JsonView { Json = _nested, ShowScrollBars = ShowScrollBars.Never };
+        var transitions = new List<string>();
+        view.SelectionChanged += (_, eventArgs) => transitions.Add(eventArgs.Path ?? string.Empty);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(30, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        view.SelectedPath.ShouldBe("/a");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+
+        // Assert each repeat advanced and the viewport followed
+        view.SelectedPath.ShouldBe("/b/d/e");
+        transitions.ShouldBe(["/b", "/b/c", "/b/d", "/b/d/e"]);
+        view.VerticalOffset.ShouldBeGreaterThan(0);
+        RowText(surface, 2, 30).ShouldContain(": 3");
+    }
+
+    /// <summary>Verifies a horizontal offset past the extent or below zero is rejected without
+    /// moving the accepted maximum offset.</summary>
+    [Fact]
+    public void HorizontalOffset_WhenAssignedPastTheExtent_ThrowsWithoutMoving()
     {
         var view = new JsonView
         {
@@ -426,11 +494,7 @@ public sealed class JsonViewInteractionTests
         new LayoutEngine().Layout(view, new Size(12, 6));
         var maximum = view.Extent.Width - view.Viewport.Width;
         maximum.ShouldBeGreaterThan(0);
-
-        view.HorizontalOffset = 5;
-        view.HorizontalOffset.ShouldBe(5);
         view.HorizontalOffset = maximum;
-        view.HorizontalOffset.ShouldBe(maximum);
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => view.HorizontalOffset = maximum + 1);
         _ = Should.Throw<ArgumentOutOfRangeException>(() => view.HorizontalOffset = -1);

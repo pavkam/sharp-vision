@@ -87,8 +87,11 @@ public sealed class TreeViewInteractionTests
     }
 
     /// <summary>Verifies a cancelled keyboard selection still moves the current row: the refused
-    /// row shows the current cue while the previous row stays selected, and a later accepted
-    /// move selects normally.</summary>
+    /// row carries the rendered current cue (the underline the row contributes for its Current
+    /// state) while the logical selection stays refused, and a later accepted move selects
+    /// normally. BorderlessContainer paints no distinct background for Selected or Current on a
+    /// TreeView row - the underline is this theme's only rendered cue for either - so this proof
+    /// is underline- and logical-state-only rather than a background-colour comparison.</summary>
     [Fact]
     public async Task Keyboard_WhenSelectionChangingCancels_MovesCurrentWithoutSelectingAsync()
     {
@@ -107,20 +110,23 @@ public sealed class TreeViewInteractionTests
         // Act
         await surface.Keyboard.PressAsync(Code.Down);
 
-        // Assert
+        // Assert - the current cue moved to the refused row; the logical selection stays put
         tree.SelectedItem.ShouldBeSameAs(items["A"]);
         items["a1"].IsSelected.ShouldBeFalse();
-        (items["a1"].GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
-        (items["A"].GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+        (HeaderCell(surface, items["a1"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        (HeaderCell(surface, items["A"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
 
         // Act an accepted move from the refused current row
         await surface.Keyboard.PressAsync(Code.Down);
 
         // Assert
         tree.SelectedItem.ShouldBeSameAs(items["a2"]);
-        (items["a2"].GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
-        (items["a1"].GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+        (HeaderCell(surface, items["a2"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        (HeaderCell(surface, items["a1"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
     }
+
+    private static TerminalStyle HeaderCell(ComponentSurface surface, TreeViewItem item) =>
+        surface.Cell(new Point(item.Bounds.X + (2 * item.Depth) + 2, item.Bounds.Y)).Style;
 
     /// <summary>Verifies a disabled row stays rendered but is skipped by keyboard navigation and
     /// ignores pointer selection and invocation.</summary>
@@ -143,12 +149,15 @@ public sealed class TreeViewInteractionTests
         await surface.Keyboard.PressAsync(Code.Down);
         await surface.Keyboard.PressAsync(Code.Down);
 
-        // Assert the disabled row was skipped and still rendered
+        // Assert the disabled row was skipped - never current, never selected - and still rendered
         tree.SelectedItem.ShouldBeSameAs(items["a2"]);
         var bounds = items["a1"].Bounds;
         bounds.Height.ShouldBe(1);
         surface.Cell(new Point(bounds.X + 4, bounds.Y)).Text.ShouldBe("a");
         surface.Cell(new Point(bounds.X + 5, bounds.Y)).Text.ShouldBe("1");
+        (HeaderCell(surface, items["a1"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
+        (HeaderCell(surface, items["a2"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        surface.ShouldHaveState(items["a1"], VisualState.Disabled);
 
         // Act pointer
         await surface.Pointer.ClickAsync(items["a1"], new Point(4, 0));
@@ -381,6 +390,187 @@ public sealed class TreeViewInteractionTests
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
         Headers(tree).ShouldBe(["A"]);
         invoked.ShouldBe(["A"]);
+    }
+
+    /// <summary>Verifies an arrow carrying an application-command modifier is left unhandled on a
+    /// mounted tree: current, selection, expansion, and the rendered rows stay unchanged.</summary>
+    /// <param name="modifiers">The modifier held with the arrow.</param>
+    [Theory]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Super)]
+    public async Task Keyboard_WhenArrowCarriesCommandModifier_LeavesTreeUnchangedAsync(Modifiers modifiers)
+    {
+        // Arrange
+        var (tree, items) = CreateTree(TreeSelectionMode.Single);
+        var changes = 0;
+        tree.SelectionChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 8),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        tree.SelectedItem.ShouldBeSameAs(items["A"]);
+        changes = 0;
+        var before = string.Concat(Enumerable.Range(0, 8).Select(y => surface.Cell(new Point(4, y)).Text));
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down, modifiers);
+        await surface.Keyboard.PressAsync(Code.Left, modifiers);
+        await surface.Keyboard.PressAsync(Code.Right, modifiers);
+        await surface.Keyboard.PressAsync(Code.End, modifiers);
+
+        // Assert
+        tree.SelectedItem.ShouldBeSameAs(items["A"]);
+        items["A"].IsExpanded.ShouldBeTrue();
+        changes.ShouldBe(0);
+        (HeaderCell(surface, items["A"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        string.Concat(Enumerable.Range(0, 8).Select(y => surface.Cell(new Point(4, y)).Text)).ShouldBe(before);
+    }
+
+    /// <summary>Verifies held-key repeats of Down keep moving current and selection one row per
+    /// repeat, exactly like initial presses, and a repeat past the last row saturates.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDownRepeats_ContinuesNavigationPerRepeatAsync()
+    {
+        // Arrange
+        var (tree, items) = CreateTree(TreeSelectionMode.Single);
+        var selected = new List<string>();
+        tree.SelectionChanged += (_, _) => selected.Add(tree.SelectedItem?.Header ?? string.Empty);
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 8),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+        await surface.Keyboard.RepeatAsync(Code.Down);
+
+        // Assert
+        tree.SelectedItem.ShouldBeSameAs(items["a2"]);
+        selected.ShouldBe(["A", "a1", "a2"]);
+        (HeaderCell(surface, items["a2"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+
+        // Act repeats through the end of the visible rows
+        for (var repeat = 0; repeat < 6; repeat++)
+        {
+            await surface.Keyboard.RepeatAsync(Code.Down);
+        }
+
+        // Assert saturation on the last visible row
+        tree.SelectedItem.ShouldBeSameAs(items["c1x"]);
+        selected.Count.ShouldBe(7);
+    }
+
+    /// <summary>Verifies Left on a leaf moves current and selection to its parent on a mounted
+    /// surface, a second Left collapses that parent so the leaf's row disappears, and Right
+    /// re-expands it.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLeftIsPressedOnALeaf_MovesToTheParentThenCollapsesItAsync()
+    {
+        // Arrange
+        var (tree, items) = CreateTree(TreeSelectionMode.Single);
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(20, 8),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(items["a2"], new Point(6, 0));
+        tree.SelectedItem.ShouldBeSameAs(items["a2"]);
+        var leafRow = items["a2"].Bounds.Y;
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert the parent is current and selected while still expanded
+        tree.SelectedItem.ShouldBeSameAs(items["A"]);
+        items["A"].IsExpanded.ShouldBeTrue();
+        (HeaderCell(surface, items["A"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        (HeaderCell(surface, items["a2"]).Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
+        surface.Cell(new Point(4, leafRow)).Text.ShouldBe("a");
+
+        // Act Left again collapses the parent
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        items["A"].IsExpanded.ShouldBeFalse();
+        tree.SelectedItem.ShouldBeSameAs(items["A"]);
+        items["a2"].Parent.ShouldBeNull();
+        surface.Cell(new Point(2, items["A"].Bounds.Y + 1)).Text.ShouldBe("B");
+
+        // Act Right re-expands and a further Right enters the first child
+        await surface.Keyboard.PressAsync(Code.Right);
+        items["A"].IsExpanded.ShouldBeTrue();
+        tree.SelectedItem.ShouldBeSameAs(items["A"]);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        tree.SelectedItem.ShouldBeSameAs(items["a1"]);
+        surface.Cell(new Point(4, items["A"].Bounds.Y + 1)).Text.ShouldBe("a");
+    }
+
+    /// <summary>Verifies collapsing a row whose child request failed hides its status row, and
+    /// re-expanding it shows the failed status again without issuing a new request until the
+    /// user retries with Enter, which then commits the children.</summary>
+    [Fact]
+    public async Task Keyboard_WhenFailedRowIsCollapsedAndReExpanded_KeepsFailureUntilRetryAsync()
+    {
+        // Arrange
+        var source = new FakeTreeViewChildSource();
+        source.FailNext(null, new InvalidOperationException("boom"));
+        var root = new TreeViewItem("Root") { ChildSource = source };
+        var tree = new TreeView
+        {
+            Width = Length.Cells(45),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Items = { root }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(45, 3),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, root, () => root.ChildState == TreeViewChildState.LoadFailed);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        tree.SelectedItem.ShouldBeSameAs(root);
+        surface.Cell(new Point(2, 1)).Text.ShouldBe("✗");
+
+        // Act collapse
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert the status row leaves the surface and the failure is retained
+        root.IsExpanded.ShouldBeFalse();
+        root.ChildState.ShouldBe(TreeViewChildState.LoadFailed);
+        surface.Cell(new Point(2, 1)).Text.ShouldBe(" ");
+        OwnedTree.Find<TreeViewStatusRow>(tree).ShouldBeNull();
+
+        // Act re-expand
+        source.AddChildren(null, new TreeViewChildDescription("a", "A") { Presence = TreeViewChildPresence.Leaf });
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert the retained failure shows again without a silent retry
+        root.IsExpanded.ShouldBeTrue();
+        root.ChildState.ShouldBe(TreeViewChildState.LoadFailed);
+        root.Children.Count.ShouldBe(0);
+        surface.Cell(new Point(2, 1)).Text.ShouldBe("✗");
+
+        // Act retry
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await DialogWait.UntilAsync(surface, root, () => root.ChildState == TreeViewChildState.Loaded);
+
+        // Assert
+        root.Children.Count.ShouldBe(1);
+        surface.ShouldRender("""
+                             ▼ Root
+                                 A
+
+                             """);
     }
 
     private static (TreeView Tree, Dictionary<string, TreeViewItem> Items) CreateTree(TreeSelectionMode mode)
