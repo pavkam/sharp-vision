@@ -301,7 +301,12 @@ public sealed class CurrencyInput: InputBase
         var maximumText = FormatValue(Maximum);
         var widest = minimumText.Length >= maximumText.Length ? minimumText : maximumText;
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        return new Size(MeasureCells(widest) + affixes.StartCells + affixes.EndCells, 1);
+
+        // Reserve one cell beyond the widest formatted bound for the end-of-buffer caret, for the
+        // same reason NumberInput does: the caret only paints inside the value box, so an
+        // auto-sized field whose composed value fills its widest bound would otherwise hide the
+        // cursor whenever the caret rests past the last digit.
+        return new Size(MeasureCells(widest) + 1 + affixes.StartCells + affixes.EndCells, 1);
     }
 
     #endregion

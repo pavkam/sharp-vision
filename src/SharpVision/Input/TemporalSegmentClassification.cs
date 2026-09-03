@@ -57,6 +57,68 @@ internal static class TemporalSegmentClassification
         return segments.Increment(1);
     }
 
+    /// <summary>Moves the AM/PM designator segment to the requested half of the day, if the current
+    /// layout has one and the control currently has a value. Unlike <see cref="ToggleAmPm"/>, an
+    /// "a" pressed while the value is already AM (or "p" while already PM) activates the designator
+    /// segment without changing the value, so a repeated keystroke never flips the half of the day
+    /// the user just asked for.</summary>
+    /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
+    /// <param name="hasValue">Reports whether the owning control currently has a non-null value.</param>
+    /// <param name="isPm">Reports whether the owning control's current value falls in the PM half of the day.</param>
+    /// <param name="segments">The owning control's own segment navigation engine.</param>
+    /// <param name="selectPm">True to select PM; false to select AM.</param>
+    /// <returns>True when the designator was selected: the segment became active and, when the
+    /// requested half differed, the value flipped. Moving the active-segment highlight is itself an
+    /// observable change, so a repeated letter reports true and the owning field consumes it rather
+    /// than leaking a key that visibly acted on the field to an ancestor. False when the layout has
+    /// no designator or the field has no value.</returns>
+    /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
+    public static bool SelectAmPm(
+        [InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
+        [InstantHandle] Func<bool> hasValue,
+        [InstantHandle] Func<bool> isPm,
+        SegmentFieldBehavior segments,
+        bool selectPm)
+    {
+        ArgumentNullException.ThrowIfNull(segmentsProvider);
+        ArgumentNullException.ThrowIfNull(hasValue);
+        ArgumentNullException.ThrowIfNull(isPm);
+        ArgumentNullException.ThrowIfNull(segments);
+
+        if (!hasValue())
+        {
+            return false;
+        }
+
+        var index = FindEditableIndex(segmentsProvider, TemporalSegmentKind.AmPmDesignator);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        segments.ActivateSegment(index);
+
+        if (isPm() != selectPm)
+        {
+            _ = segments.Increment(1);
+        }
+
+        return true;
+    }
+
+    /// <summary>Classifies a typed character as the fixed "a"/"p" AM/PM selection shortcut,
+    /// independent of the owning control's localized designator text.</summary>
+    /// <param name="character">The typed character.</param>
+    /// <param name="selectPm">Set to true for "p"/"P" and false for "a"/"A".</param>
+    /// <returns>True when the character is an AM/PM selection shortcut.</returns>
+    [Pure]
+    public static bool TryGetAmPmSelection(Rune character, out bool selectPm)
+    {
+        selectPm = character.Value is 'p' or 'P';
+        return selectPm || character.Value is 'a' or 'A';
+    }
+
     /// <summary>Finds the zero-based editable-segment index of the first segment of a given kind
     /// in the current layout.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
@@ -98,6 +160,28 @@ internal static class TemporalSegmentClassification
     [Pure]
     public static bool HasAmPmDesignator([InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider) =>
         FindEditableIndex(segmentsProvider, TemporalSegmentKind.AmPmDesignator) >= 0;
+
+    /// <summary>Resolves the text an editable AM/PM designator segment renders, substituting the
+    /// invariant designator when the culture formats the half of the day as nothing at all.</summary>
+    /// <param name="formatted">The designator text the culture produced for the value.</param>
+    /// <param name="isPm">Whether the value falls in the PM half of the day.</param>
+    /// <returns><paramref name="formatted"/> when it has any text; otherwise the invariant designator.</returns>
+    /// <remarks>Some cultures declare an empty AM/PM designator. The segment stays editable (Up
+    /// flips the half of the day, "a"/"p" jump to it), so rendering it as an empty run would leave
+    /// the active segment as an invisible zero-width highlight with nothing to show which half the
+    /// field is in. The invariant "AM"/"PM" keeps the editable state visible and hit-testable.</remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="formatted"/> is null.</exception>
+    [Pure]
+    public static string ResolveDesignatorText(string formatted, bool isPm)
+    {
+        ArgumentNullException.ThrowIfNull(formatted);
+
+        return formatted.Length > 0
+            ? formatted
+            : isPm
+                ? CultureInfo.InvariantCulture.DateTimeFormat.PMDesignator
+                : CultureInfo.InvariantCulture.DateTimeFormat.AMDesignator;
+    }
 
     /// <summary>Reports whether a typed character is an ASCII decimal digit.</summary>
     [Pure]

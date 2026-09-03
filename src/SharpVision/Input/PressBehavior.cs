@@ -60,6 +60,17 @@ internal sealed class PressBehavior: IControlLifecycleParticipant
     public void Handle(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
+
+        // Terminal focus loss is a documented cancel boundary for every hold. The pointer side is
+        // already torn down through capture loss, but a Space hold has no capture to lose, so the
+        // routed focus-loss report must clear it here or the button stays painted pressed and the
+        // eventual release activates a press the user abandoned in another window.
+        if (eventArgs is TerminalFocusEventArgs { Focus.Gained: false })
+        {
+            Cancel(releaseCapture: true);
+            return;
+        }
+
         if (eventArgs.IsHandled || !_isAvailable())
         {
             return;

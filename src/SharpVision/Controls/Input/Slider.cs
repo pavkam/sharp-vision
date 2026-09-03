@@ -14,8 +14,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     private int _value;
     private readonly CallbackTransitionStream _valueTransitions = new();
     private readonly DragBehavior _drag;
-    private Rect _dragBounds;
-    private int _dragLength;
     private readonly StyleSlot<SliderStyle> _style;
 
     /// <summary>Initializes a horizontal focusable range from zero through one hundred.</summary>
@@ -196,29 +194,14 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        ResetDragState();
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        ResetDragState();
 
         if (reason == ReleaseReason.Disposed)
         {
             ValueChanged = null;
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        ResetDragState();
     }
 
     /// <inheritdoc/>
@@ -350,11 +333,22 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
                 _drag.Cancel(releaseCapture: true);
-                ResetDragState();
             }
             else if (pointer.Cells is { } dragCells)
             {
-                _ = Commit(ValueAt(dragCells, _dragBounds, _dragLength));
+                // Map against the live rail, never a snapshot taken at press time: a resize while
+                // the drag is in flight would otherwise convert the pointer's position through a
+                // stale rail length and leave the thumb far from the pointer until the drag ends.
+                // A rail without travel mid-drag - empty, or a single cell whose only mappable
+                // value is Minimum - commits nothing rather than collapsing the live value on the
+                // first held move; the ScrollBar thumb drag applies the same no-travel rule.
+                var dragBounds = ContentBounds;
+                var dragLength = AxisLength(dragBounds);
+
+                if (HasTravel(dragLength))
+                {
+                    _ = Commit(ValueAt(dragCells, dragBounds, dragLength));
+                }
             }
 
             return;
@@ -384,22 +378,25 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
-        _ = Commit(ValueAt(cells, bounds, length));
-        eventArgs.IsHandled = true;
-
-        if (_drag.TryStart(cells))
+        // A press on a rail without travel still focuses, handles, and captures like any other,
+        // but names no value: a one-cell rail can only ever map Minimum, and collapsing the
+        // current value there would be a change the pointer never asked for.
+        if (HasTravel(length))
         {
-            _dragBounds = bounds;
-            _dragLength = length;
+            _ = Commit(ValueAt(cells, bounds, length));
         }
+
+        eventArgs.IsHandled = true;
+        _ = _drag.TryStart(cells);
     }
+
+    /// <summary>Reports whether a rail of <paramref name="length"/> cells can map more than one
+    /// value, so that a pointer offset along it can name a value other than Minimum.</summary>
+    private bool HasTravel(int length) => length > 1 && Minimum != Maximum;
 
     private int ValueAt(Point point, Rect bounds, int length)
     {
-        if (length <= 1 || Minimum == Maximum)
-        {
-            return Minimum;
-        }
+        Debug.Assert(HasTravel(length), "Callers skip the commit on a rail without travel.");
 
         var physical = Orientation == Orientation.Horizontal
             ? point.X - bounds.X
@@ -410,12 +407,6 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         var positions = length - 1L;
         var offset = RangeValidation.RoundHalfUp(logical * span, positions);
         return Math.Clamp(Minimum + offset, Minimum, Maximum);
-    }
-
-    private void ResetDragState()
-    {
-        _dragBounds = default;
-        _dragLength = 0;
     }
 
     private int PositionFor(int value, int length)

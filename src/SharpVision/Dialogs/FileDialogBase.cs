@@ -242,7 +242,23 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         set
         {
             ArgumentNullException.ThrowIfNull(value);
-            _ = SetProperty(ref field, value, InvalidationImpact.None);
+            var previous = field;
+
+            if (!SetProperty(ref field, value, InvalidationImpact.None))
+            {
+                return;
+            }
+
+            // The construction-time status is seeded from this property's default before a
+            // derived dialog gets a chance to apply an authored value from its options, and no
+            // later path ever re-reads ReadyText. A dialog that still shows the previous ready
+            // text (nothing has loaded yet) therefore has to be re-seeded here, or the authored
+            // text could never appear anywhere.
+            if (string.Equals(Status, previous, StringComparison.Ordinal))
+            {
+                SnapshotStatus = value;
+                SetStatus(value);
+            }
         }
     } = "Ready";
 
@@ -637,7 +653,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
         if (Dispatcher is not null)
         {
-            BeginLoad(CurrentDirectory);
+            BeginLoadOrReportFailure(CurrentDirectory);
         }
     }
 
@@ -657,7 +673,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
         if (Dispatcher is not null)
         {
-            BeginLoad(CurrentDirectory);
+            BeginLoadOrReportFailure(CurrentDirectory);
         }
     }
 
@@ -710,7 +726,29 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     protected override void OnAttached()
     {
         base.OnAttached();
-        BeginLoad(CurrentDirectory);
+        BeginLoadOrReportFailure(CurrentDirectory);
+    }
+
+    /// <summary>Starts a directory request, degrading a synchronous file-system rejection to a
+    /// recoverable status line.</summary>
+    /// <remarks>
+    /// <see cref="IFilePickerFileSystem.GetEntriesAsync"/> may throw synchronously for a missing,
+    /// malformed, or inaccessible directory. Navigate always reported that as status text, but
+    /// the hidden toggle, the filter picker, and attachment used to call the request bare, so the
+    /// same rejection escaped a routed input handler and force-stopped the application instead of
+    /// leaving the dialog open with an explanation.
+    /// </remarks>
+    /// <param name="directory">The canonical directory to request.</param>
+    private void BeginLoadOrReportFailure(string directory)
+    {
+        try
+        {
+            BeginLoad(directory);
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            SetStatus($"Cannot open directory: {exception.Message}");
+        }
     }
 
     /// <inheritdoc/>
@@ -932,7 +970,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
             return;
         }
 
-        IsLoading = false;
+        // The rejected request has already published IsLoading as true, so the reset must be
+        // published as well: a silent field write leaves every IsLoading observer - a binding or a
+        // busy indicator - stuck on "loading" after the status line has reported the failure. A
+        // dialog disposed by one of the notifications reached above cannot publish anything more.
+        if (IsDisposed)
+        {
+            IsLoading = false;
+            return;
+        }
+
+        SetLoading(false);
     }
 
     private void CancelLoad() => _loadOperation.Cancel();

@@ -144,8 +144,11 @@ internal sealed class PopupDropDownCoordinator
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public void SetOpen(bool value)
     {
-        VerifyAvailable();
+        // The owner's own guard runs first so a disposed owner reports the documented
+        // ObjectDisposedException rather than the detached-coordinator InvalidOperationException
+        // that disposal also leaves behind.
         _owner.VerifyMutable();
+        VerifyAvailable();
         TransitionVersion++;
 
         if (_popup.IsOpen != value)
@@ -169,8 +172,8 @@ internal sealed class PopupDropDownCoordinator
     /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
     public void AcceptAndClose()
     {
-        VerifyAvailable();
         _owner.VerifyMutable();
+        VerifyAvailable();
 
         if (!_popup.IsOpen || !_hasActiveSession)
         {
@@ -188,6 +191,29 @@ internal sealed class PopupDropDownCoordinator
         }
 
         failure?.Throw();
+    }
+
+    /// <summary>Retires the active session and begins a fresh one over the still-open popup.</summary>
+    /// <remarks>An acceptance callback that commits a newer selection than the one being accepted
+    /// owns that decision. Restarting here changes the session generation, so the accepted
+    /// session's pending close no longer applies, while the popup, its modal scope, and focus
+    /// stay exactly where they are: nothing closes, so nothing is published as closed or reopened.
+    /// The new session snapshots the committed state as of now, so a later cancel restores it.</remarks>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher or this coordinator is detached.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    /// <exception cref="Exception">The owner's session-begin callback fails.</exception>
+    public void RestartSession()
+    {
+        _owner.VerifyMutable();
+        VerifyAvailable();
+
+        if (!_popup.IsOpen || !_hasActiveSession)
+        {
+            return;
+        }
+
+        EndSession(restoreOpeningState: false);
+        BeginSession();
     }
 
     /// <summary>Re-enters the modal scope for an already-open popup once the owner becomes attached.</summary>

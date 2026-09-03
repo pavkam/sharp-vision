@@ -34,6 +34,8 @@ classDiagram
 | ------------------- | --------------------------------------------------------------------------- |
 | Left / Right        | Moves through a horizontal menu, wrapping and skipping unavailable entries. |
 | Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.   |
+| Right (vertical)    | Opens the selected item's submenu; otherwise bubbles to the owning menu.    |
+| Left (vertical)     | Closes a submenu owned by a vertical menu; otherwise bubbles to the owner.  |
 | Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.          |
 | Home / End          | Selects the first or last available entry without wrapping.                 |
 | Enter               | Activates the selected item.                                                |
@@ -126,6 +128,16 @@ A horizontal menu opens item submenus below the anchor. A vertical menu opens
 nested submenus to the right. Popup edge fallback may flip those preferred
 directions to keep the framed surface inside the terminal. Closing a submenu
 restores focus to its owning menu before hiding the submenu content.
+
+Inside a vertical menu, Right opens the selected item's submenu and Left closes
+the submenu the user is in when its owning menu is also vertical, stepping back
+one level. Either key is left unhandled when it has nothing to do, so from a
+menu bar's drop-down Left and Right still bubble to the bar and switch the
+top-level sibling.
+
+The initial `SelectedIndex` of a freshly built menu is the first item that is
+enabled and visible when it is added; a disabled or hidden first item leaves the
+cursor at `-1` until navigation reaches an available one.
 
 Vertical menu width comes from independent label and shortcut measurements: the
 widest label plus a two-cell gutter plus the widest shortcut, clamped by the

@@ -12,14 +12,14 @@ internal sealed class SegmentFieldKeyOptions
     /// <param name="clearValue">Attempts to clear the whole nullable value.</param>
     /// <param name="handleCharacterCommand">Optionally handles a non-digit character command such as AM/PM selection.</param>
     /// <param name="handlePopupCommand">Optionally opens or otherwise handles a popup command before inline editing.</param>
-    /// <param name="handleRecognizedWithoutChange">Whether an admitted inline command is handled even when it cannot change the value or active segment. Default is true so field-boundary navigation and already-clamped edits do not leak to ancestor shortcuts.</param>
+    /// <param name="handleRecognizedWithoutChange">Whether an admitted inline command is handled even when it cannot change the value or active segment. Every shipped temporal field (<see cref="Controls.Input.DateInput"/>, <see cref="Controls.Input.TimeInput"/>, <see cref="Controls.Input.DateTimeInput"/>) opts in: a step at a bound, a traversal at the first or last segment, or a clearing key over an already-empty value is still the field's own key, so it never scrolls or moves focus in an enclosing container. The default exists for a composite that deliberately wants no-op edits to reach its ancestors.</param>
     /// <exception cref="ArgumentNullException"><paramref name="resolveStepDelta"/> or <paramref name="clearValue"/> is null.</exception>
     public SegmentFieldKeyOptions(
         Func<KeyEventArgs, int?> resolveStepDelta,
         Func<bool> clearValue,
         Func<Rune, bool>? handleCharacterCommand = null,
         Func<KeyEventArgs, bool?>? handlePopupCommand = null,
-        bool handleRecognizedWithoutChange = true)
+        bool handleRecognizedWithoutChange = false)
     {
         ArgumentNullException.ThrowIfNull(resolveStepDelta);
         ArgumentNullException.ThrowIfNull(clearValue);

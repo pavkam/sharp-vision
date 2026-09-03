@@ -38,6 +38,26 @@ public sealed class Tooltip: Popup
         // taken out in OnContentAvailable so a closed tooltip does not keep reacting to a
         // surface it is no longer presenting on.
         Closed += OnSurfaceClosed;
+
+        // A Popup whose anchor (or an ancestor of it) becomes hidden deliberately stays logically
+        // open so it can re-present when that ancestor recovers - right for a drop-down the user
+        // explicitly opened, wrong for a passive hint: a tooltip that reappeared on its own once
+        // the anchor was shown again would have no hover or focus behind it. Effective visibility
+        // is published to every descendant of the changed subtree, so the tooltip can simply hide
+        // itself and let a fresh hover or focus start over. A disabled anchor is different: the
+        // presentation stays and merely paints disabled, and the pointer path retiring from the
+        // disabled anchor already runs the ordinary exit-then-hide-delay flow.
+        PropertyChanged += OnTooltipPropertyChanged;
+    }
+
+    private void OnTooltipPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName == nameof(EffectiveIsVisible) && !EffectiveIsVisible)
+        {
+            Hide();
+        }
     }
 
     /// <summary>Gets the passive, non-interactive hint role, distinct from Popup's framed
@@ -263,9 +283,10 @@ public sealed class Tooltip: Popup
             return false;
         }
 
+        // Placement itself was already resolved by the base opening pass (Anchor is the attached
+        // anchor); only the relayout subscription is tooltip-specific.
         if (_attachedAnchor is not null)
         {
-            LayoutPopup();
             SubscribeSurfaceRelayout();
         }
 
@@ -395,31 +416,10 @@ public sealed class Tooltip: Popup
         }
     }
 
-    private void LayoutPopup()
-    {
-        var rootBounds = RootBounds(default);
-
-        if (rootBounds.Width == 0 || rootBounds.Height == 0)
-        {
-            return;
-        }
-
-        // Forced rather than left to Measure/Arrange's own dirty-phase check: an anchor reflow
-        // (OnAnchorBoundsChanged) moves the point placement was resolved against without ever
-        // changing rootBounds itself, so the constraint/slot passed below is byte-for-byte the
-        // same one already recorded from the tooltip's last layout pass. Measure and Arrange both
-        // short-circuit on an unchanged constraint/slot when nothing is already marked dirty, and
-        // this tooltip's own subtree has nothing dirty - only its foreign anchor moved - so
-        // without this, the calls below would silently no-op and leave placement pinned to
-        // wherever the anchor used to be. Self-scoped rather than a plain Invalidate: only this
-        // control's own short-circuit needs bypassing, and the two calls immediately below are
-        // that synchronous follow-up InvalidateSelf's own contract requires - a full Invalidate
-        // would additionally walk the dirty phase up through every ancestor to the root, forcing
-        // an unrelated full-tree render pass to fix what is really a two-cell local reposition.
-        InvalidateSelf(Invalidation.Measure);
-        Measure(new Constraint(rootBounds.Width, rootBounds.Height));
-        Arrange(rootBounds, widthResolved: true, heightResolved: true);
-    }
+    // A Tooltip lives in the anchor's Popup-layer owned slot, which the cascading layout walk
+    // never visits, so the shared root-relative pass is the only place its placement is ever
+    // resolved (see the constructor remarks).
+    private void LayoutPopup() => LayoutAgainstRoot();
 
     /// <summary>Starts reacting to the presented surface re-laying out while this tooltip is
     /// open, so a resize or an anchor reflow that happens after opening re-resolves placement
@@ -610,6 +610,11 @@ public sealed class Tooltip: Popup
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
+
+        if (reason == ReleaseReason.Disposed)
+        {
+            PropertyChanged -= OnTooltipPropertyChanged;
+        }
 
         if (reason == ReleaseReason.Disposed && _attachedAnchor is { } anchor)
         {

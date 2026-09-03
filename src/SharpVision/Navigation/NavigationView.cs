@@ -482,14 +482,16 @@ public sealed class NavigationView: CompositeControlBase
         // This notification publishes from inside DisposeCore, which removes the item from
         // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
         // set at this point.
-        if (_navigator.Current is { IsDisposing: true } or { IsDisposed: true })
+        var currentRemoved = _navigator.Current is { IsDisposing: true } or { IsDisposed: true };
+
+        if (currentRemoved)
         {
             _ = SetCurrent(null);
         }
 
         if (SelectedItem is { IsDisposing: true } or { IsDisposed: true })
         {
-            Select(FindAvailableAtSemanticIndex(_selectedIndex));
+            RepairSelectionAndCurrent(FindAvailableAtSemanticIndex(_selectedIndex), currentRemoved);
         }
         else if (SelectedItem is { } selected)
         {
@@ -551,8 +553,22 @@ public sealed class NavigationView: CompositeControlBase
 
         if (repair.IsSelectedRemoved)
         {
-            Select(FindAvailableAtSemanticIndex(repair.SelectedIndex));
+            RepairSelectionAndCurrent(FindAvailableAtSemanticIndex(repair.SelectedIndex), repair.IsCurrentRemoved);
         }
+    }
+
+    // A repaired selection that was also the keyboard-current entry becomes current itself, exactly
+    // as the hidden-selection repair already does. Leaving current null here made the next arrow
+    // key start from a section endpoint - Down jumped from the repaired selection to the very
+    // first entry - instead of stepping relative to the entry the user can see is selected.
+    private void RepairSelectionAndCurrent(NavigationViewItem? replacement, bool currentRemoved)
+    {
+        if (currentRemoved && replacement is not null)
+        {
+            _ = SetCurrent(replacement);
+        }
+
+        Select(replacement);
     }
 
     private void ConfigureEntry(

@@ -377,9 +377,20 @@ internal static class BarChartRenderer
         }
 
         var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
+        var width = context.Chart.Control.MeasureCells(value.AsSpan());
+
+        // A numeric label that is merely clipped at the plot edge reads as a different number
+        // ("10" cut to "1"), so a label wider than the plot is dropped outright and a narrower one
+        // slides left just far enough to stay whole - the same rule the horizontal bars apply.
+        if (width == 0 || width > plot.Width)
+        {
+            return;
+        }
+
+        var x = Math.Clamp(origin.X, plot.X, plot.Right - width);
         _ = canvas.Clip(plot).Draw(
             value.AsSpan(),
-            origin,
+            new Point(x, origin.Y),
             ChartRenderer.ResolveLabelStyle(context),
             background: BackgroundMode.Transparent);
     }

@@ -21,6 +21,9 @@ internal sealed class TextSelectionGesture
     private ControlBase? _originalSource;
     private Point _pressCells;
     private ulong _semanticFingerprint;
+    private Point _sequenceCells;
+    private ulong _sequenceFingerprint;
+    private int _sequenceGlyph;
 
     /// <summary>Initializes one control-wide pointer-selection gesture.</summary>
     /// <param name="owner">The non-null selection owner.</param>
@@ -72,8 +75,31 @@ internal sealed class TextSelectionGesture
         {
             _pressCells = pressedCells;
             _originalSource = eventArgs.OriginalSource;
-            _anchor = _owner.HitTestTextSelection(pressedCells);
             _clickCount = _owner.GetTextSelectionClickCount(eventArgs.OriginalSource, eventArgs.ClickCount);
+
+            // A word or line command addresses the glyph under the pointer as a whole, so a
+            // multi-click anchors at that glyph's start, whereas the single-click caret placement
+            // resolves a wide glyph's cells to the nearer boundary. On the trailing cell of a
+            // glyph at the viewport's edge that boundary is out of view, so the first click's
+            // caret reveal scrolls the neighbour in under the pointer before the next click of
+            // the sequence arrives. The glyph the sequence started on is therefore resolved on
+            // its first press, before that collapse, and reused by every continuing click on the
+            // same cell while the text is unchanged; the pointer manager already requires the
+            // same cell and target for the count to continue at all.
+            if (_clickCount < 2)
+            {
+                _sequenceCells = pressedCells;
+                _sequenceFingerprint = _owner.TextSelectionFingerprint;
+                _sequenceGlyph = _owner.HitTestTextSelectionGlyph(pressedCells);
+                _anchor = _owner.HitTestTextSelection(pressedCells);
+            }
+            else
+            {
+                _anchor = pressedCells == _sequenceCells && _owner.TextSelectionFingerprint == _sequenceFingerprint
+                    ? _sequenceGlyph
+                    : _owner.HitTestTextSelectionGlyph(pressedCells);
+            }
+
             _associatedSource = _owner.GetTextSelectionSource(eventArgs.OriginalSource, pressedCells);
             // A new gesture must not display or expose the previous range while it waits for the
             // drag threshold or release. Collapsing here preserves the child's ordinary press path.
@@ -134,9 +160,16 @@ internal sealed class TextSelectionGesture
         {
             if (pointer.Cells is { } releasedCells)
             {
-                _owner.CommitTextSelectionClick(
-                    _owner.HitTestTextSelection(releasedCells),
-                    _clickCount);
+                // The press already resolved a multi-click's glyph, so a release on the press cell
+                // reuses that endpoint rather than re-hit-testing content a caret reveal may have
+                // scrolled since; a release elsewhere, or after the text changed under the
+                // gesture, resolves the glyph under the release afresh.
+                var caret = _clickCount >= 2
+                    ? releasedCells == _pressCells && _owner.TextSelectionFingerprint == _semanticFingerprint
+                        ? _anchor
+                        : _owner.HitTestTextSelectionGlyph(releasedCells)
+                    : _owner.HitTestTextSelection(releasedCells);
+                _owner.CommitTextSelectionClick(caret, _clickCount);
                 _owner.CompleteTextSelectionClick(
                     _originalSource,
                     _pressCells,

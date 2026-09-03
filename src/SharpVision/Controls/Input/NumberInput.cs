@@ -273,7 +273,12 @@ public sealed class NumberInput: InputBase
         var maximumText = FormatValue(Maximum);
         var widest = minimumText.Length >= maximumText.Length ? minimumText : maximumText;
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        return new Size(MeasureCells(widest) + affixes.StartCells + affixes.EndCells, 1);
+
+        // Reserve one cell beyond the widest formatted bound for the end-of-buffer caret. The
+        // caret only paints inside the value box, so without the reservation an auto-sized field
+        // whose committed value is as wide as its widest bound hides the cursor the moment the
+        // caret rests past the last digit - exactly where every focus gain and commit places it.
+        return new Size(MeasureCells(widest) + 1 + affixes.StartCells + affixes.EndCells, 1);
     }
 
     #endregion

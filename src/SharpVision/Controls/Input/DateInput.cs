@@ -360,6 +360,11 @@ public sealed class DateInput: InputBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>While the popup is closed, every recognized segment key is consumed even when it
+    /// cannot change anything: Up or Down at a bound, Left or Right at the first or last segment,
+    /// Home or End already there, and Delete or Backspace over an empty value. The key is the
+    /// field's own, so a bounded field inside a scrolling or directionally navigating container
+    /// never scrolls or moves focus in that container.</remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         EnsureSeeded();
@@ -445,16 +450,11 @@ public sealed class DateInput: InputBase
 
     #region Segment editing
 
-    private bool ClearValueCommand()
-    {
-        if (!AllowNull)
-        {
-            return false;
-        }
-
-        Value = null;
-        return true;
-    }
+    // Reports whether the clear actually changed the value, like the sibling fields do: Delete on
+    // an already-empty field is then consumed only through the recognized-without-change policy
+    // (which needs an editable segment to recognize it), never by claiming a transition that did
+    // not happen.
+    private bool ClearValueCommand() => AllowNull && _state.SetValue(null);
 
     private bool ApplySegmentIncrement(SegmentDescriptor segment, int delta)
     {

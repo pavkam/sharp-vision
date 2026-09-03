@@ -326,8 +326,15 @@ internal sealed class SegmentFieldBehavior
                 changed = recognized && MoveToEdge(first: false);
                 break;
             case Code.Delete when scalarCommandEligible:
-                recognized = HasEditableSegments;
-                changed = recognized && options.ClearValue();
+                // Delete is a whole-value clearing command, not a segment edit: it stays
+                // available under a layout with no editable segments at all (a literal-only
+                // Format such as "'choose date'"), where it must still clear the value. It is
+                // recognized - consumed even without an observable change, subject to the
+                // owner's policy - whenever editable segments exist, matching Backspace and
+                // the navigation arms, so an already-empty field does not leak the key to
+                // ancestors.
+                changed = options.ClearValue();
+                recognized = changed || HasEditableSegments;
                 break;
             case Code.Backspace when scalarCommandEligible:
                 recognized = HasEditableSegments;
@@ -342,7 +349,10 @@ internal sealed class SegmentFieldBehavior
                 }
                 else if (options.HandleCharacterCommand is not null)
                 {
-                    recognized = true;
+                    // A character command reports whether it applied at all: an AM/PM letter with
+                    // a designator and a value moves the highlight even when the half of the day
+                    // is already right, so it is handled exactly when it applied. Under a 24-hour
+                    // layout or over a null value the letter is not this field's key and bubbles.
                     changed = options.HandleCharacterCommand(character);
                 }
 

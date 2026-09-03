@@ -365,12 +365,20 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     }
 
     /// <inheritdoc/>
-    protected override int HitTestTextSelectionCore(Point cells)
+    protected override int HitTestTextSelectionCore(Point cells) =>
+        GetTextSelectionMap().HitTest(ToEditorProjectionCell(cells));
+
+    /// <inheritdoc/>
+    protected override int HitTestTextSelectionGlyphCore(Point cells) =>
+        GetTextSelectionMap().HitTestGlyph(ToEditorProjectionCell(cells));
+
+    /// <summary>Translates one screen cell into the unscrolled editor projection both hit tests share.</summary>
+    private Point ToEditorProjectionCell(Point cells)
     {
         var editor = _editorBounds == default ? Bounds : _editorBounds;
         var x = Math.Max(0, cells.X - editor.X + (WordWrap ? 0 : HorizontalOffset));
         var y = Math.Max(0, cells.Y - editor.Y + VerticalOffset);
-        return GetTextSelectionMap().HitTest(new Point(x, y));
+        return new Point(x, y);
     }
 
     /// <inheritdoc/>
@@ -965,7 +973,14 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
             // axis legitimately sitting at 0 post-arrange (for example a scrollbar
             // consuming a viewport's only row) is not the same as never-arranged,
             // so it still gets a chase pass on whichever axis remains usable.
-            if (_editorBounds != default)
+            //
+            // A primary pointer press is the one gain that must NOT chase: the press
+            // focuses this editor before the press itself is routed, so chasing the
+            // stale caret here would scroll the viewport out from under the cell the
+            // user is pressing, and the press hit test that follows would then land on
+            // whatever scrolled underneath it. The press's own selection commit reveals
+            // the caret it places, which by construction is already in view.
+            if (_editorBounds != default && FocusGainReason != FocusReason.Pointer)
             {
                 EnsureCaretVisible(_editorBounds);
             }

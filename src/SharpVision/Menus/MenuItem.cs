@@ -891,6 +891,17 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             : PopupPlacement.Below;
     }
 
+    /// <summary>Re-derives the retained submenu popup's placement from the owning menu's current
+    /// orientation. Placement is otherwise resolved only when the submenu opens, so an orientation
+    /// change while it is open would leave the surface on the previous orientation's edge.</summary>
+    internal void RefreshSubmenuPlacement()
+    {
+        if (_submenuPopup is not null)
+        {
+            ConfigureSubmenuPlacement();
+        }
+    }
+
     private void OnSubmenuClosing(object? sender, EventArgs eventArgs)
     {
         _ = sender;

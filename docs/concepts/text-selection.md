@@ -64,7 +64,9 @@ ordinary click path remains intact until the shared drag threshold is crossed.
 - Up/Down preserves a visual column. When several sparse visual rows share one
   semantic separator, navigation continues through them until the caret advances
   in the requested semantic direction or reaches the projection boundary.
-- Home/End moves to a visual-row boundary.
+- Home/End moves to a visual-row boundary in the default projection. An editor
+  with an authoritative projection can override this; `TextInput` targets
+  logical line boundaries, so under `WordWrap` Home and End cross wrapped rows.
 - Page Up/Page Down moves by the visible height minus `PageOverlap`, with a
   minimum of one row and the same directional guarantee across sparse rows.
 - Shift extends each navigation command from the established anchor.

@@ -588,6 +588,7 @@ public sealed class FocusManager: IDisposable
                     Focused = control;
                     RegisterKeyboardReveal(control, reason);
                     previous?.SetFocused(false);
+                    control?.CommitFocusGainReason(reason);
 
                     if (!IsDisposed)
                     {

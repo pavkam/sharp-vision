@@ -173,6 +173,12 @@ public sealed class CommandPalette: CompositeControlBase
         set
         {
             VerifyMutable();
+
+            if (ReferenceEquals(_list.ItemTemplate, value))
+            {
+                return;
+            }
+
             _list.ItemTemplate = value;
             NotifyPropertyChanged(nameof(ItemTemplate), InvalidationImpact.None);
         }
@@ -489,6 +495,35 @@ public sealed class CommandPalette: CompositeControlBase
     }
 
     /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        base.OnEvent(eventArgs);
+
+        // While results are open the session's own preview handler owns Escape. With nothing open
+        // and a query still resolving, nothing else would consume it, the open intent would
+        // survive, and the late completion would present results the user had already dismissed.
+        // Escape is documented to cancel: revoke the in-flight lease so its completion is discarded,
+        // clear the resolving state, and drop the open intent - the retained items and text stay.
+        if (eventArgs.IsHandled ||
+            IsOpen ||
+            !IsResolving ||
+            eventArgs is not KeyEventArgs { IsInitialKeyDown: true } key ||
+            key.Stroke.Code != Code.Escape ||
+            !key.Stroke.Modifiers.IsActivationEligible())
+        {
+            return;
+        }
+
+        _wantsOpen = false;
+        _resolutionGeneration++;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+        eventArgs.IsHandled = true;
+        failure?.Throw();
+    }
+
+    /// <inheritdoc/>
     protected override void OnAttached()
     {
         base.OnAttached();
@@ -798,7 +833,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        _popupCoordinator.SetOpen(_wantsOpen && Items.Count > 0);
+        SetResultsOpenState(_wantsOpen && Items.Count > 0);
 
         if (IsCurrentResolution(lease) &&
             _popupCoordinator.IsOpen &&
@@ -808,6 +843,45 @@ public sealed class CommandPalette: CompositeControlBase
         }
 
         _ = _resolutionOperation.TryComplete(lease);
+    }
+
+    /// <summary>Applies a results-driven open-state change: never enters a modal scope for an
+    /// unavailable owner, and never lets a close the user did not ask for pull focus out of the
+    /// editor.</summary>
+    private void SetResultsOpenState(bool open)
+    {
+        if (open)
+        {
+            if (!EffectiveIsEnabled || !EffectiveIsVisible)
+            {
+                // Mirrors the IsOpen setter. A completion can land while the palette is hidden or
+                // disabled (availability does not cancel the live request), and ModalityManager
+                // refuses a hidden or disabled modal root; letting that refusal escape here would
+                // surface as an unhandled dispatcher exception from the asynchronous completion.
+                // The committed items stay; only the open intent is dropped.
+                _wantsOpen = false;
+                return;
+            }
+
+            _popupCoordinator.SetOpen(true);
+            return;
+        }
+
+        var editorHadFocus = _input.IsFocused;
+        _popupCoordinator.SetOpen(false);
+
+        // Exiting the modal scope restores the focus that preceded Open(), which is right for
+        // Escape, activation, and light dismissal but wrong for a close the user did not request:
+        // a query that yields no results (or fails) must leave the editor focused so the next
+        // keystroke still edits the query instead of landing on whatever was focused before.
+        if (editorHadFocus &&
+            !IsDisposed &&
+            !_input.IsFocused &&
+            _input.EffectiveIsEnabled &&
+            _input.EffectiveIsVisible)
+        {
+            _ = _input.Focus();
+        }
     }
 
     /// <summary>Retains refreshed-result selection intent until an attached dispatcher can run it
@@ -928,7 +1002,7 @@ public sealed class CommandPalette: CompositeControlBase
             return;
         }
 
-        _popupCoordinator.SetOpen(false);
+        SetResultsOpenState(false);
 
         if (!IsCurrentResolution(lease))
         {

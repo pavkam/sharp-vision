@@ -42,6 +42,17 @@ internal sealed class FakeFilePickerFileSystem: IFilePickerFileSystem
         Enqueue(path, () => Task.FromException<IReadOnlyList<FilePickerEntry>>(exception));
     }
 
+    /// <summary>Rejects the next request for one directory synchronously: the request itself
+    /// throws instead of returning a faulted task, the shape a real file system produces for a
+    /// missing or inaccessible directory.</summary>
+    /// <param name="path">The non-null, non-blank directory path.</param>
+    /// <param name="exception">The non-null exception to throw.</param>
+    internal void ThrowNext(string path, Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        Enqueue(path, () => throw exception);
+    }
+
     /// <inheritdoc/>
     public bool FileExists(string path)
     {

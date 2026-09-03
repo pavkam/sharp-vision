@@ -95,6 +95,13 @@ Hyper, or Meta remain unhandled and do not mutate the value. Caps Lock and Num
 Lock are incidental. A recognized unmodified command is consumed even at a
 segment boundary or value bound where it produces no change.
 
+Every key in the table is consumed even when it cannot change anything: Up or
+Down at a bound, Left or Right at the first or last segment, Home or End when
+already there, Delete or Backspace over an empty value, and a repeated A or P
+that only moves the designator highlight. The key is the field's own, so a
+bounded field inside a scrolling or directionally navigating container never
+scrolls or moves focus in that container. Keys outside the table stay unhandled.
+
 ## Example
 
 ![The TimeInput control rendered in the live showcase](../../images/controls/time-input.png)

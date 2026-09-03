@@ -34,15 +34,45 @@ internal sealed class ListViewHost: Container
         }
     }
 
+    private int? _rowHeight;
+
     /// <summary>Gets or sets the fixed per-row cell height; null keeps eager sequential arrangement.</summary>
     public int? RowHeight
     {
-        get;
+        get => _rowHeight;
         set
         {
             Debug.Assert(value is null or > 0, "Row height is null or a positive cell count.");
-            _ = SetProperty(ref field, value, InvalidationImpact.Measure);
+            _ = SetProperty(ref _rowHeight, value, InvalidationImpact.Measure);
         }
+    }
+
+    /// <summary>Commits a resolved per-row cell height from inside the owning <see cref="ListView"/>'s
+    /// own measure or arrange transaction.</summary>
+    /// <remarks>
+    /// The public setter requests a measure pass through the ordinary ancestor-propagating
+    /// invalidation, which is right outside layout but wrong inside it: the owner is about to
+    /// measure and arrange this host synchronously with the new value anyway, and propagating the
+    /// request re-dirties every ancestor after the pass that just ran. When measure resolves a
+    /// provisional height from its constraint and arrange then re-resolves a different one from
+    /// the final viewport - routine for a percentage row inside a parent that arranges the list
+    /// smaller than it measured (a scrolling Stack arranges Percent against its viewport while
+    /// measuring unbounded, so measure only ever sees MaxHeight) - that propagation repeats on
+    /// every pass and the tree never reaches idle. Marking only this host dirty guarantees the
+    /// owner's synchronous re-measure observes the new value without scheduling ancestor work.
+    /// </remarks>
+    /// <param name="value">The positive resolved row height.</param>
+    internal void SetRowHeightWithinLayout(int value)
+    {
+        Debug.Assert(value > 0, "A resolved row height is a positive cell count.");
+
+        if (_rowHeight == value)
+        {
+            return;
+        }
+
+        _rowHeight = value;
+        InvalidateSelf(Invalidation.Measure);
     }
 
     /// <summary>Gets the stable, pre-offset row-geometry origin and content width committed by the

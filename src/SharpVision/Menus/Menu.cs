@@ -97,9 +97,21 @@ public sealed class Menu: ItemsControl
                 {
                     _stack.Orientation = Orientation;
                     UpdateItemSizing();
+                    RefreshSubmenuPlacements();
                 });
         }
     } = Orientation.Horizontal;
+
+    private void RefreshSubmenuPlacements()
+    {
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            if (ItemAt(index) is MenuItem item)
+            {
+                item.RefreshSubmenuPlacement();
+            }
+        }
+    }
 
     /// <summary>Gets or sets non-negative cells between participating items.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
@@ -272,6 +284,45 @@ public sealed class Menu: ItemsControl
         var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
         var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
         var scalarNavigationEligible = KeyboardModifierPolicy.IsScalarNavigationEligible(key.Stroke.Modifiers);
+
+        // A vertical menu maps only Up/Down to its own rows, so Left/Right used to fall through
+        // unhandled: Right on a submenu-bearing row did nothing (only Enter opened it) and Left
+        // inside a nested submenu could not step back one level. Right now opens the selected
+        // row's submenu, and Left closes a submenu whose owning menu is itself vertical. Both
+        // keys still bubble untouched otherwise, so from a menu bar's drop-down they keep
+        // switching the top-level sibling the way they always did.
+        if (Orientation == Orientation.Vertical && scalarNavigationEligible)
+        {
+            if (key.Stroke.Code == Code.Right &&
+                _selectedIndex >= 0 &&
+                ItemAt(_selectedIndex) is MenuItem
+                {
+                    Submenu: not null, EffectiveIsEnabled: true, EffectiveIsVisible: true
+                } submenuItem)
+            {
+                if (!submenuItem.IsSubmenuOpen)
+                {
+                    OpenSubmenu(submenuItem);
+                }
+
+                eventArgs.IsHandled = true;
+                return;
+            }
+
+            if (key.Stroke.Code == Code.Left &&
+                FindAncestor<MenuItem>() is { IsSubmenuOpen: true } owningItem &&
+                FindAncestor<Menu>() is { Orientation: Orientation.Vertical } owningMenu &&
+                owningMenu.IndexOfItemControl(owningItem) >= 0)
+            {
+                // The same route Enter takes on the owning row while its submenu is open, so a
+                // vertical session owner ends its chain exactly as a toggle would, while a nested
+                // level closes only its own branch and hands focus back to the owning menu.
+                owningMenu.ToggleSubmenu(owningItem, ActivationCause.Keyboard);
+                eventArgs.IsHandled = true;
+                return;
+            }
+        }
+
         var target = scalarNavigationEligible && key.Stroke.Code == previous
             ? SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, Available)
             : scalarNavigationEligible && key.Stroke.Code == next
@@ -483,7 +534,12 @@ public sealed class Menu: ItemsControl
             NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
         }
 
-        if (_selectedIndex < 0 && item is MenuItem)
+        // The initial cursor lands on the first item that can actually be activated. Navigation
+        // skips disabled and hidden rows, so seeding the cursor on one would paint a row the
+        // keyboard can never reach as selected the moment the menu gains focus. The item's own
+        // state decides, not the effective one: a menu that is itself disabled while being built
+        // still keeps a cursor for when it is enabled.
+        if (_selectedIndex < 0 && item is MenuItem { IsEnabled: true, Visibility: Visibility.Visible })
         {
             Select(index, focus: false);
         }

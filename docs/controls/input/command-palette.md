@@ -73,16 +73,16 @@ and zero fixed/percentage requests are invalid.
 
 ## Keyboard
 
-| Key                 | Behavior                                                          |
-| ------------------- | ----------------------------------------------------------------- |
-| Typed text          | Edits the query and refreshes the result list.                    |
-| Up / Left           | Moves to the previous available result while the palette is open. |
-| Down / Right        | Moves to the next available result while the palette is open.     |
-| Home / End          | Moves to the first or last available result.                      |
-| Page Up / Page Down | Moves by one visible result page.                                 |
-| Enter               | Accepts the current result and closes the palette.                |
-| Space               | Inserts a space in the query; it does not accept a result.        |
-| Escape              | Cancels and closes the palette.                                   |
+| Key                 | Behavior                                                                                                                                  |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Typed text          | Edits the query and refreshes the result list.                                                                                            |
+| Up / Left           | Moves to the previous available result while the palette is open.                                                                         |
+| Down / Right        | Moves to the next available result while the palette is open.                                                                             |
+| Home / End          | Moves to the first or last available result.                                                                                              |
+| Page Up / Page Down | Moves by one visible result page.                                                                                                         |
+| Enter               | Accepts the current result and closes the palette.                                                                                        |
+| Space               | Inserts a space in the query; it does not accept a result.                                                                                |
+| Escape              | Cancels and closes the palette; while a query is still resolving with nothing open, it cancels that query so its late results never open. |
 
 ## Resolution and interaction
 

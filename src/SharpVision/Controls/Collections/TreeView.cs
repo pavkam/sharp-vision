@@ -983,7 +983,22 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             _ = ApplyInputSelection(item, modifiers);
         }
 
-        _ = _itemsStack.BringIntoView(current);
+        // A SelectionChanging or SelectionChanged subscriber reached above may dispose this tree
+        // synchronously; the retained items container is disposed with it, so revealing the row
+        // afterward would throw ObjectDisposedException out of the key handler. The same
+        // subscriber may also collapse the row's ancestor, remove the row, or move current
+        // elsewhere: the flat list is rebuilt synchronously, so the row named at entry may no
+        // longer be realized and BringIntoView would reject it as a non-descendant. Reveal the
+        // navigator's repaired current row instead, and only while it is still one of the
+        // realized rows the items container owns directly.
+        if (IsDisposed ||
+            _navigator.Current is not { IsDisposed: false } target ||
+            !ReferenceEquals(target.Parent, _itemsStack))
+        {
+            return;
+        }
+
+        _ = _itemsStack.BringIntoView(target);
     }
 
     private bool ApplyInputSelection(TreeViewItem item, Modifiers modifiers)

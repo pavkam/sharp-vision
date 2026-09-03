@@ -115,7 +115,8 @@ public sealed class DateTimeInput: InputBase
             ResolveSegmentStepDelta,
             ClearValue,
             HandleCharacterCommand,
-            HandleDropDownOpeningCommand);
+            HandleDropDownOpeningCommand,
+            handleRecognizedWithoutChange: true);
         TabNavigation = TabNavigation.None;
     }
 
@@ -460,6 +461,12 @@ public sealed class DateTimeInput: InputBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>While the popup is closed, every recognized segment key is consumed even when it
+    /// cannot change anything: Up or Down at a bound, Left or Right at the first or last segment,
+    /// Home or End already there, Delete or Backspace over an empty value, and a repeated "a"/"p"
+    /// that only moves the designator highlight. The key is the field's own, so a bounded field
+    /// inside a scrolling or directionally navigating container never scrolls or moves focus in
+    /// that container.</remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         EnsureSeeded();
@@ -524,11 +531,19 @@ public sealed class DateTimeInput: InputBase
 
     #region Keyboard input
 
+    // "a" selects AM and "p" selects PM rather than toggling: a user who presses the letter of
+    // the half of the day they want must never be flipped to the other half because the value
+    // already happened to be there.
     private bool HandleCharacterCommand(Rune character) =>
-        TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
+        TemporalSegmentClassification.TryGetAmPmSelection(character, out var selectPm) && SelectAmPm(selectPm);
 
-    private bool ToggleAmPm() =>
-        TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
+    private bool SelectAmPm(bool selectPm) =>
+        TemporalSegmentClassification.SelectAmPm(
+            BuildSegments,
+            () => _state.Value.HasValue,
+            () => _state.Value is { Hour: >= 12 },
+            _segments,
+            selectPm);
 
     /// <summary>Gets whether the current layout - whether derived from <see cref="Use24HourFormat"/>
     /// or overridden by <see cref="Format"/> - includes an AM/PM designator segment, used as the
@@ -836,7 +851,9 @@ public sealed class DateTimeInput: InputBase
                 (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
                 ? new SegmentDescriptor(segmentText)
                 : new SegmentDescriptor(
-                    segmentText,
+                    kind == TemporalSegmentKind.AmPmDesignator
+                        ? TemporalSegmentClassification.ResolveDesignatorText(segmentText, value is { Hour: >= 12 })
+                        : segmentText,
                     kind,
                     TemporalSegmentClassification.DigitCapacity(token),
                     MaxValueFor(kind, hasAmPm, token.RunLength));

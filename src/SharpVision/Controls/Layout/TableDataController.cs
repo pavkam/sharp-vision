@@ -29,6 +29,9 @@ internal sealed class TableDataController: IDisposable
     private readonly HashSet<int> _errorIndices = [];
     private readonly HashSet<object> _selectedKeys = new(EqualityComparer<object>.Default);
 
+    // The key a Shift range extends from, mirroring Table's eager _selectionAnchorRow: a key,
+    // not an index, so the anchor survives its range being evicted and reloaded at any position.
+    private object? _selectionAnchorKey;
     private long _generation;
     private CancellationTokenSource _lifetime = new();
     private TableRow?[] _window = [];
@@ -293,6 +296,7 @@ internal sealed class TableDataController: IDisposable
     {
         var (previousActiveIndex, previousActiveKey, previousSelectedKeys) = CaptureSelectionState();
         _selectedKeys.Clear();
+        _selectionAnchorKey = null;
         NotifySelectionChanged(previousActiveIndex, previousActiveKey, previousSelectedKeys);
     }
 
@@ -420,25 +424,50 @@ internal sealed class TableDataController: IDisposable
             return;
         }
 
-        var control = (modifiers & TerminalInput.Modifiers.Control) != 0;
-        var multiple = selectionMode is TableSelectionMode.MultipleRows or TableSelectionMode.MultipleCells;
+        // The same gesture resolution the eager SelectRow/SelectCell paths use: a plain gesture
+        // replaces the selection, Control toggles the key under a multiple mode, and Shift extends
+        // a range from the anchor over every currently loaded key between the two endpoints. The
+        // previous hand-rolled branches let a plain click accumulate keys under MultipleRows and
+        // treated Shift as another plain add, so a user could never re-select a single row by
+        // clicking it, nor range-select at all, while progressive.
+        var (next, nextAnchor) = SelectionGesture<object>.Resolve(
+            EqualityComparer<object>.Default,
+            _selectedKeys,
+            _selectionAnchorKey is not null,
+            _selectionAnchorKey!,
+            key,
+            modifiers,
+            selectionMode is TableSelectionMode.MultipleRows or TableSelectionMode.MultipleCells,
+            LoadedKeysBetween);
 
-        if (multiple && control)
+        _selectionAnchorKey = nextAnchor;
+        _selectedKeys.Clear();
+        _selectedKeys.UnionWith(next);
+    }
+
+    // Returns null when either endpoint's key is not currently resolved to an index - the
+    // SelectionGesture<TKey> contract for an unresolvable range, which leaves the selection
+    // untouched rather than clearing it. Only loaded keys can join: an unloaded index inside the
+    // range has no key to record yet, exactly as SelectIndex on an unloaded index records none.
+    [Pure]
+    private IEnumerable<object>? LoadedKeysBetween(object start, object end)
+    {
+        if (!_keyIndex.TryGetValue(start, out var startIndex) || !_keyIndex.TryGetValue(end, out var endIndex))
         {
-            if (!_selectedKeys.Remove(key))
+            return null;
+        }
+
+        List<object> keys = [];
+
+        for (var index = Math.Min(startIndex, endIndex); index <= Math.Max(startIndex, endIndex); index++)
+        {
+            if (_cache.TryGetValue(index, out var entry))
             {
-                _ = _selectedKeys.Add(key);
+                keys.Add(entry.Key);
             }
-
-            return;
         }
 
-        if (!multiple)
-        {
-            _selectedKeys.Clear();
-        }
-
-        _ = _selectedKeys.Add(key);
+        return keys;
     }
 
     [Pure]
