@@ -6,6 +6,50 @@ namespace SharpVision.Tests.Navigation;
 /// <summary>Verifies sidebar navigation item ownership, selection, groups, and keyboard navigation.</summary>
 public sealed class NavigationViewTests
 {
+    /// <summary>Verifies Right expands and enters a group while Left returns to and collapses the
+    /// owning group, matching the hierarchy vocabulary used by TreeView.</summary>
+    [Fact]
+    public void Navigation_WhenHorizontalKeysTargetGroup_TraversesItsHierarchy()
+    {
+        var before = new NavigationViewItem { Text = "Before" };
+        var child = new NavigationViewItem { Text = "Child" };
+        var group = new NavigationViewGroup { Header = "Group", IsExpanded = false };
+        group.Items.Add(child);
+        var navigation = new NavigationView();
+        navigation.Items.Add(before);
+        navigation.Items.Add(group);
+        navigation.SelectItem(before);
+
+        _ = RouteKey(navigation, Code.Down);
+        var expand = RouteKey(navigation, Code.Right);
+        var enter = RouteKey(navigation, Code.Right);
+        var returnToGroup = RouteKey(navigation, Code.Left);
+        var collapse = RouteKey(navigation, Code.Left);
+
+        expand.IsHandled.ShouldBeTrue();
+        enter.IsHandled.ShouldBeTrue();
+        returnToGroup.IsHandled.ShouldBeTrue();
+        collapse.IsHandled.ShouldBeTrue();
+        group.IsExpanded.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies opt-in linear wrapping moves from the final available entry to the first.</summary>
+    [Fact]
+    public void Navigation_WhenWrappingIsEnabled_WrapsAtAvailableBoundary()
+    {
+        var first = new NavigationViewItem { Text = "First" };
+        var last = new NavigationViewItem { Text = "Last" };
+        var navigation = new NavigationView { WrapNavigation = true };
+        navigation.Items.Add(first);
+        navigation.Items.Add(last);
+        navigation.SelectItem(last);
+
+        var key = RouteKey(navigation, Code.Down);
+
+        key.IsHandled.ShouldBeTrue();
+        navigation.SelectedItem.ShouldBeSameAs(first);
+    }
+
     /// <summary>Verifies every public selection-notification boundary yields ownership to a newer
     /// nested selection and never publishes the superseded typed payload.</summary>
     [Theory]
@@ -3088,5 +3132,17 @@ public sealed class NavigationViewTests
         await dispatcher.InvokeAsync(() => separator.Attach(dispatcher), TestContext.Current.CancellationToken);
 
         _ = Should.Throw<InvalidOperationException>(() => separator.Style = NavigationViewSeparatorStyle.Default);
+    }
+
+    private static KeyEventArgs RouteKey(NavigationView navigation, Code code)
+    {
+        var eventArgs = new KeyEventArgs(new Stroke(
+            code,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+        _ = Router.Route(navigation, Events.Key, eventArgs);
+        return eventArgs;
     }
 }

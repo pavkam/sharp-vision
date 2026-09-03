@@ -5,7 +5,6 @@ namespace SharpVision.Controls.Layout;
 
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
-using SharpVision.Controls.Scrolling;
 
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 using TerminalInput = Terminal.Input;
@@ -13,12 +12,10 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Arranges typed rows and columns into a terminal-safe table with optional headers and grid lines.</summary>
 [PublicAPI]
-public sealed class Table: ItemsControl, IStyled<TableStyle>
+public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
 {
     private readonly TablePresenter _presenter;
-    private readonly RetainedScrollPart _scrollPart;
     private readonly StyleSlot<TableStyle> _style;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly List<TableRow> _sourceRows = [];
     private readonly HashSet<TableRow> _selectedRows = [];
     private readonly HashSet<TableCellReference> _selectedCells = [];
@@ -49,13 +46,8 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         Columns = new TableColumnCollection(this);
         Rows = new TableRowCollection(this);
         _presenter = new TablePresenter(this);
-        InitializeItemsHost(_presenter);
-        _scrollPart = RegisterRetainedScrollPart(_presenter);
-        _style = InitializeStyle(TableStyle.Definition);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _presenter, nameof(ScrollBarStyle));
+        InitializeScrollableItemsHost(_presenter);
+        _style = InitializeStyle(TableStyle.Definition, OnStyleChanged);
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
         _ = AddHandler(Events.Pointer, OnPointerRouted, handledEventsToo: true);
         _presenter.ScrollChanged += OnPresenterScrollChanged;
@@ -245,106 +237,6 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             }
         }
     } = true;
-
-    /// <summary>Gets the committed non-negative scrolling content extent.</summary>
-    public Size Extent => _scrollPart.Extent;
-
-    /// <summary>Gets the committed non-negative scrolling viewport extent.</summary>
-    public Size Viewport => _scrollPart.Viewport;
-
-    /// <summary>Raised after the private table viewport commits one or both offsets.</summary>
-    public event EventHandler<ScrollChangedEventArgs> ScrollChanged
-    {
-        add => _scrollPart.AddScrollChanged(value);
-        remove => _scrollPart.RemoveScrollChanged(value);
-    }
-
-    /// <summary>Gets or sets the scrollable axes of the private cell presenter.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public ScrollBars ScrollBars
-    {
-        get => _scrollPart.ScrollBars;
-        set => _scrollPart.ScrollBars = value;
-    }
-
-    /// <summary>Gets or sets the common scrollbar reservation policy for the private cell presenter.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
-    {
-        get => _scrollPart.ShowScrollBars;
-        set => _scrollPart.ShowScrollBars = value;
-    }
-
-    /// <summary>Gets or sets the complete local style for both private scrollbars.</summary>
-    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the resolved private-scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Gets or sets the non-negative keyboard and wheel scrolling increment in cells.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    [NonNegativeValue]
-    public int LineSize
-    {
-        get => _scrollPart.LineSize;
-        set => _scrollPart.LineSize = value;
-    }
-
-    /// <summary>Gets or sets non-negative cells retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    [NonNegativeValue]
-    public int PageOverlap
-    {
-        get => _scrollPart.PageOverlap;
-        set => _scrollPart.PageOverlap = value;
-    }
-
-    /// <summary>Gets or sets the valid horizontal content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    [NonNegativeValue]
-    public int HorizontalOffset
-    {
-        get => _scrollPart.HorizontalOffset;
-        set => _scrollPart.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the valid vertical content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    [NonNegativeValue]
-    public int VerticalOffset
-    {
-        get => _scrollPart.VerticalOffset;
-        set => _scrollPart.VerticalOffset = value;
-    }
-
-    /// <summary>Adds signed scrolling deltas with endpoint clamping.</summary>
-    /// <param name="x">The requested horizontal delta.</param>
-    /// <param name="y">The requested vertical delta.</param>
-    /// <param name="cause">The defined input path.</param>
-    /// <returns>True when at least one offset changed.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached table is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
-        _presenter.ScrollBy(x, y, cause);
 
     /// <summary>Scrolls minimally to expose one row-cell descendant.</summary>
     /// <param name="descendant">The non-null descendant control.</param>
@@ -1156,10 +1048,42 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         }
     }
 
+    /// <summary>Resolves the final theme-aware selection style used by the private presenter.</summary>
+    /// <param name="theme">The non-null active theme.</param>
+    /// <param name="state">The selected state, optionally including disabled.</param>
+    /// <returns>The complete terminal cell style.</returns>
+    internal TerminalStyle ResolveSelectionStyle(Theme theme, VisualState state)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        var overlay = new AppearanceStatesOverlay(
+            selected: new AppearanceOverlay(
+                face: new FaceOverlay(
+                    foreground: ActualStyle.SelectedTextColor,
+                    background: ActualStyle.SelectedBackground)));
+        var selected = theme.GetInteractiveRowStyleSet()
+            .ToAppearanceStates()
+            .Compose(overlay)
+            .Resolve(state)
+            .Face;
+        return new TerminalStyle(
+            ResolveColor(selected.Foreground, theme),
+            ResolveColor(selected.Background, theme),
+            selected.Attributes.Resolve(theme),
+            underline: selected.Underline,
+            underlineColor: ResolveColor(selected.UnderlineColor, theme));
+    }
+
+    private void OnStyleChanged(TableStyle previous, TableStyle current)
+    {
+        _ = previous;
+        _ = current;
+        _presenter?.Invalidate(Invalidation.Render);
+    }
+
     /// <summary>Reconciles the progressive window against the current scroll offset and viewport, a
     /// no-op while not progressive. Called from <see cref="ArrangeOverride"/> and, skipping
     /// <see cref="ScrollCause.Content"/>/<see cref="ScrollCause.Resize"/>, from the presenter's own
-    /// <see cref="ScrollChanged"/> - matching <c>ListView.Rewindow</c>'s equivalent skip, since both
+    /// <see cref="Container.ScrollChanged"/> - matching <c>ListView.Rewindow</c>'s equivalent skip, since both
     /// causes fire from inside an already-open arrange transaction.</summary>
     internal void ProgressiveRewindow()
     {
@@ -1389,26 +1313,27 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return;
         }
 
-        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(stroke.Modifiers))
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(stroke.Modifiers) &&
+            !KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, TerminalInput.Modifiers.Shift))
         {
             return;
         }
 
         _ = stroke.Code == TerminalInput.Code.Up
-            ? MoveActive(-1, 0)
+            ? MoveActive(-1, 0, stroke.Modifiers)
             : stroke.Code == TerminalInput.Code.Down
-                ? MoveActive(1, 0)
+                ? MoveActive(1, 0, stroke.Modifiers)
                 : stroke.Code == TerminalInput.Code.Left
-                    ? MoveActive(0, -1)
+                    ? MoveActive(0, -1, stroke.Modifiers)
                     : stroke.Code == TerminalInput.Code.Right
-                        ? MoveActive(0, 1)
+                        ? MoveActive(0, 1, stroke.Modifiers)
                         : stroke.Code == TerminalInput.Code.Home
-                            ? MoveToEndpoint(first: true)
+                            ? MoveToEndpoint(first: true, stroke.Modifiers)
                             : stroke.Code == TerminalInput.Code.End
-                                ? MoveToEndpoint(first: false)
+                                ? MoveToEndpoint(first: false, stroke.Modifiers)
                                 : stroke.Code == TerminalInput.Code.PageUp
-                                    ? MovePage(-1)
-                                    : stroke.Code == TerminalInput.Code.PageDown && MovePage(1);
+                                    ? MovePage(-1, stroke.Modifiers)
+                                    : stroke.Code == TerminalInput.Code.PageDown && MovePage(1, stroke.Modifiers);
 
         // IsHandled whenever the table has rows and columns to navigate, even when the active cell
         // is already at the boundary and cannot move further - otherwise the keystroke escapes to
@@ -1557,6 +1482,13 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return false;
         }
 
+        if (code != TerminalInput.Code.Enter &&
+            !KeyboardModifierPolicy.IsScalarNavigationEligible(modifiers) &&
+            !KeyboardModifierPolicy.MatchesCommand(modifiers, TerminalInput.Modifiers.Shift))
+        {
+            return false;
+        }
+
         var logicalCount = controller.LogicalCount;
 
         if (logicalCount == 0)
@@ -1602,7 +1534,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
             return true;
         }
 
-        SelectIndex(target);
+        SelectIndex(target, modifiers);
         BringIntoProgressiveView(target);
         return true;
     }
@@ -1655,7 +1587,10 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return cache;
     }
 
-    private bool MoveActive(int rowDelta, int columnDelta)
+    private bool MoveActive(
+        int rowDelta,
+        int columnDelta,
+        TerminalInput.Modifiers modifiers = TerminalInput.Modifiers.None)
     {
         if (Rows.Count == 0 || Columns.Count == 0)
         {
@@ -1676,11 +1611,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
         {
-            SelectRowCore(row, TerminalInput.Modifiers.None, targetColumn);
+            SelectRowCore(row, modifiers, targetColumn);
         }
         else
         {
-            SelectCell(row, targetColumn);
+            SelectCell(row, targetColumn, modifiers);
         }
 
         // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a
@@ -1696,7 +1631,7 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return true;
     }
 
-    private bool MovePage(int direction)
+    private bool MovePage(int direction, TerminalInput.Modifiers modifiers = TerminalInput.Modifiers.None)
     {
         if (Rows.Count == 0 || Columns.Count == 0)
         {
@@ -1716,11 +1651,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
         {
-            SelectRowCore(row, TerminalInput.Modifiers.None, columnIndex);
+            SelectRowCore(row, modifiers, columnIndex);
         }
         else
         {
-            SelectCell(row, columnIndex);
+            SelectCell(row, columnIndex, modifiers);
         }
 
         // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a
@@ -1747,7 +1682,9 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
         return PagingStep.Accumulate(startIndex, direction, Rows.Count, target, index => Rows[index].Cells[columnIndex].Bounds.Height, clamp: true);
     }
 
-    private bool MoveToEndpoint(bool first)
+    private bool MoveToEndpoint(
+        bool first,
+        TerminalInput.Modifiers modifiers = TerminalInput.Modifiers.None)
     {
         if (Rows.Count == 0 || Columns.Count == 0)
         {
@@ -1761,11 +1698,11 @@ public sealed class Table: ItemsControl, IStyled<TableStyle>
 
         if (SelectionMode is TableSelectionMode.Row or TableSelectionMode.MultipleRows)
         {
-            SelectRowCore(row, TerminalInput.Modifiers.None, column);
+            SelectRowCore(row, modifiers, column);
         }
         else if (SelectionMode is TableSelectionMode.Cell or TableSelectionMode.MultipleCells)
         {
-            SelectCell(row, column);
+            SelectCell(row, column, modifiers);
         }
 
         // SelectRowCore/SelectCell above publish property-changed notifications synchronously, and a

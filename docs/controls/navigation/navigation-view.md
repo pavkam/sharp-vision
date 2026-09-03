@@ -44,6 +44,7 @@ classDiagram
 | `Items`                                                    | `NavigationViewEntryCollection`                         | Empty          | Holds main items, groups, and separators in a scrollable section.             |
 | `FooterItems`                                              | `NavigationViewEntryCollection`                         | Empty          | Holds equivalent entries pinned below the main section.                       |
 | `SelectedItem`                                             | `NavigationViewItem?`                                   | `null`         | Read-only; the selected item across both sections.                            |
+| `WrapNavigation`                                           | `bool`                                                  | `false`        | Whether Up and Down wrap across the first and last available entries.         |
 | `ScrollBarStyle`                                           | `ScrollBarStyle?`                                       | `null`         | Local style for the generated bar; `null` keeps theme resolution.             |
 | `ActualScrollBarStyle`                                     | `ScrollBarStyle`                                        | Resolved       | Read-only; the style applied to the generated bar.                            |
 | `Extent`                                                   | `Size`                                                  | Empty          | Read-only; the committed non-negative content extent of the scroll container. |
@@ -60,13 +61,15 @@ classDiagram
 
 ## Keyboard
 
-| Key                 | Behavior                                                 |
-| ------------------- | -------------------------------------------------------- |
-| Up / Down           | Moves to the previous or next available item or group.   |
-| Home / End          | Moves to the first or last available entry.              |
-| Page Up / Page Down | Moves by one visible page.                               |
-| Enter / Space       | Invokes the current item or toggles the current group.   |
-| Alt+access key      | Invokes the matching item or toggles the matching group. |
+| Key                 | Behavior                                                                   |
+| ------------------- | -------------------------------------------------------------------------- |
+| Up / Down           | Moves to the previous or next available item or group.                     |
+| Left                | Returns from a child to its group or collapses the current expanded group. |
+| Right               | Expands the current group or enters its first available child.             |
+| Home / End          | Moves to the first or last available entry.                                |
+| Page Up / Page Down | Moves by one visible page.                                                 |
+| Enter / Space       | Invokes the current item or toggles the current group.                     |
+| Alt+access key      | Invokes the matching item or toggles the matching group.                   |
 
 ## Behavior
 
@@ -110,23 +113,26 @@ classDiagram
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus themselves. Up and Down arrows move the
 current entry across the available group headers and items while skipping
-separators. PageUp and PageDown move by as many entries as fill the committed
-viewport height minus `PageOverlap`, and they are handled even when the cursor
-cannot move any further, so the key never escapes to page an enclosing
-scrollable container. Home and End move to the first or last available entry.
-The current entry scrolls into view automatically after keyboard navigation,
-programmatic selection, invocation, access-key activation, structural changes,
-group expansion, and viewport resize. The main and footer sections each use a
-bounded private vertical viewport; an overflowing footer remains visually pinned
-while its current descendant is revealed without exposing a second public scroll
-surface. `BringItemIntoView` accepts direct or grouped items from either section
-and returns whether an owning offset changed. Enter and Space toggle a current
-group or invoke a current item without transferring focus, firing once per key
-hold and only with activation-eligible modifiers, while the navigation keys
-repeat while held. Navigation accepts incidental lock state but leaves Shift and
-application-command-modified movement keys unhandled. When no entry is current,
-activation first establishes the first available entry and then applies its
-action.
+separators. When `WrapNavigation` is true they wrap at the two available
+endpoints. Left and Right traverse group hierarchy: Right expands a collapsed
+group or enters its first available child, while Left returns a child to its
+owning group or collapses an expanded current group. PageUp and PageDown move by
+as many entries as fill the committed viewport height minus `PageOverlap`, and
+they are handled even when the cursor cannot move any further, so the key never
+escapes to page an enclosing scrollable container. Home and End move to the
+first or last available entry. The current entry scrolls into view automatically
+after keyboard navigation, programmatic selection, invocation, access-key
+activation, structural changes, group expansion, and viewport resize. The main
+and footer sections each use a bounded private vertical viewport; an overflowing
+footer remains visually pinned while its current descendant is revealed without
+exposing a second public scroll surface. `BringItemIntoView` accepts direct or
+grouped items from either section and returns whether an owning offset changed.
+Enter and Space toggle a current group or invoke a current item without
+transferring focus, firing once per key hold and only with activation-eligible
+modifiers, while the navigation keys repeat while held. Navigation accepts
+incidental lock state but leaves Shift and application-command-modified movement
+keys unhandled. When no entry is current, activation first establishes the first
+available entry and then applies its action.
 
 An entry that becomes hidden cannot remain selected or current. An entry that
 becomes disabled may retain its selected identity, but it immediately loses

@@ -6,6 +6,29 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies hierarchical tree view ownership, selection, expand/collapse, and keyboard navigation.</summary>
 public sealed class TreeViewTests
 {
+    /// <summary>Verifies opt-in linear wrapping moves from the final visible item to the first.</summary>
+    [Fact]
+    public void Navigation_WhenWrappingIsEnabled_WrapsAtVisibleBoundary()
+    {
+        var first = new TreeViewItem { Header = "First" };
+        var last = new TreeViewItem { Header = "Last" };
+        var tree = new TreeView { WrapNavigation = true };
+        tree.Items.Add(first);
+        tree.Items.Add(last);
+        tree.SelectItem(last);
+
+        var key = new KeyEventArgs(new Stroke(
+            Code.Down,
+            character: null,
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+        _ = Router.Route(tree, Events.Key, key);
+
+        key.IsHandled.ShouldBeTrue();
+        tree.SelectedItem.ShouldBeSameAs(first);
+    }
+
     /// <summary>Verifies select-all normalizes character case and lock state but rejects larger
     /// application-command chords.</summary>
     [Theory]

@@ -273,6 +273,15 @@ public sealed class NavigationView: CompositeControlBase
     /// <summary>Gets the typed footer item collection.</summary>
     public NavigationViewEntryCollection FooterItems { get; }
 
+    /// <summary>Gets or sets whether Up and Down wrap across the first and last available entries.</summary>
+    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
+    public bool WrapNavigation
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    }
+
     /// <summary>Gets the currently selected item, or null.</summary>
     public NavigationViewItem? SelectedItem { get; private set; }
 
@@ -802,6 +811,18 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
+        if (eventArgs.Stroke.Code == Code.Left)
+        {
+            eventArgs.IsHandled = HandleLeft();
+            return;
+        }
+
+        if (eventArgs.Stroke.Code == Code.Right)
+        {
+            eventArgs.IsHandled = HandleRight();
+            return;
+        }
+
         if (eventArgs.Stroke.Code == Code.Up)
         {
             direction = -1;
@@ -817,10 +838,57 @@ public sealed class NavigationView: CompositeControlBase
 
         eventArgs.IsHandled = true;
 
-        if (_navigator.Move(direction, wrap: false) && _navigator.Current is { } current)
+        if (_navigator.Move(direction, WrapNavigation) && _navigator.Current is { } current)
         {
             CommitCurrent(current);
         }
+    }
+
+    private bool HandleLeft()
+    {
+        if (_navigator.Current is NavigationViewGroup { IsExpanded: true } group)
+        {
+            group.IsExpanded = false;
+            return true;
+        }
+
+        if (_navigator.Current is NavigationViewItem item && FindOwningGroup(item) is { } owner)
+        {
+            _ = SetCurrent(owner);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HandleRight()
+    {
+        if (_navigator.Current is not NavigationViewGroup group)
+        {
+            return false;
+        }
+
+        if (!group.IsExpanded)
+        {
+            group.IsExpanded = true;
+            return true;
+        }
+
+        for (var index = 0; index < group.ItemCount; index++)
+        {
+            var item = group.ItemAt(index);
+
+            if (!IsAvailable(item))
+            {
+                continue;
+            }
+
+            _ = SetCurrent(item);
+            CommitCurrent(item);
+            return true;
+        }
+
+        return false;
     }
 
     private void OnPointerRouted(object? sender, PointerEventArgs eventArgs)
@@ -1244,6 +1312,23 @@ public sealed class NavigationView: CompositeControlBase
                 }
             }
         }
+    }
+
+    [Pure]
+    private NavigationViewGroup? FindOwningGroup(NavigationViewItem item)
+    {
+        foreach (var group in _itemsStack.Children.Concat(_footerStack.Children).OfType<NavigationViewGroup>())
+        {
+            for (var index = 0; index < group.ItemCount; index++)
+            {
+                if (ReferenceEquals(group.ItemAt(index), item))
+                {
+                    return group;
+                }
+            }
+        }
+
+        return null;
     }
 
     [Pure]

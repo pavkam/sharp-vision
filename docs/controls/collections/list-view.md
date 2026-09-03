@@ -23,8 +23,8 @@ subtree so the theme treats the complete row as one selected item; an explicit
 complete local appearance on template content remains authoritative.
 
 By default a ListView is a quiet, borderless collection region whose fill comes
-from the active theme's `ListView.normal` style. The continuous plane is its
-boundary; callers can opt into an inherited frame or replace the background
+from the active theme's generic `control.normal` style. The continuous plane is
+its boundary; callers can opt into an inherited frame or replace the background
 through the shared [chrome contract](../../concepts/styling.md#shared-chrome).
 
 The control paints its complete arranged surface with its normal or disabled
@@ -38,7 +38,8 @@ label cells.
 ```mermaid
 classDiagram
     ControlBase <|-- ItemsControl
-    ItemsControl <|-- ListView
+    ItemsControl <|-- ScrollableItemsControl
+    ScrollableItemsControl <|-- ListView
 ```
 
 ## API
@@ -54,6 +55,9 @@ classDiagram
 | `SelectedItem`                 | `object?`                                      | `null`                   | Lowest selected item by value; setting selects its first matching index.                                                                                                                    |
 | `SelectedItems`                | `IReadOnlyList<object?>`                       | Empty                    | Read-only, stable, ascending-index view of the committed selection.                                                                                                                         |
 | `ActiveIndex`                  | `int`                                          | `-1`                     | Read-only; the row keyboard navigation and invocation act on.                                                                                                                               |
+| `WrapNavigation`               | `bool`                                         | `false`                  | Whether directional movement wraps across the first and last available items.                                                                                                               |
+| `Style`                        | `ListViewStyle?`                               | `null`                   | Complete local surface, selected-row, and keyboard-current presentation.                                                                                                                    |
+| `ActualStyle`                  | `ListViewStyle`                                | Resolved                 | Read-only resolved presentation.                                                                                                                                                            |
 | `ScrollBars`                   | `ScrollBars`                                   | `Vertical`               | Axes exposed by the composed overflow host.                                                                                                                                                 |
 | `ShowScrollBars`               | `ShowScrollBars`                               | `WhenNeeded`             | Visibility policy for the generated scrollbar.                                                                                                                                              |
 | `ScrollBarStyle`               | `ScrollBarStyle?`                              | `null`                   | Local override for the generated scrollbar's presentation.                                                                                                                                  |
@@ -77,7 +81,8 @@ classDiagram
 
 | Key                 | Behavior                                                         |
 | ------------------- | ---------------------------------------------------------------- |
-| Arrow keys          | Moves the active row by one eligible item.                       |
+| Arrow keys          | Moves the active row by one eligible item; wraps when enabled.   |
+| Shift+navigation    | Extends a range from the stable anchor in `Multiple` mode.       |
 | Home / End          | Moves to the first or last eligible item.                        |
 | Page Up / Page Down | Moves by at least one item, otherwise by one visible page.       |
 | Space               | Applies the current selection gesture without invoking the item. |
@@ -182,8 +187,11 @@ the pending invocation instead of indexing its former position.
 | Shift click (`Multiple` mode)   | Selects the inclusive range from the stable anchor, skipping unavailable rows.                                            |
 | Unmodified click                | Replaces the selection in `Single` and `Multiple` modes; `None` mode permits navigation and invocation without selecting. |
 
-Keyboard movement accepts incidental lock state but leaves Shift and every
-application-command-modified movement key unhandled.
+Keyboard movement accepts incidental lock state. Shift with arrows, endpoints,
+or paging extends an inclusive range in `Multiple` mode; other
+application-command-modified movement keys remain unhandled. When
+`WrapNavigation` is true, directional movement past either end continues at the
+opposite available item; endpoint and paging commands remain clamped.
 
 In `Single` and `Multiple` modes, every initial or repeated arrow-key move also
 replaces the selection with the active row; when a `SelectionChanging`
@@ -206,6 +214,12 @@ press-activation-enabled controls. Disabled realized item content stays visible,
 but its row is not eligible for pointer activation, keyboard navigation, or
 selection. An empty `Items` snapshot has no active or selected row and renders
 only the ListView surface.
+
+`ListViewStyle` exposes `SelectedTextColor`, `SelectedBackground`, and
+`CurrentUnderline` in addition to the shared face, border, and shadow. The
+selected colors default to the theme's semantic selection roles, while the
+current underline defaults to `Straight` so browse-before-commit owners remain
+visible without moving selection.
 
 The ListView owns keyboard focus but never paints a list-wide hover appearance.
 The physical `IsPointerOver` state remains observable on the list ancestry,

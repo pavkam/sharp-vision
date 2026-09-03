@@ -20,6 +20,7 @@ classDiagram
     ControlBase <|-- ContentControl
     ControlBase <|-- CompositeControlBase
     ControlBase <|-- ItemsControl
+    ItemsControl <|-- ScrollableItemsControl
     ControlBase <|-- InputBase
     ContentControl <|-- FloatingSurfaceBase
     ContentControl <|-- InfoBar
@@ -96,6 +97,8 @@ Complete modal tasks such as `MessageBox` live in
   implementation root initialized by the concrete constructor.
 - [ItemsControl](items-control.md#overview) exposes typed semantic items through
   a private presentation host.
+- [ScrollableItemsControl](items-control.md#scrollableitemscontrol) adds one
+  shared scrolling contract for an item owner's private overflow host.
 - [InputBase](input-base.md#overview) is the focusable role for a value editor
   or popup-backed input, exposing press activation, segment editing, step-key
   translation, the shared drop-down glyph, and an owned popup as independent

@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Controls.Collections;
 /// <summary>Verifies ListView selection, focus, invocation, modifiers, scrolling, mutation, and cells through mounted surfaces.</summary>
 public sealed class ListViewSurfaceTests
 {
+    /// <summary>Verifies a local ListView style owns selected-row colors and the keyboard-current
+    /// underline without replacing the caller's item template.</summary>
+    [Fact]
+    public async Task Render_WhenSelectionStyleIsCustomized_AppliesItToTheCompleteCurrentRowAsync()
+    {
+        var foreground = Color.Rgb(0xff, 0xff, 0xff);
+        var background = Color.Rgb(0xcd, 0x00, 0xcd);
+        var list = new UiListView
+        {
+            Items = ["Styled"],
+            SelectedIndex = 0,
+            ScrollBars = ScrollBars.None,
+            Style = ListViewStyle.Default with
+            {
+                SelectedTextColor = foreground,
+                SelectedBackground = background,
+                CurrentUnderline = Underline.Dotted
+            }
+        };
+
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(8, 1),
+            TestContext.Current.CancellationToken);
+
+        var style = surface.Cell(default).Style;
+        style.Foreground.ShouldBe(TerminalPalette.Project(foreground, ColorDepth.Basic16));
+        style.Background.ShouldBe(TerminalPalette.Project(background, ColorDepth.Basic16));
+        (style.Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        OwnedTree.FindAll<ListItem>(list).ShouldHaveSingleItem().ActualFace.Underline.ShouldBe(Underline.Dotted);
+    }
+
     /// <summary>Verifies a percentage row uses the final viewport after both scrollbar rails are
     /// reserved and re-resolves in the same mounted resize transaction.</summary>
     [Fact]

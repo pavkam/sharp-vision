@@ -135,7 +135,7 @@ internal sealed class RetainedScrollPart: IDisposable
 
         if (_forwardsScrollEvent)
         {
-            _scrollChanged?.Invoke(sender, eventArgs);
+            _scrollChanged?.Invoke(_owner, eventArgs);
         }
     }
 

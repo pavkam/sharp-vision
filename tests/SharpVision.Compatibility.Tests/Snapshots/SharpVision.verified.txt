@@ -623,6 +623,23 @@ namespace SharpVision.Controls
         protected virtual void OnStarted(SharpVision.Application application) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
+    public abstract class ScrollableItemsControl : SharpVision.Controls.ItemsControl
+    {
+        protected ScrollableItemsControl() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Terminal.Geometry.Size Extent { get; }
+        public int HorizontalOffset { get; set; }
+        public int LineSize { get; set; }
+        public int PageOverlap { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
+        public int VerticalOffset { get; set; }
+        public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
+        protected void InitializeScrollableItemsHost(SharpVision.Controls.Container host) { }
+        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+    }
     public sealed class StyleDefinition<TStyle>
         where TStyle : SharpVision.Styling.ControlStyle { }
     public static class StyleDefinitions
@@ -868,30 +885,22 @@ namespace SharpVision.Controls.Collections
         Single = 1,
         Multiple = 2,
     }
-    public sealed class ListView : SharpVision.Controls.ItemsControl
+    public sealed class ListView : SharpVision.Controls.ScrollableItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Collections.ListViewStyle>
     {
         public ListView() { }
         public int ActiveIndex { get; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
-        public SharpVision.Terminal.Geometry.Size Extent { get; }
-        public int HorizontalOffset { get; set; }
+        public SharpVision.Controls.Collections.ListViewStyle ActualStyle { get; }
         public SharpVision.Controls.Collections.ListItemInvocation ItemInvocation { get; set; }
         public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; set; }
-        public int LineSize { get; set; }
-        public int PageOverlap { get; set; }
         public SharpVision.Layout.Length RowHeight { get; set; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public int SelectedIndex { get; set; }
         public object? SelectedItem { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> SelectedItems { get; }
         public SharpVision.Controls.Collections.ListSelectionMode SelectionMode { get; set; }
-        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
-        public int VerticalOffset { get; set; }
-        public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        public SharpVision.Controls.Collections.ListViewStyle? Style { get; set; }
+        public bool WrapNavigation { get; set; }
         public event System.EventHandler<SharpVision.Input.ItemInvokedEventArgs>? ItemInvoked;
-        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangingEventArgs>? SelectionChanging;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
@@ -899,9 +908,16 @@ namespace SharpVision.Controls.Collections
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public void SelectAll() { }
         public bool SetSelected(int index, bool selected) { }
+    }
+    public sealed class ListViewStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Collections.ListViewStyle>
+    {
+        public ListViewStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor selectedTextColor, SharpVision.Styling.ControlColor selectedBackground, SharpVision.Terminal.Protocols.Underline currentUnderline) { }
+        public required SharpVision.Terminal.Protocols.Underline CurrentUnderline { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedBackground { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedTextColor { get; init; }
+        public new static SharpVision.Controls.Collections.ListViewStyle Default { get; }
     }
     public sealed class TabCloseRequestedEventArgs : System.EventArgs
     {
@@ -997,6 +1013,7 @@ namespace SharpVision.Controls.Collections
         public SharpVision.Controls.Collections.TreeViewStyle? Style { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        public bool WrapNavigation { get; set; }
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewItemInvokedEventArgs>? ItemInvoked;
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewSelectionChangedEventArgs>? SelectionChanged;
@@ -2223,7 +2240,7 @@ namespace SharpVision.Controls.Layout
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
     }
-    public sealed class Table : SharpVision.Controls.ItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Layout.TableStyle>
+    public sealed class Table : SharpVision.Controls.ScrollableItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Layout.TableStyle>
     {
         public Table() { }
         public SharpVision.Controls.Layout.TableCellReference? ActiveCell { get; }
@@ -2231,37 +2248,26 @@ namespace SharpVision.Controls.Layout
         public int ActiveIndex { get; }
         public object? ActiveKey { get; }
         public SharpVision.Controls.Layout.TableRow? ActiveRow { get; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.Layout.TableStyle ActualStyle { get; }
         public int ColumnSpacing { get; set; }
         public SharpVision.Controls.Layout.TableColumnCollection Columns { get; }
-        public SharpVision.Terminal.Geometry.Size Extent { get; }
-        public int HorizontalOffset { get; set; }
         public bool IsEditing { get; }
         public bool IsProgressive { get; }
-        public int LineSize { get; set; }
         public SharpVision.Controls.Layout.TableLoadState LoadState { get; }
-        public int PageOverlap { get; set; }
         public int RowSpacing { get; set; }
         public SharpVision.Controls.Layout.TableRowCollection Rows { get; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableCellReference> SelectedCells { get; }
         public System.Collections.Generic.IReadOnlyList<object> SelectedKeys { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Layout.TableRow> SelectedRows { get; }
         public SharpVision.Controls.Layout.TableSelectionMode SelectionMode { get; set; }
         public bool ShowGridLines { get; set; }
         public bool ShowHeader { get; set; }
-        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public int SortColumnIndex { get; }
         public SharpVision.Controls.Layout.TableSortDirection SortDirection { get; }
         public SharpVision.Controls.Layout.TableStyle? Style { get; set; }
-        public int VerticalOffset { get; set; }
-        public SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Controls.Layout.TableLoadFailedEventArgs>? LoadFailed;
         public event System.EventHandler<SharpVision.Controls.Layout.TableLoadStateChangedEventArgs>? LoadStateChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableRowInvokedEventArgs>? RowInvoked;
-        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs> ScrollChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableSelectionChangedEventArgs>? SelectionChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableSortChangedEventArgs>? SortChanged;
         public event System.EventHandler<SharpVision.Controls.Layout.TableSortChangedEventArgs>? SortRequested;
@@ -2279,7 +2285,6 @@ namespace SharpVision.Controls.Layout
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void Reload() { }
         public void ResetSort() { }
-        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public void SelectAll() { }
         public void SelectCell(SharpVision.Controls.Layout.TableRow row, int columnIndex, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
         public void SelectIndex(int index, SharpVision.Terminal.Input.Modifiers modifiers = 0) { }
@@ -2432,7 +2437,7 @@ namespace SharpVision.Controls.Layout
     }
     public sealed class TableStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Layout.TableStyle>
     {
-        public TableStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Layout.TableGlyphs glyphs, SharpVision.Layout.Thickness cellPadding, SharpVision.Styling.ControlColor placeholderForeground, SharpVision.Styling.ControlColor placeholderErrorForeground) { }
+        public TableStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Layout.TableGlyphs glyphs, SharpVision.Layout.Thickness cellPadding, SharpVision.Styling.ControlColor selectedTextColor, SharpVision.Styling.ControlColor selectedBackground, SharpVision.Styling.ControlColor placeholderForeground, SharpVision.Styling.ControlColor placeholderErrorForeground) { }
         public required SharpVision.Layout.Thickness CellPadding { get; init; }
         public required SharpVision.Controls.Layout.TableGlyphs Glyphs { get; init; }
         public SharpVision.Styling.ControlColor? GridLineColor { get; init; }
@@ -2440,6 +2445,8 @@ namespace SharpVision.Controls.Layout
         public SharpVision.Styling.ControlColor? HeaderForeground { get; init; }
         public required SharpVision.Styling.ControlColor PlaceholderErrorForeground { get; init; }
         public required SharpVision.Styling.ControlColor PlaceholderForeground { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedBackground { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedTextColor { get; init; }
         public new static SharpVision.Controls.Layout.TableStyle Default { get; }
     }
     public sealed class Wrap : SharpVision.Controls.Container
@@ -3599,6 +3606,7 @@ namespace SharpVision.Navigation
         public SharpVision.Navigation.NavigationViewItem? SelectedItem { get; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        public bool WrapNavigation { get; set; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<SharpVision.Navigation.NavigationViewSelectionChangedEventArgs>? SelectionChanged;
         public bool BringItemIntoView(SharpVision.Navigation.NavigationViewItem item) { }

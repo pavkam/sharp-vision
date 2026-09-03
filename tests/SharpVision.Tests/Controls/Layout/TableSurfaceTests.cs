@@ -8,6 +8,40 @@ using System.Text.Json;
 /// <summary>Verifies Table layout, selection, editing, sorting, scrolling, mutation, resize, and hit targets through mounted surfaces.</summary>
 public sealed class TableSurfaceTests
 {
+    /// <summary>Verifies local Table selection colors replace the theme-owned row fill while cell
+    /// text and the final selection adornment continue to share one complete style.</summary>
+    [Fact]
+    public async Task Render_WhenSelectionColorsAreCustomized_AppliesThemToSelectedCellsAsync()
+    {
+        var foreground = Color.Rgb(0xff, 0xff, 0xff);
+        var background = Color.Rgb(0xcd, 0x00, 0xcd);
+        var row = new TableRow([new ControlText("One")]);
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            Style = TableStyle.Default with
+            {
+                SelectedTextColor = foreground,
+                SelectedBackground = background
+            }
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 6));
+        table.Rows.Add(row);
+        table.SelectRow(row);
+
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(6, 1),
+            TestContext.Current.CancellationToken);
+
+        var style = surface.Cell(default).Style;
+        style.Foreground.ShouldBe(TerminalPalette.Project(foreground, ColorDepth.Basic16));
+        style.Background.ShouldBe(TerminalPalette.Project(background, ColorDepth.Basic16));
+        surface.Cell(new Point(5, 0)).Style.Background.ShouldBe(
+            TerminalPalette.Project(background, ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies a selection callback that disables or detaches an eager Table ends the
     /// current pointer transaction before RowInvoked can publish.</summary>
     [Theory]

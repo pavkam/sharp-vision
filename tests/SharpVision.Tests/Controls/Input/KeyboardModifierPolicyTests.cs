@@ -20,6 +20,20 @@ public sealed class KeyboardModifierPolicyTests
         { Modifiers.Meta, false }
     };
 
+    /// <summary>Gets scalar-navigation modifier cases that additionally admit Shift ranges.</summary>
+    public static TheoryData<Modifiers, bool> RangeNavigationModifiers => new()
+    {
+        { Modifiers.None, true },
+        { Modifiers.CapsLock, true },
+        { Modifiers.NumLock, true },
+        { Modifiers.Shift, true },
+        { Modifiers.Control, false },
+        { Modifiers.Alt, false },
+        { Modifiers.Super, false },
+        { Modifiers.Hyper, false },
+        { Modifiers.Meta, false }
+    };
+
     /// <summary>Gets collection-navigation modifier cases including selection modifiers.</summary>
     public static TheoryData<Modifiers, bool> CollectionNavigationModifiers => new()
     {
@@ -135,10 +149,10 @@ public sealed class KeyboardModifierPolicyTests
         control.SelectedItem.ShouldBe(expectedHandled ? first : null);
     }
 
-    /// <summary>Verifies ListView navigation applies the scalar modifier policy.</summary>
+    /// <summary>Verifies ListView navigation additionally admits Shift range selection.</summary>
     [Theory]
-    [MemberData(nameof(ScalarNavigationModifiers))]
-    public void Dispatch_WhenListViewMovementHasModifiers_UsesExactCommandPolicy(
+    [MemberData(nameof(RangeNavigationModifiers))]
+    public void Dispatch_WhenListViewMovementHasModifiers_UsesRangeSelectionPolicy(
         Modifiers modifiers,
         bool expectedHandled)
     {
@@ -182,10 +196,10 @@ public sealed class KeyboardModifierPolicyTests
         control.SelectedPath.ShouldBe(expectedHandled ? "/1" : "/0");
     }
 
-    /// <summary>Verifies non-progressive Table navigation applies the scalar modifier policy.</summary>
+    /// <summary>Verifies non-progressive Table navigation additionally admits Shift range selection.</summary>
     [Theory]
-    [MemberData(nameof(ScalarNavigationModifiers))]
-    public void Dispatch_WhenTableMovementHasModifiers_UsesExactCommandPolicy(
+    [MemberData(nameof(RangeNavigationModifiers))]
+    public void Dispatch_WhenTableMovementHasModifiers_UsesRangeSelectionPolicy(
         Modifiers modifiers,
         bool expectedHandled)
     {

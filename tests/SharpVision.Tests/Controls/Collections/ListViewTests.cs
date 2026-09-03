@@ -137,6 +137,27 @@ public sealed class ListViewTests
         control.Face.Background.ShouldBe(SemanticColor.Control);
     }
 
+    /// <summary>Verifies the typed list style supplies semantic selection defaults and validates
+    /// every locally customizable selection member before assignment.</summary>
+    [Fact]
+    public void Style_WhenCreatedOrInvalidSelectionMembersAreAssigned_UsesDefaultsAndRejectsMutation()
+    {
+        var control = new UiListView();
+
+        control.ActualStyle.SelectedTextColor.ShouldBe((ControlColor) SemanticColor.SelectedText);
+        control.ActualStyle.SelectedBackground.ShouldBe((ControlColor) SemanticColor.SelectedControl);
+        control.ActualStyle.CurrentUnderline.ShouldBe(Underline.Straight);
+
+        _ = Should.Throw<ArgumentException>(
+            () => control.Style = ListViewStyle.Default with { SelectedTextColor = Color.Transparent });
+        _ = Should.Throw<ArgumentException>(
+            () => control.Style = ListViewStyle.Default with { SelectedBackground = Color.Transparent });
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => control.Style = ListViewStyle.Default with { CurrentUnderline = (Underline) int.MaxValue });
+
+        control.Style.ShouldBeNull();
+    }
+
     /// <summary>Verifies direct and ancestor-inherited IsEnabled changes flip EffectiveIsEnabled and
     /// the derived focus eligibility it drives, and re-enabling restores both.</summary>
     [Fact]
@@ -738,6 +759,44 @@ public sealed class ListViewTests
 
         moved.ShouldBeTrue();
         control.ActiveIndex.ShouldBe(2);
+    }
+
+    /// <summary>Verifies Shift plus a directional key extends the existing keyboard anchor instead
+    /// of being rejected as a modified scalar-navigation stroke.</summary>
+    [Fact]
+    public void HandleSelectionNavigationKey_WhenShiftDownIsPressed_ExtendsMultipleSelection()
+    {
+        var control = new UiListView
+        {
+            SelectionMode = ListSelectionMode.Multiple,
+            Items = ["A", "B", "C"],
+            SelectedIndex = 0
+        };
+
+        var first = KeyWithModifiers(control, Code.Down, Modifiers.Shift);
+        var second = KeyWithModifiers(control, Code.Down, Modifiers.Shift);
+
+        first.IsHandled.ShouldBeTrue();
+        second.IsHandled.ShouldBeTrue();
+        control.ActiveIndex.ShouldBe(2);
+        control.SelectedItems.ShouldBe(new object?[] { "A", "B", "C" });
+    }
+
+    /// <summary>Verifies opt-in directional wrapping moves from the last available item to the first.</summary>
+    [Fact]
+    public void MoveCurrent_WhenWrappingIsEnabled_WrapsAtDirectionalBoundary()
+    {
+        var control = new UiListView
+        {
+            Items = ["A", "B", "C"],
+            SelectedIndex = 2,
+            WrapNavigation = true
+        };
+
+        var moved = control.MoveCurrent(Code.Down);
+
+        moved.ShouldBeTrue();
+        control.ActiveIndex.ShouldBe(0);
     }
 
     /// <summary>Verifies a PageDown whose raw StepPage target overshoots past the last item is
@@ -1967,7 +2026,12 @@ public sealed class ListViewTests
         new LayoutEngine().Layout(control, new Size(10, 4));
         List<ScrollChangedEventArgs> changes = [];
         List<string?> notifications = [];
-        control.ScrollChanged += (_, eventArgs) => changes.Add(eventArgs);
+        object? scrollSender = null;
+        control.ScrollChanged += (sender, eventArgs) =>
+        {
+            scrollSender = sender;
+            changes.Add(eventArgs);
+        };
         control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
 
         control.Extent.Height.ShouldBeGreaterThan(control.Viewport.Height);
@@ -1979,6 +2043,7 @@ public sealed class ListViewTests
         change.PreviousOffset.ShouldBe(new Point(0, 0));
         change.Offset.ShouldBe(new Point(0, 3));
         change.Cause.ShouldBe(ScrollCause.Programmatic);
+        scrollSender.ShouldBeSameAs(control);
         notifications.Count(name => name == nameof(UiListView.VerticalOffset)).ShouldBe(1);
         notifications.ShouldNotContain(nameof(UiListView.HorizontalOffset));
         notifications.ShouldNotContain(nameof(UiListView.Extent));

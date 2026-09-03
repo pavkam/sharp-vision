@@ -11,7 +11,7 @@ using Text = SharpVision.Controls.Display.Text;
 internal sealed class TablePane: CompositeControlBase
 {
     private Table? _progressive;
-    private DelayedFailingSource? _progressiveSource;
+    private ShowcaseDelayedFailingTableSource? _progressiveSource;
 
     internal TablePane() => InitializeContent(CreateContent());
 
@@ -59,7 +59,7 @@ internal sealed class TablePane: CompositeControlBase
         {
             Width = Length.Cells(46),
             ShowHeader = true,
-            Style = _cellPadded,
+            Style = _cellPadded with { SelectedBackground = SemanticColor.Magenta },
             RowSpacing = 1
         };
         primary.Columns.Add(TableColumn.Fixed("Name", 15));
@@ -80,6 +80,7 @@ internal sealed class TablePane: CompositeControlBase
             new Text("Preview"),
             linked
         ]));
+        primary.SelectRow(primary.Rows[0]);
 
         var compact = new Table
         {
@@ -116,12 +117,12 @@ internal sealed class TablePane: CompositeControlBase
             interactiveOption
         ]));
 
-        var behaviorStatus = new Text("Click a value, press Enter to edit, or click a header to sort.");
+        var behaviorStatus = new Text("Arrows move · Shift+arrows extend · Enter edits · headers sort");
         var behavior = new Table
         {
             Width = Length.Cells(42),
             SelectionMode = TableSelectionMode.MultipleCells,
-            Style = _cellPadded,
+            Style = _cellPadded with { SelectedBackground = SemanticColor.Magenta },
             ShowGridLines = true
         };
         behavior.Columns.Add(TableColumn.Fixed("Field", 14, isReadOnly: true));
@@ -228,7 +229,7 @@ internal sealed class TablePane: CompositeControlBase
             ]));
         }
 
-        var progressiveSource = new DelayedFailingSource(50_000);
+        var progressiveSource = new ShowcaseDelayedFailingTableSource(50_000);
         var progressiveStatus = new Text("Fetches: 0 · Idle");
         var progressive = new Table
         {
@@ -282,7 +283,7 @@ internal sealed class TablePane: CompositeControlBase
                 "The table owns basic row/cell interaction while preserving ordinary TextInput ownership and the existing clipboard boundary.",
                 new DocExample(
                     "Editable data table",
-                    "Click a value cell and press <info>Enter</info> to edit; <info>Enter</info> commits, <info>Escape</info> cancels, and clicking a header cycles stable sorting. The Field column is read-only.",
+                    "Arrows move the active cell; <reverse>Shift+arrows</reverse>, paging, Home, and End extend a range. Enter edits, Escape cancels, Ctrl+A selects all, and headers cycle stable sorting.",
                     new DocColumn(
                         behavior,
                         behaviorStatus,
@@ -332,42 +333,6 @@ internal sealed class TablePane: CompositeControlBase
         new Text($"<d>{Text.Escape(action)}</d>")
     ]);
 
-    // A deliberately slow, once-failing ITableDataSource<int> specimen: every fetch sleeps briefly
-    // so placeholders stay visibly on screen, and the very first request fails once to demonstrate
-    // the themed error glyph recovering through the controller's own bounded retry.
-    private sealed class DelayedFailingSource(int total): ITableDataSource<int>
-    {
-        private readonly HashSet<int> _failedOnce = [];
-        private int _fetchCount;
-
-        /// <summary>Gets the number of LoadAsync calls issued so far, for the status specimen.</summary>
-        internal int FetchCount => _fetchCount;
-
-        public int? Count => total;
-
-        public event EventHandler? Changed
-        {
-            add { }
-            remove { }
-        }
-
-        public object GetKey(int item) => item;
-
-        public async ValueTask<TableDataResult<int>> LoadAsync(TableDataRequest request, CancellationToken cancellationToken)
-        {
-            _ = Interlocked.Increment(ref _fetchCount);
-            await Task.Delay(TimeSpan.FromMilliseconds(400), cancellationToken).ConfigureAwait(false);
-
-            if (request.StartIndex == 0 && _failedOnce.Add(request.StartIndex))
-            {
-                throw new InvalidOperationException("Simulated transient failure for the showcase specimen.");
-            }
-
-            var count = Math.Min(request.Count, total - request.StartIndex);
-            var items = Enumerable.Range(request.StartIndex, count).ToArray();
-            return new TableDataResult<int> { Items = items, IsEndOfData = request.StartIndex + count >= total };
-        }
-    }
     // Every pane table wants the same one-cell horizontal cell padding, which now lives on the
     // style rather than the control.
     private static readonly TableStyle _cellPadded =

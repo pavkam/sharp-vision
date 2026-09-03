@@ -5,8 +5,6 @@ namespace SharpVision.Controls.Collections;
 
 using System.Collections.ObjectModel;
 
-using Scrolling;
-
 using SharpVision.Terminal.Input;
 
 using DisplayText = Display.Text;
@@ -22,11 +20,10 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
     "CA1710:Identifiers should have correct suffix",
     Justification = "ListView is the approved concise terminal control name, not a collection implementation.")]
 [PublicAPI]
-public sealed class ListView: ItemsControl
+public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
 {
     private readonly ListViewHost _stack;
-    private readonly RetainedScrollPart _scrollPart;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly StyleSlot<ListViewStyle> _style;
     private readonly GenericList _items = [];
     private readonly ReadOnlyCollection<object?> _itemsView;
     private readonly HashSet<int> _selection = [];
@@ -68,12 +65,8 @@ public sealed class ListView: ItemsControl
             ShowScrollBars = ShowScrollBars.WhenNeeded
         };
         _stack.ScrollChanged += OnHostScrollChanged;
-        InitializeItemsHost(_stack);
-        _scrollPart = RegisterRetainedScrollPart(_stack);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
+        InitializeScrollableItemsHost(_stack);
+        _style = InitializeStyle(ListViewStyle.Definition, OnStyleChanged);
         _ = AddHandler(Events.Key, OnKeyRouted);
         IsFocusable = true;
         IsTabStop = true;
@@ -88,6 +81,18 @@ public sealed class ListView: ItemsControl
 
     /// <summary>Raised after semantic Enter or primary pointer invocation.</summary>
     public event EventHandler<ItemInvokedEventArgs>? ItemInvoked;
+
+    /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public ListViewStyle? Style
+    {
+        get => _style.Local;
+        set => _style.Local = value;
+    }
+
+    /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
+    public ListViewStyle ActualStyle => _style.Actual;
 
     /// <summary>Raised with a ListView-owned immutable activation identity before any active-row
     /// or selection publication can invoke external callbacks.</summary>
@@ -276,6 +281,16 @@ public sealed class ListView: ItemsControl
         }
     } = ListItemInvocation.SingleClick;
 
+    /// <summary>Gets or sets whether directional keyboard navigation wraps across the first and
+    /// last available items.</summary>
+    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
+    public bool WrapNavigation
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    }
+
     /// <summary>Gets the lowest selected index, or sets, activates, and minimally reveals one
     /// exclusive index; -1 clears selection without moving the viewport.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is less than -1 or outside Items.</exception>
@@ -337,87 +352,6 @@ public sealed class ListView: ItemsControl
     [ValueRange(-1, int.MaxValue)]
     public int ActiveIndex { get; private set; } = -1;
 
-    /// <summary>Raised after the composed scroll container's offset commits.</summary>
-    /// <remarks>
-    /// The scrolling items host is a private retained part; this forwards its
-    /// <see cref="Container.ScrollChanged"/> so a consumer can observe scroll position without
-    /// reaching into private presentation trees.
-    /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _scrollPart.AddScrollChanged(value);
-        remove => _scrollPart.RemoveScrollChanged(value);
-    }
-
-    /// <summary>Gets the committed non-negative content extent of the composed scroll container.</summary>
-    public Size Extent => _scrollPart.Extent;
-
-    /// <summary>Gets the committed non-negative visible extent of the composed scroll container.</summary>
-    public Size Viewport => _scrollPart.Viewport;
-
-    /// <summary>Gets or sets the composed horizontal scroll offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    [NonNegativeValue]
-    public int HorizontalOffset
-    {
-        get => _scrollPart.HorizontalOffset;
-        set => _scrollPart.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the composed vertical scroll offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    [NonNegativeValue]
-    public int VerticalOffset
-    {
-        get => _scrollPart.VerticalOffset;
-        set => _scrollPart.VerticalOffset = value;
-    }
-
-    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
-    /// composed viewport.</summary>
-    /// <remarks>
-    /// Keyboard navigation always moves by exactly one item regardless of <see cref="RowHeight"/>
-    /// or this value - only the mouse wheel consults it. Applications wanting the wheel to step by
-    /// whole rows with a windowed <see cref="RowHeight"/> can set <see cref="LineSize"/> to the row
-    /// height.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    [NonNegativeValue]
-    public int LineSize
-    {
-        get => _scrollPart.LineSize;
-        set => _scrollPart.LineSize = value;
-    }
-
-    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    [NonNegativeValue]
-    public int PageOverlap
-    {
-        get => _scrollPart.PageOverlap;
-        set => _scrollPart.PageOverlap = value;
-    }
-
-    /// <summary>Scrolls the composed scroll container by signed cell deltas with saturation and
-    /// endpoint clamping.</summary>
-    /// <param name="x">The requested horizontal delta.</param>
-    /// <param name="y">The requested vertical delta.</param>
-    /// <param name="cause">The defined input path.</param>
-    /// <returns>True when at least one offset changed.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
-        _stack.ScrollBy(x, y, cause);
-
     /// <summary>Scrolls minimally to expose one item by position, without requiring the caller to
     /// know about the private realized visual tree.</summary>
     /// <param name="index">The valid zero-based item position.</param>
@@ -440,38 +374,6 @@ public sealed class ListView: ItemsControl
 
         return _stack.BringIntoView(GetItemControl(index));
     }
-
-    /// <summary>Gets or sets the axes available to the composed overflow host.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public ScrollBars ScrollBars
-    {
-        get => _scrollPart.ScrollBars;
-        set => _scrollPart.ScrollBars = value;
-    }
-
-    /// <summary>Gets or sets the common scrollbar reservation policy for enabled axes.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
-    {
-        get => _scrollPart.ShowScrollBars;
-        set => _scrollPart.ShowScrollBars = value;
-    }
-
-    /// <summary>Gets or sets the complete local style for generated scrollbars.</summary>
-    /// <exception cref="InvalidOperationException">The attached ListView is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The ListView is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the resolved generated-scrollbar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
 
     /// <summary>Changes one programmatic index without replacing other Multiple selections;
     /// selecting also activates and minimally reveals that index.</summary>
@@ -1983,6 +1885,17 @@ public sealed class ListView: ItemsControl
         eventArgs.IsHandled = HandleSelectionNavigationKey(eventArgs);
     }
 
+    private void OnStyleChanged(ListViewStyle previous, ListViewStyle current)
+    {
+        _ = previous;
+        _ = current;
+
+        for (var index = 0; index < ItemControlCount; index++)
+        {
+            InvalidateRetainedDescendant(GetItemControl(index), InvalidationImpact.Render);
+        }
+    }
+
     /// <summary>Handles one delegated navigation stroke through ordinary ListView selection
     /// semantics.</summary>
     /// <param name="eventArgs">The routed key record to interpret.</param>
@@ -1994,16 +1907,18 @@ public sealed class ListView: ItemsControl
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         return eventArgs.IsKeyDown &&
-            KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) &&
-            MoveSelection(eventArgs.Stroke.Code);
+            (KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) ||
+             KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.Shift)) &&
+            MoveSelection(eventArgs.Stroke.Code, eventArgs.Stroke.Modifiers);
     }
 
     /// <summary>Moves selection and current item through the shared keyboard-navigation transaction,
     /// then scrolls the committed row into view.</summary>
     /// <param name="code">The directional, endpoint, or paging navigation key.</param>
+    /// <param name="modifiers">The optional Shift range-selection modifier.</param>
     /// <returns><see langword="true"/> when the key resolved an eligible target; otherwise,
     /// <see langword="false"/>.</returns>
-    internal bool MoveSelection(Code code)
+    internal bool MoveSelection(Code code, Modifiers modifiers = Modifiers.None)
     {
         var target = ResolveMove(code);
 
@@ -2014,7 +1929,7 @@ public sealed class ListView: ItemsControl
 
         if (SelectionMode != ListSelectionMode.None)
         {
-            var accepted = ApplyInputSelection(target.Index, Modifiers.None);
+            var accepted = ApplyInputSelection(target.Index, modifiers);
 
             // ApplyInputSelection can synchronously reach a subscriber that disposes the control -
             // matches the guard the SelectedIndex setter already applies before this same
@@ -2105,9 +2020,9 @@ public sealed class ListView: ItemsControl
     private ListItem? ResolveNavigation(int currentIndex, Code code)
     {
         var target = code is Code.Up or Code.Left
-            ? FindEligible(currentIndex - 1, -1)
+            ? ResolveDirectionalNavigation(currentIndex, -1)
             : code is Code.Down or Code.Right
-            ? FindEligible(currentIndex + 1, 1)
+            ? ResolveDirectionalNavigation(currentIndex, 1)
             : code == Code.Home
             ? FindEligible(0, 1)
             : code == Code.End
@@ -2117,6 +2032,22 @@ public sealed class ListView: ItemsControl
             : code == Code.PageDown ? FindEligible(StepPage(currentIndex, 1), 1) : -1;
 
         return target < 0 ? null : Realize(target);
+    }
+
+    [Pure]
+    private int ResolveDirectionalNavigation(int currentIndex, int direction)
+    {
+        var start = currentIndex + direction;
+
+        if (WrapNavigation && (start < 0 || start >= Items.Count))
+        {
+            return FindEligible(direction > 0 ? 0 : Items.Count - 1, direction);
+        }
+
+        var target = FindEligible(start, direction);
+        return WrapNavigation && target < 0
+            ? FindEligible(direction > 0 ? 0 : Items.Count - 1, direction)
+            : target;
     }
 
     // In eager mode every realized row's arranged Bounds.Height is already available, so a page

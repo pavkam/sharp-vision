@@ -43,14 +43,16 @@ single-host authoring surface below.
 
 The base measures the host inside its own content box, includes a visible host
 margin in its desired size, and arranges the host with both axes resolved. The
-host owns item-specific layout and any optional scrolling; `ItemsControl` itself
-adds no scrolling behavior.
+host owns item-specific layout. `ItemsControl` itself adds no scrolling
+behavior; a derived control with a private scrolling host uses
+[`ScrollableItemsControl`](#scrollableitemscontrol).
 
 ## Inheritance
 
 ```mermaid
 classDiagram
     ControlBase <|-- ItemsControl
+    ItemsControl <|-- ScrollableItemsControl
 ```
 
 ## API
@@ -72,6 +74,35 @@ classDiagram
 `ItemsControl` deliberately exposes no public `Children` collection. Concrete
 types such as [`ListView`](collections/list-view.md#overview) and
 [`Table`](layout/table.md#overview) publish typed semantic collections.
+
+### ScrollableItemsControl
+
+`ScrollableItemsControl : ItemsControl` is the shared authoring role for a
+semantic item control whose one private presentation host supplies scrolling. It
+keeps that mutable host private while exposing extent, viewport, offsets, scroll
+policy, scrollbar styling, and `ScrollChanged` on the semantic owner. The event
+sender is always the item owner; retained presentation controls never escape
+through the public contract.
+
+A concrete constructor calls `InitializeScrollableItemsHost(Container)` once.
+The host must already contain the control-specific layout behavior and may
+remain private for its complete lifetime.
+
+| Member                                      | Type                                   | Default          | Description                                               |
+| ------------------------------------------- | -------------------------------------- | ---------------- | --------------------------------------------------------- |
+| `ScrollBars`                                | `ScrollBars`                           | Host-defined     | Axes enabled by the private presentation host.            |
+| `ShowScrollBars`                            | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.              |
+| `ScrollBarStyle`                            | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                 |
+| `ActualScrollBarStyle`                      | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                       |
+| `Extent`                                    | `Size`                                 | Layout-dependent | Committed content extent.                                 |
+| `Viewport`                                  | `Size`                                 | Layout-dependent | Committed visible extent.                                 |
+| `HorizontalOffset`                          | `int`                                  | `0`              | Valid horizontal content offset.                          |
+| `VerticalOffset`                            | `int`                                  | `0`              | Valid vertical content offset.                            |
+| `LineSize`                                  | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.       |
+| `PageOverlap`                               | `int`                                  | `0`              | Non-negative context retained between page commands.      |
+| `ScrollBy(int x, int y, ScrollCause cause)` | `bool`                                 | —                | Adds signed deltas with saturation and endpoint clamping. |
+| `ScrollChanged`                             | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the item owner as sender.            |
+| `InitializeScrollableItemsHost(Container)`  | `void`                                 | —                | Protected; installs the private scrolling item host.      |
 
 ## Keyboard
 

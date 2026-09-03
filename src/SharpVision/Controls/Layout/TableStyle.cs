@@ -35,6 +35,10 @@ public sealed record TableStyle: ControlStyle
                   Resolved(previous.HeaderForeground, previousTheme) != Resolved(current.HeaderForeground, currentTheme) ||
                   Resolved(previous.HeaderBackground, previousTheme) != Resolved(current.HeaderBackground, currentTheme) ||
                   Resolved(previous.GridLineColor, previousTheme) != Resolved(current.GridLineColor, currentTheme) ||
+                  ControlBase.ResolveColor(previous.SelectedTextColor, previousTheme) !=
+                  ControlBase.ResolveColor(current.SelectedTextColor, currentTheme) ||
+                  ControlBase.ResolveColor(previous.SelectedBackground, previousTheme) !=
+                  ControlBase.ResolveColor(current.SelectedBackground, currentTheme) ||
                   Resolved(previous.PlaceholderForeground, previousTheme) !=
                   Resolved(current.PlaceholderForeground, currentTheme) ||
                   Resolved(previous.PlaceholderErrorForeground, previousTheme) !=
@@ -49,6 +53,8 @@ public sealed record TableStyle: ControlStyle
             control.Shadow,
             TableGlyphs.Default,
             default,
+            SemanticColor.SelectedText,
+            SemanticColor.SelectedControl,
             SemanticColor.Muted,
             SemanticColor.Error);
 
@@ -58,6 +64,8 @@ public sealed record TableStyle: ControlStyle
     /// <param name="shadow">The complete normal shadow.</param>
     /// <param name="glyphs">The complete grid-line glyph family.</param>
     /// <param name="cellPadding">The padding applied to every header and data cell.</param>
+    /// <param name="selectedTextColor">The non-transparent selected-cell foreground.</param>
+    /// <param name="selectedBackground">The non-transparent selected-cell background.</param>
     /// <param name="placeholderForeground">The non-transparent pending-placeholder-row foreground.</param>
     /// <param name="placeholderErrorForeground">The non-transparent failed-placeholder-row foreground.</param>
     /// <exception cref="ArgumentException">A configured placeholder color is transparent.</exception>
@@ -68,12 +76,16 @@ public sealed record TableStyle: ControlStyle
         Shadow shadow,
         TableGlyphs glyphs,
         Thickness cellPadding,
+        ControlColor selectedTextColor,
+        ControlColor selectedBackground,
         ControlColor placeholderForeground,
         ControlColor placeholderErrorForeground)
         : base(face, border, shadow)
     {
         Glyphs = glyphs;
         CellPadding = cellPadding;
+        SelectedTextColor = selectedTextColor;
+        SelectedBackground = selectedBackground;
         PlaceholderForeground = placeholderForeground;
         PlaceholderErrorForeground = placeholderErrorForeground;
     }
@@ -132,6 +144,30 @@ public sealed record TableStyle: ControlStyle
                 ControlColor.ValidatePaint(color, nameof(value));
             }
 
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the selected-cell foreground.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor SelectedTextColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the selected-cell background.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor SelectedBackground
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
             field = value;
         }
     }
