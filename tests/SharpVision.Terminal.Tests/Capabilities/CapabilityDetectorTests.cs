@@ -80,6 +80,30 @@ public sealed class CapabilityDetectorTests
         capabilities.Osc52.ShouldBe(Feature.Unknown);
     }
 
+    /// <summary>
+    /// Verifies a conflicting environment (Kitty TERM alongside a stale iTerm2 TERM_PROGRAM, with
+    /// no multiplexer or remote session in play to narrow evidence afterward) still yields
+    /// mutually-exclusive graphics-backend hints: only one of KittyGraphics/ItermImages becomes
+    /// Tentative, matching the kitty &gt; xterm &gt; iTerm2 precedence order.
+    /// </summary>
+    [Fact]
+    public void Detect_WhenEnvironmentConflictsBetweenKittyAndItermWithoutMultiplexer_OnlyOneGraphicsHintIsTentative()
+    {
+        // Arrange
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM"] = "xterm-kitty",
+            ["TERM_PROGRAM"] = "iTerm.app"
+        };
+
+        // Act
+        var capabilities = CapabilityDetector.Detect(environment);
+
+        // Assert
+        capabilities.KittyGraphics.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        capabilities.ItermImages.State.ShouldBe(CapabilitySupport.Unknown);
+    }
+
     /// <summary>Verifies the public facade applies the conservative baseline through the discovery pipeline.</summary>
     [Fact]
     public void Detect_WhenPublicEvidenceIsProvided_MatchesDiscoveryPipeline()

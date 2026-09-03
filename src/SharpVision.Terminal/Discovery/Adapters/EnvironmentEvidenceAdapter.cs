@@ -80,7 +80,7 @@ internal static class EnvironmentEvidenceAdapter
                 };
             }
 
-            if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
             {
                 var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
                 capabilities = capabilities with { ItermImages = ApplyHint(capabilities.ItermImages, hint) };
