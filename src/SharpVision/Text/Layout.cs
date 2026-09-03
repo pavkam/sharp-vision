@@ -303,9 +303,11 @@ public static class Layout
                     destination,
                     ref count);
 
-                // A word that fills the line exactly is followed by whitespace that no longer
-                // fits; that whitespace is the break, for the same reason as above.
-                lineStart = wordBoundaries && IsWhitespace(cluster)
+                // A run that fills the line exactly is followed by whitespace that no longer
+                // fits; that whitespace is the break, for the same reason as above. This applies
+                // regardless of wordBoundaries: even WrapAnywhere must not carry a stray leading
+                // whitespace character onto the next line.
+                lineStart = IsWhitespace(cluster)
                     ? SkipBreakWhitespace(value, position)
                     : position;
                 position = lineStart;

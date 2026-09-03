@@ -58,6 +58,21 @@ public sealed class LayoutTests
         lines.Select(static line => line.Cells).ShouldBe([4, 3]);
     }
 
+    /// <summary>Verifies a run that fills the line exactly under WrapAnywhere still treats the
+    /// immediately following whitespace as the break, so the next line does not open with a
+    /// stray leading space the way word-boundary wrapping already avoids.</summary>
+    [Fact]
+    public void Format_WhenOverflowWrapAnywhereFillsLineExactly_ConsumesFollowingWhitespace()
+    {
+        const string content = "alpha beta";
+        var lines = Format(content, width: 5, overflow: Overflow.WrapAnywhere);
+
+        lines.Length.ShouldBe(2);
+        content.AsSpan(lines[0].Offset, lines[0].Length).ToString().ShouldBe("alpha");
+        content.AsSpan(lines[1].Offset, lines[1].Length).ToString().ShouldBe("beta");
+        lines.Select(static line => line.Cells).ShouldBe([5, 4]);
+    }
+
     /// <summary>Verifies clipping removes only complete overflowing graphemes.</summary>
     [Fact]
     public void Format_WhenClipping_TruncatesAtGraphemeBoundary()
