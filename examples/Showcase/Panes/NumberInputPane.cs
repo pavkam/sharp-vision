@@ -19,39 +19,71 @@ internal sealed class NumberInputPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
+        var fieldWidth = Length.Cells(28);
+
         // Whole-number editing.
         var integerStatus = new Text("Value: 0");
-        var integer = new NumberInput { Mode = NumberInputMode.Integer, Value = 0m };
+        var integer = new NumberInput { Width = fieldWidth, Mode = NumberInputMode.Integer, Value = 0m };
         integer.ValueChanged += (_, eventArgs) =>
             integerStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Decimal editing with two fractional places.
         var decimalStatus = new Text("Value: 0.00");
-        var @decimal = new NumberInput { DecimalPlaces = 2, Value = 0m };
+        var @decimal = new NumberInput
+        {
+            Width = fieldWidth,
+            CursorShape = CursorShape.Bar,
+            DecimalPlaces = 2,
+            Value = 0m
+        };
         @decimal.ValueChanged += (_, eventArgs) =>
             decimalStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Bounded range with a custom Step.
         var boundedStatus = new Text("Value: 50");
-        var bounded = new NumberInput { Minimum = 0m, Maximum = 100m, Step = 5m, Value = 50m };
+        var bounded = new NumberInput
+        {
+            Width = fieldWidth,
+            Minimum = 0m,
+            Maximum = 100m,
+            Step = 5m,
+            Value = 50m
+        };
         bounded.ValueChanged += (_, eventArgs) =>
             boundedStatus.Content = $"Value: {FormatValue(eventArgs.Value)} (0-100 by 5)";
 
         // Nullable with AllowNull=true.
         var nullableStatus = new Text("Value: (none)");
-        var nullable = new NumberInput { AllowNull = true };
+        var nullable = new NumberInput
+        {
+            Width = fieldWidth,
+            AllowNull = true,
+            Placeholder = "Optional number"
+        };
         nullable.ValueChanged += (_, eventArgs) =>
             nullableStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Grouped display for large magnitudes.
         var groupedStatus = new Text("Value: 1,234,567");
-        var grouped = new NumberInput { AllowGrouping = true, DecimalPlaces = 0, Value = 1234567m };
+        var grouped = new NumberInput
+        {
+            Width = fieldWidth,
+            AllowGrouping = true,
+            DecimalPlaces = 0,
+            Value = 1234567m
+        };
         grouped.ValueChanged += (_, eventArgs) =>
             groupedStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Non-invariant culture.
         var cultureStatus = new Text("Value: 1234,56");
-        var culture = new NumberInput { Culture = new CultureInfo("de-DE"), DecimalPlaces = 2, Value = 1234.56m };
+        var culture = new NumberInput
+        {
+            Width = fieldWidth,
+            Culture = new CultureInfo("de-DE"),
+            DecimalPlaces = 2,
+            Value = 1234.56m
+        };
         culture.ValueChanged += (_, eventArgs) =>
             cultureStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
@@ -61,6 +93,7 @@ internal sealed class NumberInputPane: CompositeControlBase
         {
             Minimum = 0m,
             Maximum = 100m,
+            Width = fieldWidth,
             Value = 50m,
             EndAffix = new Affix("%")
         };
@@ -76,7 +109,7 @@ internal sealed class NumberInputPane: CompositeControlBase
                 "<info>Mode</info> set to <info>Integer</info> rejects the decimal-separator keystroke outright and always commits a whole number.",
                 new DocExample(
                     "Whole-number field",
-                    "Type digits, then press <reverse>Enter</reverse> or move focus away to commit. <reverse>Up</reverse>/<reverse>Down</reverse> step by <info>Step</info> immediately.",
+                    "Press <reverse>Ctrl+A</reverse> to replace the seeded value, or hold <reverse>Shift</reverse> with Left/Right to extend selection. Enter or focus loss commits; Up/Down steps immediately.",
                     new DocColumn(integer, integerStatus),
                     "var numberInput = new NumberInput { Mode = NumberInputMode.Integer };")),
             new DocSection(
@@ -85,7 +118,7 @@ internal sealed class NumberInputPane: CompositeControlBase
                 "The default <info>Mode</info> is <info>Decimal</info>. <info>DecimalPlaces</info> and <info>RoundingMode</info> govern how a typed value rounds at commit.",
                 new DocExample(
                     "Two-decimal field",
-                    "Typing \"2.5\" and pressing <reverse>Enter</reverse> commits the parsed and rounded value.",
+                    "Typing \"2.5\" and pressing <reverse>Enter</reverse> commits the parsed and rounded value. This specimen requests a bar cursor.",
                     new DocColumn(@decimal, decimalStatus),
                     "var numberInput = new NumberInput { DecimalPlaces = 2 };")),
             new DocSection(
@@ -103,9 +136,9 @@ internal sealed class NumberInputPane: CompositeControlBase
                 "With <info>AllowNull</info> set, an empty committed buffer clears the value to null instead of reverting to the last number.",
                 new DocExample(
                     "Clearable number field",
-                    "Clear all typed digits and press <reverse>Enter</reverse> to commit null.",
+                    "The placeholder remains visible when focused. Type a value and commit it, or clear every digit and press <reverse>Enter</reverse> to return to null.",
                     new DocColumn(nullable, nullableStatus),
-                    "numberInput.AllowNull = true;\n// Value is null when the buffer commits empty")),
+                    "numberInput.AllowNull = true;\nnumberInput.Placeholder = \"Optional number\";")),
             new DocSection(
                 "📊",
                 "Grouped display",

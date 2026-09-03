@@ -4,6 +4,7 @@
 namespace SharpVision.Controls.Input;
 
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using TextSelection = Text.Selection;
 
 /// <summary>Edits a nullable monetary value through a transient typed buffer committed on Enter or
 /// focus loss, formatted and parsed against a culture's currency-specific globalization
@@ -50,12 +51,10 @@ public sealed class CurrencyInput: InputBase
 
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
-    private readonly NumericEditBehavior _editing;
 
     /// <summary>Initializes a focusable currency field with no committed value.</summary>
     public CurrencyInput()
     {
-        TabNavigation = TabNavigation.None;
         _coordinator = new NumericInputCommitCoordinator(
             _buffer,
             VerifyMutable,
@@ -64,18 +63,12 @@ public sealed class CurrencyInput: InputBase
             () => IsFocused,
             RefreshBuffer,
             (previous, candidate) => ValueChanged?.Invoke(this, new CurrencyInputValueChangedEventArgs(previous, candidate)));
-#pragma warning disable IDE0200 // A method group would capture the construction-time ContentBounds value.
-        _editing = new NumericEditBehavior(
+        EnableNumericEditing(
             _buffer,
             _coordinator,
             ConfigureBuffer,
             () => EffectiveDecimalPlaces,
-            () => IsFocused,
-            point => ContentBounds.Contains(point),
-            RequestEditingFocus,
-            ResolveCaretIndex,
-            () => Invalidate(InvalidationImpact.Render));
-#pragma warning restore IDE0200
+            ResolveCaretIndex);
     }
 
     /// <summary>Raised after a committed value transition.</summary>
@@ -273,6 +266,31 @@ public sealed class CurrencyInput: InputBase
         }
     }
 
+    /// <summary>Gets or sets optional hint text shown while the value and transient edit buffer are
+    /// empty.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Placeholder
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+    }
+
+    /// <summary>Gets or sets the protocol-neutral cursor shape requested while this field has
+    /// focus.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public CursorShape CursorShape
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The cursor shape is unknown.");
+            _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        }
+    }
+
     #region Layout
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inboard of the
@@ -308,27 +326,6 @@ public sealed class CurrencyInput: InputBase
 
     #endregion
 
-    #region Input
-
-    /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        ArgumentNullException.ThrowIfNull(eventArgs);
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            base.OnEvent(eventArgs);
-            return;
-        }
-
-        if (!_editing.HandleEvent(eventArgs))
-        {
-            base.OnEvent(eventArgs);
-        }
-    }
-
-    #endregion
-
     #region Commit and buffer synchronization
 
     /// <summary>Resolves the decimal places and rounding policy a freshly parsed buffer value
@@ -345,13 +342,6 @@ public sealed class CurrencyInput: InputBase
 
     private void ConfigureBuffer() =>
         _buffer.Configure(BuildBufferFormat(), EffectiveDecimalPlaces == 0);
-
-    private bool RequestEditingFocus()
-    {
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-        return CanContinueAfterFocus(dispatcher);
-    }
 
     private int ResolveCaretIndex(Point cells)
     {
@@ -474,10 +464,13 @@ public sealed class CurrencyInput: InputBase
 
     #region Affix composition
 
-    private readonly record struct FocusedDisplay(string Text, int CoreStart, string Magnitude, int SignLength);
+    [Pure]
+    private static TextSelection ProjectSelection(CurrencyInputFocusedDisplay display, TextSelection selection) => new(
+        display.CoreStart + Math.Clamp(selection.Anchor - display.SignLength, 0, display.Magnitude.Length),
+        display.CoreStart + Math.Clamp(selection.Caret - display.SignLength, 0, display.Magnitude.Length));
 
     [Pure]
-    private FocusedDisplay BuildFocusedDisplay()
+    private CurrencyInputFocusedDisplay BuildFocusedDisplay()
     {
         var format = Culture.NumberFormat;
         var raw = _buffer.Text;
@@ -486,7 +479,7 @@ public sealed class CurrencyInput: InputBase
             ? _negativePatterns[format.CurrencyNegativePattern]
             : _positivePatterns[format.CurrencyPositivePattern];
         var composed = ComposeTemplate(pattern, ResolveCurrencyText(), magnitude, format.NegativeSign, out var coreStart);
-        return new FocusedDisplay(composed, coreStart, magnitude, signLength);
+        return new CurrencyInputFocusedDisplay(composed, coreStart, magnitude, signLength);
     }
 
     [Pure]
@@ -588,46 +581,38 @@ public sealed class CurrencyInput: InputBase
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var content = ContentBounds;
-
-        if (content.Width == 0 || content.Height == 0)
-        {
-            return;
-        }
-
-        var style = ResolvedStyle;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-
-        // Affixes render against the undeflated content box - not the value box below - so a
-        // present affix keeps sitting at the true edge even when the value's own box saturates to
-        // zero width.
-        RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
-
-        var valueBox = DeflateForAffixes(content, affixes);
         string displayText;
         var caretIndex = 0;
+        var displaySelection = default(TextSelection);
 
         if (IsFocused)
         {
-            var focused = BuildFocusedDisplay();
-            displayText = focused.Text;
-            var caretInCore = Math.Clamp(_buffer.Selection.Caret - focused.SignLength, 0, focused.Magnitude.Length);
-            caretIndex = focused.CoreStart + caretInCore;
+            if (_buffer.IsEmpty && Placeholder is { Length: > 0 })
+            {
+                displayText = string.Empty;
+            }
+            else
+            {
+                var focused = BuildFocusedDisplay();
+                displayText = focused.Text;
+                displaySelection = ProjectSelection(focused, _buffer.Selection);
+                caretIndex = displaySelection.Caret;
+            }
         }
         else
         {
             displayText = Value is { } value ? FormatValue(value) : string.Empty;
         }
 
-        var clipped = canvas.Clip(new Rect(valueBox.X, valueBox.Y, valueBox.Width, 1));
-        _ = clipped.Draw(displayText.AsSpan(), new Point(valueBox.X, valueBox.Y), style, background: BackgroundMode.Transparent);
-
-        if (!IsFocused)
-        {
-            return;
-        }
-
-        SetCaretCursor(canvas, valueBox, displayText, caretIndex);
+        RenderNumericInputContent(
+            canvas,
+            displayText,
+            displaySelection,
+            caretIndex,
+            StartAffix,
+            EndAffix,
+            Placeholder,
+            CursorShape);
     }
 
     /// <inheritdoc/>
@@ -642,50 +627,22 @@ public sealed class CurrencyInput: InputBase
     /// </remarks>
     internal override void OnReuseCleanRender(TerminalCanvas canvas)
     {
-        if (!IsFocused)
-        {
-            return;
-        }
-
-        var content = ContentBounds;
-
-        if (content.Width == 0 || content.Height == 0)
-        {
-            return;
-        }
-
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var valueBox = DeflateForAffixes(content, affixes);
-        var focused = BuildFocusedDisplay();
-        var displayText = focused.Text;
-        var caretInCore = Math.Clamp(_buffer.Selection.Caret - focused.SignLength, 0, focused.Magnitude.Length);
-        var caretIndex = focused.CoreStart + caretInCore;
-
-        SetCaretCursor(canvas, valueBox, displayText, caretIndex);
-    }
-
-    private void SetCaretCursor(TerminalCanvas canvas, Rect valueBox, string displayText, int caretIndex)
-    {
-        var caretColumn = MeasureCells(displayText.AsSpan(0, Math.Min(caretIndex, displayText.Length)));
-        var position = new Point(valueBox.X + caretColumn, valueBox.Y);
-
-        if (valueBox.Contains(position) && canvas.Bounds.Contains(position))
-        {
-            canvas.SetCursor(position, visible: true, CursorShape.Block);
-        }
+        var display = _buffer.IsEmpty && Placeholder is { Length: > 0 }
+            ? new CurrencyInputFocusedDisplay(string.Empty, 0, string.Empty, 0)
+            : BuildFocusedDisplay();
+        var caretIndex = ProjectSelection(display, _buffer.Selection).Caret;
+        ReplayNumericInputCursor(
+            canvas,
+            display.Text,
+            caretIndex,
+            StartAffix,
+            EndAffix,
+            CursorShape);
     }
 
     #endregion
 
     #region Lifecycle
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        _editing.FocusChanged(focused);
-    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

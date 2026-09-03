@@ -579,6 +579,8 @@ namespace SharpVision.Controls
         protected override void OnAttached() { }
         protected virtual void OnDropDownClosed() { }
         protected virtual void OnDropDownOpened() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFocusChanged(bool focused) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
         protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
@@ -1735,19 +1737,19 @@ namespace SharpVision.Controls.Input
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
         public string? CurrencyOverride { get; set; }
+        public SharpVision.Terminal.Rendering.CursorShape CursorShape { get; set; }
         public int? DecimalPlaces { get; set; }
         public SharpVision.Controls.Input.CurrencyDisplayMode DisplayMode { get; set; }
         public SharpVision.Styling.Affix? EndAffix { get; set; }
         public decimal Maximum { get; set; }
         public decimal Minimum { get; set; }
+        public string? Placeholder { get; set; }
         public System.MidpointRounding RoundingMode { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public decimal Step { get; set; }
         public decimal? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.CurrencyInputValueChangedEventArgs>? ValueChanged;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
@@ -1849,19 +1851,19 @@ namespace SharpVision.Controls.Input
         public bool AllowGrouping { get; set; }
         public bool AllowNull { get; set; }
         public System.Globalization.CultureInfo Culture { get; set; }
+        public SharpVision.Terminal.Rendering.CursorShape CursorShape { get; set; }
         public int DecimalPlaces { get; set; }
         public SharpVision.Styling.Affix? EndAffix { get; set; }
         public decimal Maximum { get; set; }
         public decimal Minimum { get; set; }
         public SharpVision.Controls.Input.NumberInputMode Mode { get; set; }
+        public string? Placeholder { get; set; }
         public System.MidpointRounding RoundingMode { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public decimal Step { get; set; }
         public decimal? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.NumberInputValueChangedEventArgs>? ValueChanged;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
@@ -2005,7 +2007,7 @@ namespace SharpVision.Controls.Input
         public string SearchTerms { get; }
     }
     public delegate System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<object?>> SuggestionResolver(string searchTerms, System.Threading.CancellationToken cancellationToken);
-    public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
+    public sealed class TextInput : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
         public bool AcceptsReturn { get; set; }
@@ -2030,7 +2032,7 @@ namespace SharpVision.Controls.Input
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public SharpVision.Controls.Input.TextInputStyle? Style { get; set; }
-        public string Text { get; set; }
+        public override string Text { get; set; }
         public int UndoLimit { get; set; }
         public int VerticalOffset { get; }
         public bool WordWrap { get; set; }

@@ -6,13 +6,14 @@
 that opts into one or more of the shared interaction primitives value editors,
 text-captioned controls, and popup-backed inputs need: pointer/keyboard press
 activation, a single owned text caption, an optional command, segmented temporal
-editing, the Up/Down step-key translation, the shared drop-down disclosure
-glyph, and an owned popup with its open/close lifecycle and modal composition.
-Every capability is independent and opt-in through a verb-named `Enable*` method
-called once, from the constructor; a control that never calls a given `Enable*`
-method allocates none of that capability's state at all, with no forced caption,
-no forced command, no forced popup, no forced segment engine, and no forced
-press behavior for a control that does not use them.
+editing, transient numeric editing for in-assembly decimal fields, the Up/Down
+step-key translation, the shared drop-down disclosure glyph, and an owned popup
+with its open/close lifecycle and modal composition. Every capability is
+independent and opt-in through a verb-named `Enable*` method called once, from
+the constructor; a control that never calls a given `Enable*` method allocates
+none of that capability's state at all, with no forced caption, no forced
+command, no forced popup, no forced segment engine, and no forced numeric engine
+or press behavior for a control that does not use them.
 
 The base contract is deliberately small but not appearance-neutral: every
 `InputBase` is `IsFocusable` and `IsTabStop` by default, and resolves its
@@ -31,10 +32,13 @@ field - never calls `EnableCaption` and calls only the `Enable*` methods it
 needs, the way [`ComboBox`](input/combo-box.md#overview),
 [`DateInput`](input/date-input.md#overview),
 [`DateTimeInput`](input/date-time-input.md#overview), and
-[`TimeInput`](input/time-input.md#overview) do. `NavigationViewItem` and the
-internal `TabHeader` also skip `EnableCaption`, since each backs `Text` with its
-own field and draws its label directly instead of through an owned caption
-child. See the
+[`TimeInput`](input/time-input.md#overview) do.
+[`NumberInput`](input/number-input.md#overview) and
+[`CurrencyInput`](input/currency-input.md#overview) enable transient numeric
+editing while retaining their own parsing, formatting, and committed value
+policy. `NavigationViewItem` and the internal `TabHeader` also skip
+`EnableCaption`, since each backs `Text` with its own field and draws its label
+directly instead of through an owned caption child. See the
 [custom-input walkthrough](../walkthroughs/custom-controls.md#compose-input-capabilities)
 for a complete external derivative.
 
@@ -66,6 +70,7 @@ classDiagram
 | `CommandParameter`                                           | `object?`                | `null`   | Borrowed parameter passed to `Command` queries and execution; gated the same way as `Command`.                                                                                                                                                                                                                        |
 | `ExecuteCommandIfAny()`                                      | `void`                   | —        | Protected; invokes `Command` with `CommandParameter` when a command is bound and allows execution.                                                                                                                                                                                                                    |
 | `EnableSegmentEditing(...)` (in-assembly)                    | `SegmentFieldBehavior`   | —        | Private protected; opts into shared routed key classification, active-segment navigation, digit-entry buffering, pointer hit testing, and focus-safe continuation. In-assembly derivatives only.                                                                                                                      |
+| `EnableNumericEditing(...)` (in-assembly)                    | `void`                   | —        | Private protected; opts into the shared transient numeric buffer's routed keys, focus lifecycle, selection, placeholder, affix-aware rendering, and cursor replay. In-assembly derivatives only.                                                                                                                      |
 | `TryGetStepDelta(KeyEventArgs, out int)`                     | `bool`                   | —        | Protected static; translates an Up key to `+1` and a Down key to `-1`, returning `false` for every other key.                                                                                                                                                                                                         |
 | `ResolveDropDownGlyph(Rune)`                                 | `Rune`                   | —        | Resolves the shared disclosure chevron from the active theme's `InputStyle`, falling back to the supplied code-owned glyph.                                                                                                                                                                                           |
 | `DrawDropDownIndicator(TerminalCanvas, Rect, TerminalStyle)` | `void`                   | —        | Protected; draws the shared disclosure chevron via `ResolveDropDownGlyph`, right-aligned within `DropDownIndicatorWidth` at the content box's top row.                                                                                                                                                                |
@@ -149,14 +154,16 @@ public sealed class TagField : InputBase
 
 ## Expected behavior
 
-| Scope                 | Observable evidence                                                                                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Every `Enable*` method is idempotence-guarded; `TryActivate` validates and gates semantic activation; capability state exists only after its own `Enable*` call.                         |
-| Integrated behavior   | Composed capabilities (press activation driving an owned popup, segment editing alongside a popup) operate without collision, matching the concrete controls that ship with the library. |
-| Complete runtime path | Attachment, focus restoration on popup close, and disposal complete without leaked subscriptions, whether zero, one, or every capability is enabled.                                     |
+| Scope                 | Observable evidence                                                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | Every `Enable*` method is idempotence-guarded; `TryActivate` validates and gates semantic activation; capability state exists only after its own `Enable*` call.                                                       |
+| Integrated behavior   | Composed capabilities (press activation driving an owned popup, segment editing alongside a popup, or transient numeric editing) operate without collision, matching the concrete controls that ship with the library. |
+| Complete runtime path | Attachment, focus restoration on popup close, and disposal complete without leaked subscriptions, whether zero, one, or every capability is enabled.                                                                   |
 
 A derived control that never calls `EnablePopup` owns no popup framework-part
 slot at all - `OwnedControlCount` and `FindOwnedSlot("drop-down")` reflect that
 directly. A derived control that never calls `EnableSegmentEditing` never
-constructs the shared segment engine. The unconditional
-`IsFocusable`/`IsTabStop` default is the only cost every `InputBase` pays.
+constructs the shared segment engine, and one that never calls
+`EnableNumericEditing` never constructs the transient numeric behavior. The
+unconditional `IsFocusable`/`IsTabStop` default is the only cost every
+`InputBase` pays.

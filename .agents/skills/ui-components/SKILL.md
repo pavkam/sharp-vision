@@ -3,8 +3,8 @@ name: ui-components
 description:
   Use when adding or changing SharpVision concrete controls, control state
   machines, collections, navigation, menus, popups, windows, dialogs, TextInput
-  editing, application-surface composition, showcase pages, mounted component
-  surfaces, or component interaction and rendering.
+  or transient numeric editing, application-surface composition, showcase pages,
+  mounted component surfaces, or component interaction and rendering.
 ---
 
 # UI Components
@@ -39,7 +39,7 @@ composes shared foundations; it does not invent local frameworks.
 | Concrete control, properties, events, state, rendering, retained composition | [controls.md](references/controls.md)                                     | [Control index](../../../docs/controls/index.md#control-catalog)                             |
 | List, Tree, Tab, selection, semantic items, navigation                       | [collections-and-navigation.md](references/collections-and-navigation.md) | [ItemsControl](../../../docs/controls/items-control.md#overview)                             |
 | Menu, Popup, Flyout, Tooltip, Window, Dialog, modal presentation             | [floating-surfaces.md](references/floating-surfaces.md)                   | [Floating surfaces](../../../docs/concepts/floating-surfaces.md#overview)                    |
-| TextInput, editing, selection, undo, clipboard, password, markup             | [text-editing.md](references/text-editing.md)                             | [TextInput](../../../docs/controls/input/text-input.md#overview)                             |
+| TextInput, NumberInput, CurrencyInput, editing, selection, cursor, undo      | [text-editing.md](references/text-editing.md)                             | [TextInput](../../../docs/controls/input/text-input.md#overview)                             |
 | Application composition, forms, responsive regions, hierarchy, chrome        | [design.md](references/design.md)                                         | [Showcase responsive behavior](../../../docs/architecture/showcase.md#responsive-behavior)   |
 | Showcase page, DocPage, examples, navigation, visual capture                 | [showcase.md](references/showcase.md)                                     | [Showcase contract](../../../docs/architecture/showcase.md#overview)                         |
 | Component tests, surfaces, behavior evidence, showcase proof                 | [testing.md](references/testing.md)                                       | [Mounted surfaces](../../../docs/testing/controls-integration.md#mounted-component-surfaces) |

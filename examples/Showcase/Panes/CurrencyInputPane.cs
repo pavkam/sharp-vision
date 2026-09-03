@@ -19,27 +19,47 @@ internal sealed class CurrencyInputPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
+        var fieldWidth = Length.Cells(28);
+
         // Invariant formatting.
         var invariantStatus = new Text("Value: 0.00");
-        var invariant = new CurrencyInput { Value = 0m };
+        var invariant = new CurrencyInput { Width = fieldWidth, Value = 0m };
         invariant.ValueChanged += (_, eventArgs) =>
             invariantStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Localized culture with its own separators, sign, and symbol placement.
         var localizedStatus = new Text("Value: 1234.56");
-        var localized = new CurrencyInput { Culture = new CultureInfo("de-DE"), Value = 1234.56m };
+        var localized = new CurrencyInput
+        {
+            Width = fieldWidth,
+            CursorShape = CursorShape.Underline,
+            Culture = new CultureInfo("de-DE"),
+            Value = 1234.56m
+        };
         localized.ValueChanged += (_, eventArgs) =>
             localizedStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
         // Bounded range with a custom Step.
         var boundedStatus = new Text("Value: 50.00");
-        var bounded = new CurrencyInput { Minimum = 0m, Maximum = 100m, Step = 5m, Value = 50m };
+        var bounded = new CurrencyInput
+        {
+            Width = fieldWidth,
+            Minimum = 0m,
+            Maximum = 100m,
+            Step = 5m,
+            Value = 50m
+        };
         bounded.ValueChanged += (_, eventArgs) =>
             boundedStatus.Content = $"Value: {FormatValue(eventArgs.Value)} (0-100 by 5)";
 
         // Nullable with AllowNull=true.
         var nullableStatus = new Text("Value: (none)");
-        var nullable = new CurrencyInput { AllowNull = true };
+        var nullable = new CurrencyInput
+        {
+            Width = fieldWidth,
+            AllowNull = true,
+            Placeholder = "Optional amount"
+        };
         nullable.ValueChanged += (_, eventArgs) =>
             nullableStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
@@ -48,6 +68,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
         var precision = new CurrencyInput
         {
             DecimalPlaces = 3,
+            Width = fieldWidth,
             RoundingMode = MidpointRounding.AwayFromZero,
             Value = 12.345m
         };
@@ -56,7 +77,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
 
         // Grouped display for large magnitudes.
         var groupedStatus = new Text("Value: 1234567.00");
-        var grouped = new CurrencyInput { AllowGrouping = true, Value = 1234567m };
+        var grouped = new CurrencyInput { Width = fieldWidth, AllowGrouping = true, Value = 1234567m };
         grouped.ValueChanged += (_, eventArgs) =>
             groupedStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
 
@@ -66,6 +87,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
         {
             Culture = new CultureInfo("en-US"),
             DisplayMode = CurrencyDisplayMode.IsoCode,
+            Width = fieldWidth,
             Value = 99.99m
         };
         identity.ValueChanged += (_, eventArgs) =>
@@ -75,6 +97,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
         var receiptStatus = new Text("Value: 42.50");
         var receipt = new CurrencyInput
         {
+            Width = fieldWidth,
             Value = 42.50m,
             StartAffix = new Affix("🧾")
         };
@@ -90,7 +113,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
                 "The default <info>Culture</info> is invariant, so out-of-the-box rendering never depends on the host locale.",
                 new DocExample(
                     "Invariant currency field",
-                    "Type digits, then press <reverse>Enter</reverse> or move focus away to commit. <reverse>Up</reverse>/<reverse>Down</reverse> step by <info>Step</info> immediately.",
+                    "Press <reverse>Ctrl+A</reverse> to replace the seeded amount, or hold <reverse>Shift</reverse> with Left/Right to extend selection. Enter or focus loss commits; Up/Down steps immediately.",
                     new DocColumn(invariant, invariantStatus),
                     "var currencyInput = new CurrencyInput();")),
             new DocSection(
@@ -99,7 +122,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
                 "<info>Culture</info> supplies the currency-specific decimal separator, group separator, group sizes, sign, and positive/negative layout pattern used for both display and parsing.",
                 new DocExample(
                     "German currency field",
-                    "German uses a comma as the decimal separator, a period to group digits, and places the euro symbol after the number.",
+                    "German uses a comma as the decimal separator, a period to group digits, and places the euro symbol after the number. This specimen requests an underline cursor.",
                     new DocColumn(localized, localizedStatus),
                     "currencyInput.Culture = new CultureInfo(\"de-DE\");")),
             new DocSection(
@@ -117,9 +140,9 @@ internal sealed class CurrencyInputPane: CompositeControlBase
                 "With <info>AllowNull</info> set, an empty committed buffer clears the value to null instead of reverting to the last amount.",
                 new DocExample(
                     "Clearable currency field",
-                    "Clear all typed digits and press <reverse>Enter</reverse> to commit null.",
+                    "The placeholder remains visible when focused. Type an amount and commit it, or clear every digit and press <reverse>Enter</reverse> to return to null.",
                     new DocColumn(nullable, nullableStatus),
-                    "currencyInput.AllowNull = true;\n// Value is null when the buffer commits empty")),
+                    "currencyInput.AllowNull = true;\ncurrencyInput.Placeholder = \"Optional amount\";")),
             new DocSection(
                 "🎯",
                 "Precision and rounding",

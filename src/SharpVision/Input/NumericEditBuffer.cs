@@ -154,6 +154,21 @@ internal sealed class NumericEditBuffer
         return true;
     }
 
+    /// <summary>Selects the complete transient text while retaining the end as the active caret.</summary>
+    /// <returns>True when the directional selection changed.</returns>
+    public bool SelectAll()
+    {
+        var selection = new Selection(0, Text.Length);
+
+        if (Selection == selection)
+        {
+            return false;
+        }
+
+        Selection = selection;
+        return true;
+    }
+
     /// <summary>Collapses the selection to a caret at a known grapheme boundary, such as one located
     /// by <see cref="IndexAtColumn"/>.</summary>
     /// <param name="index">The zero-based UTF-16 index to place the caret at.</param>
