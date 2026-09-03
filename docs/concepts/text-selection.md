@@ -114,3 +114,31 @@ Selection endpoints use UTF-16 offsets and must both be extended-grapheme
 boundaries within the current semantic stream. Invalid values throw before state
 changes. Attached access and mutation are dispatcher-affine. A committed change
 raises `TextSelectionChanged` synchronously after state and invalidation commit.
+
+## Expected behavior
+
+| Scope                 | Observable evidence                                                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public API            | `IsTextSelectionEnabled`, range mutation, and navigation commands validate grapheme-boundary offsets and raise `TextSelectionChanged` synchronously after state and invalidation commit.                     |
+| Integrated behavior   | The nearest enabled owner arbitrates presses, drags, keyboard navigation, autoscroll, and Ctrl+C copy through the real ownership and routing boundary, including across `Document`'s aggregated descendants. |
+| Complete runtime path | Committed range changes invalidate only the retained surface supplying the affected glyph cells.                                                                                                             |
+
+- `IsTextSelectionEnabled` defaults to `false` and opting in never implicitly
+  makes a control focusable or a tab stop.
+- A reentrant callback that reverses an enabled-state transition owns the newest
+  state; obsolete outer work never cancels a gesture, clears a range, or
+  delivers a stale hook afterward.
+- Selection endpoints are always extended-grapheme boundaries in UTF-16 offsets;
+  an invalid value throws before any state changes.
+- Source mutation, capture loss, losing logical or terminal focus,
+  unavailability, disable, detach, disposal, or a semantic projection change
+  during an active drag stops the gesture before a stale anchor can commit.
+- Autoscroll ticks every 50 milliseconds with a per-tick delta bounded to eight
+  cells, and a modal boundary stops ancestor `AutoScroll` propagation.
+- Only complete mapped graphemes are restyled by the selection adornment; wide
+  cells are never split and non-semantic chrome is never painted.
+- The framework's Ctrl+C handler runs during the preview phase, chooses the
+  nearest enabled selection owner (falling back to another
+  `IClipboardCopySource`), calls its pure copy method exactly once, and treats
+  an empty result as authoritative.
+- Attached access and mutation are dispatcher-affine.
