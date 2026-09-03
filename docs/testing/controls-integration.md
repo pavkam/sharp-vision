@@ -420,11 +420,14 @@ self-disposal without stale focus continuation. Representative PressBehavior and
 DragBehavior consumers then prove the shared fan-out preserves their mounted
 focus, capture, availability, and control-specific cleanup ordering.
 
-Animated display controls use the same deterministic application clock. Tests
-advance one interval at a time and compare consecutive complete semantic
-screens, not private frame indices. They prove pause and resume, interval
-restart, effective visibility, attachment, detachment, disposal, width-policy
-fallback, and timer coalescing — all without sleeping. `SpinnerSurfaceTests` and
+`AnimatedIndicatorBaseSurfaceTests` proves the shared cadence, pause/resume,
+effective-visibility, passive-input, and content-box contract independently of a
+concrete animation algorithm. Animated display controls use the same
+deterministic application clock. Tests advance one interval at a time and
+compare consecutive complete semantic screens, not private frame indices. They
+prove pause and resume, interval restart, effective visibility, attachment,
+detachment, disposal, width-policy fallback, intrinsic border and padding, and
+timer coalescing — all without sleeping. `SpinnerSurfaceTests` and
 `ChaseIndicatorSurfaceTests` provide the mounted evidence required by the
 public-control behavior catalog. Owner-bound participant tests additionally
 prove same- and cross-dispatcher reattachment, disposal while attached or

@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 // will. This list is reviewed by hand: a page only leaves it once a concrete control replaces or
 // wraps it with its own dedicated Gallery pane.
 export const excludedAbstractDocSlugs = new Set([
+  "animated-indicator-base",
   "composite-control",
   "container",
   "content-control",

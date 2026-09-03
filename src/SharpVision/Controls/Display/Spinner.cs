@@ -7,24 +7,15 @@ using System.Collections.Immutable;
 
 /// <summary>Displays one automatically advancing glyph from a built-in frame sequence.</summary>
 [PublicAPI]
-public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
+public sealed class Spinner: AnimatedIndicatorBase, IStyled<SpinnerStyle>
 {
     private int _frameIndex;
     private ImmutableArray<Rune> _phaseFrames;
     private bool _hasPhaseFrames;
-    private readonly AnimationTimer _animation;
     private readonly StyleSlot<SpinnerStyle> _style;
 
     /// <summary>Initializes a playing one-cell Braille spinner.</summary>
-    public Spinner()
-    {
-        _style = InitializeStyle(SpinnerStyle.Definition, OnStyleChanged);
-        _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
-        RegisterAttachmentParticipant(_animation);
-        HorizontalAlignment = HorizontalAlignment.Left;
-        VerticalAlignment = VerticalAlignment.Top;
-        IsHitTestVisible = false;
-    }
+    public Spinner() => _style = InitializeStyle(SpinnerStyle.Definition, OnStyleChanged);
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached spinner is mutated off-dispatcher.</exception>
@@ -38,56 +29,6 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public SpinnerStyle ActualStyle => _style.Actual;
 
-    #region Playback properties
-
-    /// <summary>Gets or sets the duration between frame advances.</summary>
-    /// <remarks>The default is 200 milliseconds. Changing a running spinner restarts one complete interval.</remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the supported timer range.</exception>
-    /// <exception cref="InvalidOperationException">The attached spinner is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The spinner is disposed.</exception>
-    public TimeSpan Interval
-    {
-        get;
-        set
-        {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            _animation.Interval = value;
-            field = value;
-            NotifyPropertyChanged(nameof(Interval), InvalidationImpact.None);
-        }
-    } = TimeSpan.FromMilliseconds(200);
-
-    /// <summary>Gets or sets whether attached playback advances automatically.</summary>
-    /// <remarks>Pausing retains the current frame; resuming starts one complete interval.</remarks>
-    /// <exception cref="InvalidOperationException">The attached spinner is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The spinner is disposed.</exception>
-    public bool IsPlaying
-    {
-        get;
-        set
-        {
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            _animation.IsPlaying = value;
-            field = value;
-            NotifyPropertyChanged(nameof(IsPlaying), InvalidationImpact.None);
-        }
-    } = true;
-
-    #endregion
-
     #region Layout and rendering
 
     /// <inheritdoc/>
@@ -98,15 +39,8 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnRenderContent(TerminalCanvas canvas)
+    protected override void OnRenderFrame(TerminalCanvas canvas, Rect bounds)
     {
-        _animation.EnsureRunning();
-
-        if (Bounds.Width == 0 || Bounds.Height == 0)
-        {
-            return;
-        }
-
         var frames = Frames();
 
         // Resolve against the live Ambiguous-width policy rather than drawing the frame raw:
@@ -119,7 +53,7 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
         var frame = frames[_frameIndex].Resolve(fallback, CellPolicy.AmbiguousWidth);
         canvas.DrawRune(
             frame,
-            new Point(Bounds.X, Bounds.Y),
+            new Point(bounds.X, bounds.Y),
             ResolvedStyle,
             BackgroundMode.Transparent);
     }
@@ -146,13 +80,9 @@ public sealed class Spinner: ControlBase, IStyled<SpinnerStyle>
         return frames;
     }
 
-    private void OnTick()
+    /// <inheritdoc/>
+    protected override void OnAnimationTick()
     {
-        if (!IsPlaying || !EffectiveIsVisible)
-        {
-            return;
-        }
-
         var frames = Frames();
         _frameIndex = (_frameIndex + 1) % frames.Length;
         Invalidate(InvalidationImpact.Render);

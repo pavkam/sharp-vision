@@ -1131,13 +1131,24 @@ namespace SharpVision.Controls.Collections
 }
 namespace SharpVision.Controls.Display
 {
-    public sealed class ChaseIndicator : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.ChaseIndicatorStyle>
+    public abstract class AnimatedIndicatorBase : SharpVision.Controls.ControlBase
+    {
+        protected AnimatedIndicatorBase() { }
+        public System.TimeSpan Interval { get; set; }
+        public bool IsPlaying { get; set; }
+        protected abstract void OnAnimationTick();
+        protected virtual void OnIntervalChanged() { }
+        protected virtual void OnPlaybackStarting() { }
+        protected override sealed void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected abstract void OnRenderFrame(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect bounds);
+        protected void ScheduleAnimation(System.TimeSpan interval) { }
+        protected virtual bool ShouldSynchronizeIntervalBeforePublication() { }
+    }
+    public sealed class ChaseIndicator : SharpVision.Controls.Display.AnimatedIndicatorBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.ChaseIndicatorStyle>
     {
         public ChaseIndicator() { }
         public SharpVision.Controls.Display.ChaseIndicatorStyle ActualStyle { get; }
         public System.TimeSpan FadeDuration { get; set; }
-        public System.TimeSpan Interval { get; set; }
-        public bool IsPlaying { get; set; }
         public int Length { get; set; }
         public SharpVision.Controls.Display.ChaseMovement Movement { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
@@ -1145,8 +1156,12 @@ namespace SharpVision.Controls.Display
         public SharpVision.Controls.Display.ChaseIndicatorStyle? Style { get; set; }
         public int TrailLength { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAnimationTick() { }
         protected override void OnAttached() { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnIntervalChanged() { }
+        protected override void OnPlaybackStarting() { }
+        protected override void OnRenderFrame(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override bool ShouldSynchronizeIntervalBeforePublication() { }
     }
     public readonly struct ChaseIndicatorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Display.ChaseIndicatorGlyphs>
     {
@@ -1271,15 +1286,14 @@ namespace SharpVision.Controls.Display
         public new static SharpVision.Controls.Display.SeparatorStyle Default { get; }
         public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Display.SeparatorStyle> ForwardingDefinition { get; }
     }
-    public sealed class Spinner : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.SpinnerStyle>
+    public sealed class Spinner : SharpVision.Controls.Display.AnimatedIndicatorBase, SharpVision.Controls.IStyled<SharpVision.Controls.Display.SpinnerStyle>
     {
         public Spinner() { }
         public SharpVision.Controls.Display.SpinnerStyle ActualStyle { get; }
-        public System.TimeSpan Interval { get; set; }
-        public bool IsPlaying { get; set; }
         public SharpVision.Controls.Display.SpinnerStyle? Style { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnAnimationTick() { }
+        protected override void OnRenderFrame(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect bounds) { }
     }
     public sealed class SpinnerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Display.SpinnerStyle>
     {
@@ -1931,6 +1945,7 @@ namespace SharpVision.Controls.Input
     {
         public Slider() { }
         public SharpVision.Controls.Input.SliderStyle ActualStyle { get; }
+        public bool IsDirectionReversed { get; set; }
         public int LargeChange { get; set; }
         public int Maximum { get; set; }
         public int Minimum { get; set; }

@@ -21,6 +21,9 @@ classDiagram
     ControlBase <|-- CompositeControlBase
     ControlBase <|-- ItemsControl
     ControlBase <|-- InputBase
+    ControlBase <|-- AnimatedIndicatorBase
+    AnimatedIndicatorBase <|-- ChaseIndicator
+    AnimatedIndicatorBase <|-- Spinner
     ContentControl <|-- FloatingSurfaceBase
     ContentControl <|-- InfoBar
     ContentControl <|-- HeaderedContentControl
@@ -105,6 +108,7 @@ Complete modal tasks such as `MessageBox` live in
 
 ### Display
 
+- [AnimatedIndicatorBase](display/animated-indicator-base.md#overview)
 - [Text](display/text.md#overview)
 - [FigletText](display/figlet-text.md#overview)
 - [Image](display/image.md#overview)

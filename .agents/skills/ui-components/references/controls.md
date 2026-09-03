@@ -30,8 +30,10 @@ exactly, with a local Inheritance diagram and the canonical
 
 ## Workflow
 
-1. Choose `Control`, `Container`, `ContentControl`, `CompositeControlBase`, or
-   `ItemsControl` from the public ownership contract.
+1. Choose `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase`,
+   `ItemsControl`, or a narrower documented authoring base from the public
+   ownership contract. Timed passive indicators reuse `AnimatedIndicatorBase`
+   rather than owning another attachment timer and play/pause state machine.
 2. Define validation, default, state precedence, input parity, focus, layout,
    rendering, invalidation, cleanup, and disposal.
 3. Add unit and mounted surface failures, including disabled and tiny bounds.
@@ -46,6 +48,8 @@ exactly, with a local Inheritance diagram and the canonical
   `View`, `Build()`, and chrome helpers do not exist.
 - Raw Border and Shadow authoring is protected unless the control deliberately
   republishes complete chrome.
+- An `AnimatedIndicatorBase` implementation draws only through `OnRenderFrame`;
+  the base owns timer resumption, empty-content handling, and `ContentBounds`.
 
 ## Focused verification
 

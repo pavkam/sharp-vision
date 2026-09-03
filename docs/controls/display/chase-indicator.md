@@ -4,14 +4,16 @@
 
 `ChaseIndicator` animates one or two highlighted glyphs along a bounded
 horizontal or vertical track, leaving a fading trail behind the head. It is a
-pure display control: it owns no children and takes no part in focus or pointer
-hit testing.
+pure display control: it owns no children and derives timer, play/pause,
+visibility, and passive-input behavior from
+[`AnimatedIndicatorBase`](animated-indicator-base.md#overview).
 
 ## Inheritance
 
 ```mermaid
 classDiagram
-    ControlBase <|-- ChaseIndicator
+    ControlBase <|-- AnimatedIndicatorBase
+    AnimatedIndicatorBase <|-- ChaseIndicator
 ```
 
 ## API
@@ -24,10 +26,11 @@ classDiagram
 | `Spacing`      | `int`                  | `0`                              | Blank cells between adjacent positions; rejects a negative value.       |
 | `TrailLength`  | `int`                  | `2`                              | Preceding frames shown as a fading trail; accepts zero through 4096.    |
 | `FadeDuration` | `TimeSpan`             | `TimeSpan.FromMilliseconds(400)` | Duration for one abandoned head frame to reach the trail color.         |
-| `Interval`     | `TimeSpan`             | `TimeSpan.FromMilliseconds(200)` | Duration between position advances.                                     |
-| `IsPlaying`    | `bool`                 | `true`                           | Enables automatic playback while the control is attached.               |
 | `Style`        | `ChaseIndicatorStyle?` | `null`                           | Optional complete developer-authored presentation.                      |
 | `ActualStyle`  | `ChaseIndicatorStyle`  | Resolved                         | Read-only; the complete local, theme-owned, or code-owned presentation. |
+
+`Interval` and `IsPlaying` follow the shared
+[`AnimatedIndicatorBase` playback contract](animated-indicator-base.md#api).
 
 Changing the effective glyph pair resets the animation phase, and so does
 changing `Movement` or `Length`. Spacing, trail, timing, and color changes
@@ -39,6 +42,11 @@ rejected before publication, so allocation and public state remain atomic.
 or timer scheduling after publication even when a `PropertyChanged` observer
 throws; the observer failure is rethrown only after the committed timing state
 is coherent.
+
+Track positions begin at the origin of `ContentBounds`; intrinsic border and
+padding reserve cells around both orientations instead of covering track
+positions. `Interval` is the semantic movement cadence, while the base timer may
+schedule intermediate callbacks to render a smooth fading trail.
 
 ## Keyboard
 

@@ -7,7 +7,7 @@ using Terminal.Rendering;
 
 /// <summary>Displays one or two moving glyphs with a fading trail on a horizontal or vertical track.</summary>
 [PublicAPI]
-public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
+public sealed class ChaseIndicator: AnimatedIndicatorBase, IStyled<ChaseIndicatorStyle>
 {
     /// <summary>Gets the maximum retained movement frames supported by one indicator.</summary>
     internal const int MaximumTrailLength = 4096;
@@ -26,18 +26,12 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     private Rune _phaseActive;
     private Rune _phaseInactive;
     private bool _hasPhaseGlyphs;
-    private readonly AnimationTimer _animation;
     private readonly StyleSlot<ChaseIndicatorStyle> _style;
 
     /// <summary>Initializes a playing five-cell circle chase indicator.</summary>
     public ChaseIndicator()
     {
         _style = InitializeStyle(ChaseIndicatorStyle.Definition, OnStyleChanged);
-        _animation = new AnimationTimer(TimeSpan.FromMilliseconds(200), OnTick, () => EffectiveIsVisible) { IsPlaying = true };
-        RegisterAttachmentParticipant(_animation);
-        HorizontalAlignment = HorizontalAlignment.Left;
-        VerticalAlignment = VerticalAlignment.Top;
-        IsHitTestVisible = false;
         ResetPhase();
     }
 
@@ -167,54 +161,11 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         }
     } = TimeSpan.FromMilliseconds(400);
 
-    /// <summary>Gets or sets the duration between position advances.</summary>
-    /// <remarks>The default is 200 milliseconds. Changing a running indicator restarts one complete interval.</remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the supported timer range.</exception>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public TimeSpan Interval
-    {
-        get;
-        set
-        {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
-            _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.None, RestartInterval);
-        }
-    } = TimeSpan.FromMilliseconds(200);
-
     /// <summary>Gets retained trail capacity for proving it follows the committed public length.</summary>
     internal int TrailCapacity => _trailFirstPositions.Length;
 
     /// <summary>Gets the most recently configured timer interval for proving property repair ordering.</summary>
     internal TimeSpan ScheduledInterval { get; private set; }
-
-    /// <summary>Gets or sets whether attached playback advances automatically.</summary>
-    /// <remarks>Pausing retains the current position; resuming starts one complete interval.</remarks>
-    /// <exception cref="InvalidOperationException">The attached indicator is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The indicator is disposed of.</exception>
-    public bool IsPlaying
-    {
-        get;
-        set
-        {
-            VerifyMutable();
-
-            if (field == value)
-            {
-                return;
-            }
-
-            if (value)
-            {
-                SetLastTimestamp();
-                ScheduleNext();
-            }
-
-            _animation.IsPlaying = value;
-            field = value;
-            NotifyPropertyChanged(nameof(IsPlaying), InvalidationImpact.None);
-        }
-    } = true;
 
     #endregion
 
@@ -231,20 +182,13 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnRenderContent(TerminalCanvas canvas)
+    protected override void OnRenderFrame(TerminalCanvas canvas, Rect bounds)
     {
-        _animation.EnsureRunning();
-
-        if (Bounds.Width == 0 || Bounds.Height == 0)
-        {
-            return;
-        }
-
         var presentation = SynchronizeStylePhase();
 
         var active = presentation.Glyphs.Active.Resolve(new Rune('*'), CellPolicy.AmbiguousWidth);
         var inactive = presentation.Glyphs.Inactive.Resolve(new Rune('.'), CellPolicy.AmbiguousWidth);
-        var axisLength = Orientation == Orientation.Horizontal ? Bounds.Width : Bounds.Height;
+        var axisLength = Orientation == Orientation.Horizontal ? bounds.Width : bounds.Height;
         var stride = Spacing + 1;
         var visible = Math.Min(Length, ((axisLength - 1) / stride) + 1);
         var inherited = ResolvedStyle;
@@ -254,7 +198,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
 
         for (var position = 0; position < visible; position++)
         {
-            DrawPosition(canvas, position, stride, inactive, trackStyle);
+            DrawPosition(canvas, bounds, position, stride, inactive, trackStyle);
         }
 
         for (var index = _trailCount - 1; index >= 0; index--)
@@ -276,12 +220,12 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
 
             if (firstPosition < visible)
             {
-                DrawPosition(canvas, firstPosition, stride, active, trailStyle);
+                DrawPosition(canvas, bounds, firstPosition, stride, active, trailStyle);
             }
 
             if (secondPosition >= 0 && secondPosition < visible)
             {
-                DrawPosition(canvas, secondPosition, stride, active, trailStyle);
+                DrawPosition(canvas, bounds, secondPosition, stride, active, trailStyle);
             }
         }
 
@@ -291,6 +235,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         {
             DrawPosition(
                 canvas,
+                bounds,
                 head,
                 stride,
                 active,
@@ -301,6 +246,7 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         {
             DrawPosition(
                 canvas,
+                bounds,
                 secondHead,
                 stride,
                 active,
@@ -340,17 +286,13 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         Debug.Assert(Dispatcher is not null, "An attached chase indicator owns a dispatcher.");
         SetLastTimestamp();
         ScheduledInterval = NextInterval();
-        _animation.Interval = ScheduledInterval;
+        ScheduleAnimation(ScheduledInterval);
     }
 
-    private void OnTick()
+    /// <inheritdoc/>
+    protected override void OnAnimationTick()
     {
         var elapsed = ElapsedSinceLastTimestamp();
-
-        if (!IsPlaying || !EffectiveIsVisible)
-        {
-            return;
-        }
 
         _animationTicks += elapsed.Ticks;
         _movementElapsedTicks += elapsed.Ticks;
@@ -364,6 +306,19 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
         }
 
         Invalidate(InvalidationImpact.Render);
+        ScheduleNext();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnIntervalChanged() => RestartInterval();
+
+    /// <inheritdoc/>
+    protected override bool ShouldSynchronizeIntervalBeforePublication() => false;
+
+    /// <inheritdoc/>
+    protected override void OnPlaybackStarting()
+    {
+        SetLastTimestamp();
         ScheduleNext();
     }
 
@@ -566,11 +521,12 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     private void ScheduleNext()
     {
         ScheduledInterval = NextInterval();
-        _animation.Interval = ScheduledInterval;
+        ScheduleAnimation(ScheduledInterval);
     }
 
     private void DrawPosition(
         TerminalCanvas canvas,
+        Rect bounds,
         int position,
         int stride,
         Rune glyph,
@@ -578,8 +534,8 @@ public sealed class ChaseIndicator: ControlBase, IStyled<ChaseIndicatorStyle>
     {
         var offset = position * stride;
         var point = Orientation == Orientation.Horizontal
-            ? new Point(Bounds.X + offset, Bounds.Y)
-            : new Point(Bounds.X, Bounds.Y + offset);
+            ? new Point(bounds.X + offset, bounds.Y)
+            : new Point(bounds.X, bounds.Y + offset);
         canvas.DrawRune(glyph, point, style, BackgroundMode.Transparent);
     }
 

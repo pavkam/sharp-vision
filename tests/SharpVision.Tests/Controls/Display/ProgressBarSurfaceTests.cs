@@ -6,6 +6,42 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ProgressBar states through a mounted terminal surface.</summary>
 public sealed class ProgressBarSurfaceTests
 {
+    /// <summary>Verifies intrinsic border and padding reserve cells around the progress track
+    /// instead of letting the track paint underneath the control's own chrome.</summary>
+    [Fact]
+    public async Task Render_WhenBorderAndPaddingAreConfigured_DrawsInsideContentBoundsAsync()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Ascii,
+            SemanticColor.ControlBorder,
+            Color.Transparent,
+            SemanticDecoration.Border);
+        var bar = new ProgressBar
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = 50,
+            Padding = new Thickness(1, 0),
+            Style = ProgressBarStyle.Default with { Border = border }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(10, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        bar.ContentBounds.ShouldBe(new Rect(2, 1, 6, 1));
+        surface.ShouldRender("""
+                             +--------+
+                             | ███░░░ |
+                             +--------+
+                             """);
+    }
+
     /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
     /// mounted ProgressBar's rendered fill, track, and indeterminate cells - the ascii family's
     /// glyph trio, not the code-owned block defaults (see themes.md#glyph-families).</summary>

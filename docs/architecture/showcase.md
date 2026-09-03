@@ -198,9 +198,14 @@ on the Button and Window pages. The former ad hoc Canvas palette grid now lives
 in the dedicated ColorPicker page, where the same swatch language supports
 retained keyboard and pointer selection and adapts to the active terminal color
 depth. The Slider page proves direct signed-range selection independently of
-scrolling viewport semantics. The Pager page binds one page index, shows empty,
-single, first, middle, and last states, and contrasts the full target sequence
-with deterministic narrow retention.
+scrolling viewport semantics, including live value output, both orientations,
+reversed directional input on both axes, signed steps, and locally authored rail
+glyphs and colors. ProgressBar frames custom glyphs inside intrinsic border and
+padding, while Spinner and ChaseIndicator expose live pause/resume state and
+custom frame or glyph families instead of presenting animation as decoration.
+The Pager page binds one page index, shows empty, single, first, middle, and
+last states, and contrasts the full target sequence with deterministic narrow
+retention.
 
 The CommandBar page presents one resizable typed command surface with access-key
 captions, a separator, a disabled action, and separate semantic-event and

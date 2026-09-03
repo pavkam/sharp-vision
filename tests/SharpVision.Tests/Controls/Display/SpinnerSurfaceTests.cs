@@ -6,6 +6,40 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies Spinner playback through a mounted terminal surface.</summary>
 public sealed class SpinnerSurfaceTests
 {
+    /// <summary>Verifies intrinsic border and padding frame the animated glyph without covering
+    /// it or shifting it away from the control's content origin.</summary>
+    [Fact]
+    public async Task Render_WhenBorderAndPaddingAreConfigured_DrawsInsideContentBoundsAsync()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Ascii,
+            SemanticColor.ControlBorder,
+            Color.Transparent,
+            SemanticDecoration.Border);
+        var spinner = new Spinner
+        {
+            IsPlaying = false,
+            Padding = new Thickness(1, 0),
+            Style = SpinnerStyle.Default with { Border = border }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            spinner,
+            new Size(5, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        spinner.ContentBounds.ShouldBe(new Rect(2, 1, 1, 1));
+        surface.ShouldRender("""
+                             +---+
+                             | ⠋ |
+                             +---+
+                             """);
+    }
+
     /// <summary>Verifies every built-in sequence completes its exact documented cycle.</summary>
     [Theory]
     [InlineData("Braille", "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")]

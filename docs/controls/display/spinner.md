@@ -2,31 +2,35 @@
 
 ## Overview
 
-`Spinner` displays a single glyph that advances automatically through an
-animation sequence. It owns no children, cannot receive focus, and is excluded
-from pointer hit testing.
+`Spinner` displays a single glyph that advances automatically through a built-in
+or developer-authored animation sequence. It owns no children and derives its
+timer, play/pause, visibility, and passive-input behavior from
+[`AnimatedIndicatorBase`](animated-indicator-base.md#overview).
 
 ## Inheritance
 
 ```mermaid
 classDiagram
-    ControlBase <|-- Spinner
+    ControlBase <|-- AnimatedIndicatorBase
+    AnimatedIndicatorBase <|-- Spinner
 ```
 
 ## API
 
-| Member        | Type            | Default                          | Description                                                             |
-| ------------- | --------------- | -------------------------------- | ----------------------------------------------------------------------- |
-| `Interval`    | `TimeSpan`      | `TimeSpan.FromMilliseconds(200)` | Duration between frame advances.                                        |
-| `IsPlaying`   | `bool`          | `true`                           | Enables playback while the control is attached.                         |
-| `Style`       | `SpinnerStyle?` | `null`                           | Optional complete developer-authored presentation.                      |
-| `ActualStyle` | `SpinnerStyle`  | Resolved                         | Read-only; the complete local, theme-owned, or code-owned presentation. |
+| Member        | Type            | Default  | Description                                                             |
+| ------------- | --------------- | -------- | ----------------------------------------------------------------------- |
+| `Style`       | `SpinnerStyle?` | `null`   | Optional complete developer-authored presentation.                      |
+| `ActualStyle` | `SpinnerStyle`  | Resolved | Read-only; the complete local, theme-owned, or code-owned presentation. |
+
+`Interval` and `IsPlaying` follow the shared
+[`AnimatedIndicatorBase` playback contract](animated-indicator-base.md#api).
 
 Changing the effective frame sequence resets the animation to its first frame.
 Appearance-only changes, local or through the Theme, repaint without losing the
 current frame. Changing `Interval` restarts the timer but keeps the current
 frame. The animation pauses while an ancestor is hidden or collapsed; disabling
-the control does not pause it.
+the control does not pause it. The glyph is drawn at the origin of
+`ContentBounds`, so intrinsic border and padding frame it without covering it.
 
 ## Keyboard
 
