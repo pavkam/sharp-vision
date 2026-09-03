@@ -58,15 +58,15 @@ internal sealed class ToastCoordinator
             ToastPosition.TopLeft or ToastPosition.BottomLeft => contentBounds.X,
             ToastPosition.TopCenter or ToastPosition.BottomCenter =>
                 contentBounds.X.SaturatingAdd(Math.Max(0, (contentBounds.Width - width) / 2)),
-            ToastPosition.TopRight or ToastPosition.BottomRight => contentBounds.Right - width,
+            ToastPosition.TopRight or ToastPosition.BottomRight => contentBounds.Right.SaturatingSubtract(width),
             _ => throw new UnreachableException()
         };
         var y = toast.Position switch
         {
             ToastPosition.TopLeft or ToastPosition.TopCenter or ToastPosition.TopRight =>
-                Math.Min(contentBounds.Bottom - height, contentBounds.Y.SaturatingAdd(inward)),
+                Math.Min(contentBounds.Bottom.SaturatingSubtract(height), contentBounds.Y.SaturatingAdd(inward)),
             ToastPosition.BottomLeft or ToastPosition.BottomCenter or ToastPosition.BottomRight =>
-                Math.Max(contentBounds.Y, contentBounds.Bottom - inward - height),
+                Math.Max(contentBounds.Y, contentBounds.Bottom.SaturatingSubtract(inward).SaturatingSubtract(height)),
             _ => throw new UnreachableException()
         };
 

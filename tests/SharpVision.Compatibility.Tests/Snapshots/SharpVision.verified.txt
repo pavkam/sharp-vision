@@ -984,7 +984,8 @@ namespace SharpVision.Controls.Collections
     }
     public sealed class TabSelectionChangedEventArgs : System.EventArgs
     {
-        public TabSelectionChangedEventArgs(int previousIndex, int currentIndex, SharpVision.Controls.Collections.TabItem? previousItem, SharpVision.Controls.Collections.TabItem? currentItem) { }
+        public TabSelectionChangedEventArgs(int previousIndex, int currentIndex, SharpVision.Controls.Collections.TabItem? previousItem, SharpVision.Controls.Collections.TabItem? currentItem, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
         public int CurrentIndex { get; }
         public SharpVision.Controls.Collections.TabItem? CurrentItem { get; }
         public int PreviousIndex { get; }
@@ -3691,7 +3692,8 @@ namespace SharpVision.Navigation
     }
     public sealed class NavigationViewSelectionChangedEventArgs : System.EventArgs
     {
-        public NavigationViewSelectionChangedEventArgs(SharpVision.Navigation.NavigationViewItem? previousItem, SharpVision.Navigation.NavigationViewItem? currentItem) { }
+        public NavigationViewSelectionChangedEventArgs(SharpVision.Navigation.NavigationViewItem? previousItem, SharpVision.Navigation.NavigationViewItem? currentItem, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
         public SharpVision.Navigation.NavigationViewItem? CurrentItem { get; }
         public SharpVision.Navigation.NavigationViewItem? PreviousItem { get; }
     }

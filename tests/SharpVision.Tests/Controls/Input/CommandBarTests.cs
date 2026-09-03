@@ -270,6 +270,32 @@ public sealed class CommandBarTests
         bar.SelectedIndex.ShouldBe(0);
     }
 
+    /// <summary>Verifies range validation precedes the mutability check, matching sibling selection setters.</summary>
+    [Fact]
+    public void SelectedIndex_WhenBelowNegativeOneAndControlIsDisposed_ThrowsArgumentOutOfRangeException()
+    {
+        var bar = new CommandBar();
+        var item = new CommandBarItem();
+        bar.Items.Add(item);
+        bar.Dispose();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => bar.SelectedIndex = -2);
+    }
+
+    /// <summary>Verifies clearing selection on a disposed control reports the documented disposal
+    /// exception instead of a range check reaching the torn-down item host: -1 is always in range,
+    /// so it must never touch <see cref="ItemsControl.ItemControlCount"/> before the mutability check.</summary>
+    [Fact]
+    public void SelectedIndex_WhenClearedAndControlIsDisposed_ThrowsObjectDisposedException()
+    {
+        var bar = new CommandBar();
+        var item = new CommandBarItem();
+        bar.Items.Add(item);
+        bar.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => bar.SelectedIndex = -1);
+    }
+
     /// <summary>Verifies a foreign SelectedItem is the documented clear-selection action.</summary>
     [Fact]
     public void SelectedItem_WhenForeign_ClearsSelection()

@@ -661,10 +661,11 @@ public sealed class TextInputEditingTests
         input.Text.ShouldBe("z");
     }
 
-    /// <summary>Verifies the placeholder remains dimmed behind the caret while an empty editor is
-    /// focused, disappears when text is entered, and returns as soon as the text is cleared.</summary>
+    /// <summary>Verifies the placeholder shows dimmed whenever the editor is empty - including while
+    /// focused, behind the caret - and hides the moment the text becomes non-empty, matching the
+    /// shared InputBase placeholder contract that NumberInput and friends already follow.</summary>
     [Fact]
-    public async Task Placeholder_WhenFocusAndTextChange_ShowsWheneverEmptyAsync()
+    public async Task Placeholder_WhenFocusAndTextChange_ShowsWhileEmptyAndHidesOnceTypedAsync()
     {
         // Arrange
         var input = new TextInput
@@ -690,13 +691,14 @@ public sealed class TextInputEditingTests
         (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
         surface.ShouldHaveCursor(new Point(0, 0), visible: true);
 
-        // Act and assert - typing replaces the hint and deleting restores it while focused
+        // Act and assert - typing hides it, and deleting back to empty restores it while still focused
         await surface.Keyboard.TypeAsync("x");
         surface.Cell(new Point(0, 0)).Text.ShouldBe("x");
         await surface.Keyboard.PressAsync(Code.Backspace);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
+        surface.ShouldHaveCursor(new Point(0, 0), visible: true);
 
-        // Act and assert - losing focus while empty restores it
+        // Act and assert - losing focus while empty keeps it showing
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveFocus(button);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("N");

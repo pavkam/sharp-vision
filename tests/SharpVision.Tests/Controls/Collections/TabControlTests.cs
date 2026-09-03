@@ -327,7 +327,8 @@ public sealed class TabControlTests
 
         changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             args => args.PreviousItem.ShouldBeSameAs(first),
-            args => args.CurrentItem.ShouldBeSameAs(second));
+            args => args.CurrentItem.ShouldBeSameAs(second),
+            args => args.Cause.ShouldBe(ActivationCause.Programmatic));
     }
 
     /// <summary>Verifies a newer selection committed from the SelectedIndex notification

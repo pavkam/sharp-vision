@@ -1128,6 +1128,41 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Space is left unhandled - not silently swallowed - when the selected item is
+    /// disabled, so a shortcut bound to plain Space still sees it. Insertion no longer auto-selects a
+    /// disabled item, but <see cref="Menu.SelectedIndex"/>'s own setter only validates range and
+    /// separator shape - not availability - so a disabled item can still become selected explicitly.
+    /// The paired release must bubble too - a consumed release with no matching consumed press would
+    /// leave an ancestor's own press-driven state (e.g. a hold-to-preview shortcut) stuck armed.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpacePressedWithSelectedItemDisabled_LeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run", IsEnabled = false };
+            menu.Items.Add(item);
+            menu.SelectedIndex = 0;
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+
+            press.IsHandled.ShouldBeFalse();
+            item.IsPressed.ShouldBeFalse();
+
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
+
+            release.IsHandled.ShouldBeFalse();
+            invocations.ShouldBeEmpty();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the gate applies symmetrically to the release arm: an eligible press arms
     /// the item, but an incidental Control modifier on the paired release must not invoke it - the
     /// release still consumes the stroke and clears the pressed frame.</summary>

@@ -324,8 +324,8 @@ public sealed class Dock: Container
             {
                 DockSide.Left => new Rect(remaining.X, remaining.Y, outer, remaining.Height),
                 DockSide.Top => new Rect(remaining.X, remaining.Y, remaining.Width, outer),
-                DockSide.Right => new Rect(remaining.Right - outer, remaining.Y, outer, remaining.Height),
-                DockSide.Bottom => new Rect(remaining.X, remaining.Bottom - outer, remaining.Width, outer),
+                DockSide.Right => new Rect(remaining.Right.SaturatingSubtract(outer), remaining.Y, outer, remaining.Height),
+                DockSide.Bottom => new Rect(remaining.X, remaining.Bottom.SaturatingSubtract(outer), remaining.Width, outer),
                 _ => throw new UnreachableException()
             };
             // Dock resolves both axes: one from the requested edge length and
