@@ -1674,12 +1674,17 @@ public sealed class ListView: ItemsControl
     /// <summary>Resolves navigation for an owner that keeps this retained list collapsed.</summary>
     /// <param name="eventArgs">The routed key record to interpret.</param>
     /// <param name="currentIndex">The owner's current committed index.</param>
+    /// <param name="collapsedPageRows">The row count one page step covers while this list has
+    /// never been laid out (its viewport reports no height), so paging before the first open
+    /// still moves by the page the owner's popup will show rather than by a single row.</param>
     /// <returns>The locally available target index, or -1 when the stroke has no target.</returns>
     /// <remarks>Collapsed popup ancestry must not make every semantic item unavailable, while an
     /// item's own disabled or hidden state still excludes it from navigation.</remarks>
-    internal int ResolveCollapsedNavigationIndex(KeyEventArgs eventArgs, int currentIndex)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="collapsedPageRows"/> is not positive.</exception>
+    internal int ResolveCollapsedNavigationIndex(KeyEventArgs eventArgs, int currentIndex, int collapsedPageRows = 1)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentOutOfRangeException.ThrowIfLessThan(collapsedPageRows, 1);
 
         if (!eventArgs.IsKeyDown ||
             !KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers) ||
@@ -1698,8 +1703,12 @@ public sealed class ListView: ItemsControl
         }
 
         var code = eventArgs.Stroke.Code;
-        var pageUpStart = Viewport.Height > 0 ? StepPage(current, -1) : current - 1;
-        var pageDownStart = Viewport.Height > 0 ? StepPage(current, 1) : current + 1;
+
+        // Before the first layout the page geometry is unknown, so the owner-supplied page row
+        // count stands in, keeping the same one-row overlap a laid-out page step retains.
+        var collapsedStep = Math.Max(1, PagingStep.TargetExtent(collapsedPageRows, PageOverlap));
+        var pageUpStart = Viewport.Height > 0 ? StepPage(current, -1) : current - collapsedStep;
+        var pageDownStart = Viewport.Height > 0 ? StepPage(current, 1) : current + collapsedStep;
         return code is Code.Up or Code.Left
             ? FindLocallyEligible(current - 1, -1)
             : code is Code.Down or Code.Right

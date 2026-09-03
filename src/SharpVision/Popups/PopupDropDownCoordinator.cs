@@ -193,6 +193,29 @@ internal sealed class PopupDropDownCoordinator
         failure?.Throw();
     }
 
+    /// <summary>Retires the active session and begins a fresh one over the still-open popup.</summary>
+    /// <remarks>An acceptance callback that commits a newer selection than the one being accepted
+    /// owns that decision. Restarting here changes the session generation, so the accepted
+    /// session's pending close no longer applies, while the popup, its modal scope, and focus
+    /// stay exactly where they are: nothing closes, so nothing is published as closed or reopened.
+    /// The new session snapshots the committed state as of now, so a later cancel restores it.</remarks>
+    /// <exception cref="InvalidOperationException">The owner is mutated off-dispatcher or this coordinator is detached.</exception>
+    /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
+    /// <exception cref="Exception">The owner's session-begin callback fails.</exception>
+    public void RestartSession()
+    {
+        _owner.VerifyMutable();
+        VerifyAvailable();
+
+        if (!_popup.IsOpen || !_hasActiveSession)
+        {
+            return;
+        }
+
+        EndSession(restoreOpeningState: false);
+        BeginSession();
+    }
+
     /// <summary>Re-enters the modal scope for an already-open popup once the owner becomes attached.</summary>
     /// <remarks>An owner constructed and opened before attachment defers modal entry until a
     /// dispatcher and modality manager actually exist to enter.</remarks>

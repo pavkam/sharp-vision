@@ -70,18 +70,18 @@ items whose `ToString` override is already display-ready.
 
 ## Keyboard
 
-| Key                 | Behavior                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Enter               | Opens a closed ComboBox; while open, accepts the current item and closes it.                                     |
-| Space               | Opens or closes the ComboBox field; it does not accept the current popup item.                                   |
-| Up / Left           | Selects the previous available item when closed; moves the visible provisional selection when open.              |
-| Down / Right        | Selects the next available item when closed; moves the visible provisional selection when open.                  |
-| Home / End          | Selects the first or last available item when closed or moves the visible provisional selection there when open. |
-| Page Up / Page Down | Selects by one popup page when closed or moves the visible provisional selection by a page when open.            |
-| Printable text      | Selects the next matching item while the popup is open.                                                          |
-| Backspace / Delete  | Clears the selection when `AllowNull` is `true`.                                                                 |
-| Escape              | Cancels the open popup and restores the opening selection.                                                       |
-| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                          |
+| Key                 | Behavior                                                                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enter               | Opens a closed ComboBox; while open, accepts the current item and closes it.                                                                         |
+| Space               | Opens or closes the ComboBox field; it does not accept the current popup item. While open, a space that starts an item's text is type-ahead instead. |
+| Up / Left           | Selects the previous available item when closed; moves the visible provisional selection when open.                                                  |
+| Down / Right        | Selects the next available item when closed; moves the visible provisional selection when open.                                                      |
+| Home / End          | Selects the first or last available item when closed or moves the visible provisional selection there when open.                                     |
+| Page Up / Page Down | Selects by one popup page when closed or moves the visible provisional selection by a page when open.                                                |
+| Printable text      | Selects the next matching item while the popup is open.                                                                                              |
+| Backspace / Delete  | Clears the selection when `AllowNull` is `true`.                                                                                                     |
+| Escape              | Cancels the open popup and restores the opening selection, including after a type-ahead commit made during the session.                              |
+| Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                                                              |
 
 ## Default field chrome
 
@@ -122,7 +122,10 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   or closes the popup, selects another item, or disposes the ComboBox owns that
   newer decision; the interrupted invocation performs no stale close.
 - `AllowNull` enables clearing with Delete or Backspace, and `Placeholder`
-  supplies the closed-face text while the selection is empty.
+  supplies the closed-face text while the selection is empty. Clearing during an
+  open session also drops the provisional row, so the popup shows no highlighted
+  row afterwards, exactly as a field opened with nothing selected; Escape leaves
+  the cleared value alone.
 - `DropDownHeight` caps the visible list interior. `Length.Auto` leaves it at
   its intrinsic height, positive `Cells` values set a fixed maximum, and
   positive `Percent` values use the usable extent on the popup's resolved

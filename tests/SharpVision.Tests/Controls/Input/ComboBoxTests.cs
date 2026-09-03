@@ -635,7 +635,9 @@ public sealed class ComboBoxTests
     }
 
     /// <summary>Verifies closed navigation commits through the ComboBox selection transaction
-    /// without opening its retained popup.</summary>
+    /// without opening its retained popup. PageUp/PageDown page by the popup's DropDownHeight once
+    /// it has laid out; before that (as here, with the default Auto height and no prior open) the
+    /// whole list stands in for the page, so they jump to the first or last item.</summary>
     [Theory]
     [InlineData(Code.Up, KeyAction.Press, 2)]
     [InlineData(Code.Down, KeyAction.Press, 4)]
@@ -643,8 +645,8 @@ public sealed class ComboBoxTests
     [InlineData(Code.Right, KeyAction.Repeat, 4)]
     [InlineData(Code.Home, KeyAction.Press, 0)]
     [InlineData(Code.End, KeyAction.Repeat, 6)]
-    [InlineData(Code.PageUp, KeyAction.Press, 2)]
-    [InlineData(Code.PageDown, KeyAction.Repeat, 4)]
+    [InlineData(Code.PageUp, KeyAction.Press, 0)]
+    [InlineData(Code.PageDown, KeyAction.Repeat, 6)]
     public void Dispatch_WhenClosedNavigationKeyIsRouted_CommitsSelection(
         Code code,
         KeyAction action,
@@ -931,7 +933,10 @@ public sealed class ComboBoxTests
     }
 
     /// <summary>Verifies an empty session recognizes neither navigation nor Enter acceptance and
-    /// remains available for a later explicit cancellation.</summary>
+    /// remains available for a later explicit cancellation. Down still belongs to the open session
+    /// - an empty list is the degenerate case of a navigation key that cannot move the provisional
+    /// row, and letting it bubble unhandled would scroll or move focus in an enclosing container
+    /// behind the open popup.</summary>
     [Fact]
     public void Dispatch_WhenOpenListIsEmpty_LeavesSessionAndSelectionUnchanged()
     {
@@ -942,7 +947,7 @@ public sealed class ComboBoxTests
         var downResult = Router.Route(box, Events.Key, down);
         var enterResult = Router.Route(box, Events.Key, enter);
 
-        downResult.IsHandled.ShouldBeFalse();
+        downResult.IsHandled.ShouldBeTrue();
         enterResult.IsHandled.ShouldBeTrue();
         box.IsOpen.ShouldBeTrue();
         box.SelectedIndex.ShouldBe(-1);

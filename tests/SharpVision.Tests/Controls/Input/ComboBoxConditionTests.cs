@@ -285,10 +285,13 @@ public sealed class ComboBoxConditionTests
         combo.SelectedIndex.ShouldBe(3, "'ap' matches Apricot, the only 'ap' item after Avocado");
     }
 
-    /// <summary>Verifies a character with no match at all leaves the selection, is unhandled, and
-    /// discards the prefix so the next character starts a fresh search.</summary>
+    /// <summary>Verifies a character with no match at all leaves the selection and is unhandled,
+    /// and the next character still finds its item. A miss can only ever leave the single last
+    /// character behind, which the next search would fall back to anyway, so the prefix reset
+    /// after a miss has no observable outcome of its own; the reset after a clear and after a
+    /// reopen are pinned separately with an item set where a stale prefix changes the answer.</summary>
     [Fact]
-    public void Dispatch_WhenNoItemMatches_LeavesSelectionUnhandledAndResetsPrefix()
+    public void Dispatch_WhenNoItemMatches_LeavesSelectionUnhandledAndNextCharacterStillMatches()
     {
         var combo = new ComboBox
         {
@@ -308,7 +311,7 @@ public sealed class ComboBoxConditionTests
         var hit = Router.Route(combo, Events.Key, CharacterKey('c'));
 
         hit.IsHandled.ShouldBeTrue();
-        combo.SelectedIndex.ShouldBe(2, "the failed 'z' must not linger as a 'zc' prefix");
+        combo.SelectedIndex.ShouldBe(2, "a fresh 'c' search after the miss lands on Cherry");
         changes.ShouldBe(1);
     }
 
@@ -356,10 +359,10 @@ public sealed class ComboBoxConditionTests
     }
 
     /// <summary>Verifies a type-ahead match commits the selection immediately (publishing
-    /// SelectionChanged) and Escape afterwards keeps it rather than restoring the opening row, since
-    /// the typed commit supersedes the opening snapshot.</summary>
+    /// SelectionChanged) and Escape afterwards still restores the opening selection, as the
+    /// keyboard table documents: browsing by typing is part of the session Escape cancels.</summary>
     [Fact]
-    public void Dispatch_WhenTypeAheadCommitsThenEscape_KeepsTypedSelection()
+    public void Dispatch_WhenTypeAheadCommitsThenEscape_RestoresOpeningSelection()
     {
         var combo = new ComboBox
         {
@@ -378,9 +381,41 @@ public sealed class ComboBoxConditionTests
 
         escape.IsHandled.ShouldBeTrue();
         combo.IsOpen.ShouldBeFalse();
-        combo.SelectedIndex.ShouldBe(2);
-        combo.GetDropDownList().SelectedIndex.ShouldBe(2);
-        changes.Count.ShouldBe(1);
+        combo.SelectedIndex.ShouldBe(0);
+        combo.SelectedItem.ShouldBe("Alpha");
+        combo.GetDropDownList().SelectedIndex.ShouldBe(0);
+        changes.ShouldBe([[2], [0]]);
+    }
+
+    /// <summary>Verifies a SelectionChanged handler that redirects a type-ahead commit owns that
+    /// newer selection: Escape afterwards keeps the handler's choice instead of restoring the
+    /// opening row, because the typed commit is no longer the session's own state.</summary>
+    [Fact]
+    public void Dispatch_WhenHandlerRedirectsTypeAheadThenEscape_KeepsHandlerSelection()
+    {
+        var combo = new ComboBox
+        {
+            Items = ["Alpha", "Beta", "Gamma"],
+            SelectedIndex = 0,
+            IsOpen = true
+        };
+        var redirected = false;
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (!redirected)
+            {
+                redirected = true;
+                combo.SelectedIndex = 1;
+            }
+        };
+
+        _ = Router.Route(combo, Events.Key, CharacterKey('g'));
+        combo.SelectedIndex.ShouldBe(1, "the handler redirected the typed Gamma to Beta");
+
+        _ = Router.Route(combo, Events.Key, Key(Code.Escape));
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(1);
     }
 
     /// <summary>Verifies type-ahead on an empty list is unhandled instead of dividing by the item
@@ -423,7 +458,9 @@ public sealed class ComboBoxConditionTests
     #region Delete and Backspace
 
     /// <summary>Verifies Delete and Backspace while the popup is open clear the committed
-    /// selection, clear the list's own selection, consume the key, and leave the popup open.</summary>
+    /// selection together with the list's own selection and its provisional current row, consume
+    /// the key, and leave the popup open - the same state as a field opened with nothing selected,
+    /// whether or not an arrange pass ever runs.</summary>
     [Theory]
     [InlineData(Code.Delete)]
     [InlineData(Code.Backspace)]
@@ -439,8 +476,16 @@ public sealed class ComboBoxConditionTests
         combo.IsOpen.ShouldBeTrue();
         combo.SelectedIndex.ShouldBe(-1);
         combo.GetDropDownList().SelectedIndex.ShouldBe(-1);
+        combo.GetDropDownList().ActiveIndex.ShouldBe(-1);
         changes.Count.ShouldBe(1);
         changes[0].RemovedIndexes.ToArray().ShouldBe([1]);
+
+        // A layout pass afterwards must not resurrect the cleared row from a stale current index.
+        new LayoutEngine().Layout(combo, new Size(16, 8));
+
+        combo.SelectedIndex.ShouldBe(-1);
+        combo.GetDropDownList().SelectedIndex.ShouldBe(-1);
+        combo.GetDropDownList().ActiveIndex.ShouldBe(-1);
     }
 
     /// <summary>Verifies AllowNull=false leaves Delete and Backspace unhandled whether the popup is
@@ -494,13 +539,15 @@ public sealed class ComboBoxConditionTests
     }
 
     /// <summary>Verifies a Delete that clears the selection also discards an accumulated type-ahead
-    /// prefix, so the next typed character starts a fresh search.</summary>
+    /// prefix, so the next typed character starts a fresh search. The item set is chosen so a
+    /// stale prefix gives a different answer: a fresh "p" finds Pear, whereas a lingering "a"
+    /// would make "ap" match Apple.</summary>
     [Fact]
     public void Dispatch_WhenDeleteClearsAfterTypeAhead_ResetsPrefix()
     {
         var combo = new ComboBox
         {
-            Items = ["Apple", "Apricot", "Banana"],
+            Items = ["Apple", "Pear", "Apricot"],
             SelectedIndex = -1,
             IsOpen = true
         };
@@ -510,9 +557,9 @@ public sealed class ComboBoxConditionTests
         _ = Router.Route(combo, Events.Key, Key(Code.Delete));
         combo.SelectedIndex.ShouldBe(-1);
 
-        _ = Router.Route(combo, Events.Key, CharacterKey('b'));
+        _ = Router.Route(combo, Events.Key, CharacterKey('p'));
 
-        combo.SelectedIndex.ShouldBe(2, "a lingering 'ab' prefix would have matched nothing");
+        combo.SelectedIndex.ShouldBe(1, "a fresh 'p' finds Pear; a stale 'ap' would have kept Apple");
     }
 
     #endregion
@@ -560,16 +607,14 @@ public sealed class ComboBoxConditionTests
         combo.IsOpen.ShouldBeFalse();
     }
 
-    /// <summary>Verifies keys that other toolkits bind to "open" (F4, Alt+Down) are not bound here:
-    /// they stay unhandled and the popup stays closed.</summary>
-    [Theory]
-    [InlineData(Code.F4, Modifiers.None)]
-    [InlineData(Code.Down, Modifiers.Alt)]
-    public void Dispatch_WhenUnboundOpenKeyIsPressed_StaysClosedAndUnhandled(Code code, Modifiers modifiers)
+    /// <summary>Verifies F4, which other toolkits bind to "open", is not bound here: it stays
+    /// unhandled and the popup stays closed. (Alt+Down is covered by the modifier theory above.)</summary>
+    [Fact]
+    public void Dispatch_WhenF4IsPressed_StaysClosedAndUnhandled()
     {
         var combo = new ComboBox { Items = ["Zero", "One"], SelectedIndex = 0 };
 
-        var routed = Router.Route(combo, Events.Key, Key(code, modifiers));
+        var routed = Router.Route(combo, Events.Key, Key(Code.F4));
 
         routed.IsHandled.ShouldBeFalse();
         combo.IsOpen.ShouldBeFalse();
@@ -589,7 +634,8 @@ public sealed class ComboBoxConditionTests
     }
 
     /// <summary>Verifies a closed field at the last item ignores Down/End and at the first item
-    /// ignores Up/Home without publishing, instead of wrapping.</summary>
+    /// ignores Up/Home without publishing, instead of wrapping, yet still consumes the key: the
+    /// navigation belongs to the focused field, so an enclosing scroll host never moves behind it.</summary>
     [Theory]
     [InlineData(Code.Down, 2)]
     [InlineData(Code.End, 2)]
@@ -603,8 +649,9 @@ public sealed class ComboBoxConditionTests
         var changes = 0;
         combo.SelectionChanged += (_, _) => changes++;
 
-        _ = Router.Route(combo, Events.Key, Key(code));
+        var routed = Router.Route(combo, Events.Key, Key(code));
 
+        routed.IsHandled.ShouldBeTrue();
         combo.SelectedIndex.ShouldBe(start);
         changes.ShouldBe(0);
         combo.IsOpen.ShouldBeFalse();
@@ -647,10 +694,11 @@ public sealed class ComboBoxConditionTests
         }
     }
 
-    /// <summary>Verifies a one-row field (no room for a border) renders the label and indicator
-    /// on that row without throwing.</summary>
+    /// <summary>Verifies a one-row field paints exactly the frame's top edge: the shared chrome
+    /// reserves its border rows before the content row, so at one row there is no content row
+    /// left for the label or the indicator and nothing spills outside the frame.</summary>
     [Fact]
-    public void Render_WhenHeightIsOneRow_DoesNotThrow()
+    public void Render_WhenHeightIsOneRow_DrawsOnlyTheFrameEdge()
     {
         var combo = new ComboBox
         {
@@ -663,7 +711,17 @@ public sealed class ComboBoxConditionTests
         new LayoutEngine().Layout(combo, size);
         using Frame frame = new(size);
 
-        Should.NotThrow(() => combo.Render(frame.Canvas));
+        combo.Render(frame.Canvas);
+
+        var row = new StringBuilder(size.Width);
+
+        for (var x = 0; x < size.Width; x++)
+        {
+            var text = FrameOracle.Get(frame, new Point(x, 0));
+            _ = row.Append(text.Length == 0 ? " " : text);
+        }
+
+        row.ToString().ShouldBe("┏━━━━━━━━┓");
     }
 
     /// <summary>Verifies a wide-character label is clipped at the field box so the indicator cell
@@ -753,21 +811,18 @@ public sealed class ComboBoxConditionTests
         published.ShouldBe(1);
     }
 
-    /// <summary>Verifies disposal clears every public event so no late subscriber observes a
-    /// post-disposal notification, and public mutation afterwards throws.</summary>
+    /// <summary>Verifies disposal is idempotent and every public mutation afterwards, including an
+    /// open request that would otherwise reach the owned drop-down coordinator, reports
+    /// ObjectDisposedException.</summary>
     [Fact]
-    public void Dispose_WhenCalled_ClearsEventsAndRejectsMutation()
+    public void Dispose_WhenCalled_RejectsMutation()
     {
         var combo = new ComboBox { Items = ["A"], SelectedIndex = 0 };
-        var raised = 0;
-        combo.SelectionChanged += (_, _) => raised++;
-        combo.DropDownOpened += (_, _) => raised++;
-        combo.DropDownClosed += (_, _) => raised++;
 
         combo.Dispose();
         combo.Dispose();
 
-        raised.ShouldBe(0);
+        combo.IsDisposed.ShouldBeTrue();
         _ = Should.Throw<ObjectDisposedException>(() => combo.SelectedIndex = -1);
         _ = Should.Throw<ObjectDisposedException>(() => combo.Items = ["B"]);
         _ = Should.Throw<ObjectDisposedException>(() => combo.IsOpen = true);

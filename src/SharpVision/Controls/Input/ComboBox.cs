@@ -424,7 +424,7 @@ public sealed class ComboBox: InputBase
     {
         if (!IsOpen && eventArgs is KeyEventArgs closedKey)
         {
-            var target = _list.ResolveCollapsedNavigationIndex(closedKey, _selectedIndex);
+            var target = _list.ResolveCollapsedNavigationIndex(closedKey, _selectedIndex, CollapsedPageRows());
 
             if (target >= 0)
             {
@@ -568,9 +568,17 @@ public sealed class ComboBox: InputBase
         if (moved)
         {
             SynchronizeListProvisionalSelection(_list.ActiveIndex);
+            return true;
         }
 
-        return moved;
+        // A navigation key that cannot move the provisional row (Up at the first row, Down at
+        // the last, a page step already at an end) still belongs to the open session: letting it
+        // bubble would scroll or move focus in an enclosing container behind the open popup.
+        // Modified navigation keys stay unhandled, as the popup navigation rules document.
+        return eventArgs.IsKeyDown &&
+            KeyboardModifierPolicy.IsScalarNavigationEligible(stroke.Modifiers) &&
+            stroke.Code is Code.Up or Code.Down or Code.Left or Code.Right
+                or Code.Home or Code.End or Code.PageUp or Code.PageDown;
     }
 
     private void CancelNavigationSession()
@@ -639,17 +647,27 @@ public sealed class ComboBox: InputBase
             SetSelectedIndex(acceptedIndex);
         }
 
-        // Selection callbacks own a newer selection decision. Reopening establishes a new session
-        // so the accepted session's close continuation cannot dismiss that newer state.
+        // Selection callbacks own a newer selection decision. Restarting the session in place
+        // retires the accepted session, so its close continuation cannot dismiss that newer state,
+        // without the close-and-reopen blip (a DropDownClosed/DropDownOpened pair for a popup the
+        // user never saw close) that the documented "no stale close" rule forbids.
         if (!IsDisposed &&
             IsOpen &&
             PopupTransitionVersion == popupVersion &&
             _selectedIndex != acceptedIndex)
         {
-            IsOpen = false;
-            IsOpen = true;
+            RestartPopupNavigationSession();
         }
     }
+
+    /// <summary>Resolves the row count one closed-state page step covers before the popup has ever
+    /// been laid out, when the private list's viewport still reports no height.</summary>
+    /// <remarks>A fixed <see cref="DropDownHeight"/> is the page the popup will show; any other
+    /// limit shows every row that fits, so the whole list stands in for a page.</remarks>
+    private int CollapsedPageRows() =>
+        DropDownHeight.Kind == LengthKind.Cells
+            ? Math.Max(1, (int) DropDownHeight.Value)
+            : Math.Max(1, Items.Count);
 
     private void OnItemInvoked(object? sender, ItemInvokedEventArgs eventArgs)
     {
@@ -884,6 +902,18 @@ public sealed class ComboBox: InputBase
 
         SelectedIndex = -1;
         _typeAhead = string.Empty;
+
+        // Clearing during an open session must also drop the provisional current row. The
+        // arrange pass mirrors the list's selection onto its current row while the popup is open,
+        // so a surviving current row would paint the row the user just cleared as selected again
+        // and Enter would silently re-accept it; detached (never arranged) the row stayed cleared,
+        // and the two must agree. The cleared session now matches a field opened with nothing
+        // selected: no highlighted row, and Enter accepts the first available row.
+        if (!IsDisposed && IsOpen)
+        {
+            _list.SetProvisionalCurrentIndex(-1);
+        }
+
         return true;
     }
 
@@ -910,7 +940,24 @@ public sealed class ComboBox: InputBase
             return false;
         }
 
+        var openingVersion = _openingSelectionVersion;
+        var versionBefore = _selectionVersion;
         SelectedIndex = match;
+
+        // Type-ahead is browsing inside the open session, like an arrow key, even though it
+        // commits the selection at once. Its own commit must not make the opening snapshot stale,
+        // or Escape could no longer restore the opening selection as documented. The snapshot is
+        // re-based only when it was current before this commit and nothing reentered during it:
+        // a selection callback that chose another row owns that newer state and keeps Escape from
+        // rolling it back.
+        if (IsOpen &&
+            openingVersion == versionBefore &&
+            _selectionVersion == versionBefore + 1 &&
+            _selectedIndex == match)
+        {
+            _openingSelectionVersion = _selectionVersion;
+        }
+
         return true;
     }
 

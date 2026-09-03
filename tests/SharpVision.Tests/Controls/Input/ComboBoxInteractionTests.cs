@@ -309,10 +309,89 @@ public sealed class ComboBoxInteractionTests
         var pagedDown = combo.SelectedIndex;
         await surface.Keyboard.PressAsync(Code.PageUp);
 
-        pagedDown.ShouldBeGreaterThan(11, "a page is more than one row once the viewport has a height");
-        pagedDown.ShouldBeLessThanOrEqualTo(14);
+        // A four-row viewport pages by four rows: the list keeps no page overlap by default.
+        pagedDown.ShouldBe(14);
         combo.SelectedIndex.ShouldBe(10);
         combo.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies closed-state paging before the popup was ever laid out moves by the page
+    /// the popup will show, as the keyboard table promises, rather than by a single row: a fixed
+    /// DropDownHeight is that page, and an automatic height shows every row, so the whole list is.</summary>
+    [Theory]
+    [InlineData(4, 20, 10, 14)]
+    [InlineData(0, 5, 0, 4)]
+    public async Task Dispatch_WhenClosedPageKeyIsPressedBeforeAnyOpen_MovesByPopupPageAsync(
+        int dropDownCells,
+        int items,
+        int start,
+        int expected)
+    {
+        var combo = NewCombo(NumberedItems(items), start);
+        // Wide enough for every two-digit "Item NN" label in this theory's item counts, unlike the
+        // shared NewCombo width, which only fits a single-digit label.
+        combo.Width = Length.Cells(20);
+        combo.DropDownHeight = dropDownCells == 0 ? Length.Auto : Length.Cells(dropDownCells);
+        var changes = new List<int>();
+        combo.SelectionChanged += (_, eventArgs) => changes.Add(eventArgs.AddedIndexes.ToArray()[0]);
+        await using var surface = await MountAsync(combo, new Size(22, 10));
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        await surface.Keyboard.PressAsync(Code.PageDown);
+
+        combo.IsOpen.ShouldBeFalse();
+        combo.SelectedIndex.ShouldBe(expected);
+        string.Concat(Enumerable.Range(1, 10).Select(x => surface.Cell(new Point(x, 1)).Text)).Trim()
+            .ShouldBe($"Item {expected}");
+
+        await surface.Keyboard.PressAsync(Code.PageUp);
+
+        combo.SelectedIndex.ShouldBe(start);
+        changes.ShouldBe([expected, start]);
+    }
+
+    /// <summary>Verifies an open-session navigation key that cannot move the provisional row (Up
+    /// or PageUp at the first row, Down or PageDown at the last) neither wraps nor leaks to an
+    /// enclosing scroll host: the popup stays open and the host behind it does not scroll.</summary>
+    [Theory]
+    [InlineData(Code.Up, 0)]
+    [InlineData(Code.PageUp, 0)]
+    [InlineData(Code.Home, 0)]
+    [InlineData(Code.Down, 2)]
+    [InlineData(Code.PageDown, 2)]
+    [InlineData(Code.End, 2)]
+    public async Task Dispatch_WhenOpenNavigationHitsAnEndpoint_ClampsAndConsumesWithoutScrollingHostAsync(Code code, int start)
+    {
+        var combo = NewCombo(["Zero", "One", "Two"], start);
+        var host = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { combo }
+        };
+
+        for (var index = 0; index < 12; index++)
+        {
+            host.Children.Add(new ControlText($"row {index}") { Height = Length.Cells(1) });
+        }
+
+        await using var surface = await MountAsync(host, new Size(14, 9));
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(combo).ShouldBeTrue(), "focus the field");
+        await surface.Keyboard.PressAsync(Code.Enter);
+        var list = combo.GetDropDownList();
+        list.ActiveIndex.ShouldBe(start);
+        host.VerticalOffset.ShouldBe(0);
+
+        await surface.Keyboard.PressAsync(code);
+
+        combo.IsOpen.ShouldBeTrue();
+        list.ActiveIndex.ShouldBe(start);
+        list.SelectedIndex.ShouldBe(start);
+        combo.SelectedIndex.ShouldBe(start);
+        host.VerticalOffset.ShouldBe(0, "the open session owns the key even when it cannot move");
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(combo);
     }
 
     /// <summary>Verifies a modified navigation key while closed leaves the field untouched.</summary>
@@ -442,10 +521,11 @@ public sealed class ComboBoxInteractionTests
         combo.SelectedIndex.ShouldBe(1);
     }
 
-    /// <summary>Verifies type-ahead while open commits immediately, repaints the face, and Escape
-    /// afterwards keeps the typed selection because the typed commit superseded the opening snapshot.</summary>
+    /// <summary>Verifies type-ahead while open commits immediately and repaints the face, and
+    /// Escape afterwards restores the opening selection and repaints it back, as the keyboard
+    /// table documents for every cancelling close.</summary>
     [Fact]
-    public async Task Dispatch_WhenTypeAheadCommitsThenEscape_KeepsTypedSelectionAsync()
+    public async Task Dispatch_WhenTypeAheadCommitsThenEscape_RestoresOpeningSelectionAsync()
     {
         var combo = NewCombo(["Alpha", "Beta", "Gamma"], 0);
         var changes = new List<int[]>();
@@ -465,32 +545,37 @@ public sealed class ComboBoxInteractionTests
         await surface.Keyboard.PressAsync(Code.Escape);
 
         combo.IsOpen.ShouldBeFalse();
-        combo.SelectedIndex.ShouldBe(2);
-        changes.Count.ShouldBe(1);
-        surface.Cell(new Point(1, 1)).Text.ShouldBe("G");
+        combo.SelectedIndex.ShouldBe(0);
+        combo.GetDropDownList().ActiveIndex.ShouldBe(0);
+        changes.ShouldBe([[2], [0]]);
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("A");
     }
 
     /// <summary>Verifies a two-character prefix typed through real terminal bytes narrows the
-    /// match, and that the prefix is discarded when the popup closes and reopens.</summary>
+    /// match, and that the prefix is discarded when the popup closes and reopens. The item set
+    /// makes a stale prefix visible: a fresh "p" after Apple finds Pear, whereas a lingering "a"
+    /// would make "ap" skip to Apricot.</summary>
     [Fact]
     public async Task Dispatch_WhenPrefixIsTypedAcrossSessions_ResetsOnReopenAsync()
     {
-        var combo = NewCombo(["Apple", "Avocado", "Apricot", "Banana"], 0);
+        var combo = NewCombo(["Apple", "Pear", "Apricot"], 0);
         await using var surface = await MountAsync(combo, new Size(12, 8));
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Enter);
 
-        await surface.Keyboard.TypeAsync("ap");
-        combo.SelectedIndex.ShouldBe(2, "'a' moves to Avocado, then 'ap' narrows to Apricot");
+        await surface.Keyboard.TypeAsync("a");
+        combo.SelectedIndex.ShouldBe(2, "'a' searches on from Apple and lands on Apricot");
 
         await surface.Keyboard.PressAsync(Code.Escape);
+        combo.SelectedIndex.ShouldBe(0, "Escape restores the opening selection");
         await surface.Keyboard.PressAsync(Code.Enter);
-        await surface.Keyboard.TypeAsync("b");
+        await surface.Keyboard.TypeAsync("p");
 
-        combo.SelectedIndex.ShouldBe(3, "a stale 'ap' prefix would have made 'apb' match nothing");
+        combo.SelectedIndex.ShouldBe(1, "a fresh 'p' finds Pear; a stale 'ap' would have found Apricot");
     }
 
-    /// <summary>Verifies Delete while open clears the committed selection, keeps the popup open,
+    /// <summary>Verifies Delete while open clears the committed selection together with the
+    /// popup's highlighted and current row, keeps the popup open with the placeholder on the face,
     /// and Escape afterwards leaves the cleared state alone.</summary>
     [Fact]
     public async Task Dispatch_WhenDeleteIsPressedWhileOpen_ClearsAndKeepsPopupOpenAsync()
@@ -501,16 +586,20 @@ public sealed class ComboBoxInteractionTests
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Enter);
         var list = combo.GetDropDownList();
+        var secondRow = new Point(list.Bounds.X, list.Bounds.Y + 1);
+        var highlighted = surface.Cell(secondRow).Style.Background;
+        highlighted.ShouldNotBe(surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Style.Background);
 
         await surface.Keyboard.PressAsync(Code.Delete);
 
         combo.IsOpen.ShouldBeTrue();
         combo.SelectedIndex.ShouldBe(-1);
         combo.SelectedItem.ShouldBeNull();
-        // The open session keeps its provisional highlight on the current row (the arrange pass
-        // mirrors the list's selection to its current item), so only the committed value clears.
-        list.ActiveIndex.ShouldBe(1);
-        list.SelectedIndex.ShouldBe(1);
+        // The cleared session matches a field opened with nothing selected: no highlighted row
+        // survives the clear, on the mounted surface exactly as on a detached control.
+        list.ActiveIndex.ShouldBe(-1);
+        list.SelectedIndex.ShouldBe(-1);
+        surface.Cell(secondRow).Style.Background.ShouldNotBe(highlighted);
         surface.Cell(new Point(1, 1)).Text.ShouldBe("P");
 
         await surface.Keyboard.PressAsync(Code.Escape);
@@ -522,23 +611,33 @@ public sealed class ComboBoxInteractionTests
         surface.Cell(new Point(1, 1)).Text.ShouldBe("P");
     }
 
-    /// <summary>Verifies Enter after an open-session Delete re-accepts the still-highlighted
-    /// current row, since the provisional row survived the clear.</summary>
+    /// <summary>Verifies Enter after an open-session Delete behaves exactly like Enter on a field
+    /// opened with nothing selected: the first available row is accepted, not the row the user
+    /// just cleared.</summary>
     [Fact]
-    public async Task Dispatch_WhenEnterFollowsAnOpenDelete_AcceptsTheHighlightedRowAsync()
+    public async Task Dispatch_WhenEnterFollowsAnOpenDelete_ActsLikeAnUnselectedFieldAsync()
     {
-        var combo = NewCombo(["Alpha", "Beta"], 1);
-        await using var surface = await MountAsync(combo, new Size(12, 6));
-        await surface.Keyboard.PressAsync(Code.Tab);
+        var cleared = NewCombo(["Alpha", "Beta"], 1);
+        var unselected = NewCombo(["Alpha", "Beta"], -1);
+        var root = new Stack { Children = { cleared, unselected } };
+        await using var surface = await MountAsync(root, new Size(12, 12));
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(unselected).ShouldBeTrue(), "focus the unselected field");
+        await surface.Keyboard.PressAsync(Code.Enter);
+        unselected.IsOpen.ShouldBeTrue();
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        var reference = (unselected.IsOpen, unselected.SelectedIndex);
+        await surface.UpdateAsync(() => unselected.IsOpen = false, "close the reference field");
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(cleared).ShouldBeTrue(), "focus the cleared field");
         await surface.Keyboard.PressAsync(Code.Enter);
         await surface.Keyboard.PressAsync(Code.Delete);
-        combo.SelectedIndex.ShouldBe(-1);
+        cleared.SelectedIndex.ShouldBe(-1);
 
         await surface.Keyboard.PressAsync(Code.Enter);
 
-        combo.IsOpen.ShouldBeFalse();
-        combo.SelectedIndex.ShouldBe(1);
-        surface.Cell(new Point(1, 1)).Text.ShouldBe("B");
+        (cleared.IsOpen, cleared.SelectedIndex).ShouldBe(reference);
+        cleared.SelectedIndex.ShouldNotBe(1, "the cleared row must not be silently re-accepted");
     }
 
     /// <summary>Verifies AllowNull=false leaves Delete inert while open: the selection, list row,
@@ -628,21 +727,27 @@ public sealed class ComboBoxInteractionTests
 
         combo.IsOpen.ShouldBeTrue();
         combo.SelectedIndex.ShouldBe(-1, "the old index 2 no longer exists");
+        list.ActiveIndex.ShouldBe(1, "the current row is clamped into the smaller domain");
+        list.SelectedIndex.ShouldBe(1);
         list.Bounds.Height.ShouldBe(2);
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldBe("X");
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y + 1)).Text.ShouldBe("Y");
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y + 2)).Text.ShouldNotBe("G");
 
         await surface.Keyboard.PressAsync(Code.Down);
+        list.ActiveIndex.ShouldBe(1, "the clamped current row is already the last one");
         await surface.Keyboard.PressAsync(Code.Enter);
 
         combo.IsOpen.ShouldBeFalse();
-        combo.SelectedItem.ShouldBeOneOf("Xray", "Yankee");
+        combo.SelectedItem.ShouldBe("Yankee");
+        surface.Cell(new Point(1, 1)).Text.ShouldBe("Y");
     }
 
     /// <summary>Verifies a SelectionChanged handler that replaces Items (and thereby the
-    /// selection) during keyboard acceptance owns the newer decision: the accepted session's close
-    /// is superseded by a fresh open session over the new domain, which then closes normally.</summary>
+    /// selection) during keyboard acceptance owns the newer decision: the popup stays open over the
+    /// new domain in a fresh session, and - as the behavior rules document - the interrupted
+    /// acceptance performs no stale close, so neither DropDownClosed nor a second DropDownOpened is
+    /// published for a popup the user never saw close. Escape then closes it normally.</summary>
     [Fact]
     public async Task SelectionChanged_WhenHandlerReplacesItemsDuringAccept_StartsFreshSessionOverNewDomainAsync()
     {
@@ -655,29 +760,32 @@ public sealed class ComboBoxInteractionTests
                 combo.Items = ["Replaced"];
             }
         };
-        var closed = 0;
-        combo.DropDownClosed += (_, _) => closed++;
+        var events = new List<string>();
+        Observe(combo, events);
         await using var surface = await MountAsync(combo, new Size(12, 7));
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Enter);
         await surface.Keyboard.PressAsync(Code.Down);
+        events.Clear();
 
         await surface.Keyboard.PressAsync(Code.Enter);
 
         reentered.ShouldBeGreaterThanOrEqualTo(1);
         combo.Items.ShouldBe(["Replaced"]);
         combo.SelectedIndex.ShouldBe(-1, "the accepted index 1 fell outside the replacement domain");
-        combo.IsOpen.ShouldBeTrue("a replacement decision reopens a fresh session rather than being dismissed");
-        closed.ShouldBe(1);
+        combo.IsOpen.ShouldBeTrue("a replacement decision keeps the fresh session open rather than being dismissed");
+        events.ShouldNotContain("DropDownClosed");
+        events.ShouldNotContain("DropDownOpened");
         surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(combo);
         surface.ShouldHaveFocus(combo);
         var list = combo.GetDropDownList();
         surface.Cell(new Point(list.Bounds.X, list.Bounds.Y)).Text.ShouldBe("R");
+        events.Clear();
 
         await surface.Keyboard.PressAsync(Code.Escape);
 
         combo.IsOpen.ShouldBeFalse();
-        closed.ShouldBe(2);
+        events.ShouldBe(["PropertyChanged:IsOpen", "DropDownClosed"]);
         combo.SelectedIndex.ShouldBe(-1);
         surface.Application.Modality.Active.ShouldBeNull();
     }
@@ -935,7 +1043,7 @@ public sealed class ComboBoxInteractionTests
         surface.Application.Modality.Active.ShouldBeNull();
         surface.ShouldHaveFocus(null);
         surface.ShouldRender("");
-        closed.ShouldBeLessThanOrEqualTo(1);
+        closed.ShouldBe(0, "disposal tears the popup down without publishing a close from a disposed control");
     }
 
     /// <summary>Verifies the modal light-dismiss registration survives a disable/enable cycle: a
