@@ -24,6 +24,15 @@ internal interface IChartControl
     /// <summary>Gets whether value labels may consume cells.</summary>
     public bool ShowValueLabels { get; }
 
+    /// <summary>Gets whether a zero axis is drawn when zero falls inside the plot.</summary>
+    public bool ShowZeroAxis { get; }
+
+    /// <summary>Gets the invariant numeric format used by visible value labels.</summary>
+    public string ValueLabelFormat { get; }
+
+    /// <summary>Gets the selected data point, or null.</summary>
+    public ChartSelection? Selection { get; }
+
     /// <summary>Gets the resolved chart style.</summary>
     public ChartStyle ActualStyle { get; }
 

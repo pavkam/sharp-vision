@@ -2,49 +2,52 @@
 
 ## Overview
 
-`LineChart` presents ordered values as connected colored series with visible
-point cells.
+`LineChart` presents ordered values as connected colored series with visible,
+selectable point cells.
 
 ## Inheritance
 
 ```mermaid
 classDiagram
     ControlBase <|-- ChartControlBase
-    ChartControlBase <|-- LineChart
+    ChartControlBase <|-- CartesianChartControlBase
+    CartesianChartControlBase <|-- LineChart
 ```
 
 ## API
 
-| Member                       | Type                         | Default                   | Description                                                                                                                                                |
-| ---------------------------- | ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Series`                     | `IReadOnlyList<ChartSeries>` | Empty                     | Borrowed observable series source; rejects a null value, a null series, and a duplicate series reference.                                                  |
-| `Scale`                      | `ChartScale`                 | Automatic (zero excluded) | Authored bounds and zero-inclusion policy; an invalid `ChartScale` throws when constructed. Not forcing zero preserves small changes around a large value. |
-| `LegendPlacement`            | `ChartLegendPlacement`       | `Automatic`               | Chooses where the legend renders; rejects an undefined enum value.                                                                                         |
-| `ShowCategoryLabels`         | `bool`                       | `true`                    | Whether category labels consume plot cells when they fit.                                                                                                  |
-| `ShowValueLabels`            | `bool`                       | `false`                   | Whether point values are drawn when they fit.                                                                                                              |
-| Inherited `IsHitTestVisible` | `bool`                       | `false`                   | Overrides the `ControlBase` default; the passive chart never participates in pointer hit testing.                                                          |
-| `Style`                      | `ChartStyle?`                | `null`                    | Gets or sets the complete local presentation.                                                                                                              |
-| `ActualStyle`                | `ChartStyle`                 | Resolved                  | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                                    |
+| Member                       | Type                                           | Default                   | Description                                                          |
+| ---------------------------- | ---------------------------------------------- | ------------------------- | -------------------------------------------------------------------- |
+| `Series`                     | `IReadOnlyList<ChartSeries>`                   | Empty                     | Borrowed observable series validated before membership changes.      |
+| `Scale`                      | `ChartScale`                                   | Automatic (zero excluded) | Authored bounds; excluding zero preserves small trend changes.       |
+| `Selection`                  | `ChartSelection?`                              | `null`                    | Selected marker by series and point indices.                         |
+| `SelectionChanged`           | `EventHandler<ChartSelectionChangedEventArgs>` | —                         | Raised after selection changes or clears.                            |
+| `LegendPlacement`            | `ChartLegendPlacement`                         | `Automatic`               | Legend location; undefined values throw before mutation.             |
+| `ShowCategoryLabels`         | `bool`                                         | `true`                    | Whether category labels reserve one plot row.                        |
+| `ShowValueLabels`            | `bool`                                         | `false`                   | Whether complete formatted values draw beside markers when they fit. |
+| `ShowZeroAxis`               | `bool`                                         | `true`                    | Whether an interior zero rule draws.                                 |
+| `ValueLabelFormat`           | `string`                                       | `"G"`                     | Invariant numeric format validated before mutation.                  |
+| Inherited `IsHitTestVisible` | `bool`                                         | `true`                    | Allows nearest-point pointer selection.                              |
+| `Style`                      | `ChartStyle?`                                  | `null`                    | Complete local chart presentation.                                   |
+| `ActualStyle`                | `ChartStyle`                                   | Resolved                  | Read-only resolved presentation.                                     |
 
-The [shared chart API](index.md#api) documents `ChartSeries`, `ChartDataPoint`,
-`ChartScale`, and the one-way binding pattern common to every chart control.
-Callers can use an explicit `ChartScale` when comparisons require fixed bounds.
+The [shared chart API](index.md#api) documents model observation, binding,
+selection repair, and `ChartStyle.SelectionDecoration`.
 
-`ChartStyle`, reached through `Style`/`ActualStyle`, also carries `AxisColor`,
-`LabelColor`, the `PrimaryColor`/`SecondaryColor`/`TertiaryColor`/
-`QuaternaryColor`/`QuinaryColor`/`SenaryColor` deterministic six-color series
-palette, `Glyphs`, `LineMode` (default `Quadrant`), and `LinePattern` (default
-`Solid`), which govern how this chart's lines rasterize; see
-[Expected behavior](#expected-behavior).
-
-The intrinsic desired size is a constraint-independent 30 by 10 cells; parent
-layout sizes the control normally beyond that.
+The intrinsic desired size is 30 by 10 cells. Parent layout may arrange any
+other size.
 
 ## Keyboard
 
-| Key | Behavior                                                |
-| --- | ------------------------------------------------------- |
-| —   | This control has no control-specific keyboard commands. |
+| Key            | Behavior                                                |
+| -------------- | ------------------------------------------------------- |
+| `Left`/`Right` | Select the first point, then move through the series.   |
+| `Up`/`Down`    | Move to the same or nearest point in another series.    |
+| `Home`/`End`   | Select the first or last point in the current series.   |
+| `Escape`       | Clear selection; bubble when there is nothing to clear. |
+
+A primary pointer press focuses the chart and selects the plotted point nearest
+the clicked plot cell. Wheel input continues to an enclosing scroll host.
 
 ## Example
 
@@ -55,32 +58,22 @@ var chart = new LineChart
 {
     Series = [new ChartSeries("CPU", points)],
     LegendPlacement = ChartLegendPlacement.Bottom,
+    ShowValueLabels = true,
 };
 ```
 
 ## Expected behavior
 
-| Scope      | Observable evidence                                            |
-| ---------- | -------------------------------------------------------------- |
-| Public API | Validation, defaults, state changes, and deterministic output. |
+| Scope      | Observable evidence                                                  |
+| ---------- | -------------------------------------------------------------------- |
+| Public API | Validation, focus, selection, deterministic geometry, and rendering. |
 
-- Point order defines the horizontal coordinate, finite values define the
-  vertical coordinate, and connections use deterministic geometry.
-- By default (`ChartStyle.LineMode` of `Quadrant`) segments rasterize in
-  half-cell resolution: each Bresenham step fills one quadrant of a cell,
-  crossing series merge into the connected quadrant glyph rather than
-  overwriting one another, and the extrema land on the same cells the point
-  markers use.
-- A style with `ChartLineMode.Glyph` rasterizes whole cells with the style's own
-  line glyph, exactly as authored. Point glyphs remain visible over connecting
-  cells in both modes. Values outside explicit bounds are clipped to the nearest
-  plot edge.
-- In `Quadrant` mode, each series draws with the dash pattern its own
-  `ChartSeries.LinePattern` selects, falling back to `ChartStyle.LinePattern`
-  when unset. `Solid` draws an unbroken stroke; `DoubleDash`, `TripleDash`, and
-  `QuadrupleDash` draw progressively finer dashes, so series stay
-  distinguishable without relying on color alone.
-- The dash phase advances continuously across a series' whole polyline, so it
-  stays consistent through every segment instead of restarting at each point.
-  `ChartLineMode.Glyph` ignores the resolved pattern - a style that replaces the
-  line glyph already owns that mode's appearance.
+- Point order defines horizontal position and finite value defines vertical
+  position. Values outside explicit bounds clip to the nearest plot edge.
+- Quadrant mode rasterizes deterministic half-cell line segments. Glyph mode
+  uses the authored line glyph in whole cells.
+- Series dash phases remain continuous through every segment. Glyph mode ignores
+  dash patterns because its authored glyph owns appearance.
+- Category labels clip inside disjoint bands instead of overwriting neighbors.
+  Point markers remain visible over segments and selected markers receive the
+  configured decoration.

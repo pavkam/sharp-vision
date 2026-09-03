@@ -7,7 +7,7 @@ namespace SharpVision.Controls.Charts;
 [PublicAPI]
 public sealed class Sparkline: ChartControlBase
 {
-    /// <summary>Initializes an empty passive sparkline with automatic trend scaling.</summary>
+    /// <summary>Initializes an empty focusable sparkline with automatic trend scaling.</summary>
     public Sparkline() : base(new ChartScale(null, null, includeZero: false), ChartLegendPlacement.Hidden, false, false)
     {
     }
@@ -34,6 +34,10 @@ public sealed class Sparkline: ChartControlBase
 
     /// <inheritdoc/>
     protected override Size DefaultSize => new(20, 1);
+
+    /// <inheritdoc/>
+    private protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
+        SparklineRenderer.TryHitTestSelection(this, position, out selection);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas) =>

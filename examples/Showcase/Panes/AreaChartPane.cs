@@ -23,15 +23,16 @@ internal sealed class AreaChartPane: CompositeControlBase
         {
             Width = Length.Percent(100),
             Height = Length.Cells(10),
-            Series = [requests, latency]
+            Series = [requests, latency],
+            Selection = new ChartSelection(0, requests.Points.Count - 1)
         };
-        var status = new Text(
-            FormattableString.Invariant($"Latest requests: {requests.Points[^1].Value:0.#}"));
+        var status = new Text();
+        ChartSelectionPresenter.Connect(shared, status);
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             requests.Points[^1].Value += 2;
-            status.Content = FormattableString.Invariant($"Latest requests: {requests.Points[^1].Value:0.#}");
+            ChartSelectionPresenter.Refresh(shared, status);
         };
 
         var deltas = new ChartDataPoint[16];
@@ -60,9 +61,9 @@ internal sealed class AreaChartPane: CompositeControlBase
                 "Theme-aware fills share a resolved scale and react to retained point mutations.",
                 new DocExample(
                     "Requests and latency",
-                    "Both series keep distinct fills and spaced legend markers; Add data mutates Requests.",
+                    "Click the nearest marker or Tab to the chart; arrows move the selected point and series, while Esc clears. Add data mutates Requests.",
                     new DocColumn(shared, new ChartActionRow(add, status)),
-                    "var chart = new AreaChart { Series = [requests, latency] };\nrequests.Points[^1].Value += 2;"),
+                    "var chart = new AreaChart { Series = [requests, latency] };\nchart.SelectionChanged += ShowSelection;\nrequests.Points[^1].Value += 2;"),
                 new DocExample(
                     "Signed delta",
                     "An explicit -8..8 scale makes the zero baseline and signed fill direction predictable.",

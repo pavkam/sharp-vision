@@ -16,20 +16,25 @@ internal sealed class SparklinePane: CompositeControlBase
     /// <summary>Initializes the retained compact trend page.</summary>
     internal SparklinePane()
     {
-        var series = new ChartSeries("Load", [
-            new ChartDataPoint("1", 2), new ChartDataPoint("2", 5),
-            new ChartDataPoint("3", 3), new ChartDataPoint("4", 7),
-            new ChartDataPoint("5", 6), new ChartDataPoint("6", 9)]);
-        var compact = new Sparkline { Width = Length.Cells(18), Height = Length.Cells(2), Series = [series] };
+        var series = new ChartSeries("Load", Samples(48));
+        var compact = new Sparkline
+        {
+            Width = Length.Cells(18),
+            Height = Length.Cells(2),
+            Series = [series],
+            Selection = new ChartSelection(0, series.Points.Count - 1)
+        };
         var wide = new Sparkline { Width = Length.Cells(42), Height = Length.Cells(4), Series = [series] };
         var loadKey = new Text("<blue>■</blue> Load");
-        var status = new Text("Latest sample: 9");
+        var status = new Text();
+        ChartSelectionPresenter.Connect(compact, status);
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             var next = series.Points[^1].Value >= 10 ? 1 : series.Points[^1].Value + 1;
             series.Points.Add(new ChartDataPoint((series.Points.Count + 1).ToString(CultureInfo.InvariantCulture), next));
-            status.Content = FormattableString.Invariant($"Latest sample: {next:G}");
+            compact.Selection = new ChartSelection(0, series.Points.Count - 1);
+            ChartSelectionPresenter.Refresh(compact, status);
         };
 
         var bounded = new Sparkline
@@ -55,13 +60,29 @@ internal sealed class SparklinePane: CompositeControlBase
                 "The same series adapts to available width, while explicit ranges highlight narrow operational bands.",
                 new DocExample(
                     "Two responsive widths",
-                    "Only recent points that fit are drawn; Add data appends through the observed collection.",
+                    "The 18- and 42-cell views prove recent-window clipping. Click a compact column or Tab to it; Left/Right moves selection and Esc clears. Add data shifts both windows.",
                     new DocColumn(loadKey, compact, wide, new ChartActionRow(add, status)),
-                    "var sparkline = new Sparkline { Series = [load] };\nload.Points.Add(nextPoint);"),
+                    "var sparkline = new Sparkline { Series = [load] };\nsparkline.SelectionChanged += ShowSelection;\nload.Points.Add(nextPoint);"),
                 new DocExample(
                     "Availability band",
                     "A 90..100 scale and warning color magnify small availability changes.",
                     new DocColumn(availabilityKey, bounded),
                     "sparkline.Scale = new ChartScale(90, 100, includeZero: false);\nseries.Color = new ControlColor(SemanticColor.Warning);"))));
+    }
+
+    /// <summary>Creates enough deterministic samples to exercise both recent-window widths.</summary>
+    private static ChartDataPoint[] Samples(int count)
+    {
+        var points = new ChartDataPoint[count];
+
+        for (var index = 0; index < points.Length; index++)
+        {
+            var value = 5.5 + (3.2 * Math.Sin(index * 0.62)) + (1.1 * Math.Cos(index * 0.19));
+            points[index] = new ChartDataPoint(
+                (index + 1).ToString(CultureInfo.InvariantCulture),
+                Math.Round(Math.Clamp(value, 0, 10), 1));
+        }
+
+        return points;
     }
 }

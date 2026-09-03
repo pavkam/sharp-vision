@@ -23,14 +23,16 @@ internal sealed class HorizontalBarChartPane: CompositeControlBase
             Width = Length.Cells(46),
             Height = Length.Cells(5),
             Series = [revenue],
-            ShowValueLabels = true
+            ShowValueLabels = true,
+            Selection = new ChartSelection(0, 0)
         };
-        var status = new Text("North: 8");
+        var status = new Text();
+        ChartSelectionPresenter.Connect(positive, status);
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             revenue.Points[0].Value = revenue.Points[0].Value >= 12 ? 2 : revenue.Points[0].Value + 2;
-            status.Content = FormattableString.Invariant($"North: {revenue.Points[0].Value:G}");
+            ChartSelectionPresenter.Refresh(positive, status);
         };
 
         var signed = new ChartSeries("Balance", [
@@ -73,14 +75,14 @@ internal sealed class HorizontalBarChartPane: CompositeControlBase
                 "Labels have a visible axis boundary; bars start at the plot origin or grow away from a mixed-sign zero baseline.",
                 new DocExample(
                     "Positive regional revenue",
-                    "The category axis cleanly separates labels from bars. Add data mutates the retained point.",
+                    "Click a bar or Tab to the chart; Up/Down moves between regions, Home/End jumps, and Esc clears. Add data mutates the retained point.",
                     new DocColumn(positive, new ChartActionRow(add, status)),
-                    "var chart = new HorizontalBarChart\n{\n    Series = [revenue],\n    ShowValueLabels = true,\n};"),
+                    "var chart = new HorizontalBarChart\n{\n    Series = [revenue],\n    ShowValueLabels = true,\n};\nchart.SelectionChanged += ShowSelection;"),
                 new DocExample(
                     "Mixed signs",
                     "Negative and positive values grow in opposite directions from the visible zero baseline.",
                     mixed,
-                    "chart.Scale = new ChartScale(-5, 10, includeZero: true);"),
+                    "chart.Scale = new ChartScale(-5, 10, includeZero: true);\nchart.ShowZeroAxis = true;"),
                 new DocExample(
                     "Grouped targets",
                     "Explicit series colors and a spaced legend distinguish current values from targets.",

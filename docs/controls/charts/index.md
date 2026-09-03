@@ -2,59 +2,67 @@
 
 ## Overview
 
-SharpVision charts are passive retained controls that turn finite labeled values
-into semantic terminal cells. `HorizontalBarChart`, `VerticalBarChart`,
+SharpVision charts are retained, focusable controls that turn finite labeled
+values into semantic terminal cells. `HorizontalBarChart`, `VerticalBarChart`,
 `LineChart`, `AreaChart`, and `Sparkline` share observable data, automatic
-scaling, deterministic colors, and responsive clipping. They never emit terminal
-protocol bytes and do not handle pointer or keyboard input.
+scaling, deterministic colors, selection, and responsive clipping. Controls
+render through the cell canvas and never emit terminal protocol bytes.
 
 ## API
 
 `ChartSeries` has a non-null `Name`, optional `Color`, optional `LinePattern`,
 and observable `Points`. Each `ChartDataPoint` has a non-null `Label`, finite
-`Value`, and optional `Color`. A point color overrides its series color; a
-series color overrides the control's deterministic theme palette. A series
-`LinePattern` overrides `ChartStyle.LinePattern`, the dash pattern line series
-draw with in `Quadrant` mode; see [LineChart](line-chart.md) for how the pattern
-renders.
+`Value`, and optional `Color`. Point color overrides series color, which
+overrides the deterministic six-color style palette. A series `LinePattern`
+overrides `ChartStyle.LinePattern` in quadrant line mode.
 
-Full charts expose `Series`, `Scale`, `LegendPlacement`, `ShowCategoryLabels`,
-and `ShowValueLabels`. `Sparkline` exposes only `Series` and `Scale`, accepts at
-most one series, and intentionally has no legend or label properties: a
-sparkline is an inline trend mark, and a presentation that needs a legend or
-labels is what the full charts provide.
+All charts expose `Series`, `Scale`, nullable `Selection`, `SelectionChanged`,
+`Style`, and `ActualStyle` through `ChartControlBase`. A `ChartSelection`
+identifies one point by zero-based series and point indices. Assigned indices
+are validated before state changes. Observable collection moves preserve the
+same selected point by reference and update its indices; removing the selected
+series or point clears selection.
 
-`ChartControlBase` directly owns the common scale and presentation fields plus
-the `ChartDataObserver` that tracks borrowed series, nested point collections,
-and their property notifications. Full chart families forward their public
-legend and label properties through narrow base seams; Sparkline overrides the
-resolved policies without acquiring public setters. Disposal releases the
-base-owned observer exactly once with the control lifetime.
+`CartesianChartControlBase` adds `LegendPlacement`, `ShowCategoryLabels`,
+`ShowValueLabels`, `ShowZeroAxis`, and `ValueLabelFormat` for the four full
+charts. `ValueLabelFormat` is an invariant numeric format. Invalid formats are
+rejected before replacing the current value. `Sparkline` intentionally omits
+legend, label, zero-axis, and value-format properties because it is an inline
+trend mark rather than a labeled comparison.
+
+`ChartStyle.SelectionDecoration` controls the complete terminal attributes of
+the selected bar, point marker, or sparkline column. Its default is reverse
+video, which stays visible across light and dark themes. Selected bars and
+sparkline columns also replace their endpoint cell with the chart point glyph,
+so selection remains distinguishable when a terminal does not make reversed
+full-block cells visually obvious. `AxisColor`, `LabelColor`, six series colors,
+`Glyphs`, `FillMode`, `LineMode`, and `LinePattern` provide the rest of the
+chart presentation.
+
+`ChartControlBase` owns data observation, dispatcher validation, selection,
+focus, input routing, and the common style slot. `CartesianChartControlBase`
+owns the presentation options shared by bar, line, and area charts. Concrete
+controls supply only family geometry and rendering. See
+[CartesianChartControlBase](cartesian-chart-control-base.md) for its authoring
+contract.
 
 `ChartScale` accepts optional finite `Minimum` and `Maximum` bounds and an
 `IncludeZero` policy. `ChartScale.Automatic` includes zero. Bar charts use that
 default; line, area, and sparkline controls leave zero optional so small trends
-remain visible. Empty data resolves to `0..1`, and a constant automatic range is
-expanded symmetrically when representable. At finite numeric extremes, expansion
-uses the nearest representable neighbor and saturates instead of creating
-infinity or equal endpoints. Ratio mapping normalizes spans whose direct
-subtraction would overflow, so every accepted finite value maps to a finite
-clamped position.
+remain visible. Empty and constant data still resolve to finite, non-empty
+ranges. Explicit bounds clip values without changing the model.
 
 `ChartLegendPlacement.Automatic` shows a bottom legend for two or more named
 series. `Hidden`, `Top`, `Bottom`, `Left`, and `Right` provide explicit policy.
-Each legend entry renders its color marker, one blank cell, and its series name.
-Bottom legends are separated from plot cells by a horizontal axis line. Legends
-yield to the plot when bounds are too small for a complete entry or separator.
+Every visible legend edge is separated from plot cells by an axis-colored rule.
+Legends yield to the plot when bounds are too small for a complete entry and
+divider.
 
-Bar charts render an axis boundary between category labels and plot cells.
-Horizontal positive-only bars begin in the first cell after that boundary;
-mixed-sign bars render a zero baseline and grow away from it. Vertical bars
-render a horizontal category axis above complete centered labels. Line and area
-category labels are likewise centered and clipped as complete text rather than
-reduced to their first cell. A horizontal bar value label retains one blank cell
-between the bar edge and its text; it is suppressed when that complete gap and
-label do not fit.
+Category labels own disjoint bands, so neighboring text cannot overwrite one
+another. Bar bands reserve a one-cell gutter whenever all visible series lanes
+still fit. A value label is drawn only when the complete number fits without
+replacing data cells. `ShowZeroAxis` draws an axis rule only when zero lies
+strictly inside the resolved numeric range.
 
 One-way binding uses the ordinary strongly typed extension:
 
@@ -69,26 +77,17 @@ internal sealed class ChartExampleModel
 }
 ```
 
-The source property is `IReadOnlyList<ChartSeries>?`. Source replacement and
-observable collection changes update membership; changes to series, point
-collections, labels, values, or colors repaint the existing chart. A null bound
-source becomes an empty chart. Once the chart is attached, every observable
-membership or deep-model notification must be raised on the chart's dispatcher;
-an off-dispatcher notification throws `InvalidOperationException` synchronously
-instead of racing a later borrowed-collection enumeration. Detached charts apply
-notifications synchronously on the caller's thread, and disposed charts release
-all subscriptions.
+Source replacement, observable membership changes, and deep series or point
+changes update the existing chart. A null bound source becomes an empty chart.
+Once attached, notifications must be raised on the chart dispatcher. An
+off-dispatcher notification throws synchronously instead of racing borrowed
+collection enumeration. Disposed charts release every subscription.
 
 > [!WARNING]
 >
-> That synchronous throw propagates out of the caller's own event dispatch: a
-> model mutated off-dispatcher faults the `ObservableCollection` or
-> `PropertyChanged` invocation in progress, which can abort delivery to the
-> model's other subscribers — not just the chart. Marshal model mutations to the
-> dispatcher once the chart is attached.
-
-This follows the
-[attached visual-tree ownership rule](../../concepts/threading.md#overview).
+> The synchronous dispatcher exception propagates out of the model's own event
+> dispatch. Marshal attached chart model changes to the dispatcher before
+> mutating an observable collection or raising `PropertyChanged`.
 
 ## Example
 
@@ -104,16 +103,14 @@ var chart = new LineChart
     Series = [requests],
     LegendPlacement = ChartLegendPlacement.Bottom,
 };
+chart.SelectionChanged += (_, args) => ShowDetails(args.Selection);
 ```
 
 ## Expected behavior
 
-Applications can rely on validation occurring before observable mutation,
-automatic ranges remaining finite and non-empty, observable membership and deep
-item changes invalidating the required UI phase on the owning dispatcher, and
-removed or disposed data releasing chart subscriptions. Explicit bounds clip
-values rather than changing the model. Tiny bounds suppress optional labels and
-legends before data, and all text remains clipped at complete grapheme
-boundaries. Half-cell line coordinates, category partitions, and eighth-cell bar
-extents use widened intermediates and clamp at the terminal drawing boundary, so
-valid integer-sized plot geometry remains monotonic instead of wrapping.
+Applications can rely on validation before observable mutation, finite ranges,
+dispatcher-ordered updates, and deterministic keyboard and pointer selection.
+Tiny bounds suppress optional labels and legends before data. Text clips at
+complete grapheme boundaries. Half-cell lines, disjoint category bands, and
+eighth-cell bar extents use widened arithmetic and clamp at terminal drawing
+boundaries instead of wrapping.

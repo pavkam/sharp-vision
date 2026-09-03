@@ -17,6 +17,8 @@ internal static class LineChartRenderer
             return;
         }
 
+        ChartRenderer.RenderHorizontalZeroAxis(context, canvas, plot);
+
         var quadrant = chart.ActualStyle.LineMode == ChartLineMode.Quadrant;
 
         for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)

@@ -422,6 +422,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
     [...excludedAbstractDocSlugs].sort(),
     [
       "animated-indicator-base",
+      "cartesian-chart-control-base",
       "composite-control",
       "container",
       "content-control",

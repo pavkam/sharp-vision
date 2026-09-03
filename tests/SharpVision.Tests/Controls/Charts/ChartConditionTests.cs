@@ -189,6 +189,10 @@ public sealed class ChartConditionTests
         {
             rows[3].ShouldBe("────────────");
         }
+        else if (placement == ChartLegendPlacement.Top)
+        {
+            rows[1].ShouldBe("────────────");
+        }
         else
         {
             string.Concat(rows).ShouldNotContain("─");
@@ -310,7 +314,7 @@ public sealed class ChartConditionTests
     [InlineData(5d, 1, 4, " |5|█|█")]
     [InlineData(10d, 1, 4, "█|█|█|█")]
     [InlineData(5d, 1, 1, "5")]
-    [InlineData(10d, 2, 3, "10|██|██")]
+    [InlineData(10d, 2, 3, "10|█ |█ ")]
     public async Task Render_WhenVerticalValueLabelIsRequested_KeepsItWholeOrDropsItAsync(
         double value,
         int width,
@@ -340,7 +344,7 @@ public sealed class ChartConditionTests
     /// blank gap after the bar.</summary>
     [Theory]
     [InlineData(123456789d, "████████")]
-    [InlineData(10d, "██████10")]
+    [InlineData(10d, "████████")]
     [InlineData(5d, "████ 5  ")]
     public async Task Render_WhenHorizontalValueLabelIsRequested_ShowsItOnlyWhenItFitsAsync(double value, string expected)
     {

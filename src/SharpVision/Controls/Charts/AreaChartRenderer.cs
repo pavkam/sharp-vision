@@ -17,6 +17,8 @@ internal static class AreaChartRenderer
             return;
         }
 
+        ChartRenderer.RenderHorizontalZeroAxis(context, canvas, plot);
+
         var fractional = chart.ActualStyle.FillMode == ChartFillMode.Fractional;
 
         for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)

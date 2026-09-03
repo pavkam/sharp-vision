@@ -19,6 +19,7 @@ public sealed class ChartStyleTests
         style.QuaternaryColor.SemanticColor.ShouldBe(SemanticColor.Magenta);
         style.QuinaryColor.SemanticColor.ShouldBe(SemanticColor.Cyan);
         style.SenaryColor.SemanticColor.ShouldBe(SemanticColor.Red);
+        style.SelectionDecoration.Literal.ShouldBe(TerminalAttributes.Reverse);
     }
 
     /// <summary>Verifies all six series colors resolve pairwise distinct under both the default
