@@ -1413,6 +1413,16 @@ public sealed class Theme
                 inheritedMembers);
             var basis = Cascade(resolvedNormal, delta);
 
+            // A borderless leaf (CheckBox, RadioButton, CommandBarItem) reaches this path with no
+            // border-color cue to signal focus, exactly the gap ApplyBorderlessFocusFallback exists
+            // to close for BuildInteractiveStyleSet/BuildFocusableStyleSet's own Focused/FocusWithin
+            // resolution. It is a no-op whenever resolvedNormal is bordered or the fallback already
+            // authored a genuinely different Focused/FocusWithin color.
+            if (state is VisualState.Focused or VisualState.FocusWithin)
+            {
+                basis = ApplyBorderlessFocusFallback(basis, resolvedNormal);
+            }
+
             if (inheritedMembers is { Count: > 0 })
             {
                 authored[stateName] = inheritedMembers;
@@ -1451,11 +1461,26 @@ public sealed class Theme
         var completedFallbackNormal = complete(fallbackNormal, VisualState.Normal, this);
         TStyle ResolveState(VisualState state) => complete(fallbackNormal, state, this);
 
+        // Focused/FocusWithin need the same borderless reverse-video safety net
+        // BuildFallbackAwareStates applies, but this method's shape only ever carries a per-state
+        // DELTA (relative to completedFallbackNormal), not a complete style - ApplyBorderlessFocusFallback
+        // needs the actual would-be-resolved colors to compare against resolvedNormal. Cascading the
+        // raw delta onto resolvedNormal recovers that complete candidate exactly as
+        // BuildFallbackAwareStates does, and re-diffing the (possibly Reverse-flipped) result against
+        // resolvedNormal converts it back into the overlay shape this method returns - a no-op
+        // round trip whenever the fallback doesn't apply.
+        AppearanceOverlay ResolveFocusOverlay(VisualState state)
+        {
+            var delta = StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(state));
+            var basis = ApplyBorderlessFocusFallback(Cascade(resolvedNormal, delta), resolvedNormal);
+            return StyleStatesExtensions.Diff(resolvedNormal, basis);
+        }
+
         return new AppearanceStates(
             new ControlAppearance(resolvedNormal.Face, resolvedNormal.Border, resolvedNormal.Shadow),
             StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.IsPointerOver)),
-            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.FocusWithin)),
-            StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Focused)),
+            ResolveFocusOverlay(VisualState.FocusWithin),
+            ResolveFocusOverlay(VisualState.Focused),
             StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Current)),
             StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Selected)),
             StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Checked)),

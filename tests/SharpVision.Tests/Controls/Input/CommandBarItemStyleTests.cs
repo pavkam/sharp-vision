@@ -125,4 +125,66 @@ public sealed class CommandBarItemStyleTests
             item.ResolveAppearance(theme, state).Face.Background.Literal.ShouldBe(localBackground);
         }
     }
+
+    /// <summary>Verifies FocusWithin is visibly distinct from Normal under a bundled theme.
+    /// Unlike Focused - which every bundled theme explicitly authors an "input.focused.face"
+    /// background for (<c>focusedControl</c>), giving a command-bar item a real background swap
+    /// away from its own Bar-rebased Normal even before this fix - no bundled theme authors an
+    /// "input.focusWithin" section at all. FocusWithin therefore falls all the way through to
+    /// <see cref="BarAppearance.CompleteFace{TStyle}"/>'s own Bar-preserving branch exactly like
+    /// Normal does, leaving it colorwise byte-identical to Normal (same Bar background, same
+    /// foreground) - the borderless-focus-indication gap this issue describes, reachable here via
+    /// <see cref="StyleDefinitions.BarControlWithThemeOwnedStateDefaults{TStyle,TFallback}"/>'s use
+    /// of <c>Theme.BuildFallbackAwareStates</c>. Confirmed empirically (revert-and-observe) before
+    /// fixing: pre-fix, FocusWithin resolved with no distinguishing attribute either.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenFocusWithinUnderBundledTheme_DiffersFromNormal()
+    {
+        using var item = new CommandBarItem();
+
+        var normal = item.ResolveAppearance(ThemeCatalog.Dark);
+        var focusWithin = item.ResolveAppearance(ThemeCatalog.Dark, VisualState.FocusWithin);
+
+        // The color collapse itself: no bundled theme authors "input.focusWithin", so this state's
+        // colors resolve exactly like Normal's own Bar-plane colors - exactly what would leave a
+        // borderless command-bar item with no visible cue if the reverse-video safety net were not
+        // engaged.
+        focusWithin.Face.Foreground.ShouldBe(normal.Face.Foreground);
+        focusWithin.Face.Background.ShouldBe(normal.Face.Background);
+
+        // The safety net forces Reverse on top, making the two states visibly distinct in spite of
+        // the color collapse above.
+        focusWithin.ShouldNotBe(normal);
+        focusWithin.Face.Attributes.IsLiteral.ShouldBeTrue();
+        focusWithin.Face.Attributes.Literal.HasFlag(TerminalAttributes.Reverse).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Focused already differs from Normal under a bundled theme through its own
+    /// authored background (every bundled theme's "input.focused.face.background" maps to
+    /// <c>focusedControl</c>, which <see cref="BarAppearance.CompleteFace{TStyle}"/> honors instead
+    /// of rebasing onto Bar, and which always differs from a theme's own <c>bar</c> color) - a case
+    /// the reverse-video safety net must recognize as already-visible and leave alone rather than
+    /// fight. Reverse must NOT be forced here, since that would double up an already-adequate cue
+    /// and this control's Face.Attributes would then depend on the safety net rather than the
+    /// theme's own authored Focused decoration.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenFocusedUnderBundledTheme_UsesOwnAuthoredBackgroundWithoutFallback()
+    {
+        using var item = new CommandBarItem();
+
+        var normal = item.ResolveAppearance(ThemeCatalog.Dark);
+        var focused = item.ResolveAppearance(ThemeCatalog.Dark, VisualState.Focused);
+
+        // Already visibly distinct via background alone - focusedControl vs Bar - even though the
+        // foreground happens to collapse (both resolve to controlText/focusedText's shared white).
+        focused.Face.Foreground.ShouldBe(normal.Face.Foreground);
+        focused.Face.Background.ShouldNotBe(normal.Face.Background);
+        focused.Face.Background.Literal.ShouldBe(ThemeCatalog.Dark.ResolveColor(SemanticColor.FocusedControl));
+
+        // The fallback must not fight the theme's own authored decoration by forcing Reverse on
+        // top: Focused already carries a real background difference, so the fallback recognizes it
+        // as already-visible and leaves it exactly as authored (bold, no reverse).
+        focused.Face.Attributes.IsLiteral.ShouldBeTrue();
+        focused.Face.Attributes.Literal.ShouldBe(TerminalAttributes.Bold);
+    }
 }

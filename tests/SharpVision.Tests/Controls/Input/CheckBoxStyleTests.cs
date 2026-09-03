@@ -167,4 +167,57 @@ public sealed class CheckBoxStyleTests
 
         CheckBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Arrange);
     }
+
+    /// <summary>Verifies Focused/FocusWithin are visibly distinct from Normal under a bundled
+    /// theme. CheckBox is a borderless leaf that falls back to <see cref="InputStyle"/> directly
+    /// (not through <see cref="Theme.GetInteractiveControlStyleSet"/> or
+    /// <see cref="Theme.GetFocusableControlStyleSet"/>), so it used to bypass
+    /// <c>Theme.ApplyBorderlessFocusFallback</c> entirely. Every bundled theme maps
+    /// focusedControl/focusedText to the exact same literal color as control/controlText, so
+    /// Focused/FocusWithin resolved colorwise byte-identical to Normal - tabbing to a checkbox gave
+    /// no reliable visible indication that it was focused.</summary>
+    [Theory]
+    [InlineData(VisualState.Focused)]
+    [InlineData(VisualState.FocusWithin)]
+    public void ResolveAppearance_WhenFocusStateUnderBundledTheme_DiffersFromNormal(VisualState state)
+    {
+        using var checkBox = new CheckBox("Go");
+
+        var normal = checkBox.ResolveAppearance(ThemeCatalog.Dark);
+        var focused = checkBox.ResolveAppearance(ThemeCatalog.Dark, state);
+
+        // The color collapse itself: Dark's focused colors resolve to the exact same literal RGB
+        // as Normal's, which is exactly what would leave a borderless checkbox with no visible cue
+        // if the reverse-video safety net were not engaged.
+        focused.Face.Foreground.ShouldBe(normal.Face.Foreground);
+        focused.Face.Background.ShouldBe(normal.Face.Background);
+
+        // The safety net forces Reverse on top, making the two states visibly distinct in spite of
+        // the color collapse above.
+        focused.ShouldNotBe(normal);
+        focused.Face.Attributes.IsLiteral.ShouldBeTrue();
+        focused.Face.Attributes.Literal.HasFlag(TerminalAttributes.Reverse).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the same safety net engages when a complete local <see cref="Style"/> is
+    /// assigned, which resolves through <c>Theme.BuildCodeOwnedStates</c> rather than
+    /// <c>Theme.BuildFallbackAwareStates</c> - a differently-shaped resolution path (per-state
+    /// overlay deltas rather than a complete per-state style) that needed its own fallback
+    /// application rather than sharing the other method's.</summary>
+    [Theory]
+    [InlineData(VisualState.Focused)]
+    [InlineData(VisualState.FocusWithin)]
+    public void ResolveAppearance_WhenLocalStyleIsAssignedUnderBundledTheme_DiffersFromNormal(VisualState state)
+    {
+        using var checkBox = new CheckBox("Go") { Style = CheckBoxStyle.Default };
+
+        var normal = checkBox.ResolveAppearance(ThemeCatalog.Dark);
+        var focused = checkBox.ResolveAppearance(ThemeCatalog.Dark, state);
+
+        focused.Face.Foreground.ShouldBe(normal.Face.Foreground);
+        focused.Face.Background.ShouldBe(normal.Face.Background);
+        focused.ShouldNotBe(normal);
+        focused.Face.Attributes.IsLiteral.ShouldBeTrue();
+        focused.Face.Attributes.Literal.HasFlag(TerminalAttributes.Reverse).ShouldBeTrue();
+    }
 }
