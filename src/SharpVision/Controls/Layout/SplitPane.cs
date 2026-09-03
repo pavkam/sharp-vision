@@ -43,8 +43,7 @@ public sealed class SplitPane: Container
             SetPressed);
         RegisterLifecycleParticipant(_drag);
         _ = AddHandler(Events.Pointer, OnDividerPointerRouted, handledEventsToo: true);
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        EnableChromeAuthoring();
+        InitializePanelPresentation();
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.Continue;

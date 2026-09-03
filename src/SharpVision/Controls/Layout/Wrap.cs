@@ -10,11 +10,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 public sealed class Wrap: Container
 {
     /// <summary>Initializes a wrap panel that fills its parent cross-axis slot.</summary>
-    public Wrap()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        EnableChromeAuthoring();
-    }
+    public Wrap() => InitializePanelPresentation();
 
     /// <summary>Gets or sets the axis along which each line progresses.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>

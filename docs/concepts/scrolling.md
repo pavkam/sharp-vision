@@ -157,21 +157,26 @@ Wheel input first offers the leaf control its normal default behavior, and only
 then bubbles outward through nested armed containers, stopping at an active
 [modal plane](modality.md#modal-route-boundaries); if nothing along that walk
 changes an offset, the wheel event stays unhandled so the plane's Ignore or
-Dismiss policy can complete it.
+Dismiss policy can complete it. `IsWheelScrollingEnabled` defaults to `true` and
+controls only this automatic container behavior. When false, the record bypasses
+that container untouched and can continue through normal routed ancestry;
+programmatic changes and generated scrollbar interaction remain available.
 
 ```mermaid
 flowchart TD
     Event["Wheel tick or keyboard scroll command"] --> Leaf["Leaf control's own default behavior"]
     Leaf --> LeafMoved{"Leaf consumed it and moved an offset?"}
     LeafMoved -->|Yes| Handled["Event handled"]
-    LeafMoved -->|No| Current["Try this Container: ScrollBy full delta"]
+    LeafMoved -->|No| Policy{"Matching automatic input policy enabled?"}
+    Policy -->|No| NextLevel
+    Policy -->|Yes| Current["Try this Container: ScrollBy full delta"]
     Current --> Moved{"Offset changed?"}
     Moved -->|Yes| Handled
     Moved -->|No| NextLevel{"Next ancestor level crosses an active modal plane?"}
     NextLevel -->|Yes| Unhandled["Stays unhandled: plane's Ignore/Dismiss policy completes it"]
     NextLevel -->|No| Ancestor{"That level is Container with AutoScroll: true?"}
     Ancestor -->|No, non-container owner| NextLevel
-    Ancestor -->|Yes| Current
+    Ancestor -->|Yes| Policy
 ```
 
 Keyboard arrows, PageUp/PageDown, and Home/End drive the same typed commands and
@@ -182,17 +187,20 @@ input, and the key is left unhandled only once no container along that walk
 moved an offset. PageUp/PageDown and Home/End prefer the vertical axis; on a
 container armed for horizontal scrolling only, they drive the horizontal offset
 instead, so a horizontal-only container still has a fast-travel key rather than
-swallowing all four for no effect. `BringIntoView(ControlBase)` accepts any
-descendant reached through owned `ControlBase.Parent` edges and makes the
-smallest two-axis offset change that exposes the descendant's arranged bounds.
-When an armed container sits between the receiver and the descendant, it reveals
-through each intervening `Container { AutoScroll: true }` first, innermost to
-outermost, before computing its own offset; the return value reports whether the
-descendant's complete bounds are actually contained within the receiver's own
-viewport afterward, not merely whether some offset changed, so a boundary clamp
-that still leaves it partially hidden reports `false`. The same `false` result
-covers a `ScrollChanged` subscriber disposing the container or an intervening
-ancestor mid-walk. Content and resize changes clamp offsets before the typed
+swallowing all four for no effect. `IsKeyboardScrollingEnabled` independently
+controls this automatic key handling and also defaults to `true`; disabling it
+leaves matching keys available to routed ancestors without disarming the
+viewport. `BringIntoView(ControlBase)` accepts any descendant reached through
+owned `ControlBase.Parent` edges and makes the smallest two-axis offset change
+that exposes the descendant's arranged bounds. When an armed container sits
+between the receiver and the descendant, it reveals through each intervening
+`Container { AutoScroll: true }` first, innermost to outermost, before computing
+its own offset; the return value reports whether the descendant's complete
+bounds are actually contained within the receiver's own viewport afterward, not
+merely whether some offset changed, so a boundary clamp that still leaves it
+partially hidden reports `false`. The same `false` result covers a
+`ScrollChanged` subscriber disposing the container or an intervening ancestor
+mid-walk. Content and resize changes clamp offsets before the typed
 `ScrollChanged` event is raised (carrying the previous and committed offsets,
 `Extent`, `Viewport`, and the typed `ScrollCause`) and before the translated
 arrangement runs.
@@ -211,7 +219,7 @@ after the offset is applied and never targets clipped content.
 | Scope              | Observable evidence                                                                                                                                                                                                          |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Bar composition    | No bars, one bar, or both bars — including the case where one bar induces the other — hold across every visibility policy, exact fits, and zero or tiny viewports, with bars appearing and disappearing correctly on resize. |
-| Input and geometry | Content changes, offset clamping, and thumb math stay correct across every input method, including nested propagation between armed containers and pointer capture during dragging.                                          |
+| Input and geometry | Content changes, offset clamping, and thumb math stay correct across every input method, including independent keyboard/wheel policy, nested propagation between armed containers, and pointer capture during dragging.      |
 | Rendered state     | Focus, the disabled state, Unicode-safe clipping, and the final rendered frames stay consistent with the committed scroll state.                                                                                             |
 
 The pure geometry additionally holds across 20,000 deterministic randomized

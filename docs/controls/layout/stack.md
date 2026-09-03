@@ -5,8 +5,11 @@
 `Stack` is declared `public sealed class Stack : Container`. It arranges managed
 children one after another on a vertical or horizontal axis; child order is also
 the render order, the navigation order, and the default z-order. Its constructor
-calls the inherited `EnableChromeAuthoring()`, so a caller can author Stack's
-own frame directly instead of only inheriting a Theme profile.
+calls the inherited `InitializePanelPresentation()`, so it stretches across its
+parent slot and a caller can author Stack's own frame directly instead of only
+inheriting a Theme profile. The inherited container viewport can scroll
+overflowing stack content and accepts independent keyboard and wheel input
+policies.
 
 ## Inheritance
 
@@ -21,6 +24,7 @@ classDiagram
 | Member                    | Type                | Default                              | Description                                                                                                                   |
 | ------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Inherited `Children`      | `ControlCollection` | Empty                                | Owns controls in stable stack order.                                                                                          |
+| Inherited `AutoScroll`    | `bool`              | `false`                              | Turns overflowing stack content into a clipped scrolling viewport.                                                            |
 | `Orientation`             | `Orientation`       | `Vertical`                           | Chooses the primary layout axis.                                                                                              |
 | `Spacing`                 | `int`               | `0`                                  | Non-negative cells inserted between non-collapsed children.                                                                   |
 | `Reverse`                 | `bool`              | `false`                              | Reverses geometry, rendering, selectable-text reading order, popup priority, and default focus traversal without reparenting. |
@@ -42,9 +46,9 @@ semantic offsets, pointer geometry, and copied text remain aligned.
 
 ## Keyboard
 
-| Key | Behavior                                                |
-| --- | ------------------------------------------------------- |
-| —   | This control has no control-specific keyboard commands. |
+| Key | Behavior                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| —   | Stack adds no control-specific commands; an armed inherited container viewport handles scrolling keys when its keyboard policy is enabled. |
 
 ## Behavior
 
@@ -102,6 +106,9 @@ actions.Children.Add(cancelAction);
 - Overflow, resize, managed ownership, navigation order, reversed popup drawing
   and hit priority, Unicode measurement, and the exact committed bounds and
   cells are all observable guarantees.
+- The Showcase exposes reversed Button activation, live visibility
+  participation, and a bounded scrolling viewport with independent keyboard and
+  wheel policy toggles.
 
 Mounted cross-layer coverage in
 [`StackSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Layout/StackSurfaceTests.cs)

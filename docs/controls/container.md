@@ -11,6 +11,11 @@ behavior. It is not the base for every control that owns descendants: use
 content value, and [`CompositeControlBase`](composite-control.md#overview) when
 the control keeps a private retained implementation tree.
 
+Caller-facing layout panels apply `HorizontalAlignment.Stretch` and direct
+border/shadow authoring through the protected `InitializePanelPresentation()`
+initializer. Private retained hosts stay free to choose only the alignment they
+require without exposing raw chrome authoring.
+
 `Container` does not choose a layout algorithm. Every concrete subclass must
 override `MeasureOverride` and `ArrangeOverride`; because both declarations are
 abstract, an incomplete layout control fails to compile.
@@ -31,6 +36,8 @@ classDiagram
 | `AutoSize`                                                 | `bool`                                 | `false`                      | Sizes the border box to content, overriding stretch and star sizing.                                                                               |
 | `AutoSizeMode`                                             | `AutoSizeMode`                         | `AutoSizeMode.GrowAndShrink` | Selects whether an auto-sizing axis may shrink below its explicit fixed-cell size.                                                                 |
 | `AutoScroll`                                               | `bool`                                 | `false`                      | Turns the container into a viewport that clips and offsets overflowing content.                                                                    |
+| `IsKeyboardScrollingEnabled`                               | `bool`                                 | `true`                       | Enables automatic unmodified navigation-key scrolling while `AutoScroll` is armed.                                                                 |
+| `IsWheelScrollingEnabled`                                  | `bool`                                 | `true`                       | Enables automatic wheel scrolling while `AutoScroll` is armed.                                                                                     |
 | `ScrollBars`                                               | `ScrollBars`                           | `ScrollBars.Vertical`        | Selects the axes that may scroll within this container.                                                                                            |
 | `ShowScrollBars`                                           | `ShowScrollBars`                       | `ShowScrollBars.WhenNeeded`  | Sets the common chrome-reservation policy for both scroll axes at once.                                                                            |
 | `HorizontalBarVisibility`                                  | `ScrollBarVisibility`                  | `ScrollBarVisibility.Auto`   | Sets the horizontal bar's own reservation policy.                                                                                                  |
@@ -43,6 +50,7 @@ classDiagram
 | `Viewport`                                                 | `Size`                                 | Empty                        | Read-only; the committed non-negative visible extent.                                                                                              |
 | `HorizontalOffset`                                         | `int`                                  | `0`                          | The valid horizontal content offset.                                                                                                               |
 | `VerticalOffset`                                           | `int`                                  | `0`                          | The valid vertical content offset.                                                                                                                 |
+| `InitializePanelPresentation()`                            | `void`                                 | —                            | Protected; applies horizontal stretch plus direct border and shadow authoring for a caller-facing layout panel.                                    |
 | `OnChildrenChanged()`                                      | `void`                                 | —                            | Protected virtual; runs after a `Children` mutation structurally commits.                                                                          |
 | `MeasureOverride(Constraint constraint)`                   | `Size`                                 | —                            | Protected abstract; measures owned children and returns their intrinsic content size.                                                              |
 | `ArrangeOverride(Rect bounds)`                             | `void`                                 | —                            | Protected abstract; assigns the final content-box slots of owned children.                                                                         |
@@ -63,6 +71,13 @@ specialized presenters may impose a finite semantic limit through
 | Up / Down           | Scrolls vertically by `LineSize` when vertical scrolling is available.        |
 | Page Up / Page Down | Scrolls by one viewport minus `PageOverlap`; vertical scrolling is preferred. |
 | Home / End          | Scrolls to the start or end of the preferred axis.                            |
+
+These automatic commands require both `AutoScroll` and
+`IsKeyboardScrollingEnabled`. Setting the latter to `false` leaves matching keys
+unhandled by this container so normal routed ancestry can offer them to another
+owner. `IsWheelScrollingEnabled` applies the same independent policy to wheel
+records. Neither setting disables programmatic scrolling or interaction with
+generated scrollbar parts.
 
 ## Children and ownership
 
@@ -153,6 +168,11 @@ offset reset, generated parts, and both axis reservation values.
 ```csharp
 public sealed class SharedSlot : Container
 {
+    public SharedSlot()
+    {
+        InitializePanelPresentation();
+    }
+
     protected override Size MeasureOverride(Constraint constraint)
     {
         var width = 0;
@@ -202,6 +222,8 @@ public sealed class SharedSlot : Container
   implementing both layout passes.
 - Rendering and pointer traversal, disposal, auto-size, scroll geometry,
   clipping, and nested wheel propagation all behave as documented.
+- Keyboard and wheel scrolling can be disabled independently without consuming
+  the routed input or disabling programmatic and scrollbar interaction.
 - Generated scrollbar parts stay encapsulated and never appear in `Children`.
 - Reentrant common scrolling-policy changes leave generated parts, offsets, and
   both axis policies consistent with the newest committed value.

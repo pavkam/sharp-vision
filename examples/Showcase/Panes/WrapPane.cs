@@ -36,6 +36,7 @@ internal sealed class WrapPane: CompositeControlBase
         var widen = new Button { Text = "&Widen rows" };
         narrow.Click += (_, _) => ResizeHorizontal(-20);
         widen.Click += (_, _) => ResizeHorizontal(20);
+        UpdateHorizontalActions();
 
         var verticalHeight = 8;
         var vertical = new Wrap
@@ -59,6 +60,7 @@ internal sealed class WrapPane: CompositeControlBase
         var lengthen = new Button { Text = "&Lengthen columns" };
         shorten.Click += (_, _) => ResizeVertical(-2);
         lengthen.Click += (_, _) => ResizeVertical(2);
+        UpdateVerticalActions();
 
         var reflow = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
         reflow.Children.Add(Card("Tag", BorderGlyphStyle.Light, 8));
@@ -141,6 +143,7 @@ internal sealed class WrapPane: CompositeControlBase
             horizontal.Width = Length.Cells(horizontalWidth);
             horizontalStatus.Content =
                 $"Width: {horizontalWidth} cells\nSource order: Build → Test → Publish → Inspect";
+            UpdateHorizontalActions();
         }
 
         void ResizeVertical(int delta)
@@ -149,6 +152,19 @@ internal sealed class WrapPane: CompositeControlBase
             vertical.Height = Length.Cells(verticalHeight);
             verticalStatus.Content =
                 $"Height: {verticalHeight} cells\nSource order: One → Two → Three → Four";
+            UpdateVerticalActions();
+        }
+
+        void UpdateHorizontalActions()
+        {
+            narrow.IsEnabled = horizontalWidth > 24;
+            widen.IsEnabled = horizontalWidth < 44;
+        }
+
+        void UpdateVerticalActions()
+        {
+            shorten.IsEnabled = verticalHeight > 4;
+            lengthen.IsEnabled = verticalHeight < 10;
         }
     }
 

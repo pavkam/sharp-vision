@@ -32,14 +32,13 @@ public sealed class Grid: Container
     /// <summary>Initializes permanent row and column definition collections.</summary>
     public Grid()
     {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
         Rows = new TrackCollection(
             count => DefinitionsChanging(count, rows: true),
             DefinitionsChanged);
         Columns = new TrackCollection(
             count => DefinitionsChanging(count, rows: false),
             DefinitionsChanged);
-        EnableChromeAuthoring();
+        InitializePanelPresentation();
     }
 
     /// <summary>Gets the mutable row definitions; empty means one automatic row.</summary>

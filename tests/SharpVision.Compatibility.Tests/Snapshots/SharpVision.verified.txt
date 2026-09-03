@@ -294,6 +294,8 @@ namespace SharpVision.Controls
         public SharpVision.Terminal.Geometry.Size Extent { get; }
         public SharpVision.Scrolling.ScrollBarVisibility HorizontalBarVisibility { get; set; }
         public int HorizontalOffset { get; set; }
+        public bool IsKeyboardScrollingEnabled { get; set; }
+        public bool IsWheelScrollingEnabled { get; set; }
         public int LineSize { get; set; }
         public int PageOverlap { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
@@ -306,6 +308,7 @@ namespace SharpVision.Controls
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        protected void InitializePanelPresentation() { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnChildrenChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }

@@ -133,12 +133,15 @@ measured desired size. Minimum and maximum constraints are applied before the
 result is capped to the margin-deflated slot, so even tiny viewports produce
 contained, non-negative rectangles.
 
-Layout surfaces such as `Stack`, `Grid`, `Dock`, and `Overlay` opt into
-horizontal stretch because each owns a viewport or a shared slot. Their ordinary
-child controls stay content-sized unless the surface's layout rules explicitly
-resolve a child to its slot. `Border` uses the same base reservation on every
-control, so intrinsic chrome never double-reserves space and never requires a
-wrapper surface.
+Caller-facing layout panels use `Container.InitializePanelPresentation()` to
+apply horizontal stretch because each owns a viewport or shared slot, and to
+enable direct border and shadow authoring. `Stack`, `Grid`, `Dock`, `Overlay`,
+`SplitPane`, `Wrap`, and externally derived panels can therefore share one base
+initializer without changing the defaults of private retained hosts. Their
+ordinary child controls stay content-sized unless the surface's layout rules
+explicitly resolve a child to its slot. `Border` uses the same base reservation
+on every control, so intrinsic chrome never double-reserves space and never
+requires a wrapper surface.
 
 Fractional percentage and proportional boundaries are rounded cumulatively at
 the edges, so adjacent tracks share a single boundary and the final track

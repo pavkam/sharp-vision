@@ -24,11 +24,7 @@ public sealed class Overlay: Container
         InvalidationImpact.Render);
 
     /// <summary>Initializes an overlay that fills its parent shared box.</summary>
-    public Overlay()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        EnableChromeAuthoring();
-    }
+    public Overlay() => InitializePanelPresentation();
 
     /// <summary>Gets or sets whether descendants are clipped to overlay bounds.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>

@@ -28,11 +28,22 @@ internal sealed class StackPane: CompositeControlBase
         starCard.Width = Length.Star(1);
         horizontal.Children.Add(starCard);
 
-        // Reverse changes presentation order without reparenting children.
+        // Reverse changes presentation and focus order without reparenting children.
         Stack reversed = new() { Orientation = Orientation.Horizontal, Spacing = 2, Reverse = true };
-        reversed.Children.Add(Card("First", BorderGlyphStyle.Light));
-        reversed.Children.Add(Card("Second", BorderGlyphStyle.Heavy));
-        reversed.Children.Add(Card("Third", BorderGlyphStyle.Paired));
+        var reverseStatus = new Text("Activation: none\nVisible + Tab: Third → Second → First")
+        {
+            Width = Length.Cells(44),
+            Overflow = Overflow.Wrap
+        };
+        var first = new Button { Text = "&First" };
+        var second = new Button { Text = "S&econd" };
+        var third = new Button { Text = "&Third" };
+        first.Click += (_, _) => reverseStatus.Content = "Activation: First (source index 0).";
+        second.Click += (_, _) => reverseStatus.Content = "Activation: Second (source index 1).";
+        third.Click += (_, _) => reverseStatus.Content = "Activation: Third (source index 2).";
+        reversed.Children.Add(first);
+        reversed.Children.Add(second);
+        reversed.Children.Add(third);
 
         // Vertical stack with explicit region heights.
         Stack vertical = new() { Spacing = 1, Width = Length.Cells(46) };
@@ -70,13 +81,75 @@ internal sealed class StackPane: CompositeControlBase
         margins.Children.Add(Card("Spacing 1", BorderGlyphStyle.Heavy));
 
         // Hidden keeps its track; Collapsed releases it and adjacent spacing.
-        var hidden = new Text("Hidden keeps its track") { Visibility = Visibility.Hidden };
-        var collapsed = new Text("Collapsed releases its track") { Visibility = Visibility.Collapsed };
+        var optional = Card("Optional", BorderGlyphStyle.Rounded);
         var visibility = new Stack { Spacing = 1 };
         visibility.Children.Add(Card("Before", BorderGlyphStyle.Light));
-        visibility.Children.Add(hidden);
-        visibility.Children.Add(collapsed);
+        visibility.Children.Add(optional);
         visibility.Children.Add(Card("After", BorderGlyphStyle.Heavy));
+        var visibilityStatus = new Text("Optional: visible; its track and content render.")
+        {
+            Width = Length.Cells(44),
+            Overflow = Overflow.Wrap
+        };
+        var cycleVisibility = new Button { Text = "Cycle &visibility" };
+        cycleVisibility.Click += (_, _) =>
+        {
+            optional.Visibility = optional.Visibility == Visibility.Visible
+                ? Visibility.Hidden
+                : optional.Visibility == Visibility.Hidden
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            visibilityStatus.Content = optional.Visibility == Visibility.Hidden
+                ? "Optional: hidden; its track and adjacent spacing remain."
+                : optional.Visibility == Visibility.Collapsed
+                    ? "Optional: collapsed; its track and adjacent spacing are released."
+                    : "Optional: visible; its track and content render.";
+        };
+
+        // Container-owned scrolling exposes separate keyboard and wheel input policies.
+        var scrolling = new Stack
+        {
+            Width = Length.Cells(44),
+            Height = Length.Cells(7),
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            ShowScrollBars = ShowScrollBars.Always,
+            IsFocusable = true,
+            IsTabStop = true,
+            LineSize = 1,
+            PageOverlap = 1
+        };
+
+        for (var index = 1; index <= 12; index++)
+        {
+            scrolling.Children.Add(new Text($"Row {index:00} · retained container content"));
+        }
+
+        var scrollStatus = new Text("Offset: 0 · cause: none\nKeyboard: on · wheel: on")
+        {
+            Width = Length.Cells(44),
+            Overflow = Overflow.Wrap
+        };
+        var focusViewport = new Button { Text = "Foc&us viewport" };
+        var keyboardScrolling = new CheckBox { Text = "&Keyboard scrolling", IsChecked = true };
+        var wheelScrolling = new CheckBox { Text = "&Wheel scrolling", IsChecked = true };
+
+        focusViewport.Click += (_, _) =>
+        {
+            var focused = scrolling.Focus();
+            UpdateScrollStatus(focused ? "focus" : "focus unavailable");
+        };
+        keyboardScrolling.StateChanged += (_, _) =>
+        {
+            scrolling.IsKeyboardScrollingEnabled = keyboardScrolling.IsChecked == true;
+            UpdateScrollStatus("policy");
+        };
+        wheelScrolling.StateChanged += (_, _) =>
+        {
+            scrolling.IsWheelScrollingEnabled = wheelScrolling.IsChecked == true;
+            UpdateScrollStatus("policy");
+        };
+        scrolling.ScrollChanged += (_, eventArgs) => UpdateScrollStatus(eventArgs.Cause.ToString());
 
         // Over-constrained requests saturate safely instead of producing negative geometry.
         var constrained = new Stack { Orientation = Orientation.Horizontal, Width = Length.Cells(16), Spacing = 2 };
@@ -128,16 +201,29 @@ internal sealed class StackPane: CompositeControlBase
                 "Reverse changes geometry, rendering, selectable-text reading order, and default focus traversal without reparenting children.",
                 new DocExample(
                     "Stable source; reversed presentation",
-                    "The source order remains First, Second, Third while the visible and keyboard order runs in reverse.",
-                    reversed)),
+                    "Activate the buttons or Tab through them: source order remains First, Second, Third while visible and keyboard order runs in reverse.",
+                    new DocColumn(reversed, reverseStatus))),
             new DocSection(
                 "👁️",
                 "Visibility",
                 "Hidden children retain a track while Collapsed children consume neither a track nor adjacent spacing.",
                 new DocExample(
-                    "Hidden versus collapsed",
-                    "Only the surrounding cards render, but their gap reveals that Hidden still participates while Collapsed does not.",
-                    visibility)),
+                    "Visible, hidden, and collapsed",
+                    "Cycle the optional card to compare rendered content, retained geometry, and released geometry directly.",
+                    new DocColumn(cycleVisibility, visibilityStatus, visibility))),
+            new DocSection(
+                "🧭",
+                "Scrolling input",
+                "AutoScroll belongs to every Container; keyboard and wheel handling can be enabled independently while the same viewport, bars, offsets, and programmatic API remain active.",
+                new DocExample(
+                    "One viewport; two input policies",
+                    "Focus the viewport for arrows, Page Up/Down, Home, and End. Wheel over its rows, then disable either policy and verify that input remains available to the routed ancestor.",
+                    new DocColumn(
+                        new DocRow(focusViewport, keyboardScrolling),
+                        new DocRow(wheelScrolling),
+                        scrollStatus,
+                        scrolling),
+                    "var panel = new Stack\n{\n    AutoScroll = true,\n    IsKeyboardScrollingEnabled = true,\n    IsWheelScrollingEnabled = true,\n};")),
             new DocSection(
                 "📏",
                 "Constrained space",
@@ -154,6 +240,14 @@ internal sealed class StackPane: CompositeControlBase
                     "Secondary and primary actions",
                     "Resize the page and the spacer absorbs the changing remainder between Cancel and Save.",
                     actionBar)));
+
+        void UpdateScrollStatus(string cause)
+        {
+            scrollStatus.Content =
+                $"Offset: {scrolling.VerticalOffset} · cause: {cause}\n" +
+                $"Keyboard: {(scrolling.IsKeyboardScrollingEnabled ? "on" : "off")} · " +
+                $"wheel: {(scrolling.IsWheelScrollingEnabled ? "on" : "off")}";
+        }
     }
 
     private static Dock Card(
