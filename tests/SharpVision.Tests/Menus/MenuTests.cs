@@ -1099,9 +1099,11 @@ public sealed class MenuTests
     }
 
     /// <summary>Verifies Space is left unhandled - not silently swallowed - when the selected item is
-    /// disabled, so a menu that auto-selected a disabled item on insertion does not eat the stroke and
-    /// a shortcut bound to plain Space still sees it. The unmatched release still consumes its own
-    /// stroke as a no-op, the same as any other unarmed eligible release.</summary>
+    /// disabled, so a shortcut bound to plain Space still sees it. Insertion no longer auto-selects a
+    /// disabled item, but <see cref="Menu.SelectedIndex"/>'s own setter only validates range and
+    /// separator shape - not availability - so a disabled item can still become selected explicitly.
+    /// The unmatched release still consumes its own stroke as a no-op, the same as any other unarmed
+    /// eligible release.</summary>
     [Fact]
     public async Task Dispatch_WhenSpacePressedWithSelectedItemDisabled_LeavesUnhandledAsync()
     {
@@ -1112,6 +1114,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run", IsEnabled = false };
             menu.Items.Add(item);
+            menu.SelectedIndex = 0;
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();

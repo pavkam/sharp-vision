@@ -1557,19 +1557,28 @@ public sealed class Menu: ItemsControl
                 return;
             }
 
-            // Only an item that is actually available to press should consume the stroke -
-            // an auto-selected but disabled or hidden item must let Space bubble untouched.
-            if (_selectedIndex < 0 || ItemAt(_selectedIndex) is not MenuItem
+            // A selected item that cannot actually be pressed must let Space bubble untouched,
+            // matching Enter's own ActivateSelected() gate above - unlike having no selection at
+            // all, which stays a consumed no-op by design (see
+            // Space_WhenNothingIsSelected_IsConsumedWithoutInvokingAsync).
+            if (_selectedIndex >= 0 && ItemAt(_selectedIndex) is not MenuItem
                 {
                     EffectiveIsEnabled: true, EffectiveIsVisible: true
-                } selected)
+                })
             {
                 return;
             }
 
             eventArgs.IsHandled = true;
-            _spacePressedItem = selected;
-            selected.SetPressed(true);
+
+            if (_selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem
+                {
+                    EffectiveIsEnabled: true, EffectiveIsVisible: true
+                } selected)
+            {
+                _spacePressedItem = selected;
+                selected.SetPressed(true);
+            }
 
             return;
         }
@@ -1606,7 +1615,10 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        eventArgs.IsHandled = _spacePressedItem is not null;
+        // A repeat with nothing armed still consumes as a no-op when nothing is selected (the same
+        // deliberate default the initial press applies), but must bubble when the selection is the
+        // reason nothing armed - a disabled or hidden selected item.
+        eventArgs.IsHandled = _spacePressedItem is not null || _selectedIndex < 0;
     }
 
     private void SelectPointerTarget(PointerEventArgs eventArgs)
