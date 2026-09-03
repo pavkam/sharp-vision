@@ -276,12 +276,16 @@ replaces the accumulated options wholesale.
 | `ClipboardPasteEvents`        | `bool`                      | `false`                                                                        |
 | `ClipboardOperationTimeout`   | `TimeSpan`                  | `30` seconds                                                                   |
 | `KeyboardEnhancement`         | `KittyKeyboardEnhancement?` | `KittyKeyboardEnhancement.Disambiguate \| KittyKeyboardEnhancement.EventTypes` |
+| `ModifyOtherKeys`             | `int?`                      | `2`; `null` disables the xterm fallback keyboard-reporting protocol            |
 | `Profile`                     | `TerminalProfile?`          | `null` (resolve from the platform connection)                                  |
 | `Capabilities`                | `Capabilities?`             | `null` (detect and negotiate at startup)                                       |
 | `ColorDepth`                  | `ColorDepth?`               | `null` (use the detected depth)                                                |
 | `Negotiation`                 | `NegotiationOptions?`       | `null` (default startup negotiation from the environment)                      |
 | `CleanupTimeout`              | `TimeSpan`                  | `1` second                                                                     |
 | `ReadBufferSize`              | `int`                       | `16 * 1024` (16 KiB)                                                           |
+| `EscapeTimeout`               | `TimeSpan`                  | `50` ms                                                                        |
+| `MaxPasteBytes`               | `int`                       | `16 * 1024 * 1024` (16 MiB)                                                    |
+| `TransferLimits`              | `TransferLimits`            | `TransferLimits.Default`                                                       |
 | `ResizeInterval`              | `TimeSpan`                  | `100` ms                                                                       |
 | `TreatControlCAsInput`        | `bool`                      | `false`                                                                        |
 | `UseEnvironmentSizeOverrides` | `bool`                      | `false`                                                                        |
@@ -298,6 +302,9 @@ enum values, and `KeyboardEnhancement` may contain only defined
 `KittyKeyboardEnhancement.AllKeys`, and that case throws `ArgumentException`
 instead - associated-text reporting is meaningless without all-key reporting, so
 this is a cross-flag consistency rule rather than an out-of-range value.
+`ModifyOtherKeys` must be one through three when not null, and a value outside
+that range throws `ArgumentOutOfRangeException` from the `init` accessor as
+well.
 
 `CleanupTimeout` bounds two distinct shutdown steps. It caps the reverse
 terminal-mode restoration writes, and it caps the drain that waits for an

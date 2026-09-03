@@ -104,12 +104,16 @@
         public SharpVision.ConsoleApplicationBuilder UseClipboardPasteEvents(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseColorDepth(SharpVision.Terminal.Capabilities.ColorDepth depth) { }
         public SharpVision.ConsoleApplicationBuilder UseEnvironmentSizeOverrides(bool enabled = true) { }
+        public SharpVision.ConsoleApplicationBuilder UseEscapeTimeout(System.TimeSpan timeout) { }
         public SharpVision.ConsoleApplicationBuilder UseFocusReporting(bool enabled = true) { }
         public SharpVision.ConsoleApplicationBuilder UseKeyboardEnhancement(SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? enhancement) { }
+        public SharpVision.ConsoleApplicationBuilder UseMaxPasteBytes(int bytes) { }
+        public SharpVision.ConsoleApplicationBuilder UseModifyOtherKeys(int? level) { }
         public SharpVision.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
         public SharpVision.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
         public SharpVision.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
         public SharpVision.ConsoleApplicationBuilder UseTheme(SharpVision.Styling.Theme theme) { }
+        public SharpVision.ConsoleApplicationBuilder UseTransferLimits(SharpVision.Terminal.Clipboard.TransferLimits limits) { }
         public SharpVision.ConsoleApplicationBuilder WithCleanupTimeout(System.TimeSpan timeout) { }
         public SharpVision.ConsoleApplicationBuilder WithClipboardOperationTimeout(System.TimeSpan timeout) { }
         public SharpVision.ConsoleApplicationBuilder WithReadBufferSize(int size) { }
@@ -131,8 +135,11 @@
         public bool ClipboardPasteEvents { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public SharpVision.Terminal.Runtime.DiagnosticPromotion DiagnosticPromotions { get; init; }
+        public System.TimeSpan EscapeTimeout { get; init; }
         public bool FocusReporting { get; init; }
         public SharpVision.Terminal.Kitty.Keyboard.KittyKeyboardEnhancement? KeyboardEnhancement { get; init; }
+        public int MaxPasteBytes { get; init; }
+        public int? ModifyOtherKeys { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
@@ -143,6 +150,7 @@
         public System.TimeSpan ResizeInterval { get; init; }
         public bool ShowCursor { get; init; }
         public SharpVision.Styling.Theme? Theme { get; init; }
+        public SharpVision.Terminal.Clipboard.TransferLimits TransferLimits { get; init; }
         public bool TreatControlCAsInput { get; init; }
         public string? UnsupportedTerminalMessage { get; init; }
         public bool UseEnvironmentSizeOverrides { get; init; }

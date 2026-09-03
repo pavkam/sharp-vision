@@ -4,6 +4,8 @@
 namespace SharpVision;
 
 using Terminal.Capabilities;
+using Terminal.Clipboard;
+using Terminal.Input;
 using Terminal.Kitty.Keyboard;
 using Terminal.Runtime;
 
@@ -106,6 +108,22 @@ public sealed record ConsoleRunOptions
         }
     } = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes;
 
+    /// <summary>Gets the optional xterm modifyOtherKeys level used when Kitty keyboard is unavailable.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is outside one through three.</exception>
+    public int? ModifyOtherKeys
+    {
+        get;
+        init
+        {
+            if (value is not null and (< 1 or > 3))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "The modifyOtherKeys level must be one through three.");
+            }
+
+            field = value;
+        }
+    } = 2;
+
     /// <summary>
     /// Gets a complete explicit terminal profile, or null to use compatibility
     /// capabilities or platform description discovery. A complete profile has highest precedence.
@@ -182,6 +200,47 @@ public sealed record ConsoleRunOptions
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), value, "The read buffer size must be positive.");
     } = 16 * 1024;
+
+    /// <summary>Gets the lone-Escape ambiguity timeout. Default is 50 ms.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    public TimeSpan EscapeTimeout
+    {
+        get;
+        init
+        {
+            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The Escape timeout must be positive and finite.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromMilliseconds(50);
+
+    /// <summary>Gets the positive maximum retained paste byte count. Default is 16 MiB.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
+    public int MaxPasteBytes
+    {
+        get;
+        init => field = value > 0
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "The paste limit must be positive.");
+    } = 16 * 1024 * 1024;
+
+    /// <summary>Gets the clipboard transfer limits used to bound OSC 52 and Kitty OSC 5522 clipboard transfers.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public TransferLimits TransferLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = TransferLimits.Default;
 
     /// <summary>Gets the positive finite resize poll interval. Default is 100 ms.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
@@ -299,8 +358,10 @@ public sealed record ConsoleRunOptions
             Tracking = MouseTracking,
             Coordinates = MouseCoordinates,
             Keyboard = KeyboardEnhancement,
+            ModifyOtherKeys = ModifyOtherKeys,
             CleanupTimeout = CleanupTimeout,
-            ReadBufferSize = ReadBufferSize
+            ReadBufferSize = ReadBufferSize,
+            Input = InputOptions.Default with { EscapeTimeout = EscapeTimeout, MaxPasteBytes = MaxPasteBytes, TransferLimits = TransferLimits },
         };
     }
 

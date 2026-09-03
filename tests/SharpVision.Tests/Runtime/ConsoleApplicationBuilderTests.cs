@@ -6,6 +6,7 @@ namespace SharpVision.Tests.Runtime;
 using System.Reflection;
 
 using Terminal.Backends;
+using Terminal.Clipboard;
 
 /// <summary>Verifies <see cref="ConsoleApplicationBuilder"/> fluent setters accumulate onto <see cref="ConsoleRunOptions"/>.</summary>
 public sealed class ConsoleApplicationBuilderTests
@@ -129,6 +130,71 @@ public sealed class ConsoleApplicationBuilderTests
 
         builder.Options.RedirectedMessage.ShouldBe("redirected");
         builder.Options.UnsupportedTerminalMessage.ShouldBe("unsupported");
+    }
+
+    /// <summary>Verifies UseModifyOtherKeys sets the value that later shows up in the built terminal options.</summary>
+    [Fact]
+    public void UseModifyOtherKeys_WhenGivenLevel_SetsValue()
+    {
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .UseModifyOtherKeys(1);
+
+        builder.Options.ModifyOtherKeys.ShouldBe(1);
+
+        var terminal = builder.Options.ToTerminalOptions();
+
+        terminal.ModifyOtherKeys.ShouldBe(1);
+    }
+
+    /// <summary>Verifies UseEscapeTimeout sets the value that reaches the built terminal's input
+    /// decoder policy.</summary>
+    [Fact]
+    public void UseEscapeTimeout_WhenCalled_ReachesTerminalInput()
+    {
+        var timeout = TimeSpan.FromMilliseconds(120);
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .UseEscapeTimeout(timeout);
+
+        builder.Options.EscapeTimeout.ShouldBe(timeout);
+        builder.Options.ToTerminalOptions().Input.EscapeTimeout.ShouldBe(timeout);
+    }
+
+    /// <summary>Verifies UseMaxPasteBytes sets the value that reaches the built terminal's input
+    /// decoder policy.</summary>
+    [Fact]
+    public void UseMaxPasteBytes_WhenCalled_ReachesTerminalInput()
+    {
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .UseMaxPasteBytes(1024);
+
+        builder.Options.MaxPasteBytes.ShouldBe(1024);
+        builder.Options.ToTerminalOptions().Input.MaxPasteBytes.ShouldBe(1024);
+    }
+
+    /// <summary>Verifies UseTransferLimits sets the value that reaches the built terminal's input
+    /// decoder policy.</summary>
+    [Fact]
+    public void UseTransferLimits_WhenCalled_ReachesTerminalInput()
+    {
+        var limits = TransferLimits.Default with { MaxClipboardBytes = 4 * 1024 * 1024 };
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .UseTransferLimits(limits);
+
+        builder.Options.TransferLimits.ShouldBeSameAs(limits);
+        builder.Options.ToTerminalOptions().Input.TransferLimits.ShouldBeSameAs(limits);
+    }
+
+    /// <summary>Verifies a null clipboard transfer limits override is rejected without changing
+    /// accumulated options.</summary>
+    [Fact]
+    public void UseTransferLimits_WhenLimitsNull_ThrowsWithoutChangingOptions()
+    {
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen());
+        var before = builder.Options;
+
+        _ = Should.Throw<ArgumentNullException>(() => builder.UseTransferLimits(limits: null!));
+
+        builder.Options.ShouldBeSameAs(before);
     }
 
     /// <summary>Verifies UseCapabilities preserves exact trusted evidence through public compatibility mapping.</summary>

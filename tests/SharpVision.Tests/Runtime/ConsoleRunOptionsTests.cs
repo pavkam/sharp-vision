@@ -5,6 +5,7 @@ namespace SharpVision.Tests.Runtime;
 
 using SharpVision.Terminal.Kitty.Keyboard;
 
+using Terminal.Clipboard;
 using Terminal.Multiplexing;
 
 using MultiplexerKind = Terminal.Multiplexing.MultiplexerKind;
@@ -91,6 +92,49 @@ public sealed class ConsoleRunOptionsTests
         var options = Should.NotThrow(() => new ConsoleRunOptions { KeyboardEnhancement = null });
 
         options.KeyboardEnhancement.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the default modifyOtherKeys level matches today's interactive-console policy.</summary>
+    [Fact]
+    public void ModifyOtherKeys_WhenDefaultConstructed_Is2() =>
+        new ConsoleRunOptions().ModifyOtherKeys.ShouldBe(2);
+
+    /// <summary>Verifies a modifyOtherKeys level outside one through three is rejected at the option
+    /// boundary instead of surfacing from Application.StartAsync with a parameter name the caller
+    /// never wrote.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public void ModifyOtherKeys_WhenValueIsOutOfRange_ThrowsArgumentOutOfRangeException(int value)
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { ModifyOtherKeys = value });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies a custom modifyOtherKeys level reaches terminal session policy unchanged - the
+    /// gap this closes, since <see cref="ConsoleRunOptions.ToTerminalOptions(TerminalProfile)"/>
+    /// previously dropped the property entirely.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenModifyOtherKeysConfigured_PreservesLevel()
+    {
+        var options = new ConsoleRunOptions { ModifyOtherKeys = 1 };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.ModifyOtherKeys.ShouldBe(1);
+    }
+
+    /// <summary>Verifies disabling modifyOtherKeys entirely reaches terminal session policy as null.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenModifyOtherKeysDisabled_LeavesLevelNull()
+    {
+        var options = new ConsoleRunOptions { ModifyOtherKeys = null };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.ModifyOtherKeys.ShouldBeNull();
     }
 
     /// <summary>Verifies default startup negotiates cell mouse and SGR any-event input.</summary>
@@ -346,6 +390,76 @@ public sealed class ConsoleRunOptionsTests
         terminal.Profile.Capabilities.ColorOrigin.ShouldBe(Origin.Override);
         terminal.Profile.Description.Name.ShouldBe("ansi");
         terminal.Profile.Description.Suitability.ShouldBe(Suitability.Usable);
+    }
+
+    /// <summary>Verifies default construction reproduces conservative input decoder tuning.</summary>
+    [Fact]
+    public void Defaults_WhenConstructed_ReproduceInputDecoderTuning()
+    {
+        var options = new ConsoleRunOptions();
+
+        options.EscapeTimeout.ShouldBe(TimeSpan.FromMilliseconds(50));
+        options.MaxPasteBytes.ShouldBe(16 * 1024 * 1024);
+        options.TransferLimits.ShouldBeSameAs(TransferLimits.Default);
+    }
+
+    /// <summary>Verifies an unbounded or non-positive Escape timeout is rejected before the console
+    /// is opened.</summary>
+    [Fact]
+    public void EscapeTimeout_WhenValueIsNotPositiveAndFinite_ThrowsArgumentOutOfRangeException()
+    {
+        var zero = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { EscapeTimeout = TimeSpan.Zero });
+        var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { EscapeTimeout = Timeout.InfiniteTimeSpan });
+
+        zero.ParamName.ShouldBe("value");
+        infinite.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies a non-positive paste byte limit is rejected before the console is opened.</summary>
+    [Fact]
+    public void MaxPasteBytes_WhenValueIsNotPositive_ThrowsArgumentOutOfRangeException()
+    {
+        var zero = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { MaxPasteBytes = 0 });
+        var negative = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { MaxPasteBytes = -1 });
+
+        zero.ParamName.ShouldBe("value");
+        negative.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies a null clipboard transfer limits override is rejected before the console is opened.</summary>
+    [Fact]
+    public void TransferLimits_WhenValueIsNull_ThrowsArgumentNullException()
+    {
+        var exception = Should.Throw<ArgumentNullException>(() =>
+            new ConsoleRunOptions { TransferLimits = null! });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies the Escape timeout, paste byte limit, and clipboard transfer limits reach the
+    /// Terminal-layer input decoder policy instead of being silently dropped by ToTerminalOptions -
+    /// the exact gap that left these three tuning knobs unreachable through the hosting surface.</summary>
+    [Fact]
+    public void ToTerminalOptions_WhenInputTuningConfigured_ThreadsValuesIntoTerminalInput()
+    {
+        var escapeTimeout = TimeSpan.FromMilliseconds(120);
+        var transferLimits = TransferLimits.Default with { MaxClipboardBytes = 4 * 1024 * 1024 };
+        var options = new ConsoleRunOptions
+        {
+            EscapeTimeout = escapeTimeout,
+            MaxPasteBytes = 1024,
+            TransferLimits = transferLimits
+        };
+
+        var terminal = options.ToTerminalOptions(Ansi());
+
+        terminal.Input.EscapeTimeout.ShouldBe(escapeTimeout);
+        terminal.Input.MaxPasteBytes.ShouldBe(1024);
+        terminal.Input.TransferLimits.ShouldBeSameAs(transferLimits);
     }
 
     private static TerminalProfile Ansi() =>

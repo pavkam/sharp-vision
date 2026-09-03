@@ -7,6 +7,7 @@ using SharpVision.Runtime;
 using SharpVision.Terminal.Runtime;
 
 using Terminal.Capabilities;
+using Terminal.Clipboard;
 using Terminal.Kitty.Keyboard;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
@@ -178,6 +179,20 @@ public sealed class ConsoleApplicationBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the xterm modifyOtherKeys level used as the fallback keyboard-reporting
+    /// protocol when Kitty keyboard enhancement isn't available, or null to disable it.
+    /// </summary>
+    /// <param name="level">The modifyOtherKeys level (one through three), or null to disable.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="level"/> is outside one through three.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseModifyOtherKeys(int? level)
+    {
+        Options = Options with { ModifyOtherKeys = level };
+        return this;
+    }
+
     /// <summary>Overrides the color depth.</summary>
     /// <param name="depth">The color depth override.</param>
     /// <returns>This builder.</returns>
@@ -274,6 +289,40 @@ public sealed class ConsoleApplicationBuilder
     public ConsoleApplicationBuilder WithReadBufferSize(int size)
     {
         Options = Options with { ReadBufferSize = size };
+        return this;
+    }
+
+    /// <summary>Sets the lone-Escape ambiguity timeout.</summary>
+    /// <param name="timeout">The positive finite Escape timeout.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="timeout"/> is not positive and finite.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseEscapeTimeout(TimeSpan timeout)
+    {
+        Options = Options with { EscapeTimeout = timeout };
+        return this;
+    }
+
+    /// <summary>Sets the maximum retained paste byte count.</summary>
+    /// <param name="bytes">The positive maximum paste byte count.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="bytes"/> is not positive.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseMaxPasteBytes(int bytes)
+    {
+        Options = Options with { MaxPasteBytes = bytes };
+        return this;
+    }
+
+    /// <summary>Sets the clipboard transfer limits.</summary>
+    /// <param name="limits">The non-null clipboard transfer limits.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="limits"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseTransferLimits(TransferLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(limits);
+        Options = Options with { TransferLimits = limits };
         return this;
     }
 
