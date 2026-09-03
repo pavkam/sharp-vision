@@ -12,7 +12,7 @@
     <PackageTags>terminal;protocols;unicode;rendering;console;ansi;vt</PackageTags>
     <Description>Low-level .NET 10 terminal foundation with incremental protocol parsing, capability detection, Unicode cell geometry, input decoding, frame buffers, damage tracking, and deterministic output.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.Terminal 1.3.0-beta.1 prerelease with region cell restyling on TerminalCanvas. See https://github.com/pavkam/sharp-vision/blob/main/docs/protocols/coverage-matrix.md for the implemented protocol surface and fallback behavior.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.Terminal 1.4.0-beta.1 prerelease with region cell restyling on TerminalCanvas. See https://github.com/pavkam/sharp-vision/blob/main/docs/protocols/coverage-matrix.md for the implemented protocol surface and fallback behavior.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

@@ -23,7 +23,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;figlet;figfont;font</PackageTags>
     <Description>Optional audited BSD and MIT FIGlet font catalog for SharpVision.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.FigletFonts 1.1.0-beta.1 prerelease with individually embedded, audited BSD and MIT FIGlet fonts.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.FigletFonts 1.4.0-beta.1 prerelease with individually embedded, audited BSD and MIT FIGlet fonts.</PackageReleaseNotes>
     <RestoreAdditionalProjectSources>$(MSBuildThisFileDirectory)..\..\artifacts\bootstrap-packages;$(RestoreAdditionalProjectSources)</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
