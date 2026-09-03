@@ -112,6 +112,9 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         FocusLeft += OnFocusLeft;
     }
 
+    /// <inheritdoc/>
+    internal override bool ProvidesContinuousBackground => true;
+
     /// <summary>Raised after an eligible item event and before its captured command executes.</summary>
     public event EventHandler<CommandBarItemInvokedEventArgs>? ItemInvoked;
 

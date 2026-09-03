@@ -46,8 +46,7 @@ public sealed class Menu: ItemsControl
         _stack = new LayoutStack
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 0,
-            Face = ControlStyle.Default.Face
+            Spacing = 0
         };
         InitializeItemsHost(_stack);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
@@ -63,6 +62,9 @@ public sealed class Menu: ItemsControl
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
         BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
+
+    /// <inheritdoc/>
+    internal override bool ProvidesContinuousBackground => true;
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;

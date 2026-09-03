@@ -60,6 +60,92 @@ public sealed class MenuSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
     }
 
+    /// <summary>Verifies a menu item's theme-authored Selected and Pressed highlights survive the
+    /// continuous Bar plane instead of being silently forced transparent.
+    /// <see cref="BarAppearance.Rebase"/> only rebases Normal, IsPointerOver, and Disabled onto
+    /// <see cref="SemanticColor.Bar"/> - Selected and Pressed remain theme-authored on purpose, so
+    /// <see cref="Menu"/> becoming a continuous background plane must not erase them.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenItemIsSelectedOrPressed_KeepsThemeOwnedHighlightBackgroundAsync()
+    {
+        // Arrange
+        var target = new MenuItem { Text = "Target" };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(target);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var position = new Point(target.Bounds.X, target.Bounds.Y);
+
+        // Act select
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => menu.SelectedIndex = 0, "select target menu item");
+
+        // Assert the Selected highlight is not absorbed into the continuous Bar plane
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        // Act press
+        await surface.Pointer.MoveToAsync(target);
+        await surface.Pointer.PressAsync();
+
+        // Assert the Pressed highlight is not absorbed into the continuous Bar plane either
+        target.IsPressed.ShouldBeTrue();
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
+    }
+
+    /// <summary>Verifies a Menu's unused and gap cells stay Bar-colored under the actual bundled
+    /// Dark theme, where Bar differs from both Control and DisabledControl - proving the
+    /// continuous background plane, and not a coincidentally-matching literal, is what fills the
+    /// cells the entry stack itself paints rather than a stray Control-colored hole.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenBarDiffersFromControlInTheBundledTheme_ShowsNoStrayControlColoredCellAsync()
+    {
+        // Arrange
+        var normal = new MenuItem { Text = "N" };
+        var disabled = new MenuItem { Text = "D", IsEnabled = false };
+        var menu = new Menu { Orientation = Orientation.Vertical, Spacing = 1 };
+        menu.Items.Add(normal);
+        menu.Items.Add(disabled);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(14, 5),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+        var strayControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Control), colorDepth);
+        var strayDisabledControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth);
+        expectedBar.ShouldNotBe(strayControl);
+
+        // Assert - the gap row/column beyond both items is painted by Menu's own private entry
+        // stack, a plain framework-owned items host with no Bar-aware style of its own; it must
+        // stay Bar-colored rather than show its own generic Control-colored background.
+        var gap = new Point(menu.Bounds.X, normal.Bounds.Bottom);
+        surface.Cell(gap).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(gap).Style.Background.ShouldNotBe(strayControl);
+        surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+
+        // Assert - each item's own cell also stays on the Bar plane in both Normal and Disabled.
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldNotBe(strayDisabledControl);
+    }
+
     /// <summary>Verifies an owner-managed submenu opening does not close an unrelated
     /// owner-managed popup elsewhere in the same tree.</summary>
     [Fact]
@@ -655,7 +741,12 @@ public sealed class MenuSurfaceTests
         // Assert
         menu.SelectedIndex.ShouldBe(1);
         second.IsPointerOver.ShouldBeTrue();
-        second.GetResolvedAppearance(second.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
+
+        // Menu is a continuous Bar plane (see BarAppearance.Rebase): physical hover carries no
+        // Face.Background delta of its own, so it leaves the item transparent rather than
+        // repainting it with an opaque, independently resolved copy of the same color. Either way
+        // the rendered pixel is identical - the assertions below prove that.
+        second.GetResolvedAppearance(second.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Transparent);
         surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(containingBackground);
         surface.Cell(new Point(second.Bounds.Right - 1, 1)).Style.Background.ShouldBe(containingBackground);
     }

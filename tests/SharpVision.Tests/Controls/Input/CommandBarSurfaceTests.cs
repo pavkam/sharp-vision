@@ -66,6 +66,93 @@ public sealed class CommandBarSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
     }
 
+    /// <summary>Verifies a command item's theme-authored Selected and Pressed highlights survive
+    /// the continuous Bar plane instead of being silently forced transparent.
+    /// <see cref="BarAppearance.Rebase"/> only rebases Normal, IsPointerOver, and Disabled onto
+    /// <see cref="SemanticColor.Bar"/> - Selected and Pressed remain theme-authored on purpose, so
+    /// <see cref="CommandBar"/> becoming a continuous background plane must not erase them.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenItemIsSelectedOrPressed_KeepsThemeOwnedHighlightBackgroundAsync()
+    {
+        // Arrange
+        var target = new CommandBarItem { Text = "Target" };
+        var bar = new CommandBar { Spacing = 1 };
+        bar.Items.Add(target);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = bar.Theme.ShouldNotBeNull();
+        var position = new Point(target.Bounds.X, target.Bounds.Y);
+
+        // Act select
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => bar.SelectedItem = target, "select target command");
+
+        // Assert the Selected highlight is not absorbed into the continuous Bar plane
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        // Act press
+        await surface.UpdateAsync(
+            () => bar.SetCapabilities(TestCapabilities.WithKeyReleases),
+            "enable key-release reporting");
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+
+        // Assert the Pressed highlight is not absorbed into the continuous Bar plane either
+        target.IsPressed.ShouldBeTrue();
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
+    }
+
+    /// <summary>Verifies a CommandBar's unused and gap cells stay Bar-colored under the actual
+    /// bundled Dark theme, where Bar differs from both Control and DisabledControl - proving the
+    /// continuous background plane, and not a coincidentally-matching literal, is what fills the
+    /// cells <see cref="CommandBarHost"/> itself paints rather than a stray Control-colored hole.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenBarDiffersFromControlInTheBundledTheme_ShowsNoStrayControlColoredCellAsync()
+    {
+        // Arrange
+        var normal = new CommandBarItem { Text = "N" };
+        var disabled = new CommandBarItem { Text = "D", IsEnabled = false };
+        var bar = new CommandBar { Spacing = 1 };
+        bar.Items.Add(normal);
+        bar.Items.Add(disabled);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(30, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = bar.Theme.ShouldNotBeNull();
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+        var strayControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Control), colorDepth);
+        var strayDisabledControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth);
+        expectedBar.ShouldNotBe(strayControl);
+
+        // Assert - the gap cell beyond both items is painted by CommandBarHost, a plain
+        // framework-owned items host with no Bar-aware style of its own; it must stay Bar-colored
+        // rather than show its own generic Control-colored background.
+        var gap = new Point(bar.Bounds.Right - 1, 0);
+        surface.Cell(gap).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(gap).Style.Background.ShouldNotBe(strayControl);
+
+        // Assert - each item's own cell also stays on the Bar plane in both Normal and Disabled.
+        surface.Cell(new Point(normal.Bounds.X, 0)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, 0)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, 0)).Style.Background.ShouldNotBe(strayDisabledControl);
+    }
+
     /// <summary>Verifies the ordinary row renders each semantic command once with an independently normalized separator.</summary>
     [Fact]
     public async Task Render_WhenEveryCommandFits_DrawsOnePrimaryRowWithoutTriggerAsync()

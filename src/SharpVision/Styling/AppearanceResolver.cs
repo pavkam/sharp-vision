@@ -185,14 +185,14 @@ internal static class AppearanceResolver
             inheritedFace = ApplyAmbientFace(inheritedFace, ambient);
         }
 
-        var (authoredAppearance, borderForegroundAuthored) = FoldAuthoredAppearance(
+        var (authoredAppearance, borderForegroundAuthored, faceBackgroundAuthored) = FoldAuthoredAppearance(
             control,
             states,
             visualState,
             new ControlAppearance(inheritedFace, normal.Border, normal.Shadow));
 
         var face = ResolveFace(theme, authoredAppearance.Face);
-        if (useContinuousBackground && !control.AuthorsLocalBackground(visualState))
+        if (useContinuousBackground && !control.AuthorsLocalBackground(visualState) && !faceBackgroundAuthored)
         {
             // A status-like strip owns one continuous paint plane. Framework defaults may still
             // contribute their foreground, decorations, and interaction state, but their opaque
@@ -226,7 +226,7 @@ internal static class AppearanceResolver
     /// foreground difference must not suppress the relief during resolved-border creation. See
     /// <see cref="ResolvedBorderStyles.Create"/>.</para>
     /// </remarks>
-    private static (ControlAppearance Appearance, bool BorderForegroundAuthored) FoldAuthoredAppearance(
+    private static (ControlAppearance Appearance, bool BorderForegroundAuthored, bool FaceBackgroundAuthored) FoldAuthoredAppearance(
         ControlBase control,
         AppearanceStates states,
         VisualState visualState,
@@ -257,7 +257,22 @@ internal static class AppearanceResolver
         var borderForegroundAuthored = !states.StateAuthorsOwnRelief &&
             finalAppearance.Border.Foreground != authoredBaseline.Foreground;
 
-        return (finalAppearance, borderForegroundAuthored);
+        // Scoped to a Bar-rebased style (see BarAppearance.Rebase): only there does the fallback's
+        // own Normal already sit on SemanticColor.Bar, so a per-state delta away from it is a
+        // deliberate highlight (MenuItemStyle/CommandBarItemStyle's Pressed/Selected/Focused/
+        // Checked) the continuous plane must not silently erase. An ordinary control folded onto
+        // this same baseline shape - a framework-owned items host with no Bar awareness of its
+        // own, or arbitrary content merely hosted inside a Bar item - never sits on Bar in the
+        // first place, so its own unrelated per-state deltas (a generic Disabled recolor, a
+        // CheckBox's own hover/press/selection theme) must keep opting into the continuous plane
+        // exactly as before, regardless of whether they happen to differ from Normal.
+        var authoredFaceBaseline = control.LocalFace ?? baseAppearance.Face;
+        var facePlaneIsBar = states.Normal.Face.Background is { IsSemantic: true } normalBackground &&
+            normalBackground.SemanticColor == SemanticColor.Bar;
+        var faceBackgroundAuthored = facePlaneIsBar &&
+            finalAppearance.Face.Background != authoredFaceBaseline.Background;
+
+        return (finalAppearance, borderForegroundAuthored, faceBackgroundAuthored);
     }
 
     extension(ResolvedAppearance previous)
