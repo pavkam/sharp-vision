@@ -1098,6 +1098,38 @@ public sealed class MenuTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies Space is left unhandled - not silently swallowed - when the selected item is
+    /// disabled, so a menu that auto-selected a disabled item on insertion does not eat the stroke and
+    /// a shortcut bound to plain Space still sees it. The unmatched release still consumes its own
+    /// stroke as a no-op, the same as any other unarmed eligible release.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpacePressedWithSelectedItemDisabled_LeavesUnhandledAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run", IsEnabled = false };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+
+            press.IsHandled.ShouldBeFalse();
+            item.IsPressed.ShouldBeFalse();
+
+            var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
+
+            release.IsHandled.ShouldBeTrue();
+            invocations.ShouldBeEmpty();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies the gate applies symmetrically to the release arm: an eligible press arms
     /// the item, but an incidental Control modifier on the paired release must not invoke it - the
     /// release still consumes the stroke and clears the pressed frame.</summary>

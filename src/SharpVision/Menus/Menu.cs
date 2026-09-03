@@ -1557,16 +1557,19 @@ public sealed class Menu: ItemsControl
                 return;
             }
 
-            eventArgs.IsHandled = true;
-
-            if (_selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem
+            // Only an item that is actually available to press should consume the stroke -
+            // an auto-selected but disabled or hidden item must let Space bubble untouched.
+            if (_selectedIndex < 0 || ItemAt(_selectedIndex) is not MenuItem
                 {
                     EffectiveIsEnabled: true, EffectiveIsVisible: true
                 } selected)
             {
-                _spacePressedItem = selected;
-                selected.SetPressed(true);
+                return;
             }
+
+            eventArgs.IsHandled = true;
+            _spacePressedItem = selected;
+            selected.SetPressed(true);
 
             return;
         }
@@ -1603,7 +1606,7 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        eventArgs.IsHandled = true;
+        eventArgs.IsHandled = _spacePressedItem is not null;
     }
 
     private void SelectPointerTarget(PointerEventArgs eventArgs)
