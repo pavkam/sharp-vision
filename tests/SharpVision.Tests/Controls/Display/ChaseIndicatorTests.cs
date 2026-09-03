@@ -6,6 +6,30 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ChaseIndicator defaults, validation, layout, and width policy.</summary>
 public sealed class ChaseIndicatorTests
 {
+    /// <summary>Verifies the inherited interval property preserves ChaseIndicator's established
+    /// publish-then-reschedule ordering for observers of its fade-aware timer state.</summary>
+    [Fact]
+    public void Interval_WhenChanged_PublishesBeforeRescheduling()
+    {
+        // Arrange
+        var indicator = new ChaseIndicator { TrailLength = 0 };
+        var scheduledDuringPublication = TimeSpan.Zero;
+        indicator.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChaseIndicator.Interval))
+            {
+                scheduledDuringPublication = indicator.ScheduledInterval;
+            }
+        };
+
+        // Act
+        indicator.Interval = TimeSpan.FromMilliseconds(300);
+
+        // Assert
+        scheduledDuringPublication.ShouldBe(TimeSpan.FromMilliseconds(200));
+        indicator.ScheduledInterval.ShouldBe(TimeSpan.FromMilliseconds(300));
+    }
+
     /// <summary>Verifies trail storage follows the committed length even when its notification throws.</summary>
     [Fact]
     public void TrailLength_WhenPropertyObserverThrows_StillResizesTrail()

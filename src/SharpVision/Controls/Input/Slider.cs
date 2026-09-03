@@ -148,6 +148,18 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         }
     } = Orientation.Horizontal;
 
+    /// <summary>Gets or sets whether the visual axis and directional arrow commands run opposite
+    /// to the orientation's default direction.</summary>
+    /// <remarks>Home and End retain their semantic minimum and maximum meanings. Page and wheel
+    /// gestures likewise remain semantic decrement and increment commands.</remarks>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool IsDirectionReversed
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+    }
+
     /// <summary>Adds one signed command delta with saturation and endpoint clamping.</summary>
     /// <param name="delta">The signed requested change.</param>
     /// <returns>True when a changed value committed; otherwise false.</returns>
@@ -275,12 +287,12 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
             (Orientation == Orientation.Vertical && code == Code.Down))
         {
-            _ = ChangeBy(SmallChange.Negate());
+            _ = ChangeBy(IsDirectionReversed ? SmallChange : SmallChange.Negate());
         }
         else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
                  (Orientation == Orientation.Vertical && code == Code.Up))
         {
-            _ = ChangeBy(SmallChange);
+            _ = ChangeBy(IsDirectionReversed ? SmallChange.Negate() : SmallChange);
         }
         else if (code == Code.PageUp)
         {
@@ -403,6 +415,12 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             : point.Y - bounds.Y;
         physical = Math.Clamp(physical, 0, length - 1);
         var logical = Orientation == Orientation.Vertical ? length - 1 - physical : physical;
+
+        if (IsDirectionReversed)
+        {
+            logical = length - 1 - logical;
+        }
+
         var span = (long) Maximum - Minimum;
         var positions = length - 1L;
         var offset = RangeValidation.RoundHalfUp(logical * span, positions);
@@ -420,12 +438,21 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         var offset = (long) value - Minimum;
         var positions = length - 1L;
         var logical = RangeValidation.RoundHalfUp(offset * positions, span);
-        return Orientation == Orientation.Vertical ? length - 1 - logical : logical;
+        var physical = Orientation == Orientation.Vertical ? length - 1 - logical : logical;
+        return IsDirectionReversed ? length - 1 - physical : physical;
     }
 
-    private bool IsFilled(int position, int thumb) => Orientation == Orientation.Horizontal
-        ? position < thumb
-        : position > thumb;
+    private bool IsFilled(int position, int thumb)
+    {
+        var minimumAtLeadingEdge = Orientation == Orientation.Horizontal;
+
+        if (IsDirectionReversed)
+        {
+            minimumAtLeadingEdge = !minimumAtLeadingEdge;
+        }
+
+        return minimumAtLeadingEdge ? position < thumb : position > thumb;
+    }
 
     private int AxisLength(Rect bounds) => Orientation == Orientation.Horizontal
         ? bounds.Width

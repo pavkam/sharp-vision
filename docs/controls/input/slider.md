@@ -26,6 +26,7 @@ classDiagram
 | `SmallChange`         | `int`                                       | `1`                      | The non-negative arrow or wheel increment.                                                |
 | `LargeChange`         | `int`                                       | `10`                     | The non-negative Page Up or Page Down increment.                                          |
 | `Orientation`         | `Orientation`                               | `Orientation.Horizontal` | Chooses left-to-right or bottom-to-top mapping.                                           |
+| `IsDirectionReversed` | `bool`                                      | `false`                  | Reverses visual axis mapping and directional arrow commands.                              |
 | `Style`               | `SliderStyle?`                              | `null`                   | Optional complete developer-authored presentation.                                        |
 | `ActualStyle`         | `SliderStyle`                               | Resolved                 | Read-only; the complete local, theme-owned, or code-owned presentation.                   |
 | `ChangeBy(int delta)` | `bool`                                      | —                        | Applies a widened, saturating, endpoint-clamped programmatic change.                      |
@@ -72,6 +73,10 @@ the Theme-owned presentation.
   top. Mapping uses the complete signed range in widened arithmetic with
   inclusive endpoint rounding, and it stays correct across `int.MinValue`
   through `int.MaxValue`.
+- `IsDirectionReversed` swaps those visual endpoints and the meaning of the
+  directional arrows. Home and End remain semantic minimum and maximum commands;
+  Page Down, Page Up, and wheel gestures remain semantic decrement and increment
+  commands.
 
 ## Input and visual states
 
@@ -86,12 +91,14 @@ the drag without committing another value.
 Left/Right operate a horizontal slider and Down/Up a vertical one: the
 decreasing key subtracts `SmallChange` and the increasing key adds it. Page Down
 subtracts `LargeChange`, Page Up adds it, and Home/End select the minimum and
-maximum. Key press and repeat are accepted; release is ignored. Movement keys
-accept lock state but no Shift or application-command modifier; unsupported
-chords remain unhandled. A wheel gesture applies `SmallChange` and is handled
-only when the value actually changes, which leaves endpoint gestures available
-to an enclosing scroll surface. Keys outside the slider command set remain
-available to inherited routed input.
+maximum. `IsDirectionReversed` swaps only the directional arrow meanings so they
+continue to agree with the visual axis. Key press and repeat are accepted;
+release is ignored. Movement keys accept lock state but no Shift or
+application-command modifier; unsupported chords remain unhandled. A wheel
+gesture applies `SmallChange` and is handled only when the value actually
+changes, which leaves endpoint gestures available to an enclosing scroll
+surface. Keys outside the slider command set remain available to inherited
+routed input.
 
 The rail renders its filled, thumb, and unfilled cells with the `Accent`,
 `Accent`, and `Muted` foregrounds respectively, from `SliderStyle`'s code-owned
@@ -132,7 +139,8 @@ volume.ValueChanged += (_, change) => SaveVolume(change.Value);
 - Events arrive in committed order, and horizontal and vertical rails render
   their exact cells.
 - Zero and tiny bounds stay contained, keyboard and wheel semantics behave as
-  documented, and endpoint gestures bubble to ancestors.
+  documented, reversed pointer and directional-key mappings agree, and endpoint
+  gestures bubble to ancestors.
 - Pointer presses map directly to values, capture and its cancellation end drags
   safely, and focus and disabled states render correctly.
 - Resize is handled, and the final mounted semantic output is correct.

@@ -6,6 +6,42 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ChaseIndicator playback through a mounted terminal surface.</summary>
 public sealed class ChaseIndicatorSurfaceTests
 {
+    /// <summary>Verifies intrinsic border and padding frame the complete chase track instead of
+    /// covering its first positions or lending their cells to the outer border box.</summary>
+    [Fact]
+    public async Task Render_WhenBorderAndPaddingAreConfigured_DrawsInsideContentBoundsAsync()
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Ascii,
+            SemanticColor.ControlBorder,
+            Color.Transparent,
+            SemanticDecoration.Border);
+        var indicator = new ChaseIndicator
+        {
+            IsPlaying = false,
+            Length = 3,
+            TrailLength = 0,
+            Padding = new Thickness(1, 0),
+            Style = ChaseIndicatorStyle.Default with { Border = border }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(7, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        indicator.ContentBounds.ShouldBe(new Rect(2, 1, 3, 1));
+        surface.ShouldRender("""
+                             +-----+
+                             | ●◯◯ |
+                             +-----+
+                             """);
+    }
+
     /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
     /// mounted ChaseIndicator's rendered active and inactive positions - the ascii family's
     /// star/dot pair, not the code-owned circle default (see themes.md#glyph-families).</summary>

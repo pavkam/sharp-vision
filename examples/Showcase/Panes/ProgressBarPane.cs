@@ -34,6 +34,27 @@ internal sealed class ProgressBarPane: CompositeControlBase
         };
         var horizontalComparison = new ProgressBar { Width = Length.Cells(20), Maximum = 100, Value = 65 };
 
+        var framed = new ProgressBar
+        {
+            Width = Length.Cells(30),
+            Height = Length.Cells(3),
+            Maximum = 100,
+            Value = 62,
+            Padding = new Thickness(1, 0),
+            Style = ProgressBarStyle.Default with
+            {
+                Border = new Border(
+                    BorderSide.All,
+                    BorderGlyphStyle.Rounded,
+                    SemanticColor.ControlBorder,
+                    Color.Transparent,
+                    SemanticDecoration.Border),
+                FillColor = Color.Rgb(0x50, 0xd8, 0x90),
+                TrackColor = Color.Rgb(0x3f, 0x4a, 0x54),
+                Glyphs = new ProgressBarGlyphs(new Rune('#'), new Rune('.'), new Rune('?'))
+            }
+        };
+
         var interactiveBar = new ProgressBar { Width = Length.Cells(30), Maximum = 10, Value = 3 };
         var interactiveStatus = new Text($"Live progress: {interactiveBar.Value:0} / 10");
         var increase = new Button { Text = "&Advance progress" };
@@ -110,6 +131,15 @@ internal sealed class ProgressBarPane: CompositeControlBase
                                 Value = 33,
                                 UseSubCellResolution = true
                             })),
-                    "bar.UseSubCellResolution = true;")));
+                    "bar.UseSubCellResolution = true;")),
+            new DocSection(
+                "🎨",
+                "Presentation",
+                "A complete <info>ProgressBarStyle</info> customizes fill, track, unknown-state glyphs, colors, and intrinsic chrome. Border and padding reserve cells around the track.",
+                new DocExample(
+                    "Framed custom track",
+                    "The ASCII track stays inside one-cell padding and a rounded border instead of painting underneath either.",
+                    framed,
+                    "bar.Padding = new Thickness(1, 0);\nbar.Style = ProgressBarStyle.Default with\n{\n    Border = new Border(\n        BorderSide.All,\n        BorderGlyphStyle.Rounded,\n        SemanticColor.ControlBorder,\n        Color.Transparent,\n        SemanticDecoration.Border),\n    FillColor = Color.Rgb(0x50, 0xD8, 0x90),\n    TrackColor = Color.Rgb(0x3F, 0x4A, 0x54),\n    Glyphs = new ProgressBarGlyphs(new Rune('#'), new Rune('.'), new Rune('?')),\n};")));
     }
 }

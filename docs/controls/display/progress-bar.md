@@ -46,11 +46,12 @@ fills `floor(normalized * axisCells)` complete cells; at the maximum, every cell
 is filled. The remaining cells use the code-owned empty-progress glyph.
 Horizontal fill grows from the left, vertical fill from the bottom.
 
-The intrinsic desired size is ten cells on the main axis and one cell on the
+The intrinsic content size is ten cells on the main axis and one cell on the
 cross axis, and both alignment axes default to `Stretch`. Rendering uses the
-resolved visual-state style, paints across the control's full `Bounds` — padding
-does not inset the fill — and participates in shared intrinsic chrome. Zero
-bounds draw nothing, and the control never handles pointer or keyboard input.
+resolved visual-state style and paints across `ContentBounds`; border and
+padding reserve cells around the track through the shared box model. An empty
+content box draws nothing, and the control never handles pointer or keyboard
+input.
 
 ## Keyboard
 
@@ -119,9 +120,10 @@ var bar = new ProgressBar
 - Horizontal and vertical bars fill in the documented directions for empty,
   partial, and full values, including sub-cell resolution, and indeterminate
   rendering is deterministic.
-- Zero and tiny bounds degrade safely; mutation, resize, and appearance
-  inheritance behave as documented; the control stays out of hit testing; and
-  the rendered output matches exact final cells.
+- Zero and tiny content boxes degrade safely; intrinsic border and padding frame
+  rather than cover the track; mutation, resize, and appearance inheritance
+  behave as documented; the control stays out of hit testing; and the rendered
+  output matches exact final cells.
 - Determinate, fractional, and indeterminate loops visit only the intersection
   of logical bounds and the current canvas clip, while fill ratios remain based
   on the complete logical extent.

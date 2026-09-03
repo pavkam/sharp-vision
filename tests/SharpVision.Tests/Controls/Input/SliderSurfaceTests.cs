@@ -6,6 +6,121 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves Slider behavior through mounted terminal input and semantic output.</summary>
 public sealed class SliderSurfaceTests
 {
+    /// <summary>Verifies a reversed vertical rail maps its minimum to the top, grows fill toward
+    /// that edge, and keeps pointer and Up/Down commands on the same physical axis.</summary>
+    [Fact]
+    public async Task Input_WhenVerticalDirectionIsReversed_MapsRenderingPointerAndArrowKeysConsistentlyAsync()
+    {
+        // Arrange
+        var slider = new Slider
+        {
+            Orientation = Orientation.Vertical,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 25,
+            SmallChange = 10,
+            IsDirectionReversed = true,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            slider,
+            new Size(1, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert rendering - minimum is at the top and the fill grows down to the thumb.
+        surface.ShouldRender("""
+                             ┃
+                             ◆
+                             │
+                             │
+                             │
+                             """);
+
+        // Act and assert - the top selects minimum; Down increases and Up decreases.
+        await surface.Pointer.MoveToAsync(slider, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        slider.Value.ShouldBe(0);
+        await surface.Keyboard.PressAsync(Code.Down);
+        slider.Value.ShouldBe(10);
+        await surface.Keyboard.PressAsync(Code.Up);
+        slider.Value.ShouldBe(0);
+
+        // Act and assert - the bottom selects maximum, while Home and End remain semantic.
+        await surface.Pointer.MoveToAsync(slider, new Point(0, 4));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        slider.Value.ShouldBe(100);
+        await surface.Keyboard.PressAsync(Code.Home);
+        slider.Value.ShouldBe(0);
+        await surface.Keyboard.PressAsync(Code.End);
+        slider.Value.ShouldBe(100);
+    }
+
+    /// <summary>Verifies reversing the direction maps the minimum to the right edge and grows the
+    /// filled rail back toward the current thumb.</summary>
+    [Fact]
+    public async Task Render_WhenHorizontalDirectionIsReversed_DrawsRightToLeftAsync()
+    {
+        // Arrange
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = 25,
+            IsDirectionReversed = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            slider,
+            new Size(5, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("───◆━");
+    }
+
+    /// <summary>Verifies reversed pointer geometry and directional keys agree on the same visual
+    /// axis while Home and End keep their semantic endpoint meanings.</summary>
+    [Fact]
+    public async Task Input_WhenHorizontalDirectionIsReversed_MapsPointerAndArrowKeysConsistentlyAsync()
+    {
+        // Arrange
+        var slider = new Slider
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Value = 50,
+            SmallChange = 10,
+            IsDirectionReversed = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            slider,
+            new Size(11, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act - the left edge is the visual maximum in a reversed horizontal range.
+        await surface.Pointer.MoveToAsync(slider, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        slider.Value.ShouldBe(100);
+
+        // Act and assert - Right moves toward the minimum; Left moves back toward the maximum.
+        await surface.Keyboard.PressAsync(Code.Right);
+        slider.Value.ShouldBe(90);
+        await surface.Keyboard.PressAsync(Code.Left);
+        slider.Value.ShouldBe(100);
+        await surface.Keyboard.PressAsync(Code.Home);
+        slider.Value.ShouldBe(0);
+        await surface.Keyboard.PressAsync(Code.End);
+        slider.Value.ShouldBe(100);
+    }
+
     /// <summary>Verifies a horizontal Slider at 50% renders the fill, thumb, and track glyphs at their expected positions.</summary>
     [Fact]
     public async Task Render_WhenHorizontalSliderIsAtFiftyPercent_DrawsExpectedTrackGlyphsAsync()

@@ -52,6 +52,34 @@ internal sealed class SliderPane: CompositeControlBase
             SmallChange = 5,
             LargeChange = 20
         };
+        var reversed = new Slider
+        {
+            Width = Length.Cells(32),
+            Maximum = 100,
+            Value = 35,
+            SmallChange = 5,
+            IsDirectionReversed = true
+        };
+        var reversedStatus = new Text($"Selected value: {reversed.Value}");
+        reversed.ValueChanged += (_, eventArgs) => reversedStatus.Content = $"Selected value: {eventArgs.Value}";
+        var reversedVertical = new Slider
+        {
+            Orientation = Orientation.Vertical,
+            Height = Length.Cells(9),
+            Maximum = 100,
+            Value = 35,
+            SmallChange = 5,
+            IsDirectionReversed = true
+        };
+        var reversedVerticalStatus = new Text($"Selected value: {reversedVertical.Value}");
+        reversedVertical.ValueChanged += (_, eventArgs) =>
+            reversedVerticalStatus.Content = $"Selected value: {eventArgs.Value}";
+        var customGlyphs = new SliderGlyphs(
+            new Rune('·'),
+            new Rune('='),
+            new Rune('·'),
+            new Rune('='),
+            new Rune('●'));
         return new DocPage(
             Title,
             "<info>Slider</info> selects a signed integer through a direct, draggable, keyboard-accessible rail.",
@@ -73,6 +101,19 @@ internal sealed class SliderPane: CompositeControlBase
                     "<reverse>Up</reverse> increases and <reverse>Down</reverse> decreases while <reverse>Home</reverse> and <reverse>End</reverse> reach exact endpoints.",
                     new DocColumn(vertical, verticalStatus))),
             new DocSection(
+                "⇄",
+                "Direction",
+                "Set <info>IsDirectionReversed</info> when the visual minimum belongs on the opposite edge. Pointer mapping and directional arrows reverse together; <reverse>Home</reverse> and <reverse>End</reverse> remain semantic minimum and maximum commands.",
+                new DocExample(
+                    "Reversed horizontal and vertical rails",
+                    "The minimum is on the right or top, so Left and Down increase while Right and Up decrease these live five-step sliders.",
+                    new DocColumn(
+                        new DocRow(new Text("Horizontal"), reversed),
+                        reversedStatus,
+                        new DocRow(new Text("Vertical  "), reversedVertical),
+                        reversedVerticalStatus),
+                    "var horizontal = new Slider { IsDirectionReversed = true };\nvar vertical = new Slider\n{\n    Orientation = Orientation.Vertical,\n    IsDirectionReversed = true,\n};")),
+            new DocSection(
                 "±",
                 "Signed ranges",
                 "<info>Minimum</info> and <info>Maximum</info> accept the complete signed integer domain with overflow-safe mapping.",
@@ -82,26 +123,25 @@ internal sealed class SliderPane: CompositeControlBase
                     signed)),
             new DocSection(
                 "🎨",
-                "Color customization",
-                "<info>Style</info> assigns a complete <info>SliderStyle</info>, whose FillColor, TrackColor, and ThumbColor control the appearance of each rail part independently.",
+                "Presentation customization",
+                "<info>Style</info> assigns a complete <info>SliderStyle</info>; its colors and <info>SliderGlyphs</info> independently define the fill, track, and thumb.",
                 new DocExample(
-                    "Custom rail colors",
-                    "Each part uses a distinct local color override.",
+                    "Custom rail colors and glyphs",
+                    "The fill, track, and thumb use distinct local colors with an equals, middle-dot, and circle glyph family.",
                     new Slider
                     {
                         Width = Length.Cells(32),
                         Maximum = 100,
                         Value = 60,
-                        Style = new SliderStyle(
-                            SliderStyle.Default.Face,
-                            SliderStyle.Default.Border,
-                            SliderStyle.Default.Shadow,
-                            Color.Rgb(0x40, 0xc0, 0x40),
-                            Color.Rgb(0x60, 0x60, 0x60),
-                            Color.Rgb(0xff, 0xff, 0xff),
-                            SliderStyle.Default.Glyphs)
+                        Style = SliderStyle.Default with
+                        {
+                            FillColor = Color.Rgb(0x40, 0xc0, 0x40),
+                            TrackColor = Color.Rgb(0x60, 0x60, 0x60),
+                            ThumbColor = Color.Rgb(0xff, 0xff, 0xff),
+                            Glyphs = customGlyphs
+                        }
                     },
-                    "slider.Style = new SliderStyle(\n    face, border, shadow,\n    Color.Rgb(0x40, 0xC0, 0x40),\n    Color.Rgb(0x60, 0x60, 0x60),\n    Color.Rgb(0xFF, 0xFF, 0xFF),\n    SliderStyle.Default.Glyphs);")),
+                    "slider.Style = SliderStyle.Default with\n{\n    FillColor = Color.Rgb(0x40, 0xC0, 0x40),\n    TrackColor = Color.Rgb(0x60, 0x60, 0x60),\n    ThumbColor = Color.Rgb(0xFF, 0xFF, 0xFF),\n    Glyphs = new SliderGlyphs(new Rune('·'), new Rune('='), new Rune('·'), new Rune('='), new Rune('●')),\n};")),
             new DocSection(
                 "⌨️",
                 "Keyboard and pointer",

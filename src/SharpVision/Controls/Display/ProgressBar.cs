@@ -213,7 +213,9 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0)
+        var bounds = ContentBounds;
+
+        if (bounds.Width == 0 || bounds.Height == 0)
         {
             return;
         }
@@ -225,7 +227,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         {
             var style = inherited.WithForeground(ResolveColor(actualStyle.IndeterminateColor));
             var glyph = ResolveConfiguredGlyph(actualStyle.Glyphs.IndeterminateGlyph);
-            var visible = canvas.Bounds.Intersect(Bounds);
+            var visible = canvas.Bounds.Intersect(bounds);
 
             for (var y = visible.Y; y < visible.Bottom; y++)
             {
@@ -244,6 +246,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         {
             RenderHorizontal(
                 canvas,
+                bounds,
                 actualStyle.Glyphs,
                 inherited.WithForeground(ResolveColor(actualStyle.FillColor)),
                 inherited.WithForeground(ResolveColor(actualStyle.TrackColor)),
@@ -253,6 +256,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         {
             RenderVertical(
                 canvas,
+                bounds,
                 actualStyle.Glyphs,
                 inherited.WithForeground(ResolveColor(actualStyle.FillColor)),
                 inherited.WithForeground(ResolveColor(actualStyle.TrackColor)),
@@ -294,23 +298,24 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
 
     private void RenderHorizontal(
         TerminalCanvas canvas,
+        Rect bounds,
         ProgressBarGlyphs glyphs,
         TerminalStyle fillStyle,
         TerminalStyle trackStyle,
         double ratio)
     {
         var progress = ControlGlyphs.Progress;
-        var visible = canvas.Bounds.Intersect(Bounds);
+        var visible = canvas.Bounds.Intersect(bounds);
 
         if (UseSubCellResolution)
         {
-            var totalEighths = (long) (ratio * Bounds.Width * 8);
+            var totalEighths = (long) (ratio * bounds.Width * 8);
             var fullCells = totalEighths / 8;
             var remainder = totalEighths % 8;
 
             for (var x = visible.X; x < visible.Right; x++)
             {
-                var cellIndex = x - Bounds.X;
+                var cellIndex = x - bounds.X;
                 var glyph = cellIndex < fullCells
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellIndex == fullCells && remainder > 0
@@ -319,43 +324,44 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
                 var style = cellIndex < fullCells || (cellIndex == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
-                canvas.DrawRune(glyph, new Point(x, Bounds.Y), style, BackgroundMode.Transparent);
+                canvas.DrawRune(glyph, new Point(x, bounds.Y), style, BackgroundMode.Transparent);
             }
         }
         else
         {
-            var filled = (int) (Bounds.Width * ratio);
+            var filled = (int) (bounds.Width * ratio);
 
             for (var x = visible.X; x < visible.Right; x++)
             {
-                var glyph = x - Bounds.X < filled
+                var glyph = x - bounds.X < filled
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : ResolveConfiguredGlyph(glyphs.TrackGlyph);
-                var style = x - Bounds.X < filled ? fillStyle : trackStyle;
-                canvas.DrawRune(glyph, new Point(x, Bounds.Y), style, BackgroundMode.Transparent);
+                var style = x - bounds.X < filled ? fillStyle : trackStyle;
+                canvas.DrawRune(glyph, new Point(x, bounds.Y), style, BackgroundMode.Transparent);
             }
         }
     }
 
     private void RenderVertical(
         TerminalCanvas canvas,
+        Rect bounds,
         ProgressBarGlyphs glyphs,
         TerminalStyle fillStyle,
         TerminalStyle trackStyle,
         double ratio)
     {
         var progress = ControlGlyphs.Progress;
-        var visible = canvas.Bounds.Intersect(Bounds);
+        var visible = canvas.Bounds.Intersect(bounds);
 
         if (UseSubCellResolution)
         {
-            var totalEighths = (long) (ratio * Bounds.Height * 8);
+            var totalEighths = (long) (ratio * bounds.Height * 8);
             var fullCells = totalEighths / 8;
             var remainder = totalEighths % 8;
 
             for (var y = visible.Y; y < visible.Bottom; y++)
             {
-                var cellFromBottom = Bounds.Bottom - 1 - y;
+                var cellFromBottom = bounds.Bottom - 1 - y;
                 var glyph = cellFromBottom < fullCells
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : cellFromBottom == fullCells && remainder > 0
@@ -364,13 +370,13 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
                 var style = cellFromBottom < fullCells || (cellFromBottom == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
-                canvas.DrawRune(glyph, new Point(Bounds.X, y), style, BackgroundMode.Transparent);
+                canvas.DrawRune(glyph, new Point(bounds.X, y), style, BackgroundMode.Transparent);
             }
         }
         else
         {
-            var filled = (int) (Bounds.Height * ratio);
-            var emptyEnd = Bounds.Bottom - filled;
+            var filled = (int) (bounds.Height * ratio);
+            var emptyEnd = bounds.Bottom - filled;
 
             for (var y = visible.Y; y < visible.Bottom; y++)
             {
@@ -378,7 +384,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
                     ? ResolveConfiguredGlyph(glyphs.FillGlyph)
                     : ResolveConfiguredGlyph(glyphs.TrackGlyph);
                 var style = y >= emptyEnd ? fillStyle : trackStyle;
-                canvas.DrawRune(glyph, new Point(Bounds.X, y), style, BackgroundMode.Transparent);
+                canvas.DrawRune(glyph, new Point(bounds.X, y), style, BackgroundMode.Transparent);
             }
         }
     }

@@ -46,6 +46,14 @@ internal sealed class ChaseIndicatorPane: CompositeControlBase
         };
         var running = new ChaseIndicator { Style = ChaseIndicatorStyle.Right };
         var paused = new ChaseIndicator { Style = ChaseIndicatorStyle.Square, IsPlaying = false };
+        var playbackStatus = new Text("Playback: running");
+        var togglePlayback = new Button { Text = "&Pause" };
+        togglePlayback.Click += (_, _) =>
+        {
+            running.IsPlaying = !running.IsPlaying;
+            togglePlayback.Text = running.IsPlaying ? "&Pause" : "&Resume";
+            playbackStatus.Content = running.IsPlaying ? "Playback: running" : "Playback: paused";
+        };
         return new DocPage(
             Title,
             "<info>ChaseIndicator</info> bounces, wraps, or spreads highlighted glyphs and a gradual fading trail through a horizontal or vertical status track.",
@@ -95,8 +103,8 @@ internal sealed class ChaseIndicatorPane: CompositeControlBase
                     "var chase = new ChaseIndicator { FadeDuration = TimeSpan.FromMilliseconds(800) };")),
             new DocSection(
                 "🎨",
-                "Trail and color",
-                "<info>TrailLength</info> controls how many previously visited positions fade behind the head. <info>HeadColor</info>, <info>TrailColor</info>, and <info>TrackColor</info> override each part independently.",
+                "Trail and presentation",
+                "<info>TrailLength</info> controls how many previously visited positions fade behind the head. The complete style customizes colors, glyphs, and intrinsic chrome.",
                 new DocExample(
                     "No trail and long trail",
                     "The first indicator shows only the head; the second shows a five-frame fading trail.",
@@ -110,27 +118,34 @@ internal sealed class ChaseIndicatorPane: CompositeControlBase
                     new ChaseIndicator
                     {
                         Length = 15,
-                        Style = new ChaseIndicatorStyle(
-                            ChaseIndicatorStyle.Default.Face,
-                            ChaseIndicatorStyle.Default.Border,
-                            ChaseIndicatorStyle.Default.Shadow,
-                            Color.Rgb(0xff, 0x40, 0x40),
-                            Color.Rgb(0x80, 0x20, 0x20),
-                            Color.Rgb(0x30, 0x30, 0x30),
-                            ChaseIndicatorStyle.Default.Glyphs)
+                        Padding = new Thickness(1, 0),
+                        Style = ChaseIndicatorStyle.Default with
+                        {
+                            Border = new Border(
+                                BorderSide.All,
+                                BorderGlyphStyle.Rounded,
+                                SemanticColor.ControlBorder,
+                                Color.Transparent,
+                                SemanticDecoration.Border),
+                            HeadColor = Color.Rgb(0xff, 0x40, 0x40),
+                            TrailColor = Color.Rgb(0x80, 0x20, 0x20),
+                            TrackColor = Color.Rgb(0x30, 0x30, 0x30),
+                            Glyphs = new ChaseIndicatorGlyphs(new Rune('*'), new Rune('·'))
+                        }
                     },
-                    "chase.Style = ChaseIndicatorStyle.Default with { HeadColor = Color.Rgb(0xFF, 0x40, 0x40) };")),
+                    "chase.Padding = new Thickness(1, 0);\nchase.Style = ChaseIndicatorStyle.Default with\n{\n    Border = new Border(\n        BorderSide.All,\n        BorderGlyphStyle.Rounded,\n        SemanticColor.ControlBorder,\n        Color.Transparent,\n        SemanticDecoration.Border),\n    HeadColor = Color.Rgb(0xFF, 0x40, 0x40),\n    TrailColor = Color.Rgb(0x80, 0x20, 0x20),\n    TrackColor = Color.Rgb(0x30, 0x30, 0x30),\n    Glyphs = new ChaseIndicatorGlyphs(new Rune('*'), new Rune('·')),\n};")),
             new DocSection(
                 "⏱️",
                 "Playback",
-                "Movement defaults to 200 milliseconds, fading to 400 milliseconds; <info>IsPlaying</info> pauses both clocks.",
+                "<info>Interval</info> defaults to 200 milliseconds and fading to 400 milliseconds; <info>IsPlaying</info> pauses both clocks.",
                 new DocExample(
-                    "Running and paused",
-                    "Running playback advances automatically while the paused track retains its phase.",
+                    "Live pause and retained phase",
+                    "Pause and Resume retain the running track's current phase; the second track remains independently paused.",
                     new DocColumn(
                         new DocRow(new Text("Running"), running),
+                        new DocRow(togglePlayback, playbackStatus),
                         new DocRow(new Text("Paused "), paused)),
-                    "chase.IsPlaying = false;")));
+                    "toggle.Click += (_, _) => chase.IsPlaying = !chase.IsPlaying;")));
     }
 
     private static DocRow Pattern(string label, ChaseIndicatorStyle style) =>

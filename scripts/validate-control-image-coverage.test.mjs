@@ -421,6 +421,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
   assert.deepEqual(
     [...excludedAbstractDocSlugs].sort(),
     [
+      "animated-indicator-base",
       "composite-control",
       "container",
       "content-control",
