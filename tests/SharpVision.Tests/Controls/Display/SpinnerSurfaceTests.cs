@@ -43,6 +43,34 @@ public sealed class SpinnerSurfaceTests
         surface.ShouldRender(expected[0].ToString());
     }
 
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted Spinner's rendered frame sequence - the ascii family's four-frame rotation, not
+    /// the code-owned Braille default (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsSpinnerFramesAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var spinner = new Spinner();
+        await using var surface = await ComponentSurface.MountAsync(
+            spinner,
+            new Size(1, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("⠋");
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the frame sequence switches to the ascii family's own four-glyph rotation,
+        // restarting at its first frame.
+        surface.ShouldRender("|");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "advance ascii Spinner");
+        surface.ShouldRender("/");
+    }
+
     /// <summary>Verifies exact default frames, cadence, styling, and excluded interaction.</summary>
     [Fact]
     public async Task AdvanceAsync_WhenBrailleStyleRuns_RendersExactFramesAsync()

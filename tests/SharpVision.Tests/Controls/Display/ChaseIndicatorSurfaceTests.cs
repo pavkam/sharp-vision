@@ -6,6 +6,34 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ChaseIndicator playback through a mounted terminal surface.</summary>
 public sealed class ChaseIndicatorSurfaceTests
 {
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted ChaseIndicator's rendered active and inactive positions - the ascii family's
+    /// star/dot pair, not the code-owned circle default (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsChaseIndicatorGlyphsAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var indicator = new ChaseIndicator { Length = 2, TrailLength = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(2, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("●◯");
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the active and inactive glyphs switch to the ascii family's own star/dot pair,
+        // restarting the chase at its first endpoint.
+        surface.ShouldRender("*.");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200), "reach second chase endpoint");
+        surface.ShouldRender(".*");
+    }
+
     /// <summary>Verifies the minimum track alternates endpoints and style changes reset phase.</summary>
     [Fact]
     public async Task AdvanceAsync_WhenLengthIsTwo_AlternatesAndResetsStyleAsync()

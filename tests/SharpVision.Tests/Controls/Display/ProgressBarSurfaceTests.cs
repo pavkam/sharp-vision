@@ -6,6 +6,33 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies ProgressBar states through a mounted terminal surface.</summary>
 public sealed class ProgressBarSurfaceTests
 {
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted ProgressBar's rendered fill, track, and indeterminate cells - the ascii family's
+    /// glyph trio, not the code-owned block defaults (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsProgressBarGlyphsAsync()
+    {
+        // Arrange
+        var bar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 40 };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("████░░░░░░");
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the fill and track glyphs switch to the ascii family's own pair.
+        surface.ShouldRender("####......");
+
+        // Act and assert the indeterminate glyph too.
+        await surface.UpdateAsync(() => bar.IsIndeterminate = true, "switch ProgressBar to indeterminate");
+        surface.ShouldRender("??????????");
+    }
+
     /// <summary>Verifies partial horizontal fill, style, pointer exclusion, and clamped mutation.</summary>
     [Fact]
     public async Task UpdateAsync_WhenHorizontalValueChanges_RendersPartialThenFullBarAsync()

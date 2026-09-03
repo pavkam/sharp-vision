@@ -39,6 +39,38 @@ public sealed class RadioButtonSurfaceTests
             TerminalPalette.Project(ThemeColorHelper.DisabledForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted RadioButton's rendered mark - the ascii family's dot/star pair, not the code-owned
+    /// defaults (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsRadioButtonMarkAsync()
+    {
+        // Arrange
+        var unselected = Radio("Off");
+        var selected = Radio("On", isChecked: true);
+        var group = Group(unselected, selected);
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("""
+                             ( ) Off
+                             (•) On
+                             """);
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the unchecked and checked marks switch to the ascii family's own dot/star pair,
+        // still inside the code-owned Parentheses layout.
+        surface.ShouldRender("""
+                             (.) Off
+                             (*) On
+                             """);
+    }
+
     /// <summary>Verifies parenthesized marks show exact unchecked and checked terminal rows.</summary>
     [Fact]
     public async Task Render_WhenMarkStyleUsesParentheses_ShowsExactStateRowsAsync()
