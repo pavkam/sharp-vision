@@ -417,12 +417,12 @@ public sealed class CommandPaletteInteractionTests
                 _ => ValueTask.FromResult<IReadOnlyList<object?>>([])
             }
         };
-        var resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource? resultsChanged = null;
         var results = 0;
         palette.ResultsChanged += (_, _) =>
         {
             results++;
-            _ = resultsChanged.TrySetResult();
+            _ = resultsChanged?.TrySetResult();
         };
         await using var surface = await MountAsync(palette, new Size(24, 8));
         var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
@@ -430,6 +430,7 @@ public sealed class CommandPaletteInteractionTests
         await surface.UpdateAsync(() => palette.Text = "a", "start the older query");
         await surface.UpdateAsync(() => palette.Text = "ab", "start the newer query");
         results = 0;
+        resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         newer.SetResult(["newer"]);
         await resultsChanged.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
