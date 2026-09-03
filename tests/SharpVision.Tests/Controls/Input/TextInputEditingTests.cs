@@ -661,10 +661,11 @@ public sealed class TextInputEditingTests
         input.Text.ShouldBe("z");
     }
 
-    /// <summary>Verifies the placeholder shows dimmed only while the editor is empty and unfocused:
-    /// it hides on focus even before typing, and returns once the text is cleared and focus leaves.</summary>
+    /// <summary>Verifies the placeholder shows dimmed whenever the editor is empty - including while
+    /// focused, behind the caret - and hides the moment the text becomes non-empty, matching the
+    /// shared InputBase placeholder contract that NumberInput and friends already follow.</summary>
     [Fact]
-    public async Task Placeholder_WhenFocusAndTextChange_ShowsOnlyWhileEmptyAndUnfocusedAsync()
+    public async Task Placeholder_WhenFocusAndTextChange_ShowsWhileEmptyAndHidesOnceTypedAsync()
     {
         // Arrange
         var input = new TextInput
@@ -684,18 +685,20 @@ public sealed class TextInputEditingTests
         surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
         (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
 
-        // Act and assert - focus hides the placeholder immediately
+        // Act and assert - focus keeps the placeholder visible behind the caret
         await surface.FocusAsync(input);
-        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
+        (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
         surface.ShouldHaveCursor(new Point(0, 0), visible: true);
 
-        // Act and assert - typing then deleting keeps it hidden while focused
+        // Act and assert - typing hides it, and deleting back to empty restores it while still focused
         await surface.Keyboard.TypeAsync("x");
         surface.Cell(new Point(0, 0)).Text.ShouldBe("x");
         await surface.Keyboard.PressAsync(Code.Backspace);
-        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
+        surface.ShouldHaveCursor(new Point(0, 0), visible: true);
 
-        // Act and assert - losing focus while empty restores it
+        // Act and assert - losing focus while empty keeps it showing
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveFocus(button);
         surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
