@@ -34,7 +34,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     private readonly Dictionary<CommandBarItem, CommandBarOverflowProjection> _projectionBySource = [];
     private int _selectedIndex = -1;
     private CommandBarItem? _selectedItem;
-    private ControlBase? _spacePressedTarget;
     private int _primaryExtent;
     private int _lastLayoutWidth = -1;
     private ulong _entriesGeneration;
@@ -108,6 +107,16 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        EnableSelectedItemPressActivation(
+            SelectedTarget,
+            IsPressTargetAvailable,
+            SetTargetPressed,
+            target =>
+            {
+                _ = target;
+                _ = ActivateSelectedTarget();
+            },
+            consumeWhenNoTarget: false);
         FocusEntered += OnFocusEntered;
         FocusLeft += OnFocusLeft;
     }
@@ -440,7 +449,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     private void PublishEntriesChanged()
     {
         _entriesGeneration++;
-        CancelSpacePress();
+        CancelSelectedItemPressActivation();
         _overflowButton.CancelPress();
 
         if (IsOverflowOpen)
@@ -710,7 +719,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
         if (changed)
         {
-            CancelSpacePress();
+            CancelSelectedItemPressActivation();
             _overflowButton.CancelPress();
 
             if (IsOverflowOpen)
@@ -942,12 +951,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             return;
         }
 
-        HandleSpace(key);
+        HandleSelectedItemPressActivation(key);
     }
 
     private void MoveSelection(int direction)
     {
-        CancelSpacePress();
+        CancelSelectedItemPressActivation();
         var targets = NavigationTargets();
 
         if (targets.Count == 0)
@@ -965,7 +974,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
     private void SelectEndpoint(bool last)
     {
-        CancelSpacePress();
+        CancelSelectedItemPressActivation();
         var targets = NavigationTargets();
 
         if (targets.Count > 0)
@@ -1030,69 +1039,14 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         return true;
     }
 
-    private void HandleSpace(KeyEventArgs key)
-    {
-        var stroke = key.Stroke;
-
-        if (stroke.Code != Code.Character || stroke.Character != new Rune(' '))
-        {
-            return;
-        }
-
-        if (key.IsInitialKeyDown)
-        {
-            if (!stroke.Modifiers.IsActivationEligible())
-            {
-                return;
-            }
-
-            var target = SelectedTarget();
-
-            if (target is null)
-            {
-                return;
-            }
-
-            key.IsHandled = true;
-            _spacePressedTarget = target;
-            SetTargetPressed(target, true);
-
-            if (!Capabilities.KeyReleaseEvents.Authoritative)
-            {
-                SetTargetPressed(target, false);
-                _spacePressedTarget = null;
-                _ = ActivateSelectedTarget();
-            }
-
-            return;
-        }
-
-        if (key.IsKeyUp)
-        {
-            if (_spacePressedTarget is null)
-            {
-                key.IsHandled = stroke.Modifiers.IsActivationEligible();
-                return;
-            }
-
-            key.IsHandled = true;
-            var target = _spacePressedTarget;
-            _spacePressedTarget = null;
-            SetTargetPressed(target, false);
-
-            if (ReferenceEquals(target, SelectedTarget()) && stroke.Modifiers.IsActivationEligible())
-            {
-                _ = ActivateSelectedTarget();
-            }
-
-            return;
-        }
-
-        key.IsHandled = _spacePressedTarget is not null;
-    }
-
     [Pure]
     private ControlBase? SelectedTarget() => _overflowTargetSelected ? _overflowButton : _selectedItem;
+
+    [Pure]
+    private bool IsPressTargetAvailable(ControlBase target) =>
+        ReferenceEquals(target, _overflowButton)
+            ? _overflowEntries.OfType<CommandBarItem>().Any()
+            : target is CommandBarItem item && IsAvailableItem(item);
 
     private static void SetTargetPressed(ControlBase target, bool value)
     {
@@ -1106,15 +1060,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
                 break;
             default:
                 throw new UnreachableException();
-        }
-    }
-
-    private void CancelSpacePress()
-    {
-        if (_spacePressedTarget is { } target)
-        {
-            SetTargetPressed(target, false);
-            _spacePressedTarget = null;
         }
     }
 
@@ -1176,7 +1121,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     {
         _ = sender;
         _ = eventArgs;
-        CancelSpacePress();
+        CancelSelectedItemPressActivation();
         CommitSelectionPresentation(false);
     }
 
@@ -1257,7 +1202,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     {
         _availabilityGeneration++;
         ExceptionDispatchInfo? failure = null;
-        CaptureFailure(CancelSpacePress, ref failure);
+        CaptureFailure(CancelSelectedItemPressActivation, ref failure);
         CaptureFailure(_overflowButton.CancelPress, ref failure);
         CaptureFailure(() => _overflowCoordinator.OnOwnerUnavailable(reason), ref failure);
         CaptureFailure(() => base.OnUnavailable(reason), ref failure);

@@ -34,7 +34,6 @@ public sealed class Menu: ItemsControl
     private MenuItem? _pendingSubmenuOpen;
     private bool _pendingSubmenuOpenFromPointerSelection;
     private ModalScope? _pendingSubmenuSession;
-    private MenuItem? _spacePressedItem;
     private bool _submenuChainLostDuringClose;
     private int _submenuSurfaceCloseDepth;
     private int _submenuTransitionDepth;
@@ -55,6 +54,12 @@ public sealed class Menu: ItemsControl
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
+        EnableSelectedItemPressActivation(
+            SelectedPressTarget,
+            IsPressTargetAvailable,
+            static (target, value) => ((MenuItem) target).SetPressed(value),
+            static target => ((MenuItem) target).ActivateFromMenu(ActivationCause.Keyboard),
+            consumeWhenNoTarget: true);
         FocusEntered += OnFocusEntered;
         FocusLeft += OnFocusLeft;
     }
@@ -253,7 +258,7 @@ public sealed class Menu: ItemsControl
 
         if (!key.IsKeyDown)
         {
-            HandleSpace(key);
+            HandleSelectedItemPressActivation(key);
             return;
         }
 
@@ -272,6 +277,27 @@ public sealed class Menu: ItemsControl
         var previous = Orientation == Orientation.Horizontal ? Code.Left : Code.Up;
         var next = Orientation == Orientation.Horizontal ? Code.Right : Code.Down;
         var scalarNavigationEligible = KeyboardModifierPolicy.IsScalarNavigationEligible(key.Stroke.Modifiers);
+
+        if (key.IsInitialKeyDown &&
+            scalarNavigationEligible &&
+            Orientation == Orientation.Vertical &&
+            key.Stroke.Code == Code.Left &&
+            CloseParentSubmenu())
+        {
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        if (key.IsInitialKeyDown &&
+            scalarNavigationEligible &&
+            Orientation == Orientation.Vertical &&
+            key.Stroke.Code == Code.Right &&
+            OpenSelectedSubmenu())
+        {
+            eventArgs.IsHandled = true;
+            return;
+        }
+
         var target = scalarNavigationEligible && key.Stroke.Code == previous
             ? SingleSelectionIndex.FindWrapped(_selectedIndex, -1, ItemControlCount, Available)
             : scalarNavigationEligible && key.Stroke.Code == next
@@ -307,7 +333,7 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        HandleSpace(key);
+        HandleSelectedItemPressActivation(key);
     }
 
     /// <summary>Selects one radio item and clears matching siblings.</summary>
@@ -762,14 +788,6 @@ public sealed class Menu: ItemsControl
             return;
         }
 
-        // This notification publishes from inside DisposeCore, which removes the item from
-        // its owning slot before IsDisposed itself flips true — IsDisposing is what's already
-        // set at this point.
-        if (_spacePressedItem is { IsDisposing: true } or { IsDisposed: true })
-        {
-            _spacePressedItem = null;
-        }
-
         if (_selectedIndex < 0)
         {
             return;
@@ -815,11 +833,7 @@ public sealed class Menu: ItemsControl
     {
         ExceptionDispatchInfo? failure = null;
 
-        if (_spacePressedItem is { } item)
-        {
-            CaptureFailure(() => item.SetPressed(false), ref failure);
-            _spacePressedItem = null;
-        }
+        CaptureFailure(CancelSelectedItemPressActivation, ref failure);
 
         var sessionOwner = FindSessionOwner();
         if (ReferenceEquals(sessionOwner, this) ||
@@ -1096,6 +1110,7 @@ public sealed class Menu: ItemsControl
 
         try
         {
+            menu.CancelSelectedItemPressActivation();
             CloseSiblingSubmenus(menu, item);
 
             if (!EnsureModalSession())
@@ -1469,6 +1484,34 @@ public sealed class Menu: ItemsControl
         return true;
     }
 
+    private bool OpenSelectedSubmenu()
+    {
+        if (_selectedIndex < 0 || ItemAt(_selectedIndex) is not MenuItem
+            {
+                Submenu: not null,
+                EffectiveIsEnabled: true,
+                EffectiveIsVisible: true
+            } item)
+        {
+            return false;
+        }
+
+        OpenSubmenu(item);
+        return true;
+    }
+
+    private bool CloseParentSubmenu()
+    {
+        if (FindAncestor<MenuItem>() is not { IsSubmenuOpen: true } parent ||
+            !ReferenceEquals(parent.Submenu, this))
+        {
+            return false;
+        }
+
+        CloseSubmenuBranch(parent);
+        return true;
+    }
+
     [Pure]
     private bool HasOpenSubmenu()
     {
@@ -1483,72 +1526,17 @@ public sealed class Menu: ItemsControl
         return false;
     }
 
-    private void HandleSpace(KeyEventArgs eventArgs)
-    {
-        var stroke = eventArgs.Stroke;
+    [Pure]
+    private ControlBase? SelectedPressTarget() =>
+        _selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem item ? item : null;
 
-        if (stroke.Code != Code.Character || stroke.Character != new Rune(' '))
-        {
-            return;
-        }
-
-        if (eventArgs.IsInitialKeyDown && _spacePressedItem is null)
-        {
-            // An incidental modifier must not silently arm the pressed frame - move the gate
-            // ahead of IsHandled so a modified Space still bubbles for a shortcut to see.
-            if (!stroke.Modifiers.IsActivationEligible())
-            {
-                return;
-            }
-
-            eventArgs.IsHandled = true;
-
-            if (_selectedIndex >= 0 && ItemAt(_selectedIndex) is MenuItem
-                {
-                    EffectiveIsEnabled: true, EffectiveIsVisible: true
-                } selected)
-            {
-                _spacePressedItem = selected;
-                selected.SetPressed(true);
-            }
-
-            return;
-        }
-
-        if (eventArgs.IsKeyUp)
-        {
-            if (_spacePressedItem is not { } held)
-            {
-                // The paired press never armed an item here - either it was gated by an
-                // incidental modifier, or it was never observed at all. A modifier-carrying
-                // release must bubble to match its gated press instead of being silently
-                // swallowed here; an eligible unmatched release keeps the consumed no-op
-                // behavior it has always had.
-                eventArgs.IsHandled = stroke.Modifiers.IsActivationEligible();
-                return;
-            }
-
-            // The armed hold always consumes its paired release, whether or not it goes on to
-            // activate. But an incidental modifier that appears only between press and release
-            // must not silently commit the activation the user did not intend - gate the
-            // activation on eligibility, mirroring the press-side gate, without un-consuming
-            // the stroke.
-            eventArgs.IsHandled = true;
-            _spacePressedItem = null;
-            held.SetPressed(false);
-
-            if (stroke.Modifiers.IsActivationEligible() &&
-                held is { EffectiveIsEnabled: true, EffectiveIsVisible: true } &&
-                _selectedIndex >= 0 && ReferenceEquals(ItemAt(_selectedIndex), held))
-            {
-                held.ActivateFromMenu(ActivationCause.Keyboard);
-            }
-
-            return;
-        }
-
-        eventArgs.IsHandled = true;
-    }
+    [Pure]
+    private bool IsPressTargetAvailable(ControlBase target) =>
+        target is MenuItem item &&
+        !item.IsDisposed &&
+        IndexOfItemControl(item) >= 0 &&
+        item.EffectiveIsEnabled &&
+        item.EffectiveIsVisible;
 
     private void SelectPointerTarget(PointerEventArgs eventArgs)
     {

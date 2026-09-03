@@ -3494,10 +3494,12 @@ namespace SharpVision.Menus
     public sealed class MenuItemStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Menus.MenuItemStyle>
     {
         public MenuItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune uncheckedGlyph, System.Text.Rune checkedGlyph, System.Text.Rune radioUncheckedGlyph, System.Text.Rune radioCheckedGlyph) { }
+        public MenuItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune uncheckedGlyph, System.Text.Rune checkedGlyph, System.Text.Rune radioUncheckedGlyph, System.Text.Rune radioCheckedGlyph, System.Text.Rune submenuGlyph) { }
         public int AffixGap { get; init; }
         public required System.Text.Rune CheckedGlyph { get; init; }
         public required System.Text.Rune RadioCheckedGlyph { get; init; }
         public required System.Text.Rune RadioUncheckedGlyph { get; init; }
+        public required System.Text.Rune SubmenuGlyph { get; init; }
         public required System.Text.Rune UncheckedGlyph { get; init; }
         public new static SharpVision.Menus.MenuItemStyle Default { get; }
     }
@@ -3512,7 +3514,9 @@ namespace SharpVision.Menus
     public sealed class MenuSeparatorStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Menus.MenuSeparatorStyle>
     {
         public MenuSeparatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune glyph) { }
+        public MenuSeparatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune glyph, System.Text.Rune verticalGlyph) { }
         public required System.Text.Rune Glyph { get; init; }
+        public required System.Text.Rune VerticalGlyph { get; init; }
         public new static SharpVision.Menus.MenuSeparatorStyle Default { get; }
     }
 }

@@ -252,6 +252,44 @@ public sealed class StatusBarSurfaceTests
         item.IsFocused.ShouldBeFalse();
     }
 
+    /// <summary>Verifies Tab skips the passive bar and item, enters retained interactive content,
+    /// and Space toggles that content without punching a background hole in the bar plane.</summary>
+    [Fact]
+    public async Task Keyboard_WhenItemContainsCheckBox_FocusesAndActivatesRetainedContentAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            Height = Length.Cells(1),
+            Padding = default,
+            Text = "Auto"
+        };
+        var item = new StatusBarItem
+        {
+            Alignment = StatusBarItemAlignment.Right,
+            Content = checkBox
+        };
+        var bar = new StatusBar();
+        bar.Items.Add(new StatusBarItem { Content = new ControlText("Ready") });
+        bar.Items.Add(item);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(14, 1),
+            TestContext.Current.CancellationToken);
+        var expectedBackground = surface.Cell(default).Style.Background;
+
+        // Act focus and activate
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+
+        // Assert
+        surface.ShouldHaveFocus(checkBox);
+        checkBox.IsChecked.ShouldBe(true);
+        bar.IsFocused.ShouldBeFalse();
+        item.IsFocused.ShouldBeFalse();
+        surface.Cell(new Point(checkBox.Bounds.X, checkBox.Bounds.Y)).Style.Background.ShouldBe(expectedBackground);
+    }
+
     /// <summary>Verifies an accent status surface remains one continuous background through a
     /// retained CheckBox in every interactive state without suppressing its themed foreground.</summary>
     [Fact]

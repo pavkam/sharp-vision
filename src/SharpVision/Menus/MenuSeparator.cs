@@ -33,7 +33,7 @@ public sealed class MenuSeparator: ControlBase, IStyled<MenuSeparatorStyle>
     protected override Size MeasureOverride(Constraint constraint)
     {
         _ = constraint;
-        return new Size(3, 1);
+        return IsHorizontalMenu ? new Size(1, 1) : new Size(3, 1);
     }
 
     /// <inheritdoc/>
@@ -44,7 +44,24 @@ public sealed class MenuSeparator: ControlBase, IStyled<MenuSeparatorStyle>
             return;
         }
 
-        var glyph = ActualStyle.Glyph.Resolve(ControlGlyphs.Separators.Menu.Fallback, CellPolicy.AmbiguousWidth);
-        canvas.DrawHorizontalLine(Bounds, glyph, ResolvedStyle);
+        if (IsHorizontalMenu)
+        {
+            var vertical = ActualStyle.VerticalGlyph.Resolve(
+                ControlGlyphs.Separators.Vertical.Fallback,
+                CellPolicy.AmbiguousWidth);
+            canvas.DrawRune(
+                vertical,
+                new Point(Bounds.X, Bounds.Y),
+                ResolvedStyle,
+                BackgroundMode.Transparent);
+            return;
+        }
+
+        var horizontal = ActualStyle.Glyph.Resolve(
+            ControlGlyphs.Separators.Menu.Fallback,
+            CellPolicy.AmbiguousWidth);
+        canvas.DrawHorizontalLine(Bounds, horizontal, ResolvedStyle);
     }
+
+    private bool IsHorizontalMenu => FindAncestor<Menu>()?.Orientation == Orientation.Horizontal;
 }

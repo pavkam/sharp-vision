@@ -41,8 +41,8 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
 
     // Presence and appearance are separate facts and were previously one nullable Rune. Whether a
     // separator exists reserves a cell and so is layout, which the item owns; which glyph it draws
-    // is presentation, which the theme owns. Collapsing them meant a theme could not restyle the
-    // glyph without also deciding, per item, whether there was one.
+    // is presentation, which the code-owned item style or a complete local Style owns. Collapsing
+    // them prevented style customization without also deciding whether the item had a separator.
 
     /// <summary>Gets or sets whether a separator is drawn before the retained content, reserving one
     /// cell for it.</summary>
@@ -65,7 +65,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
     }
 
     /// <summary>Gets or sets a per-item override for the leading separator glyph, or null to use the
-    /// themed one. Ignored unless <see cref="ShowLeftSeparator"/> is set.</summary>
+    /// style's code-owned default. Ignored unless <see cref="ShowLeftSeparator"/> is set.</summary>
     /// <exception cref="ArgumentException">The value is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
@@ -80,7 +80,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
     }
 
     /// <summary>Gets or sets a per-item override for the trailing separator glyph, or null to use the
-    /// themed one. Ignored unless <see cref="ShowRightSeparator"/> is set.</summary>
+    /// style's code-owned default. Ignored unless <see cref="ShowRightSeparator"/> is set.</summary>
     /// <exception cref="ArgumentException">The value is a control or is not one cell wide.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
@@ -95,7 +95,7 @@ public sealed class StatusBarItem: ContentControl, IStyled<StatusBarItemStyle>
     }
 
     /// <summary>Gets the leading separator glyph actually drawn: this item's own override when one is
-    /// assigned, otherwise the themed glyph.</summary>
+    /// assigned, otherwise the resolved style's code-owned default.</summary>
     public Rune ActualLeftSeparator => LeftSeparator ?? ActualStyle.LeftSeparatorGlyph;
 
     /// <summary>Gets the trailing separator glyph actually drawn.</summary>
