@@ -87,11 +87,25 @@ public sealed class ContextMenuInteractionTests
         surface.ShouldHaveFocus(button);
         surface.Application.Modality.Active.ShouldBeNull();
 
+        // Arrange - the closed menu must not swallow the next Escape from its owner
+        var escapedUnhandled = 0;
+        var probe = await surface.Application.Dispatcher.InvokeAsync(
+            () => root.AddHandler(Events.Key, (_, args) =>
+            {
+                if (args.Phase == RoutingPhase.Bubble && args.Stroke.Code == Code.Escape && !args.IsHandled)
+                {
+                    escapedUnhandled++;
+                }
+            }),
+            TestContext.Current.CancellationToken);
+
         // Act
         await surface.Keyboard.PressAsync(Code.Escape);
 
         // Assert
         menu.IsOpen.ShouldBeFalse();
+        escapedUnhandled.ShouldBe(1);
+        await surface.Application.Dispatcher.InvokeAsync(probe.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies Opening, Closing, and Closed fire in order, each observing the open state
@@ -162,10 +176,61 @@ public sealed class ContextMenuInteractionTests
 
         // Act / Assert
         _ = Should.Throw<ObjectDisposedException>(() => _ = menu.Items);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = menu.IsOpen);
+        _ = Should.Throw<ObjectDisposedException>(() => _ = menu.PopupChrome);
         _ = Should.Throw<ObjectDisposedException>(() => menu.PopupChrome = new PopupChrome());
         _ = Should.Throw<ObjectDisposedException>(menu.ResetPopupChrome);
         _ = Should.Throw<ObjectDisposedException>(() => menu.Show(0, 0));
+        _ = Should.Throw<ObjectDisposedException>(menu.Close);
     }
+
+    /// <summary>Verifies Right on a submenu-bearing row of an open context menu opens the nested
+    /// submenu inside the same modal session, Left closes it again and keeps the context menu
+    /// open, and Left at the context menu's own level is left alone.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLeftAndRightArePressed_OpenAndCloseNestedSubmenuInsideOneScopeAsync()
+    {
+        // Arrange
+        var recentMenu = new Menu { Orientation = Orientation.Vertical };
+        recentMenu.Items.Add(new MenuItem { Text = "One" });
+        var menu = new ContextMenu();
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
+        menu.Items.Add(recent);
+        var button = new Button { Text = "Target", Width = Length.Cells(10), Height = Length.Cells(1), ContextMenu = menu };
+        var root = new Overlay { Children = { button } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => menu.Show(1, 1), "show the context menu");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert - nothing to close at the root level
+        menu.IsOpen.ShouldBeTrue();
+        recent.IsSubmenuOpen.ShouldBeFalse();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        recent.IsSubmenuOpen.ShouldBeTrue();
+        recentMenu.ContainsFocus.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        recent.IsSubmenuOpen.ShouldBeFalse();
+        menu.IsOpen.ShouldBeTrue();
+        menu.Menu.ContainsFocus.ShouldBeTrue();
+        menu.Menu.SelectedItem.ShouldBeSameAs(recent);
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+    }
+
 
     /// <summary>Verifies a throwing Opening subscriber propagates out of Show and leaves the menu
     /// closed, so a caller never observes a half-presented surface.</summary>

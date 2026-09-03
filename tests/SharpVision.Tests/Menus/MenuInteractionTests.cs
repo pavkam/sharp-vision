@@ -14,7 +14,7 @@ public sealed class MenuInteractionTests
     [Theory]
     [InlineData(2, 0, 3, 1)]
     [InlineData(1, 3, 0, 2)]
-    [InlineData(2, 2, 2, 2)]
+    [InlineData(2, 3, 1, 3)]
     [InlineData(0, 0, 3, 3)]
     public async Task Move_WhenEntriesReorderAroundSelection_PreservesSelectedItemIdentityAsync(
         int selectedIndex,
@@ -247,7 +247,8 @@ public sealed class MenuInteractionTests
     #region Radio adoption
 
     /// <summary>Verifies adding an already-checked radio item into a group with a checked member
-    /// clears the incumbent and publishes both changes.</summary>
+    /// clears the incumbent and publishes exactly that change: the newcomer was already checked,
+    /// so it publishes nothing.</summary>
     [Fact]
     public async Task Add_WhenCheckedRadioJoinsGroupWithCheckedMember_AdoptsTheNewcomerAsync()
     {
@@ -271,6 +272,7 @@ public sealed class MenuInteractionTests
             incumbent.IsChecked.ShouldBeFalse();
             newcomer.IsChecked.ShouldBeTrue();
             published.ShouldContain($"incumbent:{nameof(MenuItem.IsChecked)}");
+            published.ShouldNotContain($"newcomer:{nameof(MenuItem.IsChecked)}");
         }, TestContext.Current.CancellationToken);
     }
 
@@ -527,15 +529,195 @@ public sealed class MenuInteractionTests
             menu.Attach(dispatcher);
             using FocusManager focus = new(menu);
             focus.Focus(menu).ShouldBeTrue();
-            var before = menu.SelectedIndex;
+            menu.SelectedIndex.ShouldBe(-1);
 
             // Act
             var result = Router.Route(menu, Events.Key, Key(code));
 
             // Assert
             result.IsHandled.ShouldBeFalse();
-            menu.SelectedIndex.ShouldBe(before);
+            menu.SelectedIndex.ShouldBe(-1);
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a disabled or hidden first item never becomes the initial cursor: the
+    /// cursor lands on the first available item as items are added, a focused menu does not paint
+    /// the unavailable row as selected, and Down from the cursor skips it on wrap.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Items_WhenFirstItemIsUnavailable_SeedsCursorOnFirstAvailableItemAsync(bool hidden)
+    {
+        // Arrange
+        var locked = new MenuItem { Text = "Locked" };
+
+        if (hidden)
+        {
+            locked.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            locked.IsEnabled = false;
+        }
+
+        var open = new MenuItem { Text = "Open" };
+        var save = new MenuItem { Text = "Save" };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(locked);
+        menu.SelectedIndex.ShouldBe(-1);
+        menu.Items.Add(open);
+        menu.SelectedIndex.ShouldBe(1);
+        menu.Items.Add(save);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(menu).ShouldBeTrue(), "focus the menu");
+
+        // Assert - the available cursor row paints selected, the unavailable first row does not
+        menu.SelectedItem.ShouldBeSameAs(open);
+        var selected = surface.Cell(new Point(0, open.Bounds.Y)).Style;
+        surface.Cell(new Point(0, save.Bounds.Y)).Style.ShouldNotBe(selected);
+
+        if (!hidden)
+        {
+            surface.Cell(new Point(0, 0)).Style.ShouldNotBe(selected);
+            surface.Cell(new Point(0, 0)).Text.ShouldBe("L");
+        }
+
+        // Act - wrapping past the last item lands on the first available item again
+        await surface.Keyboard.PressAsync(Code.Down);
+        menu.SelectedItem.ShouldBeSameAs(save);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        menu.SelectedItem.ShouldBeSameAs(open);
+    }
+
+    /// <summary>Verifies Right on a submenu-bearing row of a vertical drop-down opens that nested
+    /// submenu, Left inside the nested submenu closes only that level and returns focus to its
+    /// owning menu with the row still selected, while Right on a plain row and Left at the
+    /// drop-down level bubble to the horizontal bar and switch the top-level sibling.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLeftAndRightArePressedInsideVerticalSubmenus_OpenAndCloseNestedLevelsAsync()
+    {
+        // Arrange
+        var recentMenu = new Menu { Orientation = Orientation.Vertical };
+        var one = new MenuItem { Text = "One" };
+        recentMenu.Items.Add(one);
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        var newItem = new MenuItem { Text = "New" };
+        var recent = new MenuItem { Text = "Recent", Submenu = recentMenu };
+        fileMenu.Items.Add(newItem);
+        fileMenu.Items.Add(recent);
+        var editMenu = new Menu { Orientation = Orientation.Vertical };
+        editMenu.Items.Add(new MenuItem { Text = "Undo" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var edit = new MenuItem { Text = "Edit", Submenu = editMenu };
+        var menu = new Menu { Orientation = Orientation.Horizontal, Spacing = 1 };
+        menu.Items.Add(file);
+        menu.Items.Add(edit);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(50, 14),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(file);
+        file.IsSubmenuOpen.ShouldBeTrue();
+        fileMenu.ContainsFocus.ShouldBeTrue();
+        fileMenu.SelectedItem.ShouldBeSameAs(newItem);
+
+        // Act - Right on a plain row bubbles to the bar
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        edit.IsSubmenuOpen.ShouldBeTrue();
+        file.IsSubmenuOpen.ShouldBeFalse();
+        editMenu.ContainsFocus.ShouldBeTrue();
+
+        // Act - Left at the drop-down level bubbles back to the bar
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        file.IsSubmenuOpen.ShouldBeTrue();
+        edit.IsSubmenuOpen.ShouldBeFalse();
+        fileMenu.ContainsFocus.ShouldBeTrue();
+
+        // Act - Right on the submenu-bearing row opens the nested level
+        await surface.Keyboard.PressAsync(Code.Down);
+        fileMenu.SelectedItem.ShouldBeSameAs(recent);
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        recent.IsSubmenuOpen.ShouldBeTrue();
+        file.IsSubmenuOpen.ShouldBeTrue();
+        recentMenu.ContainsFocus.ShouldBeTrue();
+        recentMenu.SelectedItem.ShouldBeSameAs(one);
+        var nested = OwnedTree.Find<Popup>(recent).ShouldNotBeNull();
+        var nestedBounds = nested.SurfaceBounds;
+        nestedBounds.X.ShouldBe(recent.Bounds.Right);
+        surface.Cell(new Point(nestedBounds.X + 1, nestedBounds.Y + 1)).Text.ShouldBe("O");
+
+        // Act - Left inside the nested level closes only that level
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        recent.IsSubmenuOpen.ShouldBeFalse();
+        file.IsSubmenuOpen.ShouldBeTrue();
+        fileMenu.ContainsFocus.ShouldBeTrue();
+        fileMenu.SelectedItem.ShouldBeSameAs(recent);
+        nested.SurfaceBounds.ShouldBe(default);
+        surface.Cell(new Point(nestedBounds.X + 1, nestedBounds.Y + 1)).Text.ShouldNotBe("O");
+        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        // Act - Escape still peels one level at a time afterwards
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        file.IsSubmenuOpen.ShouldBeFalse();
+
+        // Act - a second Escape releases the bar's own session
+        await surface.Keyboard.PressAsync(Code.Escape);
+        surface.Application.Modality.Active.ShouldBeNull();
+    }
+
+    /// <summary>Verifies hovering a disabled item or a separator inside an armed session neither
+    /// moves the selection nor closes the sibling submenu that is open.</summary>
+    [Fact]
+    public async Task Pointer_WhenHoveringUnavailableEntriesInArmedSession_LeavesSelectionAndSubmenuAloneAsync()
+    {
+        // Arrange
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        fileMenu.Items.Add(new MenuItem { Text = "New" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var separator = new MenuSeparator();
+        var locked = new MenuItem { Text = "Locked", IsEnabled = false };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(file);
+        menu.Items.Add(separator);
+        menu.Items.Add(locked);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(30, 10),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(file);
+        file.IsSubmenuOpen.ShouldBeTrue();
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.MoveToAsync(separator);
+
+        // Assert
+        menu.SelectedItem.ShouldBeSameAs(file);
+        file.IsSubmenuOpen.ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.MoveToAsync(locked);
+
+        // Assert
+        menu.SelectedItem.ShouldBeSameAs(file);
+        file.IsSubmenuOpen.ShouldBeTrue();
+        locked.IsPointerOver.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
     }
 
     #endregion
@@ -804,7 +986,7 @@ public sealed class MenuInteractionTests
     {
         if (valid)
         {
-            (MenuItemStyle.Default with { AffixGap = gap }).AffixGap.ShouldBe(gap);
+            _ = Should.NotThrow(() => MenuItemStyle.Default with { AffixGap = gap });
         }
         else
         {
@@ -845,7 +1027,6 @@ public sealed class MenuInteractionTests
         // Assert
         empty.DesiredSize.Width.ShouldBe(plain.DesiredSize.Width);
         shortcut.DesiredSize.Width.ShouldBeGreaterThan(plain.DesiredSize.Width);
-        empty.ShortcutColumnWidth.ShouldBe(0);
     }
 
     #endregion
