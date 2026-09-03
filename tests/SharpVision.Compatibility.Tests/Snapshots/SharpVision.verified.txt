@@ -1555,6 +1555,8 @@ namespace SharpVision.Controls.Input
     {
         public CheckBoxStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Input.CheckBoxMarkStyle markStyle, SharpVision.Controls.Input.CheckBoxGlyphs glyphs) { }
         public required SharpVision.Controls.Input.CheckBoxGlyphs Glyphs { get; init; }
+        public int MarkGap { get; init; }
+        public SharpVision.Controls.Input.SelectionMarkPlacement MarkPlacement { get; init; }
         public required SharpVision.Controls.Input.CheckBoxMarkStyle MarkStyle { get; init; }
         public int MarkWidth { get; }
         public static SharpVision.Controls.Input.CheckBoxStyle Brackets { get; }
@@ -1937,12 +1939,19 @@ namespace SharpVision.Controls.Input
         public RadioButtonStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Controls.Input.RadioButtonMarkStyle markStyle, SharpVision.Controls.Input.RadioButtonGlyphs glyphs) { }
         public string CheckedText { get; }
         public required SharpVision.Controls.Input.RadioButtonGlyphs Glyphs { get; init; }
+        public int MarkGap { get; init; }
+        public SharpVision.Controls.Input.SelectionMarkPlacement MarkPlacement { get; init; }
         public required SharpVision.Controls.Input.RadioButtonMarkStyle MarkStyle { get; init; }
         public int MarkWidth { get; }
         public string UncheckedText { get; }
         public new static SharpVision.Controls.Input.RadioButtonStyle Default { get; }
         public static SharpVision.Controls.Input.RadioButtonStyle Glyph { get; }
         public static SharpVision.Controls.Input.RadioButtonStyle Parentheses { get; }
+    }
+    public enum SelectionMarkPlacement
+    {
+        Leading = 0,
+        Trailing = 1,
     }
     public sealed class Slider : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.SliderStyle>
     {

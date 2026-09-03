@@ -24,41 +24,32 @@ internal sealed class RadioButtonPane: CompositeControlBase
             GroupName = "quality",
             IsEnabled = false
         };
-        var group = new Dock
-        {
-            Border = new Border(
-                BorderSide.All,
-                BorderGlyphStyle.Rounded,
-                SemanticColor.ControlBorder,
-                Color.Transparent,
-                SemanticDecoration.Border),
-            Padding = new Thickness(1, 0),
-            Children =
+        var group = new DocCard(
+            new DocColumn(new Text("Primary card")
             {
-                new DocColumn(new Text("Primary card") { Face = new Face(
+                Face = new Face(
                 SemanticColor.ControlText,
                 Color.Transparent,
                 TerminalAttributes.Bold,
                 Underline.None,
-                Color.Default) }, fast, unavailable)
-            }
-        };
-
-        var separate = new Dock
+                Color.Default)
+            }, fast, unavailable));
+        var separate = new DocCard(
+            new DocColumn(new Text("Secondary card")
+            {
+                Face = new Face(
+                SemanticColor.ControlText,
+                Color.Transparent,
+                TerminalAttributes.Bold,
+                Underline.None,
+                Color.Default)
+            }, balanced));
+        var qualityCards = new Wrap
         {
-            Border = new Border(
-                BorderSide.All,
-                BorderGlyphStyle.Light,
-                SemanticColor.ControlBorder,
-                Color.Transparent,
-                SemanticDecoration.Border),
-            Padding = new Thickness(1, 0),
-            Children = { new DocColumn(new Text("Secondary card") { Face = new Face(
-                SemanticColor.ControlText,
-                Color.Transparent,
-                TerminalAttributes.Bold,
-                Underline.None,
-                Color.Default) }, balanced) }
+            Width = Length.Percent(100),
+            Spacing = 2,
+            LineSpacing = 1,
+            Children = { group, separate }
         };
         var qualityStatus = new Text("Selected quality: Fast");
         fast.Checked += (_, _) => qualityStatus.Content = "Selected quality: Fast";
@@ -127,6 +118,34 @@ internal sealed class RadioButtonPane: CompositeControlBase
             Style = RadioButtonStyle.Parentheses,
             IsChecked = true
         };
+        var compactUnchecked = new RadioButton
+        {
+            Text = "Compact unselected",
+            GroupName = "compact",
+            UseMnemonic = false,
+            Style = RadioButtonStyle.Glyph with { MarkGap = 3 }
+        };
+        var compactChecked = new RadioButton
+        {
+            Text = "Compact selected",
+            GroupName = "compact",
+            UseMnemonic = false,
+            Style = RadioButtonStyle.Glyph with { MarkGap = 3 },
+            IsChecked = true
+        };
+
+        var activationCount = 0;
+        var activationStatus = new Text("Programmatic activations: 0");
+        var activationTarget = new RadioButton
+        {
+            Text = "Programmatic target &X",
+            GroupName = "programmatic",
+            Command = new ShowcaseCommand(
+                _ => activationStatus.Content = $"Programmatic activations: {++activationCount}",
+                _ => true)
+        };
+        var activationTrigger = new Button { Text = "Invoke programmaticall&y" };
+        activationTrigger.Click += (_, _) => activationTarget.PerformClick();
 
         // EndAffix reserves a fixed cell for an application-owned recommended-choice badge.
         var recommendedFast = new RadioButton
@@ -148,15 +167,15 @@ internal sealed class RadioButtonPane: CompositeControlBase
                 new DocExample(
                     "Quality choice",
                     "Fast and Balanced live in separate cards but share the exact quality group. Selecting either clears the other; the disabled member remains visible and traversal skips it.",
-                    new DocColumn(new DocRow(group, separate), qualityStatus),
+                    new DocColumn(qualityCards, qualityStatus),
                     "var fast = new RadioButton { GroupName = \"quality\", IsChecked = true };")),
             new DocSection(
                 "🔘",
                 "Arrow traversal",
-                "Arrow keys move focus and selection through eligible members in stable tree order with wrapping.",
+                "Arrow keys move through eligible members with wrapping; Home and End jump to the eligible group boundaries.",
                 new DocExample(
                     "Visible traversal order",
-                    "Use Up/Left and Down/Right. The disabled member is skipped, wrapping stays stable, and the readout follows the committed member.",
+                    "Use Up/Left and Down/Right to walk, then Home or End to jump. The disabled member is skipped, wrapping stays stable, and the readout follows the committed member.",
                     new DocColumn(traversalOne, traversalTwo, traversalUnavailable, traversalStatus))),
             new DocSection(
                 "🔀",
@@ -188,15 +207,15 @@ internal sealed class RadioButtonPane: CompositeControlBase
             new DocSection(
                 "🎨",
                 "Mark styles",
-                "Choose compact circles or fixed-width parentheses, then customize circle glyphs only when the visual language needs it.",
+                "Choose compact circles or fixed-width parentheses, align their captions with MarkGap, and move custom marks to either edge.",
                 new DocExample(
-                    "Parenthesized marks",
-                    "The parenthesized style renders ( ) and (●), aligned like bracket-style checkboxes.",
-                    new DocColumn(parenthesizedUnchecked, parenthesizedChecked),
-                    "radio.Style = RadioButtonStyle.Parentheses;"),
+                    "Built-in mark families",
+                    "Parentheses render ( ) and (●). Compact circles render ○ and ◉, with a larger MarkGap here to align both families' captions.",
+                    new DocColumn(parenthesizedUnchecked, parenthesizedChecked, compactUnchecked, compactChecked),
+                    "radio.Style = RadioButtonStyle.Glyph with { MarkGap = 3 };"),
                 new DocExample(
-                    "Dash and star marks",
-                    "A complete style replaces both compact circle marks as one presentation.",
+                    "Trailing dash and star marks",
+                    "A complete style replaces both compact marks and places them two cells after the caption.",
                     new DocColumn(
                         new RadioButton
                         {
@@ -208,7 +227,11 @@ internal sealed class RadioButtonPane: CompositeControlBase
                                 RadioButtonStyle.Default.Border,
                                 RadioButtonStyle.Default.Shadow,
                                 RadioButtonMarkStyle.Circle,
-                                new RadioButtonGlyphs(new Rune('-'), new Rune('*'))),
+                                new RadioButtonGlyphs(new Rune('-'), new Rune('*'))) with
+                            {
+                                MarkGap = 2,
+                                MarkPlacement = SelectionMarkPlacement.Trailing
+                            },
                             IsChecked = true
                         },
                         new RadioButton
@@ -221,9 +244,13 @@ internal sealed class RadioButtonPane: CompositeControlBase
                                 RadioButtonStyle.Default.Border,
                                 RadioButtonStyle.Default.Shadow,
                                 RadioButtonMarkStyle.Circle,
-                                new RadioButtonGlyphs(new Rune('-'), new Rune('*')))
+                                new RadioButtonGlyphs(new Rune('-'), new Rune('*'))) with
+                            {
+                                MarkGap = 2,
+                                MarkPlacement = SelectionMarkPlacement.Trailing
+                            }
                         }),
-                    "radio.Style = new RadioButtonStyle(face, border, shadow, RadioButtonMarkStyle.Circle, glyphs);")),
+                    "radio.Style = new RadioButtonStyle(face, border, shadow, RadioButtonMarkStyle.Circle, glyphs)\n{\n    MarkGap = 2,\n    MarkPlacement = SelectionMarkPlacement.Trailing\n};")),
             new DocSection(
                 "⚡",
                 "Events",
@@ -231,11 +258,16 @@ internal sealed class RadioButtonPane: CompositeControlBase
                 new DocExample(
                     "Committed notification order",
                     "Choose Event second and observe Unchecked → Checked → SelectionChanged.",
-                    new DocColumn(eventFirst, eventSecond, eventStatus))),
+                    new DocColumn(eventFirst, eventSecond, eventStatus)),
+                new DocExample(
+                    "Programmatic activation",
+                    "Invoke PerformClick repeatedly. The first activation selects the target; every activation then executes its bound Command.",
+                    new DocColumn(activationTrigger, activationTarget, activationStatus),
+                    "target.PerformClick();")),
             new DocSection(
                 "📌",
                 "Affixes",
-                "<info>StartAffix</info> and <info>EndAffix</info> reserve a fixed cell before the mark or after the caption for application-owned, data-driven decoration that a theme never authors.",
+                "<info>StartAffix</info> and <info>EndAffix</info> reserve the leading and trailing edges outside the combined mark-caption box for application-owned, data-driven decoration that a theme never authors.",
                 new DocExample(
                     "Recommended-choice badge after the caption",
                     "The star marks the recommended option; it sits in its own reserved cell after the caption.",

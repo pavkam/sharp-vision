@@ -15,6 +15,8 @@ public sealed class CheckBoxStyleTests
         CheckBoxStyle.Default.ShouldBe(CheckBoxStyle.Brackets);
         CheckBoxStyle.Default.MarkStyle.ShouldBe(CheckBoxMarkStyle.Brackets);
         CheckBoxStyle.Default.MarkWidth.ShouldBe(3);
+        CheckBoxStyle.Default.MarkGap.ShouldBe(1);
+        CheckBoxStyle.Default.MarkPlacement.ShouldBe(SelectionMarkPlacement.Leading);
     }
 
     /// <summary>Verifies Brackets is chromeless (a selectable control, not a framed one) and
@@ -63,6 +65,28 @@ public sealed class CheckBoxStyleTests
             new CheckBoxStyle(baseline.Face, baseline.Border, baseline.Shadow, (CheckBoxMarkStyle) 99, baseline.Glyphs));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             baseline with { MarkStyle = (CheckBoxMarkStyle) 99 });
+    }
+
+    /// <summary>Verifies the shared mark placement rejects undefined values before a style copy
+    /// can expose invalid layout intent.</summary>
+    [Fact]
+    public void MarkPlacement_WhenUndefined_ThrowsFromWith()
+    {
+        var baseline = CheckBoxStyle.Default;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            baseline with { MarkPlacement = (SelectionMarkPlacement) 99 });
+    }
+
+    /// <summary>Verifies the mark-to-caption gap is bounded to the compact terminal-cell range.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(5)]
+    public void MarkGap_WhenOutsideSupportedRange_Throws(int value)
+    {
+        var baseline = CheckBoxStyle.Default;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => baseline with { MarkGap = value });
     }
 
     /// <summary>Verifies an unauthored theme falls back to Input's chromeless defaults.</summary>
@@ -121,5 +145,26 @@ public sealed class CheckBoxStyleTests
         var current = previous with { AffixGap = previous.AffixGap + 1 };
 
         CheckBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
+    }
+
+    /// <summary>Verifies a mark-gap change remeasures the caption reservation.</summary>
+    [Fact]
+    public void Definition_Compare_WhenMarkGapChanges_IsMeasure()
+    {
+        var previous = CheckBoxStyle.Default;
+        var current = previous with { MarkGap = previous.MarkGap + 1 };
+
+        CheckBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
+    }
+
+    /// <summary>Verifies moving the mark to the other caption edge rearranges without changing
+    /// intrinsic size.</summary>
+    [Fact]
+    public void Definition_Compare_WhenMarkPlacementChanges_IsArrange()
+    {
+        var previous = CheckBoxStyle.Default;
+        var current = previous with { MarkPlacement = SelectionMarkPlacement.Trailing };
+
+        CheckBoxStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Arrange);
     }
 }

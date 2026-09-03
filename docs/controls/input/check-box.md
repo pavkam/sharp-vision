@@ -25,8 +25,8 @@ classDiagram
 | Inherited `VerticalAlignment` | `VerticalAlignment`                   | `VerticalAlignment.Center` | Centers the desired mark and caption vertically in its arranged slot; assign `Stretch` to fill the slot. |
 | `IsChecked`                   | `bool?`                               | `false`                    | `false`, `true`, or `null` when three-state mode permits it.                                             |
 | `ThreeState`                  | `bool`                                | `false`                    | Selects the two-state or three-state activation cycle.                                                   |
-| `StartAffix`                  | `Affix?`                              | `null`                     | Optional leading edge-pinned decoration, reserved before the mark glyph.                                 |
-| `EndAffix`                    | `Affix?`                              | `null`                     | Optional trailing edge-pinned decoration, reserved after the caption.                                    |
+| `StartAffix`                  | `Affix?`                              | `null`                     | Optional leading edge-pinned decoration outside the combined mark and caption.                           |
+| `EndAffix`                    | `Affix?`                              | `null`                     | Optional trailing edge-pinned decoration outside the combined mark and caption.                          |
 | `Style`                       | `CheckBoxStyle?`                      | `null`                     | Optional complete developer-authored presentation.                                                       |
 | `ActualStyle`                 | `CheckBoxStyle`                       | Resolved                   | Read-only; the complete local, theme-owned, or code-owned presentation.                                  |
 | Inherited `Command`           | `ICommand?`                           | `null`                     | Runs after the toggle commits, when bound and `CanExecute` allows it.                                    |
@@ -54,11 +54,16 @@ outer transition does not subsequently raise a stale `StateChanged` event.
 `CheckBoxMarkStyle`, a complete `CheckBoxGlyphs` triple (unchecked, checked, and
 indeterminate), and the inherited `Face`/`Border`/`Shadow`.
 `CheckBoxStyle.Brackets` is the default fixed-width `[ ]`/`[✓]`/`[─]`
-presentation reserving three cells; `Tick` and `Square` are one-cell presets. A
-`with` expression creates a validated member-wise copy of
-`CheckBoxStyle.Default` (`Brackets`). CheckBox declares no `styles.*` theme key
-of its own: its code-owned mark style and glyph trio come from the active
-theme's root-level `glyphs` field whenever no local `Style` is assigned (see
+presentation reserving three cells; `Tick` and `Square` are one-cell presets.
+`MarkPlacement` defaults to `SelectionMarkPlacement.Leading` and may move the
+mark after the caption with `Trailing`. `MarkGap` defaults to one terminal cell
+and accepts zero through four; the gap costs no cells when there is no caption.
+An undefined placement or a gap outside that range throws
+`ArgumentOutOfRangeException` while constructing a style copy. A `with`
+expression creates a validated member-wise copy of `CheckBoxStyle.Default`
+(`Brackets`). CheckBox declares no `styles.*` theme key of its own: its
+code-owned mark style and glyph trio come from the active theme's root-level
+`glyphs` field whenever no local `Style` is assigned (see
 [themes.md](../../concepts/themes.md#glyph-families)). Assigning `Style`
 replaces the complete Theme-owned presentation, and assigning `null` restores
 it. `ActualStyle` never returns null. Every glyph is printable and one cell wide
@@ -74,9 +79,9 @@ under the normal width policy.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column for
 application-owned, per-instance content - never theme-authored - outside the
-mark and the caption's own alignment box: `StartAffix` sits before the mark
-glyph, `EndAffix` sits after the caption. The gap between a present affix and
-its neighbor comes from the shared `InputStyle.AffixGap` (see
+combined mark-and-caption box: `StartAffix` sits at its leading edge and
+`EndAffix` at its trailing edge regardless of `MarkPlacement`. The gap between a
+present affix and its neighbor comes from the shared `InputStyle.AffixGap` (see
 [styling.md](../../concepts/styling.md#instance-content-affix)). When the
 control is too narrow for everything, the caption shrinks first, then the end
 affix drops whole, then the start affix - never a partial cluster - and the
@@ -115,7 +120,11 @@ semantic item.
 var option = new CheckBox
 {
     Text = "Include &hidden files",
-    Style = CheckBoxStyle.Square
+    Style = CheckBoxStyle.Square with
+    {
+        MarkGap = 2,
+        MarkPlacement = SelectionMarkPlacement.Trailing
+    }
 };
 ```
 
@@ -132,6 +141,7 @@ var option = new CheckBox
 - Style validation and precedence hold, assigning `null` restores the Theme
   style, and a Theme replacement restyles checkboxes that have no local style.
 - Space and pointer activation behave identically, disabled and focused states
-  render correctly, and a change in mark width relayouts as expected.
+  render correctly, and changes in mark width, gap, or placement relayout at the
+  documented phase.
 - Unicode glyphs fall back safely, and rendering produces the exact documented
   cells.

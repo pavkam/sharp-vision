@@ -7,7 +7,7 @@ using System.Runtime.ExceptionServices;
 
 using SharpVision.Surfaces;
 
-/// <summary>Coordinates radio membership, exclusive selection, and roving tab entry.</summary>
+/// <summary>Coordinates radio membership, exclusive selection, roving tab entry, and group navigation.</summary>
 /// <remarks>Membership is resolved from the current ownership root for named groups and from the
 /// exact owning slot for unnamed groups. This keeps mutually exclusive behavior independent from
 /// render-tree shape while retaining a single authority for each semantic radio group.</remarks>
@@ -122,9 +122,7 @@ internal static class RadioGroupCoordinator
         public bool MoveGroup(bool reverse)
         {
             ArgumentNullException.ThrowIfNull(value);
-            var members = Members(value);
-            var eligible = members.FindAll(static member =>
-                member is { IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, CanFocus: true });
+            var eligible = EligibleMembers(value);
 
             if (eligible.Count == 0)
             {
@@ -135,20 +133,18 @@ internal static class RadioGroupCoordinator
             var next = reverse
                 ? current <= 0 ? eligible.Count - 1 : current - 1
                 : current < 0 || current == eligible.Count - 1 ? 0 : current + 1;
-            var target = eligible[next];
+            return FocusAndSelect(value, eligible[next]);
+        }
 
-            if (!target.RequestGroupFocus())
-            {
-                return false;
-            }
+        /// <summary>Moves selection and focus to an eligible group endpoint.</summary>
+        /// <param name="end">Whether to select the last rather than first eligible member.</param>
+        /// <returns>True when one endpoint accepted focus and remained in the group.</returns>
+        public bool MoveGroupEndpoint(bool end)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            var eligible = EligibleMembers(value);
 
-            if (!Members(value).Contains(target))
-            {
-                return false;
-            }
-
-            target.SelectInGroup(ActivationCause.Keyboard);
-            return true;
+            return eligible.Count != 0 && FocusAndSelect(value, end ? eligible[^1] : eligible[0]);
         }
 
         /// <summary>Gets whether one eligible member is the group's effective sequential entry.</summary>
@@ -217,6 +213,37 @@ internal static class RadioGroupCoordinator
         }
 
         return result;
+    }
+
+    [Pure]
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static List<RadioButton> EligibleMembers(RadioButton value) => Members(value).FindAll(static member =>
+        member is { IsDisposed: false, EffectiveIsEnabled: true, EffectiveIsVisible: true, CanFocus: true });
+
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static bool FocusAndSelect(RadioButton value, RadioButton target)
+    {
+        Debug.Assert(value is not null, "Group movement requires a source member.");
+        Debug.Assert(target is not null, "Group movement requires an eligible target member.");
+
+        if (!target.RequestGroupFocus())
+        {
+            return false;
+        }
+
+        if (!target.IsFocused || !target.CanFocus || !Members(value).Contains(target))
+        {
+            return false;
+        }
+
+        target.SelectInGroup(ActivationCause.Keyboard);
+        return true;
     }
 
     [Pure]

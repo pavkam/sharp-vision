@@ -48,6 +48,10 @@ exactly, with a local Inheritance diagram and the canonical
   `View`, `Build()`, and chrome helpers do not exist.
 - Raw Border and Shadow authoring is protected unless the control deliberately
   republishes complete chrome.
+- CheckBox and RadioButton keep state-specific glyph selection local but route
+  mark-and-caption measure, arrange, affixes, fill, and rendering through the
+  shared private-protected `InputBase` selection-mark helpers. New marked inputs
+  extend that path instead of copying either sealed control's geometry.
 - An `AnimatedIndicatorBase` implementation draws only through `OnRenderFrame`;
   the base owns timer resumption, empty-content handling, and `ContentBounds`.
 - A one-focus `ItemsControl` whose private selected face shows Space press state

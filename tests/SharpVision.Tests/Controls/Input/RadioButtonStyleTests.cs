@@ -18,6 +18,8 @@ public sealed class RadioButtonStyleTests
         actual.UncheckedText.ShouldBe("( )");
         actual.CheckedText.ShouldBe("(•)");
         actual.MarkWidth.ShouldBe(3);
+        actual.MarkGap.ShouldBe(1);
+        actual.MarkPlacement.ShouldBe(SelectionMarkPlacement.Leading);
     }
 
     /// <summary>Verifies the compact glyph preset retains the established radio marks and is chromeless.</summary>
@@ -55,6 +57,28 @@ public sealed class RadioButtonStyleTests
             new RadioButtonStyle(baseline.Face, baseline.Border, baseline.Shadow, (RadioButtonMarkStyle) 99, baseline.Glyphs));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             baseline with { MarkStyle = (RadioButtonMarkStyle) 99 });
+    }
+
+    /// <summary>Verifies the shared mark placement rejects undefined values before a style copy
+    /// can expose invalid layout intent.</summary>
+    [Fact]
+    public void MarkPlacement_WhenUndefined_ThrowsFromWith()
+    {
+        var baseline = RadioButtonStyle.Parentheses;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            baseline with { MarkPlacement = (SelectionMarkPlacement) 99 });
+    }
+
+    /// <summary>Verifies the mark-to-caption gap is bounded to the compact terminal-cell range.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(5)]
+    public void MarkGap_WhenOutsideSupportedRange_Throws(int value)
+    {
+        var baseline = RadioButtonStyle.Parentheses;
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => baseline with { MarkGap = value });
     }
 
     /// <summary>Verifies radio glyphs reject non-one-cell values.</summary>
@@ -117,5 +141,26 @@ public sealed class RadioButtonStyleTests
         var current = previous with { AffixGap = previous.AffixGap + 1 };
 
         RadioButtonStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
+    }
+
+    /// <summary>Verifies a mark-gap change remeasures the caption reservation.</summary>
+    [Fact]
+    public void Definition_Compare_WhenMarkGapChanges_IsMeasure()
+    {
+        var previous = RadioButtonStyle.Parentheses;
+        var current = previous with { MarkGap = previous.MarkGap + 1 };
+
+        RadioButtonStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Measure);
+    }
+
+    /// <summary>Verifies moving the mark to the other caption edge rearranges without changing
+    /// intrinsic size.</summary>
+    [Fact]
+    public void Definition_Compare_WhenMarkPlacementChanges_IsArrange()
+    {
+        var previous = RadioButtonStyle.Parentheses;
+        var current = previous with { MarkPlacement = SelectionMarkPlacement.Trailing };
+
+        RadioButtonStyle.Definition.Compare(previous, null, current, null).ShouldBe(InvalidationImpact.Arrange);
     }
 }

@@ -140,6 +140,32 @@ public sealed class CheckBoxTests
         checkBox.Pending.ShouldBe(Invalidation.All);
     }
 
+    /// <summary>Verifies a mark-gap style change invalidates measurement because it changes the
+    /// terminal-cell reservation between a present mark and caption.</summary>
+    [Fact]
+    public void Style_WhenMarkGapChanges_InvalidatesMeasure()
+    {
+        var checkBox = new CheckBox { Style = CheckBoxStyle.Brackets };
+        checkBox.Clear(Invalidation.All);
+
+        checkBox.Style = CheckBoxStyle.Brackets with { MarkGap = 2 };
+
+        checkBox.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies moving the mark to the opposite caption edge invalidates arrangement and
+    /// rendering without needlessly remeasuring an unchanged intrinsic width.</summary>
+    [Fact]
+    public void Style_WhenMarkPlacementChanges_InvalidatesArrange()
+    {
+        var checkBox = new CheckBox { Style = CheckBoxStyle.Brackets };
+        checkBox.Clear(Invalidation.All);
+
+        checkBox.Style = CheckBoxStyle.Brackets with { MarkPlacement = SelectionMarkPlacement.Trailing };
+
+        checkBox.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+    }
+
     /// <summary>Verifies defaults and the two-state user cycle.</summary>
     [Fact]
     public void Activate_WhenTwoState_CyclesFalseAndTrue()
@@ -587,6 +613,37 @@ public sealed class CheckBoxTests
         new LayoutEngine().Layout(checkBox, new Size(20, 3));
 
         checkBox.DesiredSize.Width.ShouldBe(expectedWidth);
+    }
+
+    /// <summary>Verifies a custom mark gap contributes exact terminal cells only when the
+    /// CheckBox has a caption.</summary>
+    [Fact]
+    public void Measure_WhenMarkGapIsCustomized_ReservesExactCaptionGap()
+    {
+        var captioned = new CheckBox
+        {
+            Text = "Go",
+            Style = CheckBoxStyle.Brackets with { MarkGap = 3 }
+        };
+        var markOnly = new CheckBox
+        {
+            Style = CheckBoxStyle.Brackets with { MarkGap = 3 }
+        };
+        var clearedCaption = new CheckBox
+        {
+            Text = "Go",
+            Style = CheckBoxStyle.Brackets with { MarkGap = 3 }
+        };
+        clearedCaption.Text = string.Empty;
+        var engine = new LayoutEngine();
+
+        engine.Layout(captioned, new Size(20, 3));
+        engine.Layout(markOnly, new Size(20, 3));
+        engine.Layout(clearedCaption, new Size(20, 3));
+
+        captioned.DesiredSize.Width.ShouldBe(8);
+        markOnly.DesiredSize.Width.ShouldBe(3);
+        clearedCaption.DesiredSize.Width.ShouldBe(3);
     }
 
     /// <summary>Verifies null-to-set and set-to-null affix assignment requires Measure.</summary>
