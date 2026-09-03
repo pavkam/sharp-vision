@@ -56,46 +56,56 @@ public sealed class TextSelectionMapConditionTests
     }
 
     /// <summary>Verifies a cell in the gap between two separated glyphs resolves to the nearer
-    /// glyph edge, preferring the previous glyph's end on a tie.</summary>
+    /// glyph edge, preferring the previous glyph's end on a tie. The unmapped '-' keeps the
+    /// previous glyph's end (1) and the next glyph's start (2) distinct, so the rule is
+    /// observable.</summary>
     [Fact]
     public void HitTest_WhenCellFallsInAGapBetweenGlyphs_ResolvesToTheNearerEdge()
     {
         var map = new TextSelectionMap(
-            "ab",
+            "a-b",
             [
                 new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 1, 1)),
-                new TextSelectionGlyph(new Selection(1, 2), new Rect(5, 0, 1, 1))
+                new TextSelectionGlyph(new Selection(2, 3), new Rect(4, 0, 1, 1))
             ],
             [],
             1);
 
-        map.HitTest(new Point(1, 0)).ShouldBe(1);
-        map.HitTest(new Point(4, 0)).ShouldBe(1);
-        map.HitTest(new Point(3, 0)).ShouldBe(1);
-        map.HitTestGlyph(new Point(3, 0)).ShouldBe(1);
-        map.HitTest(new Point(5, 0)).ShouldBe(1);
-        map.HitTest(new Point(6, 0)).ShouldBe(2);
+        map.HitTest(new Point(1, 0)).ShouldBe(1, "one cell past 'a' is nearer its end");
+        map.HitTest(new Point(3, 0)).ShouldBe(2, "one cell before 'b' is nearer its start");
+        map.HitTest(new Point(2, 0)).ShouldBe(1, "the equidistant cell keeps the previous end");
+        map.HitTestGlyph(new Point(1, 0)).ShouldBe(1);
+        map.HitTestGlyph(new Point(3, 0)).ShouldBe(2);
+        map.HitTestGlyph(new Point(2, 0)).ShouldBe(1);
+        map.HitTest(new Point(4, 0)).ShouldBe(2, "inside 'b' snaps to its start");
+        map.HitTest(new Point(9, 0)).ShouldBe(3, "past the last glyph is its end");
     }
 
-    /// <summary>Verifies a hit below the last row clamps to it and a hit on an empty middle row
-    /// resolves to that row's nearest mapped offset.</summary>
+    /// <summary>Verifies a hit outside the row range clamps to the nearest row and a hit on an
+    /// empty middle row resolves to the nearer mapped row's edge, preferring the previous row's
+    /// end on a tie. The unmapped '\n' keeps the previous end (1) and the next start (2) distinct,
+    /// so the choice is observable.</summary>
     [Fact]
     public void HitTest_WhenRowIsOutsideOrEmpty_ClampsAndUsesNearestOffset()
     {
         var map = new TextSelectionMap(
-            "ab",
+            "a\nb",
             [
                 new TextSelectionGlyph(new Selection(0, 1), new Rect(0, 0, 1, 1)),
-                new TextSelectionGlyph(new Selection(1, 2), new Rect(0, 2, 1, 1))
+                new TextSelectionGlyph(new Selection(2, 3), new Rect(0, 4, 1, 1))
             ],
             [],
-            3);
+            5);
 
-        map.VisualRowCount.ShouldBe(3);
-        map.HitTest(new Point(0, 9)).ShouldBe(1);
-        map.HitTest(new Point(0, -3)).ShouldBe(0);
-        map.HitTest(new Point(3, 1)).ShouldBe(1);
-        map.OffsetAtVisualColumn(9, 0).ShouldBe(1);
+        map.VisualRowCount.ShouldBe(5);
+        map.HitTest(new Point(0, 9)).ShouldBe(2, "below the last row clamps to 'b'");
+        map.HitTest(new Point(0, -3)).ShouldBe(0, "above the first row clamps to 'a'");
+        map.HitTest(new Point(3, 1)).ShouldBe(1, "the row after 'a' takes its end");
+        map.HitTest(new Point(3, 3)).ShouldBe(2, "the row before 'b' takes its start");
+        map.HitTest(new Point(3, 2)).ShouldBe(1, "the equidistant row keeps the previous end");
+        map.OffsetAtVisualColumn(1, 0).ShouldBe(1);
+        map.OffsetAtVisualColumn(3, 0).ShouldBe(2);
+        map.OffsetAtVisualColumn(9, 0).ShouldBe(2);
     }
 
     /// <summary>Verifies a captured source occurrence resolves only by identity, range, and text

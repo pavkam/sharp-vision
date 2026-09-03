@@ -407,14 +407,30 @@ public sealed class TextInputEditingTests
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PasteAsync("a");
         await surface.Keyboard.PasteAsync("b");
+        input.Text.ShouldBe("ab");
 
-        // Act
+        // Act - the initial press undoes the second paste
+        await surface.ControlAsync('z');
+
+        // Assert
+        input.Text.ShouldBe("a");
+        surface.ShouldRender("a");
+        surface.ShouldHaveCursor(new Point(1, 0), visible: true);
+        input.CanUndo.ShouldBeTrue();
+
+        // Act - the held-key repeat of the same stroke
         await surface.SendAsync(
             Encoding.ASCII.GetBytes(FormattableString.Invariant($"\u001b[{(int) 'z'};5:2u")),
             "repeat Control+z");
 
-        // Assert - a repeat carries KeyAction.Repeat, which the undo command ignores
-        input.Text.ShouldBe("ab");
+        // Assert - a repeat carries KeyAction.Repeat, which the undo command ignores, so the
+        // first paste survives until a fresh initial press
+        input.Text.ShouldBe("a");
+        surface.ShouldRender("a");
+        input.CanUndo.ShouldBeTrue();
+        await surface.ControlAsync('z');
+        input.Text.ShouldBe(string.Empty);
+        surface.ShouldRender(string.Empty);
     }
 
     /// <summary>Verifies a programmatic Text assignment is itself an undo unit, so Control+Z
