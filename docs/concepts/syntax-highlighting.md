@@ -102,7 +102,8 @@ pair from stalling a line forever:
 flowchart TD
     A[At current offset in the line] --> B{Offset unchanged since last iteration?}
     B -->|Yes| C{Stall count exceeds 1,024?}
-    C -->|Yes| D[Emit the remaining line as one token in the active style; stop this line]
+    C -->|Yes| D1[Flush the pending run, if any, in the style active before the stall]
+    D1 --> D2[Emit the rest of the line as one token in the current top context's own style; stop this line]
     C -->|No| E[Increment stall count]
     B -->|No| F[Reset stall count to 0]
     E --> G[Try each rule in the top context's rule list, in order]
@@ -134,10 +135,18 @@ flowchart TD
     E -->|No| D
     F --> G{Target pushes one or more contexts? e.g. #pop!A!B}
     G -->|Yes| H[Push each context in order, carrying the match's captures and its own grammar]
-    G -->|No| I[No pushes; further chaining only continues if the stack did not bottom out]
-    H --> J[Chase further stay-less switches on the new top context]
-    I --> J
+    G -->|No| I[No pushes]
+    H --> J[Signal the caller: keep chasing stay-less switches on the new top context]
+    I --> K{Did the pop stay within bounds, without bottoming out?}
+    K -->|Yes| J
+    K -->|No| L[Signal the caller: stop - the pop bottomed out]
 ```
+
+Applying a switch only returns this chase-or-stop signal; it does not chase
+further switches itself. Only the empty-line and end-of-line context loops
+actually consume the signal to keep chasing. The main per-offset loop above
+applies one switch and returns to evaluating the new top context's rules from
+scratch, rather than chasing a further switch chain on its own.
 
 Case-insensitive keywords, `StringDetect`, and `WordDetect` use Qt-compatible
 Unicode simple case folding rather than .NET ordinal-ignore-case semantics. The
