@@ -1051,7 +1051,8 @@ public sealed class Theme
     /// own borderless Normal geometry, leaving every other state exactly as the passive "control"
     /// key resolves it. Use this as a leaf style's <c>StyleDefinitions.Control</c> fallback target
     /// for a directly focusable borderless control whose own content already owns hover, press,
-    /// selection, and current-item cues more specifically - a Table.</summary>
+    /// selection, and current-item cues more specifically - a custom borderless focusable control
+    /// that doesn't paint one large owner-surface behind independently styled children.</summary>
     /// <remarks>
     /// See <see cref="GetFocusableContainerStyleSet"/> for the bordered-geometry sibling and for
     /// why both are narrower than
@@ -1063,6 +1064,15 @@ public sealed class Theme
     /// terminal's reverse-video attribute on top as a safety net so focus stays visible; a custom
     /// theme that already authors genuinely different focus colors is used exactly as authored,
     /// with nothing forced on top of it.</para>
+    ///
+    /// <para>See <see cref="GetTabularControlStyleSet"/> for the sibling that deliberately omits
+    /// this reverse-video safety net. This method keeps it (<c>applyBorderlessFocusFallback: true</c>,
+    /// the default) because its own borderless geometry has no owner surface for the reversal to
+    /// damage. A table or document, by contrast, paints one large owner surface behind
+    /// independently styled cells; reversing that whole surface on focus would produce a solid
+    /// focus slab with normal-background islands rather than a clean cue, so
+    /// <see cref="GetTabularControlStyleSet"/> passes <c>applyBorderlessFocusFallback: false</c>
+    /// and leaves the strong filled cue to its own row/cell/selection styling instead.</para>
     /// </remarks>
     /// <returns>The cached complete per-state control-style set.</returns>
     public StyleStates<ControlStyle> GetFocusableControlStyleSet() =>

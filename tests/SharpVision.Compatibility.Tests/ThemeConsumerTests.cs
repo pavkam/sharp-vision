@@ -190,6 +190,27 @@ public sealed class ThemeConsumerTests
         focusableContainer.IsPointerOver.ShouldBe(passiveContainer.IsPointerOver);
     }
 
+    /// <summary>Verifies <see cref="Theme.GetFocusableControlStyleSet"/> - the narrower sibling for
+    /// a directly focusable borderless control such as a custom control whose own content already
+    /// owns hover, press, selection, and current-item cues more specifically - populates only
+    /// Focused/FocusWithin while leaving IsPointerOver exactly as the passive "control" key
+    /// resolves it.</summary>
+    [Fact]
+    public void GetFocusableControlStyleSet_WhenResolvedAgainstTheDarkTheme_PopulatesOnlyFocusedOverThePassiveControl()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Dark;
+        var passiveControl = theme.GetStyleSet(ControlStyle.Default);
+
+        // Act
+        var focusableControl = theme.GetFocusableControlStyleSet();
+
+        // Assert
+        var focused = focusableControl.Focused.ShouldNotBeNull();
+        focused.ShouldNotBe(focusableControl.Normal);
+        focusableControl.IsPointerOver.ShouldBe(passiveControl.IsPointerOver);
+    }
+
     /// <summary>Verifies <see cref="Theme.GetTabularControlStyleSet"/> - the owner-surface sibling
     /// for a control such as Table or Document that paints independently colored content over one
     /// shared surface - compiles and resolves from a genuinely public, non-<c>InternalsVisibleTo</c>
