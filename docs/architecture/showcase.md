@@ -216,7 +216,13 @@ to an explicit 18-cell overflow state. Its named item example retains current,
 event, command, style, and availability proof without a separate helper page.
 The Wrap page exposes independent Narrow/Widen controls for horizontal rows and
 Shorten/Lengthen controls for vertical columns; visible width, height, and
-source-order status make both reflow axes observable.
+source-order status make both reflow axes observable, and controls that have
+reached their endpoint disable instead of presenting a dead action. The Stack
+page uses real Buttons to prove reversed activation and Tab order, cycles one
+child through visible, hidden, and collapsed participation, and exposes a
+bounded `AutoScroll` viewport with live offset/cause status plus independent
+keyboard and wheel policy toggles. Dock's fixed specimens keep every semantic
+label within its committed card instead of relying on accidental clipping.
 
 The Charts group demonstrates retained chart controls rather than ad hoc Canvas
 drawings. Horizontal and vertical bars cover mixed-sign scaling, category

@@ -44,7 +44,7 @@ internal sealed class DockPane: CompositeControlBase
         bottom.Height = Length.Cells(3);
         Dock.SetSide(bottom, DockSide.Bottom);
         allSides.Children.Add(bottom);
-        allSides.Children.Add(Card("Editor workspace", BorderGlyphStyle.Rounded));
+        allSides.Children.Add(Card("Editor", BorderGlyphStyle.Rounded));
 
         // Repeated left sides consume the remainder in insertion order.
         Dock order = new() { Width = Length.Cells(42), Height = Length.Cells(7), LastChildFills = true, Spacing = 1 };
@@ -119,12 +119,12 @@ internal sealed class DockPane: CompositeControlBase
         // Star weights split the leftover axis space proportionally; 2* receives twice 1*'s share.
         Dock starWeights = new() { Width = Length.Cells(45), Height = Length.Cells(4), LastChildFills = false };
 
-        var single = Card("1* = 15 cells", BorderGlyphStyle.Light);
+        var single = Card("1* = 15", BorderGlyphStyle.Light);
         single.Width = Length.Star(1);
         Dock.SetSide(single, DockSide.Left);
         starWeights.Children.Add(single);
 
-        var doubled = Card("2* = 30 cells", BorderGlyphStyle.Heavy);
+        var doubled = Card("2* = 30", BorderGlyphStyle.Heavy);
         doubled.Width = Length.Star(2);
         Dock.SetSide(doubled, DockSide.Left);
         starWeights.Children.Add(doubled);
@@ -133,13 +133,13 @@ internal sealed class DockPane: CompositeControlBase
         // the reserving Star ends up wider than its unconstrained sibling instead of losing cells.
         Dock starMinimum = new() { Width = Length.Cells(40), Height = Length.Cells(4), LastChildFills = false };
 
-        var reserving = Card("24 min + 8 share", BorderGlyphStyle.Light);
+        var reserving = Card("24 min + 8", BorderGlyphStyle.Light);
         reserving.Width = Length.Star(1);
         reserving.MinWidth = Length.Cells(24);
         Dock.SetSide(reserving, DockSide.Left);
         starMinimum.Children.Add(reserving);
 
-        var unconstrained = Card("8 cells", BorderGlyphStyle.Heavy);
+        var unconstrained = Card("8", BorderGlyphStyle.Heavy);
         unconstrained.Width = Length.Star(1);
         Dock.SetSide(unconstrained, DockSide.Left);
         starMinimum.Children.Add(unconstrained);

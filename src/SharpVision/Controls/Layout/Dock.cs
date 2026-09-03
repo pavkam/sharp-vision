@@ -14,11 +14,7 @@ public sealed class Dock: Container
         InvalidationImpact.Measure);
 
     /// <summary>Initializes a dock that fills its parent layout slot.</summary>
-    public Dock()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        EnableChromeAuthoring();
-    }
+    public Dock() => InitializePanelPresentation();
 
     /// <summary>Gets or sets whether the last non-collapsed child fills remaining space.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>

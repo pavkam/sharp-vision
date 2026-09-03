@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerTests
 {
+    /// <summary>Verifies a caller-facing panel can apply the base class's shared presentation while
+    /// every container starts with the common automatic-input policy.</summary>
+    [Fact]
+    public void Constructor_WhenPanelPresentationIsInitialized_UsesSharedDefaults()
+    {
+        // Arrange and act
+        var container = new LayoutProbe();
+        var privateHost = new LayoutProbe(initializePanelPresentation: false);
+
+        // Assert
+        container.HorizontalAlignment.ShouldBe(HorizontalAlignment.Stretch);
+        privateHost.HorizontalAlignment.ShouldBe(HorizontalAlignment.Left);
+        container.IsKeyboardScrollingEnabled.ShouldBeTrue();
+        container.IsWheelScrollingEnabled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the shared panel initializer preserves the one-time chrome-authoring
+    /// boundary instead of silently accepting a second constructor-path invocation.</summary>
+    [Fact]
+    public void InitializePanelPresentation_WhenCalledTwice_Throws()
+    {
+        // Arrange
+        var container = new LayoutProbe { HorizontalAlignment = HorizontalAlignment.Right };
+
+        // Act
+        var exception = Should.Throw<InvalidOperationException>(container.InitializePanelPresentationAgain);
+
+        // Assert
+        exception.Message.ShouldContain("already enabled");
+        container.HorizontalAlignment.ShouldBe(HorizontalAlignment.Right);
+    }
+
     /// <summary>Verifies AutoSize reserves an always-visible rail outside a percentage child's settled viewport.</summary>
     [Fact]
     public void Layout_WhenAutoSizeHasAlwaysVisibleVerticalRail_PreservesThePercentageViewport()
@@ -416,6 +448,56 @@ public sealed class ContainerTests
         container.VerticalOffset.ShouldBe(2);
     }
 
+    /// <summary>Verifies disabling automatic keyboard scrolling leaves the navigation record
+    /// untouched for another routed owner instead of consuming it without moving the viewport.</summary>
+    [Fact]
+    public void OnEvent_WhenKeyboardScrollingIsDisabled_LeavesKeyUnhandledAndOffsetUnchanged()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            IsKeyboardScrollingEnabled = false,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        // Act
+        var eventArgs = container.RouteKey(Code.Down);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeFalse();
+        container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disabling automatic wheel scrolling on an inner viewport preserves
+    /// routed bubbling so the nearest enabled scrolling ancestor can consume the same record.</summary>
+    [Fact]
+    public void Wheel_WhenInnerWheelScrollingIsDisabled_BubblesToEnabledAncestor()
+    {
+        // Arrange
+        var outer = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var inner = new LayoutProbe
+        {
+            AutoScroll = true,
+            IsWheelScrollingEnabled = false,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        inner.Children.Add(new ProbeControl(new Size(4, 40)));
+        outer.Children.Add(inner);
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
+
+        // Act
+        var eventArgs = inner.RouteWheel(0, -2);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeTrue();
+        inner.VerticalOffset.ShouldBe(0);
+        outer.VerticalOffset.ShouldBe(2);
+    }
+
     /// <summary>Verifies unused wheel delta propagates to the nearest armed ancestor.</summary>
     [Fact]
     public void Wheel_WhenLeafAtEnd_PropagatesToArmedAncestor()
@@ -431,6 +513,33 @@ public sealed class ContainerTests
         inner.RaiseWheel(0, -3); // wheel over inner, which has no room
 
         outer.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies endpoint propagation skips an ancestor whose automatic wheel policy is
+    /// disabled instead of bypassing that policy through the shared ancestry walk.</summary>
+    [Fact]
+    public void Wheel_WhenLeafAtEndAndAncestorWheelScrollingIsDisabled_LeavesAncestorUnchanged()
+    {
+        // Arrange
+        var outer = new LayoutProbe
+        {
+            AutoScroll = true,
+            IsWheelScrollingEnabled = false,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var inner = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        inner.Children.Add(new ProbeControl(new Size(4, 4)));
+        outer.Children.Add(inner);
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
+
+        // Act
+        var eventArgs = inner.RouteWheel(0, -3);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeFalse();
+        inner.VerticalOffset.ShouldBe(0);
+        outer.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies a leaf that moves any amount - even less than the full requested delta -
@@ -485,6 +594,33 @@ public sealed class ContainerTests
         inner.RaiseKey(Code.Down);
 
         outer.VerticalOffset.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies endpoint propagation skips an ancestor whose automatic keyboard policy
+    /// is disabled instead of bypassing that policy through the shared ancestry walk.</summary>
+    [Fact]
+    public void Key_WhenLeafAtEndAndAncestorKeyboardScrollingIsDisabled_LeavesAncestorUnchanged()
+    {
+        // Arrange
+        var outer = new LayoutProbe
+        {
+            AutoScroll = true,
+            IsKeyboardScrollingEnabled = false,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        var inner = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        inner.Children.Add(new ProbeControl(new Size(4, 4)));
+        outer.Children.Add(inner);
+        outer.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(outer, new Size(4, 10));
+
+        // Act
+        var eventArgs = inner.RouteKey(Code.Down);
+
+        // Assert
+        eventArgs.IsHandled.ShouldBeFalse();
+        inner.VerticalOffset.ShouldBe(0);
+        outer.VerticalOffset.ShouldBe(0);
     }
 
     /// <summary>Verifies a key that cannot move any offset - on an axis this container does not

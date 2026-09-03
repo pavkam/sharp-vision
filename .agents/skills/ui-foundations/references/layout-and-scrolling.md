@@ -31,7 +31,10 @@ phase invalidation.
 3. Measure intrinsic content before final percentage resolution.
 4. Solve two-axis scrollbar feedback before final arrangement and clamp offsets
    after every extent or viewport change.
-5. Prove invalidation propagation, coalescing, clean-subtree reuse, and retry.
+5. Keep viewport geometry independent from automatic keyboard and wheel input
+   policy; disabling one input path must preserve routed bubbling and all other
+   scrolling entry points.
+6. Prove invalidation propagation, coalescing, clean-subtree reuse, and retry.
 
 ## Project-specific traps
 
@@ -40,6 +43,10 @@ phase invalidation.
 - Border sides reserve cells; shadows affect visual overflow, not desired size.
 - Scrolling and grow/shrink are intrinsic `Container` properties; there is no
   `ScrollView`.
+- `Container.InitializePanelPresentation()` owns the shared horizontal-stretch
+  and chrome-authoring setup. Caller-facing panels opt in from their
+  constructors; private presentation hosts must not expose raw chrome
+  customization.
 - Reentrant layout is rejected; queued invalidation is drained by the update
   cycle.
 

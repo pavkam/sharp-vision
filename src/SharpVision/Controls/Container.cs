@@ -43,6 +43,20 @@ public abstract class Container: ControlBase
         _scroll.VerticalValueChanged += OnVerticalChanged;
     }
 
+    /// <summary>Applies the conventional caller-facing panel presentation: horizontal stretch
+    /// alignment plus direct border and shadow authoring.</summary>
+    /// <remarks>Call this exactly once from a public layout panel's constructor. Private
+    /// presentation hosts should configure only the alignment they require so they do not expose
+    /// caller-authored chrome accidentally.</remarks>
+    /// <exception cref="InvalidOperationException">Panel presentation is already initialized, or
+    /// the attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    protected void InitializePanelPresentation()
+    {
+        EnableChromeAuthoring();
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+    }
+
     /// <summary>Gets the owned ordered children.</summary>
     public ControlCollection Children { get; }
 
@@ -446,6 +460,31 @@ public abstract class Container: ControlBase
         set => _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Measure, ApplyAutoScrollPolicy);
     }
 
+    /// <summary>Gets or sets whether an armed container automatically handles unmodified
+    /// navigation-key scrolling.</summary>
+    /// <remarks>When false, the key remains available to the routed-event ancestry unless another
+    /// control handles it. Programmatic scrolling and generated scrollbar interaction remain
+    /// available.</remarks>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public bool IsKeyboardScrollingEnabled
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    } = true;
+
+    /// <summary>Gets or sets whether an armed container automatically handles wheel scrolling.</summary>
+    /// <remarks>When false, the wheel record remains available to the routed-event ancestry unless
+    /// another control handles it. Programmatic scrolling and generated scrollbar interaction
+    /// remain available.</remarks>
+    /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public bool IsWheelScrollingEnabled
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    } = true;
+
     private void ApplyAutoScrollPolicy()
     {
         // Bars are created when scrolling is armed rather than lazily in
@@ -784,11 +823,11 @@ public abstract class Container: ControlBase
             return;
         }
 
-        if (eventArgs is KeyEventArgs key)
+        if (eventArgs is KeyEventArgs key && IsKeyboardScrollingEnabled)
         {
             Handle(key);
         }
-        else if (eventArgs is PointerEventArgs pointer)
+        else if (eventArgs is PointerEventArgs pointer && IsWheelScrollingEnabled)
         {
             Handle(pointer);
         }
@@ -924,17 +963,30 @@ public abstract class Container: ControlBase
 
     /// <summary>Offers the full scroll delta to this container, then - only when it moved no
     /// offset at all, not merely less than requested - the same full delta to each enclosing
-    /// armed ancestor in turn, stopping at the modal plane. A container that moves any amount
-    /// keeps the whole record for itself instead of handing a partial remainder outward within
-    /// the same event: latching, not chaining, is the documented contract (see
-    /// docs/concepts/scrolling.md) - an ancestor only ever sees a record whose delta
-    /// produced zero movement here, whether because this axis is already at its endpoint or
-    /// because nothing on it is scrollable. Shared by wheel and keyboard input.</summary>
+    /// armed ancestor whose matching automatic input policy is enabled, stopping at the modal
+    /// plane. A container that moves any amount keeps the whole record for itself instead of
+    /// handing a partial remainder outward within the same event: latching, not chaining, is the
+    /// documented contract (see docs/concepts/scrolling.md) - an ancestor only ever sees a record
+    /// whose delta produced zero movement here, whether because this axis is already at its
+    /// endpoint or because nothing on it is scrollable. Shared by wheel and keyboard input.</summary>
     /// <returns>True when at least one offset changed anywhere along the walk.</returns>
     private bool PropagateScroll(int x, int y, ScrollCause cause)
     {
+        Debug.Assert(
+            cause is ScrollCause.Keyboard or ScrollCause.Wheel,
+            "Automatic scroll propagation requires a keyboard or wheel cause.");
+
         for (var current = this; current is not null; current = Ancestor(current))
         {
+            var inputEnabled = cause == ScrollCause.Keyboard
+                ? current.IsKeyboardScrollingEnabled
+                : current.IsWheelScrollingEnabled;
+
+            if (!inputEnabled)
+            {
+                continue;
+            }
+
             var previousX = current.HorizontalOffset;
             var previousY = current.VerticalOffset;
             _ = current.ScrollBy(x, y, cause);

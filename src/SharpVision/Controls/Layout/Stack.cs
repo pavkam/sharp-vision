@@ -14,11 +14,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 public sealed class Stack: Container
 {
     /// <summary>Initializes a stack that fills its parent cross-axis slot.</summary>
-    public Stack()
-    {
-        HorizontalAlignment = HorizontalAlignment.Stretch;
-        EnableChromeAuthoring();
-    }
+    public Stack() => InitializePanelPresentation();
 
     /// <summary>Gets or sets the sequential layout axis.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
