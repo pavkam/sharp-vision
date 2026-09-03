@@ -103,6 +103,44 @@ public sealed class MenuSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
     }
 
+    /// <summary>Verifies a menu item's theme-authored Checked highlight survives the continuous Bar
+    /// plane too, the same way Selected and Pressed do. No bundled theme currently authors a
+    /// distinct "checked" input state, so this test authors one explicitly - otherwise the
+    /// continuous-plane fix's Checked coverage would be entirely unexercised.
+    /// <see cref="BarAppearance.Rebase"/> never touches Checked, so it stays theme-authored on
+    /// purpose.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenItemIsChecked_KeepsThemeOwnedHighlightBackgroundAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            inputStates: """, "checked": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        var target = new MenuItem { Text = "Target", Kind = MenuItemKind.Check };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(target);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply themed checked state");
+        var position = new Point(target.Bounds.X, target.Bounds.Y);
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+
+        // Act
+        await surface.UpdateAsync(() => target.IsChecked = true, "check target menu item");
+
+        // Assert the Checked highlight is not absorbed into the continuous Bar plane
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+        surface.Cell(position).Style.Background.ShouldNotBe(expectedBar);
+    }
+
     /// <summary>Verifies a Menu's unused and gap cells stay Bar-colored under the actual bundled
     /// Dark theme, where Bar differs from both Control and DisabledControl - proving the
     /// continuous background plane, and not a coincidentally-matching literal, is what fills the
