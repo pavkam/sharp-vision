@@ -39,6 +39,7 @@ classDiagram
 | Inherited `FadeProgress`    | `double`                                       | `0`        | Reports shared terminal-cell visibility from zero through one.                 |
 | `DisplayDuration`           | `TimeSpan`                                     | `5 s`      | Sets visible time after entrance; `Timeout.InfiniteTimeSpan` disables timeout. |
 | `IsDismissible`             | `bool`                                         | `true`     | Enables the close affordance and keyboard or pointer dismissal.                |
+| `CloseOnEscape`             | `bool`                                         | `true`     | Allows Escape dismissal independently from the other enabled close inputs.     |
 | `Style`                     | `ToastStyle?`                                  | `null`     | Sets one complete local presentation or uses themed Popup fallback.            |
 | `ActualStyle`               | `ToastStyle`                                   | Resolved   | Reports the complete resolved presentation.                                    |
 | `IsOpen`                    | `bool`                                         | `false`    | Reports whether this Toast is currently presented.                             |
@@ -54,10 +55,10 @@ classDiagram
 
 ## Keyboard
 
-| Key           | Behavior                                                               |
-| ------------- | ---------------------------------------------------------------------- |
-| Escape        | Dismisses a focused Toast when `IsDismissible` is `true`.              |
-| Enter / Space | Activates the focused close affordance when `IsDismissible` is `true`. |
+| Key           | Behavior                                                                       |
+| ------------- | ------------------------------------------------------------------------------ |
+| Escape        | Dismisses a focused Toast when `IsDismissible` and `CloseOnEscape` are `true`. |
+| Enter / Space | Activates the focused close affordance when `IsDismissible` is `true`.         |
 
 ## Presentation and timing
 
@@ -95,19 +96,21 @@ custom styles control that fill through `Face.Background`. Caller content keeps
 its own appearance, so layout-only wrappers that should visually belong to the
 Toast use a transparent background and inherit the Toast surface beneath them.
 
-A dismissible focused Toast handles Escape, Enter, and Space. The close glyph
-uses capture-aware pointer press and release semantics. Every route, including
-the display timeout, raises `CloseRequested` first; cancellation leaves the
-Toast open and suppresses `Closing` and `Closed`. A synchronous repeated
-`Dismiss()` from that request is absorbed by the shared request guard, so one
-request produces at most one close lifecycle. A vetoed display timeout leaves
-its timer active, so the Toast retries after another `DisplayDuration` instead
-of becoming permanently manual-only. Before `Closed` runs, the Toast has left
-its coordinator and presentation host and the shared close guard has released. A
-handler may therefore show the same Toast again as a distinct presentation; the
-completed dismissal does not remove that replacement. Removing an ancestor
-subtree clears the mounted bounds through the shared floating-surface detach
-path without publishing a requested-close lifecycle.
+A dismissible focused Toast handles Enter and Space and exposes the pointer
+close glyph. Escape follows the independent `CloseOnEscape` policy, so an
+application can leave the other input dismissal routes available without
+reserving Escape. The close glyph uses capture-aware pointer press and release
+semantics. Every route, including the display timeout, raises `CloseRequested`
+first; cancellation leaves the Toast open and suppresses `Closing` and `Closed`.
+A synchronous repeated `Dismiss()` from that request is absorbed by the shared
+request guard, so one request produces at most one close lifecycle. A vetoed
+display timeout leaves its timer active, so the Toast retries after another
+`DisplayDuration` instead of becoming permanently manual-only. Before `Closed`
+runs, the Toast has left its coordinator and presentation host and the shared
+close guard has released. A handler may therefore show the same Toast again as a
+distinct presentation; the completed dismissal does not remove that replacement.
+Removing an ancestor subtree clears the mounted bounds through the shared
+floating-surface detach path without publishing a requested-close lifecycle.
 
 A positive `FadeOutDuration` changes only accepted dismissal timing. `IsOpen`,
 the host edge, bounds, and coordinator remain committed while progress decreases
@@ -131,6 +134,7 @@ var toast = new Toast
     Animation = ToastAnimation.SlideLeft,
     FadeInDuration = TimeSpan.FromMilliseconds(120),
     FadeOutDuration = TimeSpan.FromMilliseconds(160),
+    CloseOnEscape = false,
     Style = ToastStyle.Error,
     Content = new Text("The server rejected the archive.")
 };
@@ -153,6 +157,8 @@ toast.Show(uploadButton);
   entrance effects complete.
 - Optional title, adornment, close affordance, arbitrary content, border, and
   semantic preset colors render as complete terminal cells.
+- Input dismissal can be disabled as a whole or Escape can be reserved
+  independently while pointer, Enter, and Space dismissal remain available.
 - Showing preserves existing focus and modality; successful dismissal removes
   the identical Toast object and publishes `Closing` before `Closed`.
 - A failing `Opened` observer rolls back the stack registration, public open

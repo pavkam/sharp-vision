@@ -208,7 +208,7 @@ public sealed class StyleKeyTests
     public void Of_WhenTabControlStyle_DerivesTheTabControlKey() =>
         StyleKey.Of<TabControlStyle>().ShouldBe("tabControl");
 
-    /// <summary>Verifies a theme can author the window close chrome, which was code-owned and
+    /// <summary>Verifies a theme can author the window interaction chrome, which was code-owned and
     /// unreachable while the glyph lived on the control class. "window" is one of the six
     /// well-known role sections and remains fully authorable.
     ///
@@ -219,16 +219,18 @@ public sealed class StyleKeyTests
     /// property could not produce a coherent ASCII frame.</para>
     /// </summary>
     [Fact]
-    public void Parse_WhenWindowSectionAuthorsCloseChrome_ResolvesTheAuthoredGlyphs()
+    public void Parse_WhenWindowSectionAuthorsInteractionChrome_ResolvesTheAuthoredValues()
     {
         var json = ThemeJson.Create(
-            windowExtra: """, "closeGlyph": "x", "closeLeftBracket": "(", "closeRightBracket": ")" """);
+            windowExtra: """, "closeGlyph": "x", "closeLeftBracket": "(", "closeRightBracket": ")", "resizeGripGlyph": "r", "resizeGripColor": "error" """);
 
         var style = ThemeCatalog.Parse(json).GetWindowStyleSet().Normal;
 
         style.CloseGlyph.ShouldBe(new Rune('x'));
         style.CloseLeftBracket.ShouldBe(new Rune('('));
         style.CloseRightBracket.ShouldBe(new Rune(')'));
+        style.ResizeGripGlyph.ShouldBe(new Rune('r'));
+        style.ResizeGripColor.ShouldBe(SemanticColor.Error);
     }
 
     /// <summary>The counter-case: an unauthored theme keeps the code-owned close chrome.</summary>
@@ -240,5 +242,7 @@ public sealed class StyleKeyTests
         style.CloseGlyph.ShouldBe(new Rune('■'));
         style.CloseLeftBracket.ShouldBe(new Rune('['));
         style.CloseRightBracket.ShouldBe(new Rune(']'));
+        style.ResizeGripGlyph.ShouldBe(new Rune('◢'));
+        style.ResizeGripColor.ShouldBe(SemanticColor.Accent);
     }
 }

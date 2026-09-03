@@ -30,7 +30,12 @@ public sealed record SaveFileDialogStyle: FileDialogStyle
             CloseMarkColor = window.CloseMarkColor,
             CloseMarkActiveColor = window.CloseMarkActiveColor,
             CloseMarkPressedColor = window.CloseMarkPressedColor,
-            CloseMarkDisabledColor = window.CloseMarkDisabledColor
+            CloseMarkDisabledColor = window.CloseMarkDisabledColor,
+            ResizeGripGlyph = window.ResizeGripGlyph,
+            ResizeGripColor = window.ResizeGripColor,
+            ResizeGripActiveColor = window.ResizeGripActiveColor,
+            ResizeGripPressedColor = window.ResizeGripPressedColor,
+            ResizeGripDisabledColor = window.ResizeGripDisabledColor
         };
 
     /// <summary>Initializes a complete SaveFileDialog presentation.</summary>

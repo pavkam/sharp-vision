@@ -25,6 +25,26 @@ public sealed class WindowTests
 
         window.Pending.ShouldBe(Invalidation.Render);
     }
+
+    /// <summary>Verifies a Theme-only resize-grip change invalidates a resizable Window render.</summary>
+    [Fact]
+    public void SetTheme_WhenResizeGripChanges_InvalidatesRender()
+    {
+        var previous = ThemeCatalog.Parse(ThemeJson.Create(windowExtra: """, "resizeGripGlyph": "r" """));
+        var current = ThemeCatalog.Parse(ThemeJson.Create(windowExtra: """, "resizeGripGlyph": "+" """));
+        using var window = new Window { CanResize = true };
+        window.SetTheme(previous);
+        var size = new Size(10, 4);
+        new LayoutEngine().Layout(window, size);
+        using var frame = new Frame(size);
+        window.Render(frame.Canvas);
+        window.Clear(Invalidation.All);
+
+        window.SetTheme(current);
+
+        window.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies a Window owns an opaque semantic background distinct from ordinary
     /// Control/Container content, without caller styling.</summary>
     [Fact]
@@ -788,17 +808,17 @@ public sealed class WindowTests
         ReadRow(frame, 0, 3).ShouldBe("╔═╗");
     }
 
-    /// <summary>Verifies unhandled Enter and Escape invoke the first available default and cancel button inside the window.</summary>
+    /// <summary>Verifies unhandled Enter and Escape invoke the first available default and cancel
+    /// button inside the window with keyboard activation identity.</summary>
     [Fact]
-    public void Dispatch_WhenEnterOrEscapeIsUnhandled_InvokesWindowDefaultOrCancelButton()
+    public void Dispatch_WhenEnterOrEscapeIsUnhandled_InvokesWindowFallbackWithKeyboardCause()
     {
-        var defaults = 0;
-        var cancels = 0;
+        var causes = new List<ActivationCause>();
         var content = new Stack();
         var accept = new Button { IsDefault = true };
         var cancel = new Button { IsCancel = true };
-        accept.Click += (_, _) => defaults++;
-        cancel.Click += (_, _) => cancels++;
+        accept.Click += (_, eventArgs) => causes.Add(eventArgs.Cause);
+        cancel.Click += (_, eventArgs) => causes.Add(eventArgs.Cause);
         content.Children.Add(accept);
         content.Children.Add(cancel);
         var window = new Window { Content = content };
@@ -806,8 +826,7 @@ public sealed class WindowTests
         _ = Router.Route(window, Events.Key, Key(Code.Enter));
         _ = Router.Route(window, Events.Key, Key(Code.Escape));
 
-        defaults.ShouldBe(1);
-        cancels.ShouldBe(1);
+        causes.ShouldBe([ActivationCause.Keyboard, ActivationCause.Keyboard]);
     }
 
     /// <summary>Verifies Window fallback buttons accept text-producing incidental modifiers while

@@ -6,7 +6,7 @@ namespace SharpVision.Styling;
 /// <summary>Defines code-owned glyphs for borders, block shadows, and window chrome.</summary>
 internal readonly record struct ChromeGlyphs
 {
-    /// <summary>Initializes one complete border family plus shadow and close glyphs.</summary>
+    /// <summary>Initializes one complete border family plus shadow and window-interaction glyphs.</summary>
     /// <param name="topLeft">The top-left border corner.</param>
     /// <param name="top">The top border edge.</param>
     /// <param name="topRight">The top-right border corner.</param>
@@ -22,6 +22,7 @@ internal readonly record struct ChromeGlyphs
     /// <param name="windowCloseLeft">The opening window-close bracket.</param>
     /// <param name="windowClose">The window-close glyph.</param>
     /// <param name="windowCloseRight">The closing window-close bracket.</param>
+    /// <param name="windowResize">The bottom-right window-resize grip.</param>
     public ChromeGlyphs(
         ControlGlyph topLeft,
         ControlGlyph top,
@@ -37,7 +38,8 @@ internal readonly record struct ChromeGlyphs
         ControlGlyph fractionalFull,
         ControlGlyph windowCloseLeft,
         ControlGlyph windowClose,
-        ControlGlyph windowCloseRight)
+        ControlGlyph windowCloseRight,
+        ControlGlyph windowResize)
     {
         TopLeft = topLeft;
         Top = top;
@@ -54,6 +56,7 @@ internal readonly record struct ChromeGlyphs
         WindowCloseLeft = windowCloseLeft;
         WindowClose = windowClose;
         WindowCloseRight = windowCloseRight;
+        WindowResize = windowResize;
     }
 
     /// <summary>Gets the top-left border corner.</summary>
@@ -100,4 +103,7 @@ internal readonly record struct ChromeGlyphs
 
     /// <summary>Gets the closing window-close bracket.</summary>
     public ControlGlyph WindowCloseRight { get; }
+
+    /// <summary>Gets the bottom-right window-resize grip.</summary>
+    public ControlGlyph WindowResize { get; }
 }

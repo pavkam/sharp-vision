@@ -31,6 +31,9 @@ navigation entry, event log, responsive behavior, or visual capture.
 3. Verify narrow, normal, and wide sizes plus long content and focus traversal.
 4. Use `scripts/capture-showcase.sh` for deterministic launch, navigation,
    pointer injection, capture, and rendering rather than fixed sleeps.
+5. For Windows, Popups, Flyouts, Toasts, menus, and dialogs, run the real
+   Showcase in a terminal (use an isolated tmux server when unattended), scroll
+   the complete page, and drive each promised keyboard and pointer path.
 
 ## Project-specific traps
 
@@ -40,6 +43,12 @@ navigation entry, event log, responsive behavior, or visual capture.
   targeted mounted regression when the example makes a behavioral promise.
 - Preserve current semantic colors; literal colors are for exact color semantics
   only.
+- Keep status labels, background actions, and other underlay controls outside a
+  transient surface's footprint unless overlap is the behavior under test.
+  Inspect the cells immediately around every open frame: protruding authored
+  underlay is a pane-layout bug, while stale surface cells are a renderer bug.
+- Every interactive corner, mark, or handle needs a visible affordance and a
+  live specimen that proves its customization and state changes.
 - A fixed `Length.Cells` specimen width above roughly 46-47 usable columns
   silently clamps and disappears instead of overflowing: `ControlBase`'s
   `ResolveArrangeAxis` clamps an over-wide fixed request down to the available

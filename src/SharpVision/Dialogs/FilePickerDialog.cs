@@ -183,7 +183,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
 
     private protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
 
-    private protected override WindowStyle ResolveCloseChromeStyle(Theme? theme) =>
+    private protected override WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
         FilePickerDialogStyle.Definition.Resolve(_style.LocalValue, theme);
 
     private static string DefaultSelectionFormat(int count) => $"{count} {(count == 1 ? "file" : "files")} selected";

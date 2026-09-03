@@ -107,6 +107,17 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
     public void PerformClick() => _ = TryActivate(ActivationCause.Programmatic);
 
+    /// <summary>Activates an available executable Button through an owning framework interaction.</summary>
+    /// <param name="cause">The validated input route that initiated the activation.</param>
+    /// <remarks>
+    /// This seam lets retained owners such as Window preserve the real input identity when they
+    /// invoke a fallback Button on behalf of an unhandled routed key.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is undefined.</exception>
+    /// <exception cref="InvalidOperationException">The attached Button is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
+    internal void PerformClick(ActivationCause cause) => _ = TryActivate(cause);
+
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {

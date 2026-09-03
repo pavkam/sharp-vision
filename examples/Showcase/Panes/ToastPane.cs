@@ -23,6 +23,9 @@ internal sealed class ToastPane: CompositeControlBase
         var position = CreatePicker(Array.ConvertAll(_positions, static value => value.ToString()), 2);
         var animation = CreatePicker(Array.ConvertAll(_animations, static value => value.ToString()), 5);
         var style = CreatePicker(_styleNames, 0);
+        var dismissible = new CheckBox { Text = "&Dismissible", IsChecked = true };
+        var closeOnEscape = new CheckBox { Text = "Close on &Escape", IsChecked = true };
+        var persistent = new CheckBox { Text = "&Persistent" };
         var launch = new Button { Text = "Show &toast" };
         var selectedStatus = new Text("Ready: TopRight · Fade · Info") { Overflow = Overflow.Wrap };
         launch.Click += (_, _) =>
@@ -36,6 +39,9 @@ internal sealed class ToastPane: CompositeControlBase
                 selectedAnimation,
                 selectedStyle,
                 _styleNames[style.SelectedIndex],
+                dismissible.IsChecked == true,
+                closeOnEscape.IsChecked == true,
+                persistent.IsChecked == true,
                 selectedStatus);
         };
 
@@ -43,6 +49,8 @@ internal sealed class ToastPane: CompositeControlBase
             new DocRow(new Text("Position  "), position),
             new DocRow(new Text("Animation "), animation),
             new DocRow(new Text("Style     "), style),
+            new DocRow(dismissible, closeOnEscape),
+            new DocRow(persistent),
             new DocRow(launch),
             selectedStatus)
         {
@@ -61,6 +69,9 @@ internal sealed class ToastPane: CompositeControlBase
             ToastAnimation.SlideLeft,
             ToastStyle.Info,
             "Info",
+            isDismissible: true,
+            closeOnEscape: true,
+            persistent: false,
             comparisonStatus);
         error.Click += (_, _) => ShowToast(
             error,
@@ -68,6 +79,9 @@ internal sealed class ToastPane: CompositeControlBase
             ToastAnimation.SlideTop,
             ToastStyle.Error,
             "Error",
+            isDismissible: true,
+            closeOnEscape: true,
+            persistent: false,
             comparisonStatus);
 
         return new DocPage(
@@ -76,12 +90,12 @@ internal sealed class ToastPane: CompositeControlBase
             new DocSection(
                 "🎛️",
                 "Position and animation",
-                "Choose any edge slot and entrance. Fade uses the shared surface dissolve; Slide and Expand compose with it. The visible lifetime begins only after every entrance effect completes.",
+                "Choose any edge slot, entrance, input-dismiss policy, and lifetime. Fade uses the shared surface dissolve; Slide and Expand compose with it. The visible lifetime begins only after every entrance effect completes.",
                 new DocExample(
                     "Interactive notification",
-                    "Select a position, animation, and style, then activate Show toast. Repeated activations stack newest nearest the selected edge.",
+                    "Select a position, animation, and style. Toggle Dismissible, Close on Escape, or Persistent, then activate Show toast. Repeated activations stack newest nearest the selected edge.",
                     new DocCard(selector),
-                    "toast.Position = ToastPosition.TopRight;\ntoast.Animation = ToastAnimation.Fade;\ntoast.FadeOutDuration = TimeSpan.FromMilliseconds(160);\ntoast.Show(owner);")),
+                    "toast.Position = ToastPosition.TopRight;\ntoast.Animation = ToastAnimation.Fade;\ntoast.IsDismissible = true;\ntoast.CloseOnEscape = false;\ntoast.DisplayDuration = Timeout.InfiniteTimeSpan;\ntoast.Show(owner);")),
             new DocSection(
                 "🚨",
                 "Semantic styles",
@@ -119,6 +133,9 @@ internal sealed class ToastPane: CompositeControlBase
         ToastAnimation animation,
         ToastStyle style,
         string styleName,
+        bool isDismissible,
+        bool closeOnEscape,
+        bool persistent,
         Text status)
     {
         var toast = new Toast
@@ -129,7 +146,9 @@ internal sealed class ToastPane: CompositeControlBase
             Animation = animation,
             FadeInDuration = TimeSpan.FromMilliseconds(120),
             FadeOutDuration = TimeSpan.FromMilliseconds(160),
-            DisplayDuration = TimeSpan.FromSeconds(8),
+            DisplayDuration = persistent ? Timeout.InfiniteTimeSpan : TimeSpan.FromSeconds(8),
+            IsDismissible = isDismissible,
+            CloseOnEscape = closeOnEscape,
             Style = style,
             Content = new Stack
             {
@@ -144,6 +163,8 @@ internal sealed class ToastPane: CompositeControlBase
         };
         toast.Closed += (_, _) => owner.Dispatcher?.Post(toast.Dispose);
         toast.Show(owner);
-        status.Content = $"Shown: {position} · {animation} · {styleName}";
+        status.Content = $"Shown: {position} · {animation} · {styleName} · " +
+            $"{(isDismissible ? "dismissible" : "input locked")} · " +
+            $"{(persistent ? "persistent" : "8 s")}";
     }
 }

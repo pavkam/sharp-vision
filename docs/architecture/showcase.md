@@ -348,6 +348,14 @@ overlay surfaces, and regenerates the checked-in images; the coverage validator
 requires every mapped page, asset, and document reference to agree. The complete
 gallery image remains illustrative rather than an automated contract.
 
+Transient-surface panes also require an interactive terminal pass across their
+full scrolled page. That pass drives the documented keyboard and pointer paths,
+checks every visible policy control, and inspects cells immediately outside the
+elevated frame. A protruding underlay control is a specimen-composition defect;
+stale cells inside or outside a surface after movement or dismissal are a
+rendering defect. The evidence must distinguish those cases instead of labeling
+every overlap artifact as a compositor failure.
+
 Modality is not covered at the showcase-pane layer. Window isolation, popup
 dismissal, and `ModalScope` identity across menu and submenu transitions are
 proved against purpose-built trees in the modality suites described under

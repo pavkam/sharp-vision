@@ -259,7 +259,7 @@ test("manifest_WhenContainedPopupSurfacesAreCaptured_ShowsTheOpenSurfaceInItsExa
     ]);
 });
 
-test("manifest_WhenFocusedExamplesMutate_CapturesBothWrapAxesAndWindowDefault", () => {
+test("manifest_WhenFocusedExamplesMutate_CapturesWrapAxesAndWindowAffordances", () => {
     const wrap = controls.find(({ doc }) => doc === "controls/layout/wrap");
     const window = controls.find(({ doc }) => doc === "controls/windows/window");
 
@@ -282,6 +282,10 @@ test("manifest_WhenFocusedExamplesMutate_CapturesBothWrapAxesAndWindowDefault", 
             name: "default-action",
             example: "Focus command target",
             actions: [{ click: "Focus command target" }, { key: "Enter" }],
+        },
+        {
+            name: "resizable",
+            example: "Size: 24 × 7",
         },
     ]);
 });

@@ -163,7 +163,7 @@ internal sealed class FlyoutPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>Flyout</info> displays anchored overlay content with automatic light dismiss. Simpler than Popup — always dismisses on outside press, no modal support.",
+            "<info>Flyout</info> defaults to anchored modeless light dismiss while retaining Popup's explicit modal presentation API.",
             new DocSection(
                 "💬",
                 "Basic flyout",

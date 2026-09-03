@@ -22,8 +22,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private const int _closeTargetWidth = 3;
     private const int _minimumCloseWidth = 4;
 
-    private readonly PressBehavior _closeInteraction;
-    private readonly ThemeValueDependency<WindowCloseChromeThemeValue> _closeChromeThemeDependency;
+    private readonly ThemeValueDependency<WindowInteractionChromeThemeValue> _interactionChromeThemeDependency;
     private bool _dragging;
     private Point _dragPointerOrigin;
     private Point _dragWindowOrigin;
@@ -33,6 +32,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private Point _resizeWindowPosition;
     private bool _closePointerOver;
     private bool _closePressed;
+    private bool _resizePointerOver;
     private bool _isShowingModal;
 
     #region Construction and properties
@@ -44,21 +44,15 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <summary>Initializes an opaque movable Window with a paired-line border and composite shadow.</summary>
     public Window()
     {
-        _closeChromeThemeDependency = new ThemeValueDependency<WindowCloseChromeThemeValue>(
-            ResolveCloseChromeThemeValue,
+        _interactionChromeThemeDependency = new ThemeValueDependency<WindowInteractionChromeThemeValue>(
+            ResolveInteractionChromeThemeValue,
             InvalidationImpact.Render);
-        _closeInteraction = new PressBehavior(
+        InitializeSurfaceCloseInteraction(
             ResolveCloseTargetBounds,
             () => !IsDisposed && CanClose && EffectiveIsEnabled && EffectiveIsVisible && ResolveCloseTargetBounds().Width > 0,
             static () => false,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
             SetClosePressed,
-            _ => RequestClose(),
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_closeInteraction);
+            _ => RequestClose());
         BeginSurfaceOpenLifetime();
         PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
@@ -215,7 +209,8 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// Resizing keeps the window's top-left corner fixed and adjusts <see cref="ControlBase.Width"/> and
     /// <see cref="ControlBase.Height"/> within <see cref="ControlBase.MinWidth"/>/<see cref="ControlBase.MaxWidth"/>,
     /// <see cref="ControlBase.MinHeight"/>/<see cref="ControlBase.MaxHeight"/>, and the parent's committed
-    /// content area. Off by default.
+    /// content area. While enabled, the one-cell bottom-right target renders a visible themeable grip.
+    /// Off by default.
     /// Setting this property to <see langword="false"/> ends an active resize gesture on its next
     /// pointer event.
     /// </remarks>
@@ -224,7 +219,15 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     public bool CanResize
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+        set
+        {
+            _ = SetProperty(ref field, value, InvalidationImpact.Render);
+
+            if (!value)
+            {
+                SetResizePointerOver(false);
+            }
+        }
     }
 
     /// <summary>Gets or sets whether the window renders a framed close affordance in the title edge.</summary>
@@ -427,6 +430,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         var borderStyles = this.ResolveBorderStyles(GetAppearanceState());
         var border = borderStyles.Top;
         var closeMark = ResolveCloseMarkStyle(border);
+        var resizeGrip = ResolveResizeGripStyle(border);
         var background = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;
         var borderGlyphs = ResolveBorderGlyphs(actualBorder.GlyphStyle);
@@ -521,13 +525,22 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 closeMark,
                 background);
         }
+
+        if (CanResize)
+        {
+            canvas.DrawRune(
+                ResolveResizeGripGlyph(),
+                new Point(Bounds.Right - 1, Bounds.Bottom - 1),
+                resizeGrip,
+                background);
+        }
     }
 
-    /// <summary>Gets the window style whose close-chrome members (glyphs and mark colors) back
-    /// this Window's close affordance, falling back to the code-owned default.</summary>
+    /// <summary>Gets the window style whose interaction glyphs and colors back this Window's close
+    /// and resize affordances, falling back to the code-owned default.</summary>
     /// <param name="theme">The theme to resolve against, or null for the code-owned default.</param>
     /// <remarks>
-    /// The close chrome reads its glyphs from here rather than from the internal
+    /// The interaction chrome reads its glyphs from here rather than from the internal
     /// <c>ControlGlyphs</c> registry, which nothing in the theme pipeline parses. Window resolves
     /// appearance through <c>GetDefaultAppearanceStates</c>, which flattens the style to
     /// <c>AppearanceStates</c> and drops every non-appearance member, so the style set is consulted
@@ -535,26 +548,36 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// "window" theme section, so this base implementation is that section's Normal state; a
     /// dialog subtype that owns its own style overrides this to resolve its own section instead.
     /// </remarks>
-    private protected virtual WindowStyle ResolveCloseChromeStyle(Theme? theme) =>
+    private protected virtual WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetWindowStyleSet().Normal;
 
-    /// <summary>Resolves every close-chrome member to immutable Theme-specific data.</summary>
-    private WindowCloseChromeThemeValue ResolveCloseChromeThemeValue(Theme theme)
+    /// <summary>Resolves every interaction-chrome member to immutable Theme-specific data.</summary>
+    private WindowInteractionChromeThemeValue ResolveInteractionChromeThemeValue(Theme theme)
     {
-        var style = ResolveCloseChromeStyle(theme);
-        return new WindowCloseChromeThemeValue(
+        var style = ResolveInteractionChromeStyle(theme);
+        return new WindowInteractionChromeThemeValue(
             style.CloseGlyph,
             style.CloseLeftBracket,
             style.CloseRightBracket,
             style.CloseMarkColor.Resolve(theme),
             style.CloseMarkActiveColor.Resolve(theme),
             style.CloseMarkPressedColor.Resolve(theme),
-            style.CloseMarkDisabledColor.Resolve(theme));
+            style.CloseMarkDisabledColor.Resolve(theme),
+            style.ResizeGripGlyph,
+            style.ResizeGripColor.Resolve(theme),
+            style.ResizeGripActiveColor.Resolve(theme),
+            style.ResizeGripPressedColor.Resolve(theme),
+            style.ResizeGripDisabledColor.Resolve(theme));
     }
 
     private Rune ResolveCloseGlyph() =>
-        ResolveThemeValue(_closeChromeThemeDependency).CloseGlyph.Resolve(
+        ResolveThemeValue(_interactionChromeThemeDependency).CloseGlyph.Resolve(
             ControlGlyphs.Chrome.WindowClose.Fallback,
+            CellPolicy.AmbiguousWidth);
+
+    private Rune ResolveResizeGripGlyph() =>
+        ResolveThemeValue(_interactionChromeThemeDependency).ResizeGripGlyph.Resolve(
+            ControlGlyphs.Chrome.WindowResize.Fallback,
             CellPolicy.AmbiguousWidth);
 
     private void DrawFullCloseChrome(
@@ -566,12 +589,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         BackgroundMode background)
     {
         Debug.Assert(closeChrome.Width == _closeChromeWidth, "Full close chrome has its fixed width.");
-        var style = ResolveThemeValue(_closeChromeThemeDependency);
+        var style = ResolveThemeValue(_interactionChromeThemeDependency);
         var glyph = ResolveCloseGlyph();
-        var leftBracket = style.LeftBracket.Resolve(
+        var leftBracket = style.CloseLeftBracket.Resolve(
             ControlGlyphs.Chrome.WindowCloseLeft.Fallback,
             CellPolicy.AmbiguousWidth);
-        var rightBracket = style.RightBracket.Resolve(
+        var rightBracket = style.CloseRightBracket.Resolve(
             ControlGlyphs.Chrome.WindowCloseRight.Fallback,
             CellPolicy.AmbiguousWidth);
         var y = closeChrome.Y;
@@ -586,14 +609,27 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     private TerminalStyle ResolveCloseMarkStyle(TerminalStyle border)
     {
-        var style = ResolveThemeValue(_closeChromeThemeDependency);
+        var style = ResolveThemeValue(_interactionChromeThemeDependency);
         var foreground = !EffectiveIsEnabled
-            ? style.DisabledForeground
+            ? style.CloseDisabledForeground
             : _closePressed
-                ? style.PressedForeground
+                ? style.ClosePressedForeground
                 : _closePointerOver
-                    ? style.ActiveForeground
-                    : style.Foreground;
+                    ? style.CloseActiveForeground
+                    : style.CloseForeground;
+        return new TerminalStyle(foreground, border.Background, border.Attributes);
+    }
+
+    private TerminalStyle ResolveResizeGripStyle(TerminalStyle border)
+    {
+        var style = ResolveThemeValue(_interactionChromeThemeDependency);
+        var foreground = !EffectiveIsEnabled
+            ? style.ResizeGripDisabledForeground
+            : _resizing
+                ? style.ResizeGripPressedForeground
+                : _resizePointerOver
+                    ? style.ResizeGripActiveForeground
+                    : style.ResizeGripForeground;
         return new TerminalStyle(foreground, border.Background, border.Attributes);
     }
 
@@ -671,16 +707,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
             if (button is not null)
             {
-                button.PerformClick();
+                button.PerformClick(ActivationCause.Keyboard);
                 eventArgs.IsHandled = true;
             }
-            else if (key.Stroke.Code == Code.Escape &&
-                     key.Stroke.Modifiers.IsActivationEligible() &&
-                     CloseOnEscape &&
-                     CanClose)
+            else
             {
-                RequestClose();
-                eventArgs.IsHandled = true;
+                _ = TryHandleSurfaceEscape(eventArgs, CloseOnEscape && CanClose, RequestClose);
             }
 
             return;
@@ -689,6 +721,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (eventArgs is PointerEventArgs pointer)
         {
             UpdateClosePointerOver(pointer);
+            UpdateResizePointerOver(pointer);
 
             // While a title-bar drag or corner resize is in flight, the gesture owns pointer
             // capture and every subsequent event until it ends. Routing those events through
@@ -704,7 +737,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // handled.
             if (!_dragging && !_resizing)
             {
-                _closeInteraction.Handle(pointer);
+                HandleSurfaceCloseInteraction(pointer);
             }
 
             if (!pointer.IsHandled)
@@ -719,7 +752,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     {
         base.OnLostPointerCapture(reason);
         _dragging = false;
-        _resizing = false;
+        SetResizing(false);
     }
 
     /// <inheritdoc/>
@@ -731,6 +764,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (!isPointerOver)
         {
             SetClosePointerOver(false);
+            SetResizePointerOver(false);
         }
     }
 
@@ -843,6 +877,40 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         Invalidate(InvalidationImpact.Render);
     }
 
+    private void UpdateResizePointerOver(PointerEventArgs eventArgs)
+    {
+        Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
+        var pointer = eventArgs.Pointer;
+        var isPointerOver = pointer.Action != PointerAction.Leave &&
+            CanResize &&
+            EffectiveIsEnabled &&
+            pointer.Cells is { } cells &&
+            IsResizeCorner(cells);
+        SetResizePointerOver(isPointerOver);
+    }
+
+    private void SetResizePointerOver(bool value)
+    {
+        if (_resizePointerOver == value)
+        {
+            return;
+        }
+
+        _resizePointerOver = value;
+        Invalidate(InvalidationImpact.Render);
+    }
+
+    private void SetResizing(bool value)
+    {
+        if (_resizing == value)
+        {
+            return;
+        }
+
+        _resizing = value;
+        Invalidate(InvalidationImpact.Render);
+    }
+
     private void HandlePointerDrag(PointerEventArgs eventArgs)
     {
         Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
@@ -860,7 +928,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             (_dragging || _resizing))
         {
             _dragging = false;
-            _resizing = false;
+            SetResizing(false);
             ReleasePointerCapture();
             eventArgs.IsHandled = true;
             return;
@@ -878,7 +946,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // with the title bar row, and resizing is the more specific gesture there.
             if (CanResize && IsResizeCorner(cells) && CapturePointer())
             {
-                _resizing = true;
+                SetResizing(true);
                 _resizePointerOrigin = cells;
                 _resizeWindowOrigin = new Size(LocalBounds.Width, LocalBounds.Height);
                 _resizeWindowPosition = new Point(LocalBounds.X, LocalBounds.Y);
@@ -905,7 +973,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if ((_resizing && !CanResize) || (_dragging && !CanMove))
         {
             _dragging = false;
-            _resizing = false;
+            SetResizing(false);
             ReleasePointerCapture();
             eventArgs.IsHandled = true;
             return;

@@ -209,6 +209,7 @@ const entryPattern = (marker, page) =>
 // instead of scrolling the page underneath it.
 const sessionWidth = 150;
 const sessionHeight = 50;
+const maximumPageScrolls = 120;
 
 const main = async () => {
     const requested = new Set(process.argv.slice(2));
@@ -401,7 +402,7 @@ const main = async () => {
                 100,
             );
 
-            for (let scroll = 0; scroll < 40; scroll += 1) {
+            for (let scroll = 0; scroll < maximumPageScrolls; scroll += 1) {
                 if (locateExampleBox(capture()) !== null) break;
 
                 sendSgr(65, sessionWidth - 2, 25, "M");
@@ -417,7 +418,7 @@ const main = async () => {
                 let baseline = null;
                 let rect = null;
 
-                for (let scroll = 0; scroll < 40; scroll += 1) {
+                for (let scroll = 0; scroll < maximumPageScrolls; scroll += 1) {
                     // Park the pointer outside the pane so no specimen renders
                     // its hover appearance in the captured frame.
                     sendSgr(35, 0, 0, "M");

@@ -7,7 +7,6 @@ using System.Runtime.ExceptionServices;
 
 using SharpVision.Controls.Layout;
 using SharpVision.Surfaces;
-using SharpVision.Terminal.Input;
 
 /// <summary>Displays one retained content control as a non-modal transient notification surface.</summary>
 /// <remarks>
@@ -19,7 +18,6 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 {
     private static readonly TimeSpan _animationRefreshInterval = TimeSpan.FromMilliseconds(16);
 
-    private readonly PressBehavior _closeInteraction;
     private readonly StyleSlot<ToastStyle> _style;
     private DispatcherTimer? _animationTimer;
     private ToastAnimationState? _animationState;
@@ -34,19 +32,13 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     public Toast()
     {
         _style = InitializeStyle(ToastStyle.Definition);
-        _closeInteraction = new PressBehavior(
+        InitializeSurfaceCloseInteraction(
             ResolveCloseTargetBounds,
             () => !IsDisposed && IsDismissible && IsOpen && EffectiveIsEnabled && EffectiveIsVisible &&
                 ResolveCloseTargetBounds().Width > 0,
             static () => true,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
             SetPressed,
-            _ => Dismiss(),
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_closeInteraction);
+            _ => Dismiss());
         IsFocusable = true;
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
@@ -197,7 +189,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 return;
             }
 
-            CaptureFailure(_closeInteraction.Unavailable, ref failure);
+            CaptureFailure(CancelSurfaceCloseInteraction, ref failure);
             CaptureFailure(
                 () =>
                 {
@@ -209,6 +201,19 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 ref failure);
             failure?.Throw();
         }
+    } = true;
+
+    /// <summary>Gets or sets whether Escape may request dismissal while input dismissal is enabled.</summary>
+    /// <remarks>
+    /// This policy is independent from <see cref="IsDismissible"/> so an application can retain
+    /// the pointer and Enter/Space close affordance without reserving Escape.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached Toast is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The Toast is disposed.</exception>
+    public bool CloseOnEscape
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
     } = true;
 
     /// <summary>Gets whether this Toast is currently presented.</summary>
@@ -480,19 +485,12 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             return;
         }
 
-        if (eventArgs is KeyEventArgs
-            {
-                Stroke.Action: KeyAction.Press,
-                Stroke.Code: Code.Escape,
-                Stroke.Modifiers: var modifiers
-            } && modifiers.IsActivationEligible())
+        if (TryHandleSurfaceEscape(eventArgs, CloseOnEscape, Dismiss))
         {
-            eventArgs.IsHandled = true;
-            Dismiss();
             return;
         }
 
-        _closeInteraction.Handle(eventArgs);
+        HandleSurfaceCloseInteraction(eventArgs);
     }
 
     /// <inheritdoc/>

@@ -34,7 +34,7 @@ classDiagram
 | `Header`                                                                                      | `string`                                       | Empty                              | Non-null header text written into the top edge; rejects terminal control characters.                                                         |
 | `HeaderPlacement`                                                                             | `WindowTitlePlacement`                         | `Left`                             | Aligns the header left or right within the lane left over after close chrome, or centers it on the whole frame and clamps it into that lane. |
 | `CanMove`                                                                                     | `bool`                                         | `true`                             | Whether the window can be dragged by its title bar.                                                                                          |
-| `CanResize`                                                                                   | `bool`                                         | `false`                            | Whether the window can be resized by dragging its bottom-right corner.                                                                       |
+| `CanResize`                                                                                   | `bool`                                         | `false`                            | Whether the window shows a `◢` grip and can be resized by dragging its bottom-right corner.                                                  |
 | `CanClose`                                                                                    | `bool`                                         | `true`                             | Whether the window renders a framed close affordance in the title edge.                                                                      |
 | `CloseOnEscape`                                                                               | `bool`                                         | `false`                            | Whether Escape requests closure when no cancel button handles it.                                                                            |
 | `ClosePlacement`                                                                              | `WindowClosePlacement`                         | `Left`                             | Places close chrome after the left corner or before the right corner.                                                                        |
@@ -93,43 +93,46 @@ release, pointer leave, capture loss, disable, hide, detach, or disposal do the
 same.
 
 When `CanResize` is true, a drag whose button mask includes Primary from the
-single bottom-right corner cell captures the pointer and writes `Width` and
-`Height` from the absolute pointer movement. The top-left corner stays fixed
-because the gesture also writes Overlay `Left` and `Top` offsets from the
-corner's starting position — so, just as a title drag does, a resize converts
-the window to an explicitly positioned one, regardless of whatever alignment or
-`Right`/`Bottom` anchoring placed it beforehand. The result is clamped to
-`MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent content bounds.
-Cell and percentage limits share the ordinary layout contract; each pointer move
-resolves percentage limits from the current parent content extent, so a resized
-parent immediately changes the interactive floor or ceiling. The corner hit is
-checked before the title-bar hit, so a minimum-height window resizes rather than
-drags when the two targets coincide. Only the bottom-right corner is an
-interactive target; the other three corners and the four edges are not resize
-handles. Setting `CanResize` to false during a gesture ends it; release, pointer
-leave, capture loss, disable, hide, detach, or disposal do the same. Width,
-height, and origin commits revalidate permission, active capture, parent,
-dimensions, and four overlay anchors after each observable setter. A callback
-that ends the gesture or makes a newer sizing or anchoring decision therefore
-stops the remaining stale resize writes. Resize arithmetic widens accepted
-pointer coordinates before addition, so an extreme outward cell clamps to the
-authored and parent maximum instead of wrapping inward.
+single visible `◢` bottom-right corner grip captures the pointer and writes
+`Width` and `Height` from the absolute pointer movement. The top-left corner
+stays fixed because the gesture also writes Overlay `Left` and `Top` offsets
+from the corner's starting position — so, just as a title drag does, a resize
+converts the window to an explicitly positioned one, regardless of whatever
+alignment or `Right`/`Bottom` anchoring placed it beforehand. The result is
+clamped to `MinWidth`/`MaxWidth`, `MinHeight`/`MaxHeight`, and the parent
+content bounds. Cell and percentage limits share the ordinary layout contract;
+each pointer move resolves percentage limits from the current parent content
+extent, so a resized parent immediately changes the interactive floor or
+ceiling. The corner hit is checked before the title-bar hit, so a minimum-height
+window resizes rather than drags when the two targets coincide. Only the
+bottom-right corner is an interactive target; the other three corners and the
+four edges are not resize handles. Setting `CanResize` to false during a gesture
+ends it; release, pointer leave, capture loss, disable, hide, detach, or
+disposal do the same. Width, height, and origin commits revalidate permission,
+active capture, parent, dimensions, and four overlay anchors after each
+observable setter. A callback that ends the gesture or makes a newer sizing or
+anchoring decision therefore stops the remaining stale resize writes. Resize
+arithmetic widens accepted pointer coordinates before addition, so an extreme
+outward cell clamps to the authored and parent maximum instead of wrapping
+inward.
 
 ## Chrome and interaction
 
-The close chrome — the `■` mark and the `[` and `]` that bracket it — lives on
-`WindowStyle` as `CloseGlyph`, `CloseLeftBracket`, and `CloseRightBracket`, so a
-theme authors it through its `styles.window` section. That is what a theme
-targeting a terminal without dependable box-drawing coverage needs in order to
-render ASCII window chrome; the two brackets in particular had no override of
-any kind while the mark was a control property. The mark's foreground for each
-interaction state is likewise themeable through `WindowStyle`'s
-`CloseMarkColor`, `CloseMarkActiveColor`, `CloseMarkPressedColor`, and
-`CloseMarkDisabledColor`.
+The close chrome — the `■` mark and the `[` and `]` that bracket it — and the
+bottom-right `◢` resize grip live on `WindowStyle`, so a theme authors them
+through its `styles.window.normal` section. The close glyphs are `CloseGlyph`,
+`CloseLeftBracket`, and `CloseRightBracket`; the resize glyph is
+`ResizeGripGlyph`. That is what a theme targeting a terminal without dependable
+box-drawing coverage needs in order to render coherent ASCII window chrome. The
+close mark's foreground for each interaction state is themeable through
+`WindowStyle`'s `CloseMarkColor`, `CloseMarkActiveColor`,
+`CloseMarkPressedColor`, and `CloseMarkDisabledColor`. The grip has the parallel
+`ResizeGripColor`, `ResizeGripActiveColor`, `ResizeGripPressedColor`, and
+`ResizeGripDisabledColor` members.
 
-Once close chrome is resolved, Window registers that complete immutable value as
-a render dependency. Theme replacement compares its resolved glyphs and colors
-directly, so equivalent output stays clean and Window needs no separate
+Once interaction chrome is resolved, Window registers that complete immutable
+value as a render dependency. Theme replacement compares its resolved glyphs and
+colors directly, so equivalent output stays clean and Window needs no separate
 whole-pipeline Theme comparison override.
 
 `Header` is non-null text, clipped before either corner. `HeaderPlacement`
@@ -168,20 +171,23 @@ retention, common cleanup, and final `Closed` publication; Window supplies only
 its visibility-specific post-`Closing` commit.
 
 Pointer ancestry does not restyle the Window face, frame, or shadow. The close
-mark can still react independently while its target is hovered or pressed. Its
-local hover bit is reconciled from the committed framework pointer-over path, so
-ancestor availability, removal, reparenting, retargeting, and modal exclusion
-clear the mark even when no raw `Leave` reaches Window.
+mark and resize grip can still react independently while their targets are
+hovered or pressed. Their local hover bits are reconciled from the committed
+framework pointer-over path, so ancestor availability, removal, reparenting,
+retargeting, and modal exclusion clear them even when no raw `Leave` reaches
+Window. The grip replaces the ordinary bottom-right border cell only while
+`CanResize` is true, making the actual one-cell hit target discoverable.
 
 Unhandled Enter and Escape search the owned descendants in deterministic
 ownership order for the first enabled, visible `Button` marked `IsDefault` or
 `IsCancel`, but only under the shared
 [keyboard activation modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy).
-A command-modified Enter or Escape bypasses button fallback and remains
-available to the route. When no cancel button exists, Escape requests closure —
-raising `CloseRequested` and then `Closing` — only when both `CloseOnEscape` and
-`CanClose` are true; that dismissal policy remains independent of fallback
-button activation.
+A fallback button receives `ActivationCause.Keyboard`, preserving the input
+identity observed by its `Click` event and command. A command-modified Enter or
+Escape bypasses button fallback and remains available to the route. When no
+cancel button exists, Escape requests closure — raising `CloseRequested` and
+then `Closing` — only when both `CloseOnEscape` and `CanClose` are true; that
+dismissal policy remains independent of fallback button activation.
 
 ## Application activation
 
@@ -277,6 +283,8 @@ header and Escape policy are kept by every shipped dialog.
 
 ![The Window control rendered in the live showcase](../../images/controls/window.png)
 
+![A resizable Window with its visible corner grip](../../images/controls/window-resizable.png)
+
 ![The Window default action applied from a focused descendant](../../images/controls/window-default-action.png)
 
 ```csharp
@@ -284,6 +292,7 @@ var window = new Window
 {
     Header = "Workspace",
     CanClose = true,
+    CanResize = true,
     CloseOnEscape = true,
     Content = root,
 };
@@ -312,11 +321,12 @@ var scope = window.ShowModal(
   and keyboard focus activation, switching between Windows, clearing on outside
   presses, passive modal activation, modal rejection, focus independence,
   unavailable cleanup, shutdown, and active-border rendering.
-- Header clipping, placement, and Unicode measurement are correct; the close
-  chrome and its pointer states render exactly, including zero and tiny bounds;
-  content and collapsed geometry, the opaque surface and shadows, and ownership
-  all hold.
-- Default/cancel/Escape discovery searches private slots in ownership order.
+- Header clipping, placement, and Unicode measurement are correct; close chrome
+  and the visible resize grip render their exact normal, hover, pressed, and
+  disabled states, including zero and tiny bounds; content and collapsed
+  geometry, the opaque surface and shadows, and ownership all hold.
+- Default/cancel/Escape discovery searches private slots in ownership order and
+  reports keyboard activation identity.
 - Overlay centering, offsets, title drag, clamping, resize, and the oversized
   fallback behave as documented.
 - The presentation lifecycle and its rollback, Ignore and Dismiss modality,

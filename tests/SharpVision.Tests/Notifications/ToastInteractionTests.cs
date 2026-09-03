@@ -340,8 +340,8 @@ public sealed class ToastInteractionTests
         toast.Bounds.ShouldBe(new Rect(0, 0, 5, 3));
     }
 
-    /// <summary>Verifies IsDismissible is the one presentation member that stays mutable while
-    /// open: clearing it removes the rendered close glyph and Escape no longer dismisses.</summary>
+    /// <summary>Verifies IsDismissible remains mutable while open: clearing it removes the
+    /// rendered close glyph and Escape no longer dismisses.</summary>
     [Fact]
     public async Task IsDismissible_WhenClearedWhileOpen_RemovesCloseGlyphAndIgnoresEscapeAsync()
     {
@@ -380,6 +380,48 @@ public sealed class ToastInteractionTests
 
         // Assert
         toast.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Escape dismissal can be disabled independently without removing the
+    /// pointer and Enter/Space close affordance.</summary>
+    [Fact]
+    public async Task CloseOnEscape_WhenFalse_LeavesDismissibleToastOpenUntilEnabledAsync()
+    {
+        // Arrange
+        var root = new Overlay();
+        using var toast = new Toast
+        {
+            CloseOnEscape = false,
+            Position = ToastPosition.TopLeft,
+            AnimationDuration = TimeSpan.Zero,
+            DisplayDuration = Timeout.InfiniteTimeSpan,
+            Title = "Notice"
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () =>
+            {
+                toast.Show(root);
+                surface.Application.Focus.Focus(toast).ShouldBeTrue();
+            },
+            "show and focus Toast with Escape dismissal disabled");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        toast.IsOpen.ShouldBeTrue();
+        toast.IsDismissible.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(() => toast.CloseOnEscape = true, "enable Escape dismissal");
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        toast.IsOpen.ShouldBeFalse();
     }
 
     /// <summary>Verifies a toast shown while a modal Window is active neither disturbs the scope

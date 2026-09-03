@@ -3821,6 +3821,7 @@ namespace SharpVision.Notifications
         public SharpVision.Notifications.ToastAnimation Animation { get; set; }
         public System.TimeSpan AnimationDuration { get; set; }
         public double AnimationProgress { get; }
+        public bool CloseOnEscape { get; set; }
         public System.TimeSpan DisplayDuration { get; set; }
         public bool IsDismissible { get; set; }
         public bool IsOpen { get; }
@@ -4513,6 +4514,11 @@ namespace SharpVision.Styling
         public required SharpVision.Styling.ControlColor CloseMarkDisabledColor { get; init; }
         public required SharpVision.Styling.ControlColor CloseMarkPressedColor { get; init; }
         public required System.Text.Rune CloseRightBracket { get; init; }
+        public SharpVision.Styling.ControlColor ResizeGripActiveColor { get; init; }
+        public SharpVision.Styling.ControlColor ResizeGripColor { get; init; }
+        public SharpVision.Styling.ControlColor ResizeGripDisabledColor { get; init; }
+        public System.Text.Rune ResizeGripGlyph { get; init; }
+        public SharpVision.Styling.ControlColor ResizeGripPressedColor { get; init; }
         public new static SharpVision.Styling.WindowStyle Default { get; }
     }
 }
