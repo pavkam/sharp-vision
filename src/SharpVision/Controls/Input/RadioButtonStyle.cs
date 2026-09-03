@@ -31,7 +31,11 @@ public sealed record RadioButtonStyle: InputStyle
                     ? InvalidationImpact.Arrange
                 : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
                     ? InvalidationImpact.Render
-                    : InvalidationImpact.None);
+                    : InvalidationImpact.None,
+        // RadioButton is chromeless (NoBorder) with no other visible focus cue, unlike the six
+        // well-known base types whose border color change signals focus on its own - see
+        // Theme.ApplyBorderlessFocusFallback.
+        applyBorderlessFocusFallback: true);
 
     // The checked state defaults to the semantic accent foreground unless a theme's own
     // "radioButton.checked" section overrides it - the one per-state code-owned default this

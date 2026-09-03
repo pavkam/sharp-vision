@@ -1387,7 +1387,8 @@ public sealed class Theme
     internal AppearanceStates BuildFallbackAwareStates<TStyle, TFallback>(
         TStyle resolvedNormal,
         Func<Theme, StyleStates<TFallback>> fallbackTo,
-        Func<TFallback, VisualState, Theme, TStyle> complete)
+        Func<TFallback, VisualState, Theme, TStyle> complete,
+        bool applyBorderlessFocusFallback = false)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
@@ -1423,12 +1424,18 @@ public sealed class Theme
                 inheritedMembers);
             var basis = Cascade(resolvedNormal, delta);
 
-            // A borderless leaf (CheckBox, RadioButton, CommandBarItem) reaches this path with no
-            // border-color cue to signal focus, exactly the gap ApplyBorderlessFocusFallback exists
-            // to close for BuildInteractiveStyleSet/BuildFocusableStyleSet's own Focused/FocusWithin
-            // resolution. It is a no-op whenever resolvedNormal is bordered or the fallback already
-            // authored a genuinely different Focused/FocusWithin color.
-            if (state is VisualState.Focused or VisualState.FocusWithin)
+            // Only a leaf that opts in via applyBorderlessFocusFallback (CheckBox, RadioButton,
+            // CommandBarItem) reaches this path with no border-color cue to signal focus, exactly
+            // the gap ApplyBorderlessFocusFallback exists to close for
+            // BuildInteractiveStyleSet/BuildFocusableStyleSet's own Focused/FocusWithin resolution.
+            // Every OTHER leaf routes through this same shared method regardless of what its own
+            // fallback set already decided about this safety net - some (Table, Document, Pager)
+            // deliberately omit it via applyBorderlessFocusFallback:false on their OWN fallback
+            // construction, so applying it unconditionally here would silently re-flip Reverse on
+            // top of a decision already made at that lower layer. It must stay opt-in per leaf
+            // rather than blanket. It is a no-op whenever resolvedNormal is bordered or the
+            // fallback already authored a genuinely different Focused/FocusWithin color.
+            if (applyBorderlessFocusFallback && state is VisualState.Focused or VisualState.FocusWithin)
             {
                 basis = ApplyBorderlessFocusFallback(basis, resolvedNormal);
             }
@@ -1464,24 +1471,34 @@ public sealed class Theme
     internal AppearanceStates BuildCodeOwnedStates<TStyle, TFallback>(
         TStyle resolvedNormal,
         TFallback fallbackNormal,
-        Func<TFallback, VisualState, Theme, TStyle> complete)
+        Func<TFallback, VisualState, Theme, TStyle> complete,
+        bool applyBorderlessFocusFallback = false)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
     {
         var completedFallbackNormal = complete(fallbackNormal, VisualState.Normal, this);
         TStyle ResolveState(VisualState state) => complete(fallbackNormal, state, this);
 
-        // Focused/FocusWithin need the same borderless reverse-video safety net
-        // BuildFallbackAwareStates applies, but this method's shape only ever carries a per-state
-        // DELTA (relative to completedFallbackNormal), not a complete style - ApplyBorderlessFocusFallback
-        // needs the actual would-be-resolved colors to compare against resolvedNormal. Cascading the
-        // raw delta onto resolvedNormal recovers that complete candidate exactly as
-        // BuildFallbackAwareStates does, and re-diffing the (possibly Reverse-flipped) result against
-        // resolvedNormal converts it back into the overlay shape this method returns - a no-op
-        // round trip whenever the fallback doesn't apply.
+        // Only a leaf that opts in (CheckBox, RadioButton - the two Control-based styles whose
+        // local-Style-assigned path reaches this method; CommandBarItem's local path is fully
+        // flat/authoritative and never reaches BuildCodeOwnedStates at all) needs the same
+        // borderless reverse-video safety net BuildFallbackAwareStates applies, gated the same
+        // way for the same reason - see that method's own comment. This method's shape only ever
+        // carries a per-state DELTA (relative to completedFallbackNormal), not a complete style -
+        // ApplyBorderlessFocusFallback needs the actual would-be-resolved colors to compare
+        // against resolvedNormal. Cascading the raw delta onto resolvedNormal recovers that
+        // complete candidate exactly as BuildFallbackAwareStates does, and re-diffing the
+        // (possibly Reverse-flipped) result against resolvedNormal converts it back into the
+        // overlay shape this method returns - a no-op round trip whenever the fallback doesn't
+        // apply or isn't opted into.
         AppearanceOverlay ResolveFocusOverlay(VisualState state)
         {
             var delta = StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(state));
+            if (!applyBorderlessFocusFallback)
+            {
+                return delta;
+            }
+
             var basis = ApplyBorderlessFocusFallback(Cascade(resolvedNormal, delta), resolvedNormal);
             return StyleStatesExtensions.Diff(resolvedNormal, basis);
         }

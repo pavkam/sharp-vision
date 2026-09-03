@@ -21,7 +21,12 @@ public sealed record CommandBarItemStyle: InputStyle
             static (previous, _, current, _) =>
                 previous.Padding != current.Padding || previous.AffixGap != current.AffixGap
                     ? InvalidationImpact.Measure
-                    : InvalidationImpact.None);
+                    : InvalidationImpact.None,
+            // CommandBarItem is chromeless (NoBorder) with no other visible focus cue - see
+            // Theme.ApplyBorderlessFocusFallback. Only the theme path (BuildFallbackAwareStates)
+            // actually consumes this: a locally assigned Style is fully flat/authoritative for a
+            // Bar-rebased item and never reaches BuildCodeOwnedStates.
+            applyBorderlessFocusFallback: true);
 
     private static CommandBarItemStyle Complete(InputStyle input, VisualState state, Theme theme)
     {

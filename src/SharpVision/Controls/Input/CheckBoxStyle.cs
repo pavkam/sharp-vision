@@ -30,7 +30,11 @@ public sealed record CheckBoxStyle: InputStyle
                     ? InvalidationImpact.Arrange
                 : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
                     ? InvalidationImpact.Render
-                    : InvalidationImpact.None);
+                    : InvalidationImpact.None,
+        // CheckBox is chromeless (NoBorder) with no other visible focus cue, unlike the six
+        // well-known base types whose border color change signals focus on its own - see
+        // Theme.ApplyBorderlessFocusFallback.
+        applyBorderlessFocusFallback: true);
 
     // The mark style and glyph trio come from the active theme's glyph family (see
     // themes.md#glyph-families) rather than a literal hardcoded here - GlyphFamily.Default carries

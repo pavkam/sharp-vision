@@ -26,15 +26,21 @@ public static class StyleDefinitions
     /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
     /// <param name="complete">Completes one fallback-contributed style into this control's own style. The Theme argument is how a completion consults theme-level values beyond the fallback's own resolved appearance - e.g. the glyph-aware styles read <c>theme.Glyphs</c> to complete their own structural members.</param>
     /// <param name="compare">Returns the earliest phase affected by structural or directly themed members.</param>
+    /// <param name="applyBorderlessFocusFallback">Whether to force the terminal's reverse-video
+    /// attribute onto Focused/FocusWithin as a last-resort safety net when this style's own
+    /// borderless geometry would otherwise leave them colorwise identical to Normal. See
+    /// <see cref="Theme.GetInteractiveControlStyleSet"/>'s remarks for the full rationale; opt in
+    /// only for a chromeless leaf with no other visible focus cue.</param>
     /// <returns>An immutable primary-style definition.</returns>
     /// <exception cref="ArgumentNullException">A delegate is null.</exception>
     public static StyleDefinition<TStyle> Control<TStyle, TFallback>(
         Func<Theme, StyleStates<TFallback>> fallbackTo,
         Func<TFallback, VisualState, Theme, TStyle> complete,
-        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
+        bool applyBorderlessFocusFallback = false)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
-        => CreateControl(fallbackTo, complete, compare, preserveCompleteLocalAppearance: false);
+        => CreateControl(fallbackTo, complete, compare, preserveCompleteLocalAppearance: false, applyBorderlessFocusFallback: applyBorderlessFocusFallback);
 
     /// <summary>Creates a primary control-style definition whose completion may add code-owned
     /// state defaults for Theme-owned styles while a complete local style remains authoritative
@@ -55,11 +61,15 @@ public static class StyleDefinitions
     /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
     /// <param name="complete">Completes one fallback-contributed style into this control's style.</param>
     /// <param name="compare">Returns the earliest phase affected by resolved members.</param>
+    /// <param name="applyBorderlessFocusFallback">Whether to force the terminal's reverse-video
+    /// attribute onto Focused/FocusWithin as a last-resort safety net when this style's own
+    /// borderless geometry would otherwise leave them colorwise identical to Normal.</param>
     /// <returns>An immutable primary-style definition for a Bar surface.</returns>
     internal static StyleDefinition<TStyle> BarControlWithThemeOwnedStateDefaults<TStyle, TFallback>(
         Func<Theme, StyleStates<TFallback>> fallbackTo,
         Func<TFallback, VisualState, Theme, TStyle> complete,
-        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare)
+        Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
+        bool applyBorderlessFocusFallback = false)
         where TStyle : ControlStyle
         where TFallback : ControlStyle =>
         CreateControl(
@@ -67,13 +77,15 @@ public static class StyleDefinitions
             complete,
             compare,
             preserveCompleteLocalAppearance: true,
-            BarAppearance.Rebase);
+            applyBorderlessFocusFallback: applyBorderlessFocusFallback,
+            transformAppearance: BarAppearance.Rebase);
 
     private static StyleDefinition<TStyle> CreateControl<TStyle, TFallback>(
         Func<Theme, StyleStates<TFallback>> fallbackTo,
         Func<TFallback, VisualState, Theme, TStyle> complete,
         Func<TStyle, Theme?, TStyle, Theme?, InvalidationImpact> compare,
         bool preserveCompleteLocalAppearance,
+        bool applyBorderlessFocusFallback = false,
         Func<AppearanceStates, AppearanceStates>? transformAppearance = null)
         where TStyle : ControlStyle
         where TFallback : ControlStyle
@@ -89,7 +101,11 @@ public static class StyleDefinitions
         return new StyleDefinition<TStyle>(
             (local, theme) => local ?? ResolveNormal(theme ?? ThemeCatalog.Dark, ResolveFallback, Complete),
             (style, theme) => TransformAppearance(
-                (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(style, ResolveFallback, Complete)),
+                (theme ?? ThemeCatalog.Dark).BuildFallbackAwareStates(
+                    style,
+                    ResolveFallback,
+                    Complete,
+                    applyBorderlessFocusFallback)),
             (previous, previousTheme, current, currentTheme) => MaximumImpact(
                 compare(previous, previousTheme, current, currentTheme),
                 GetInheritedImpact(previous, previousTheme, current, currentTheme)),
@@ -101,7 +117,8 @@ public static class StyleDefinitions
                         (theme ?? ThemeCatalog.Dark).BuildCodeOwnedStates(
                             style,
                             ResolveFallback(Theme.Unthemed).Normal,
-                            Complete)));
+                            Complete,
+                            applyBorderlessFocusFallback)));
 
         AppearanceStates TransformAppearance(AppearanceStates appearance) =>
             transformAppearance?.Invoke(appearance) ?? appearance;
