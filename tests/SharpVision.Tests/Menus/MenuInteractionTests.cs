@@ -424,6 +424,7 @@ public sealed class MenuInteractionTests
             menu.Items.Add(second);
             menu.ItemInvoked += (_, args) => invoked.Add(args.Item.Text ?? string.Empty);
             menu.Attach(dispatcher);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             using FocusManager focus = new(menu);
             focus.Focus(menu).ShouldBeTrue();
             menu.SelectedIndex = 0;
@@ -457,6 +458,7 @@ public sealed class MenuInteractionTests
             menu.Items.Add(item);
             menu.ItemInvoked += (_, _) => invoked++;
             menu.Attach(dispatcher);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             using FocusManager focus = new(menu);
             focus.Focus(menu).ShouldBeTrue();
 

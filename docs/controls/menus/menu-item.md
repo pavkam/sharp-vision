@@ -21,25 +21,25 @@ classDiagram
 
 ## API
 
-| Member                       | Type                                     | Default                | Description                                                                                 |
-| ---------------------------- | ---------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
-| Inherited `Text`             | `string`                                 | `""`                   | The item's label.                                                                           |
-| `Kind`                       | `MenuItemKind`                           | `MenuItemKind.Command` | Chooses command, check, or radio activation semantics.                                      |
-| `IsChecked`                  | `bool`                                   | `false`                | Holds the check state for the check and radio kinds.                                        |
-| `GroupName`                  | `string?`                                | `null`                 | Scopes radio exclusivity within the containing menu.                                        |
-| `StartAffix`                 | `Affix?`                                 | `null`                 | Optional leading edge-pinned decoration, inboard of the check/radio marker.                 |
-| `EndAffix`                   | `Affix?`                                 | `null`                 | Optional trailing edge-pinned decoration, between the caption and the shortcut column.      |
-| `ShortcutText`               | `string?`                                | `null`                 | Shows a dim, right-aligned hint; registers no key binding.                                  |
-| `Shortcut`                   | `KeyGesture?`                            | `null`                 | A typed key chord that both derives `ShortcutText` and activates the item application-wide. |
-| `Submenu`                    | `Menu?`                                  | `null`                 | An optional popup-layer child menu the item owns.                                           |
-| `SubmenuChrome`              | `PopupChrome`                            | Theme-owned            | Gets or sets the submenu's owned popup border and shadow together.                          |
-| `Style`                      | `MenuItemStyle?`                         | `null`                 | Gets or sets the complete local presentation, including the check and radio marker glyphs.  |
-| `ActualStyle`                | `MenuItemStyle`                          | Resolved               | Read-only; the complete local, theme-owned, or code-owned presentation.                     |
-| Inherited `Command`          | `ICommand?`                              | `null`                 | Runs after `Invoked`, when bound and `CanExecute` allows it.                                |
-| Inherited `CommandParameter` | `object?`                                | `null`                 | The borrowed parameter passed to `Command` queries and execution.                           |
-| `PerformInvoke()`            | `void`                                   | —                      | Invokes the item programmatically.                                                          |
-| `ResetSubmenuChrome()`       | `void`                                   | —                      | Returns the submenu popup's border and shadow to `PopupChrome` ownership.                   |
-| `Invoked`                    | `EventHandler<MenuItemInvokedEventArgs>` | No subscribers         | Raised after activation commits, once any check state has updated.                          |
+| Member                       | Type                                     | Default                | Description                                                                                  |
+| ---------------------------- | ---------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| Inherited `Text`             | `string`                                 | `""`                   | The item's label.                                                                            |
+| `Kind`                       | `MenuItemKind`                           | `MenuItemKind.Command` | Chooses command, check, or radio activation semantics.                                       |
+| `IsChecked`                  | `bool`                                   | `false`                | Holds the check state for the check and radio kinds.                                         |
+| `GroupName`                  | `string?`                                | `null`                 | Scopes radio exclusivity within the containing menu.                                         |
+| `StartAffix`                 | `Affix?`                                 | `null`                 | Optional leading edge-pinned decoration, inboard of the check/radio marker.                  |
+| `EndAffix`                   | `Affix?`                                 | `null`                 | Optional trailing edge-pinned decoration, between the caption and the shortcut column.       |
+| `ShortcutText`               | `string?`                                | `null`                 | Shows a dim, right-aligned hint; registers no key binding.                                   |
+| `Shortcut`                   | `KeyGesture?`                            | `null`                 | A typed key chord that both derives `ShortcutText` and activates the item application-wide.  |
+| `Submenu`                    | `Menu?`                                  | `null`                 | An optional popup-layer child menu the item owns.                                            |
+| `SubmenuChrome`              | `PopupChrome`                            | Theme-owned            | Gets or sets the submenu's owned popup border and shadow together.                           |
+| `Style`                      | `MenuItemStyle?`                         | `null`                 | Gets or sets the complete local presentation, including selection and submenu marker glyphs. |
+| `ActualStyle`                | `MenuItemStyle`                          | Resolved               | Read-only; the complete local, theme-owned, or code-owned presentation.                      |
+| Inherited `Command`          | `ICommand?`                              | `null`                 | Runs after `Invoked`, when bound and `CanExecute` allows it.                                 |
+| Inherited `CommandParameter` | `object?`                                | `null`                 | The borrowed parameter passed to `Command` queries and execution.                            |
+| `PerformInvoke()`            | `void`                                   | —                      | Invokes the item programmatically.                                                           |
+| `ResetSubmenuChrome()`       | `void`                                   | —                      | Returns the submenu popup's border and shadow to `PopupChrome` ownership.                    |
+| `Invoked`                    | `EventHandler<MenuItemInvokedEventArgs>` | No subscribers         | Raised after activation commits, once any check state has updated.                           |
 
 ## Keyboard
 
@@ -80,6 +80,12 @@ therefore fills the shared menu width, which lets content, shortcut hints, and
 separators line up as one aligned surface. An explicit alignment set by the
 caller still wins.
 
+A submenu-bearing item in a vertical menu reserves two trailing cells and draws
+`MenuItemStyle.SubmenuGlyph` at the trailing edge of that reservation. The
+portable default is `▶` with `>` fallback. Horizontal menu-bar headings do not
+draw this cue because their below-anchor behavior is already established by the
+bar role.
+
 An item's own `Invoked` subscribers finish before the menu forwards
 `Menu.ItemInvoked`. Both callbacks observe the committed check or radio state.
 If the item callback removes, moves, or disposes the item or its menu,
@@ -88,15 +94,17 @@ reports through a menu that no longer owns its item.
 
 ## Style-resolved glyphs
 
-Check and radio markers, and the separator's own rule glyph, resolve from
-`ActualStyle` rather than from a per-property override on the control. Neither
-`MenuItem` nor `MenuSeparator` exposes an individual glyph property or a
-`Reset*Glyph` method: `MenuItemStyle` carries the complete immutable
-`UncheckedGlyph`, `CheckedGlyph`, `RadioUncheckedGlyph`, and `RadioCheckedGlyph`
-set, and `MenuSeparatorStyle` carries `Glyph`. When no local `Style` is
-assigned, `ActualStyle` completes from the library's code-owned markers; the
-theme's `glyphs` family does not cover menu markers, so a local `Style` is the
-only way to move them.
+Check, radio, and submenu markers, plus the separator's axis-specific rule
+glyphs, resolve from `ActualStyle` rather than from a per-property override on
+the control. Neither `MenuItem` nor `MenuSeparator` exposes an individual glyph
+property or a `Reset*Glyph` method: `MenuItemStyle` carries the complete
+immutable `UncheckedGlyph`, `CheckedGlyph`, `RadioUncheckedGlyph`,
+`RadioCheckedGlyph`, and `SubmenuGlyph` set. `MenuSeparatorStyle.Glyph` is the
+horizontal rule used inside a vertical menu, while `VerticalGlyph` is the
+compact divider used in a horizontal menu. When no local `Style` is assigned,
+`ActualStyle` completes from the library's code-owned markers; the theme's
+`glyphs` family does not cover menu markers, so a local `Style` is the only way
+to move them.
 
 The normal `MenuItem` and `MenuSeparator` faces use `SemanticColor.Bar` so rows
 and gaps remain one continuous menu plane. The interactive fallback's focused,
@@ -119,7 +127,8 @@ theme-owned appearance unchanged in every state.
 [affixes](../../concepts/styling.md#instance-content-affix), the same reserved
 edge-pinned decoration [`Button`](../input/button.md#overview) exposes. A row's
 complete leading-to-trailing layout is the check/radio marker, then
-`StartAffix`, then the caption, then `EndAffix`, then the shortcut column:
+`StartAffix`, then the caption, then `EndAffix`, then an optional submenu
+marker, then the shortcut column:
 
 ```csharp
 new MenuItem

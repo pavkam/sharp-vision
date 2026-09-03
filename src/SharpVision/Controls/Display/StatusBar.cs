@@ -12,6 +12,7 @@ public sealed class StatusBar: ItemsControl
     /// <summary>Initializes an empty one-cell status strip with one cell between adjacent items.</summary>
     public StatusBar()
     {
+        EnableChromeAuthoring();
         _host = new StatusBarHost();
         InitializeItemsHost(_host);
         Items = new StatusBarItemCollection(this);

@@ -192,6 +192,8 @@ theme overlays and wins unchanged in every state.
 
 ![A disabled CommandBar retaining its Bar background while its foreground changes](../../images/controls/command-bar-disabled.png)
 
+![CommandBar keyboard roving keeps one focus stop while selecting a retained command](../../images/controls/command-bar-keyboard.png)
+
 ![The CommandBar private overflow menu opened in the live showcase](../../images/controls/command-bar-open.png)
 
 ```csharp

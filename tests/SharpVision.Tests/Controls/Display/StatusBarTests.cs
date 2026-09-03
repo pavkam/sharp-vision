@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Controls.Display;
 /// <summary>Verifies StatusBar item ownership, alignment, validation, and layout contracts.</summary>
 public sealed class StatusBarTests
 {
+    /// <summary>Verifies the documented intrinsic border and shadow customizations are available
+    /// directly on StatusBar and can return ownership to its semantic appearance.</summary>
+    [Fact]
+    public void Chrome_WhenCustomizedAndReset_RoundTripsThroughSharedAuthoring()
+    {
+        // Arrange
+        using var bar = new StatusBar();
+        var defaultBorder = bar.Border;
+        var defaultShadow = bar.Shadow;
+        var border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Rounded);
+        var shadow = AppearanceTestValues.Shadow(visible: true, offset: new Point(1, 1));
+
+        // Act
+        bar.Border = border;
+        bar.Shadow = shadow;
+
+        // Assert customized
+        bar.Border.ShouldBe(border);
+        bar.Shadow.ShouldBe(shadow);
+
+        // Act reset
+        bar.ResetBorder();
+        bar.ResetShadow();
+
+        // Assert semantic ownership restored
+        bar.Border.ShouldBe(defaultBorder);
+        bar.Shadow.ShouldBe(defaultShadow);
+    }
+
     /// <summary>Verifies retained item spacing follows a newer reentrant owner value.</summary>
     [Fact]
     public void Spacing_WhenPropertyObserverCommitsNewerValue_UpdatesRetainedHost()

@@ -80,7 +80,8 @@ portable `|` fallback rather than overwriting an adjacent cell.
 
 Presence and appearance of each separator are separate, independently settable
 facts: whether a separator exists reserves a cell and is layout, which the item
-owns; which glyph it draws is presentation, which the theme owns.
+owns; which glyph it draws is presentation, which the code-owned item style or a
+complete local `Style` owns.
 
 ## Keyboard
 
@@ -172,6 +173,8 @@ and viewport changes through the normal measure/arrange invalidation path.
 ## Example
 
 ![The StatusBar control rendered in the live showcase](../../images/controls/status-bar.png)
+
+![The StatusBar retaining its continuous surface while its embedded CheckBox is checked](../../images/controls/status-bar-checked.png)
 
 ```csharp
 var status = new StatusBar();

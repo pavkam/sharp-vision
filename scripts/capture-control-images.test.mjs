@@ -167,7 +167,19 @@ test("Menu open capture_IncludesTheCompletePrimaryBarWidth", () => {
     const entry = controls.find(({ doc }) => doc === "controls/menus/menu");
     const open = entry.states.find(({ name }) => name === "open");
 
-    assert.deepEqual(open.cropPadding, { right: 1 });
+    assert.deepEqual(open.cropPadding, { right: 2 });
+});
+
+test("cleanupEscapeCount_WhenEntryHasNestedState_UsesDeepestConfiguredChain", () => {
+    assert.equal(
+        captureHelpers.cleanupEscapeCount([
+            {},
+            { cleanupEscapeCount: 3 },
+            { cleanupEscapeCount: 2 },
+        ]),
+        3,
+    );
+    assert.equal(captureHelpers.cleanupEscapeCount(), 1);
 });
 
 test("InfoBar capture_WhenMultipleExamplesExist_SelectsInteractiveSpecimen", () => {

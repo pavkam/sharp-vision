@@ -62,7 +62,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// on Escape or when one of its items is invoked. Items invoked in the submenu propagate through
     /// the owning <see cref="Menu.ItemInvoked"/> event. A menu may only be assigned as one item's
     /// submenu at a time; assigning a menu already hosted elsewhere is rejected, leaving the current
-    /// submenu unchanged.
+    /// submenu unchanged. Left closes one nested vertical submenu level and restores focus to the
+    /// menu that owns this item.
     /// </remarks>
     /// <exception cref="ArgumentException">The assigned menu already belongs to another tree.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
@@ -145,7 +146,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             value.ItemInvoked += OnSubmenuItemInvoked;
         }
 
-        NotifyPropertyChanged(nameof(Submenu), InvalidationImpact.None);
+        NotifyPropertyChanged(nameof(Submenu), InvalidationImpact.Measure);
     }
 
     private void OnSubmenuContentDisposalRequested(object? sender, OwnedContentDisposalEventArgs eventArgs)
@@ -475,7 +476,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         var shortcutExtra = ShortcutText is { Length: > 0 }
             ? ShortcutExtent
             : 0;
-        var trailing = affixes.EndCells.Add(shortcutExtra);
+        var trailing = affixes.EndCells.Add(shortcutExtra).Add(SubmenuIndicatorExtent);
 
         if (content is null)
         {
@@ -506,7 +507,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         if (TextControl is { } content)
         {
             var rowLeading = Math.Min(PrefixWidth, bounds.Width);
-            var rowTrailing = Math.Min(ShortcutExtent, bounds.Width - rowLeading);
+            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent), bounds.Width - rowLeading);
             var rowWidth = bounds.Width - rowLeading - rowTrailing;
 
             var startCells = Math.Min(Math.Max(StartAffixCells, AffixColumnWidth), rowWidth);
@@ -570,7 +571,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             // does, so a start affix always draws flush against the marker column regardless of
             // AffixColumnWidth - only the caption's own inset shifts for a wider sibling.
             var rowLeading = Math.Min(PrefixWidth, content.Width);
-            var rowTrailing = Math.Min(ShortcutExtent, content.Width - rowLeading);
+            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent), content.Width - rowLeading);
             var rowBox = new Rect(content.X + rowLeading, content.Y, content.Width - rowLeading - rowTrailing, 1);
             var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
             RenderAffixes(canvas, rowBox, affixes, StartAffix, EndAffix, style);
@@ -594,6 +595,23 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                     new Point(shortcutX, content.Y),
                     dimStyle,
                     background: BackgroundMode.Transparent);
+            }
+        }
+
+        if (SubmenuIndicatorExtent > 0)
+        {
+            var indicatorX = content.Right - ShortcutExtent - 1;
+
+            if (indicatorX >= content.X)
+            {
+                var submenuGlyph = ActualStyle.SubmenuGlyph.Resolve(
+                    ControlGlyphs.Disclosure.Collapsed.Fallback,
+                    CellPolicy.AmbiguousWidth);
+                canvas.DrawRune(
+                    submenuGlyph,
+                    new Point(indicatorX, content.Y),
+                    style,
+                    BackgroundMode.Transparent);
             }
         }
     }
@@ -864,6 +882,9 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             return width == 0 ? 0 : width.Add(_shortcutGap);
         }
     }
+
+    private int SubmenuIndicatorExtent =>
+        _submenu is not null && FindAncestor<Menu>()?.Orientation == Orientation.Vertical ? 2 : 0;
 
     // The marker comes from the resolved style; only the ASCII repair value stays code-owned, which
     // is the split theming-new-controls.md asks for. This resolver was already named for a theme

@@ -114,7 +114,8 @@ internal sealed class CommandBarOverflowProjection: IDisposable
             markers.UncheckedGlyph,
             markers.CheckedGlyph,
             markers.RadioUncheckedGlyph,
-            markers.RadioCheckedGlyph)
+            markers.RadioCheckedGlyph,
+            markers.SubmenuGlyph)
         {
             AffixGap = source.AffixGap
         };

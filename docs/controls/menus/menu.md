@@ -30,18 +30,17 @@ classDiagram
 
 ## Keyboard
 
-| Key                 | Behavior                                                                    |
-| ------------------- | --------------------------------------------------------------------------- |
-| Left / Right        | Moves through a horizontal menu, wrapping and skipping unavailable entries. |
-| Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.   |
-| Right (vertical)    | Opens the selected item's submenu; otherwise bubbles to the owning menu.    |
-| Left (vertical)     | Closes a submenu owned by a vertical menu; otherwise bubbles to the owner.  |
-| Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.          |
-| Home / End          | Selects the first or last available entry without wrapping.                 |
-| Enter               | Activates the selected item.                                                |
-| Space               | Activates the selected item on key release.                                 |
-| Escape              | Closes the active menu chain.                                               |
-| Alt+item access key | Selects and activates the matching item.                                    |
+| Key                 | Behavior                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Left                | Moves through a horizontal menu; closes a nested vertical branch or bubbles.  |
+| Right               | Moves through a horizontal menu; opens a vertical child menu or bubbles.      |
+| Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.     |
+| Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.            |
+| Home / End          | Selects the first or last available entry without wrapping.                   |
+| Enter               | Activates the selected item.                                                  |
+| Space               | Activates on release when available, or immediately on a press-only terminal. |
+| Escape              | Closes the active menu chain.                                                 |
+| Alt+item access key | Selects and activates the matching item.                                      |
 
 ## Behavior
 
@@ -73,15 +72,19 @@ classDiagram
 
 ## Interaction
 
-Arrow keys follow `Orientation`, while Tab and Shift+Tab move forward and
-backward regardless of orientation; Caps Lock and Num Lock are incidental, while
-Shift and application-command-modified arrows and command-modified Tab remain
-unhandled. All navigation keys repeat while held. Navigation wraps, skips
-separators and unavailable items, updates `SelectedIndex`, and keeps focus on
-the menu. Enter, or a Space press completed on the menu, activates the selected
-private item with a keyboard cause, once per key hold and only with
-activation-eligible modifiers. A primary pointer click invokes through the
-shared [press-activation](../pressable.md#overview) contract.
+Arrow keys follow `Orientation`, while Right opens the selected child submenu
+from a vertical menu and Left closes one nested vertical branch before restoring
+focus to its owning menu. Tab and Shift+Tab move forward and backward regardless
+of orientation; Caps Lock and Num Lock are incidental, while Shift and
+application-command-modified arrows and command-modified Tab remain unhandled.
+All navigation keys repeat while held. Navigation wraps, skips separators and
+unavailable items, updates `SelectedIndex`, and keeps focus on the menu. Enter,
+or a completed Space gesture, activates the selected private item with a
+keyboard cause, once per key hold and only with activation-eligible modifiers.
+Terminals with authoritative releases show the pressed state until release;
+press-only terminals pulse and complete immediately instead of leaving the item
+latched. A primary pointer click invokes through the shared
+[press-activation](../pressable.md#overview) contract.
 
 An ampersand
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions) on an
@@ -125,26 +128,25 @@ Window becomes a temporary younger scope and restores the Window plane when it
 closes.
 
 A horizontal menu opens item submenus below the anchor. A vertical menu opens
-nested submenus to the right. Popup edge fallback may flip those preferred
-directions to keep the framed surface inside the terminal. Closing a submenu
-restores focus to its owning menu before hiding the submenu content.
-
-Inside a vertical menu, Right opens the selected item's submenu and Left closes
-the submenu the user is in when its owning menu is also vertical, stepping back
-one level. Either key is left unhandled when it has nothing to do, so from a
-menu bar's drop-down Left and Right still bubble to the bar and switch the
-top-level sibling.
+nested submenus to the right; pressing Right on its selected submenu-bearing row
+uses that same path and transfers focus into the child menu. Popup edge fallback
+may flip those preferred directions to keep the framed surface inside the
+terminal. Pressing Left in that child, or otherwise closing a single submenu,
+restores focus to its owning menu before hiding the submenu content. Either key
+is left unhandled when it has nothing to do, so from a menu bar's drop-down Left
+and Right still bubble to the bar and switch the top-level sibling.
 
 The initial `SelectedIndex` of a freshly built menu is the first item that is
 enabled and visible when it is added; a disabled or hidden first item leaves the
 cursor at `-1` until navigation reaches an available one.
 
 Vertical menu width comes from independent label and shortcut measurements: the
-widest label plus a two-cell gutter plus the widest shortcut, clamped by the
-inherited `MinWidth` and `MaxWidth`. Shortcut text is right-aligned to the
-shared trailing edge, and label content cannot draw into the gutter. Changing
-either width constraint while attached invalidates measure, and an open retained
-submenu is remeasured and reframed on the next layout pass.
+widest label, an optional two-cell submenu indicator reservation, plus a
+two-cell gutter and the widest shortcut, clamped by the inherited `MinWidth` and
+`MaxWidth`. Shortcut text is right-aligned to the shared trailing edge, and
+label content cannot draw into the gutter. Changing either width constraint
+while attached invalidates measure, and an open retained submenu is remeasured
+and reframed on the next layout pass.
 
 A vertical menu also negotiates one shared leading
 [`StartAffix`](menu-item.md#affixes) column across every owned row: the widest
@@ -154,7 +156,8 @@ sibling that has one, instead of starting flush at its own empty column.
 `EndAffix` is never negotiated this way and stays purely per-item, matching how
 only the shortcut column, not a general trailing column, is shared. A horizontal
 menu applies no shared column at all; each item reserves only its own local
-affixes.
+affixes. A `MenuSeparator` follows the menu axis: it is a stretched horizontal
+rule in a vertical menu and a one-cell vertical divider in a horizontal menu.
 
 ### Keyboard navigation
 
@@ -192,6 +195,8 @@ staged items that are no longer live members of this menu radio group.
 ![The Menu control rendered in the live showcase](../../images/controls/menu.png)
 
 ![The Menu control with its popup open in the live showcase](../../images/controls/menu-open.png)
+
+![Right-arrow navigation opening a nested Menu branch in the live showcase](../../images/controls/menu-nested.png)
 
 ```csharp
 var menu = new Menu

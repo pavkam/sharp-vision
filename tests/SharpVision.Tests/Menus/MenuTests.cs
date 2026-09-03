@@ -997,6 +997,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();
@@ -1012,6 +1013,35 @@ public sealed class MenuTests
             // Act and assert completion
             var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
             release.IsHandled.ShouldBeTrue();
+            item.IsPressed.ShouldBeFalse();
+            invocations.ShouldBe([ActivationCause.Keyboard]);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a terminal without authoritative key releases completes Space on the
+    /// press instead of leaving the selected item latched while waiting for an event that cannot arrive.</summary>
+    [Fact]
+    public async Task Dispatch_WhenSpaceIsPressedOnPressOnlyTerminal_InvokesImmediatelyAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            // Arrange
+            var menu = new Menu { Orientation = Orientation.Vertical };
+            var item = new MenuItem { Text = "Run" };
+            menu.Items.Add(item);
+            menu.Attach(dispatcher);
+            using var focus = new FocusManager(menu);
+            focus.Focus(menu).ShouldBeTrue();
+            var invocations = new List<ActivationCause>();
+            item.Invoked += (_, eventArgs) => invocations.Add(eventArgs.Cause);
+
+            // Act
+            var press = Router.Route(menu, Events.Key, Space(KeyAction.Press));
+
+            // Assert
+            press.IsHandled.ShouldBeTrue();
             item.IsPressed.ShouldBeFalse();
             invocations.ShouldBe([ActivationCause.Keyboard]);
         }, TestContext.Current.CancellationToken);
@@ -1111,6 +1141,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();
@@ -1140,6 +1171,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();
@@ -1168,6 +1200,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();
@@ -1194,6 +1227,7 @@ public sealed class MenuTests
             var menu = new Menu { Orientation = Orientation.Vertical };
             var item = new MenuItem { Text = "Run" };
             menu.Items.Add(item);
+            menu.SetCapabilities(TestCapabilities.WithKeyReleases);
             menu.Attach(dispatcher);
             using var focus = new FocusManager(menu);
             focus.Focus(menu).ShouldBeTrue();
@@ -1257,6 +1291,7 @@ public sealed class MenuTests
             () =>
             {
                 nestedMenu.SelectedIndex = 1;
+                nestedMenu.SetCapabilities(TestCapabilities.WithKeyReleases);
                 Router.Route(nestedMenu, Events.Key, Space(KeyAction.Press)).IsHandled.ShouldBeTrue();
             },
             "arm space press on an item in the open nested menu");
@@ -3672,7 +3707,11 @@ public sealed class MenuTests
         await surface.UpdateAsync(file.PerformInvoke, "open pressed anchor before cleanup reparenting");
         var scope = surface.Application.Modality.Active.ShouldNotBeNull();
         await surface.UpdateAsync(
-            () => surface.Application.Focus.Focus(menu).ShouldBeTrue(),
+            () =>
+            {
+                menu.SetCapabilities(TestCapabilities.WithKeyReleases);
+                surface.Application.Focus.Focus(menu).ShouldBeTrue();
+            },
             "return focus to top menu before holding its anchor");
         await surface.Keyboard.PressCharacterAsync(new Rune(' '));
         file.IsPressed.ShouldBeTrue();

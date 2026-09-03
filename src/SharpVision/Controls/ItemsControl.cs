@@ -16,6 +16,7 @@ public abstract class ItemsControl: ControlBase
 {
     private readonly OwnedControlSlot _itemsHostSlot;
     private Container? _itemsHost;
+    private SelectedItemPressBehavior? _selectedItemPress;
 
     /// <summary>Initializes an item owner whose derived constructor must install one presentation host.</summary>
     protected ItemsControl()
@@ -75,6 +76,46 @@ public abstract class ItemsControl: ControlBase
             }
         }
     }
+
+    /// <summary>Opts one-focus item owners into shared selected-face Space activation.</summary>
+    /// <param name="getSelectedTarget">Returns the current selected face, or null.</param>
+    /// <param name="isTargetAvailable">Reports whether one captured face can still activate.</param>
+    /// <param name="setTargetPressed">Commits the captured face's pressed presentation.</param>
+    /// <param name="activateTarget">Activates one still-current captured face.</param>
+    /// <param name="consumeWhenNoTarget">Whether eligible Space input with no face is consumed.</param>
+    /// <exception cref="ArgumentNullException">A delegate is null.</exception>
+    /// <exception cref="InvalidOperationException">Selected-item press activation is already enabled.</exception>
+    private protected void EnableSelectedItemPressActivation(
+        Func<ControlBase?> getSelectedTarget,
+        Func<ControlBase, bool> isTargetAvailable,
+        Action<ControlBase, bool> setTargetPressed,
+        Action<ControlBase> activateTarget,
+        bool consumeWhenNoTarget)
+    {
+        VerifyMutable();
+
+        if (_selectedItemPress is not null)
+        {
+            throw new InvalidOperationException("Selected-item press activation is already enabled.");
+        }
+
+        _selectedItemPress = new SelectedItemPressBehavior(
+            getSelectedTarget,
+            isTargetAvailable,
+            setTargetPressed,
+            activateTarget,
+            () => Capabilities.KeyReleaseEvents.Authoritative,
+            consumeWhenNoTarget);
+    }
+
+    /// <summary>Routes one key event through selected-face Space activation when enabled.</summary>
+    /// <param name="eventArgs">The non-null routed key event.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null and activation is enabled.</exception>
+    private protected void HandleSelectedItemPressActivation(KeyEventArgs eventArgs) =>
+        _selectedItemPress?.Handle(eventArgs);
+
+    /// <summary>Cancels a held selected-face Space interaction without activation.</summary>
+    private protected void CancelSelectedItemPressActivation() => _selectedItemPress?.Cancel();
 
     /// <summary>Gets one realized item control by zero-based position.</summary>
     /// <param name="index">The valid item-control position.</param>
@@ -241,6 +282,12 @@ public abstract class ItemsControl: ControlBase
     /// <param name="change">The immutable structural change.</param>
     private protected virtual void OnItemControlsChanged(OwnedControlChange change) => OnItemControlsChanged();
 
-    private void OnHostItemsChanged(OwnedControlChange change) => OnItemControlsChanged(change);
+    private void OnHostItemsChanged(OwnedControlChange change)
+    {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => _selectedItemPress?.ReconcileRemoved(change.Removed.Span), ref failure);
+        CaptureFailure(() => OnItemControlsChanged(change), ref failure);
+        failure?.Throw();
+    }
 
 }

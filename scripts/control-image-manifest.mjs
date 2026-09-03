@@ -97,6 +97,15 @@ export const controls = [
                 example: "Narrow bar",
                 actions: [{ key: "Escape" }, { click: "Disable bar" }],
             },
+            {
+                name: "keyboard",
+                example: "Narrow bar",
+                actions: [
+                    { click: "Enable bar" },
+                    { click: "Open" },
+                    { key: "Right" },
+                ],
+            },
         ],
     },
     {
@@ -213,8 +222,19 @@ export const controls = [
             {
                 name: "open",
                 popup: true,
-                cropPadding: { right: 1 },
+                cropPadding: { right: 2 },
                 actions: [{ click: "File" }],
+            },
+            {
+                name: "nested",
+                popup: true,
+                cleanupEscapeCount: 3,
+                actions: [
+                    { click: "File" },
+                    { key: "Down" },
+                    { key: "Down" },
+                    { key: "Right" },
+                ],
             },
         ],
     },
@@ -300,7 +320,12 @@ export const controls = [
     { doc: "controls/display/progress-bar", page: "ProgressBar", animated: true },
     { doc: "controls/display/separator", page: "Separator" },
     { doc: "controls/display/spinner", page: "Spinner", animated: true },
-    { doc: "controls/display/status-bar", page: "StatusBar", animated: true },
+    {
+        doc: "controls/display/status-bar",
+        page: "StatusBar",
+        animated: true,
+        states: [{}, { name: "checked", actions: [{ click: "Auto" }] }],
+    },
     { doc: "controls/display/text", page: "Text" },
     {
         doc: "controls/popups/popup",

@@ -120,6 +120,7 @@ internal sealed class MenuPane: CompositeControlBase
         menuBar.Items.Add(fileItem);
         menuBar.Items.Add(editItem);
         menuBar.Items.Add(viewItem);
+        menuBar.Items.Add(new MenuSeparator());
         menuBar.Items.Add(helpItem);
 
         // PropertyChanged reports selection path; ItemInvoked reports committed activation.
@@ -154,6 +155,7 @@ internal sealed class MenuPane: CompositeControlBase
 
         var barFrame = new Dock
         {
+            Height = Length.Cells(12),
             Border = new Border(
                 BorderSide.Bottom,
                 BorderGlyphStyle.Light,
@@ -286,7 +288,7 @@ internal sealed class MenuPane: CompositeControlBase
                 "The top menu owns one <info>Dismiss</info> plane for its complete popup chain. Submenus default to a 15-cell minimum; Open Recent demonstrates direct <info>MinWidth</info>/<info>MaxWidth</info> bounds. Hover or arrows switch an open sibling inside that plane, and <reverse>Escape</reverse> restores the owning menu.",
                 new DocExample(
                     "Application menu bar",
-                    "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection; Open Recent extends the same plane to the right.",
+                    "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection, the vertical divider is skipped, <reverse>Right</reverse> opens a row marked with ▶, and <reverse>Left</reverse> returns one submenu level.",
                     new DocColumn(barFrame, barStatus),
                     "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(15),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"To&day\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
             new DocSection(
@@ -309,7 +311,7 @@ internal sealed class MenuPane: CompositeControlBase
                 "<info>MenuBuilder</info> composes a <info>Menu</info> fluently instead of assembling <info>MenuItem</info> objects and an <info>Items</info> collection by hand. <info>Item</info>, <info>Check</info>, and <info>Radio</info> each take an optional <info>onInvoke</info> callback, and <info>Submenu</info> nests a fresh builder for the popup that opens on activation.",
                 new DocExample(
                     "Fluent builder chain",
-                    "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by; the three entries share one radio group.",
+                    "Navigate with <reverse>Up</reverse>/<reverse>Down</reverse> arrows and <reverse>Enter</reverse> to invoke. <reverse>Right</reverse> opens Sort by and <reverse>Left</reverse> returns; the three entries share one radio group.",
                     new DocColumn(builderFrame, builderStatus),
                     "var menu = MenuBuilder.Vertical()\n    .Item(\"&Refresh\", shortcut: \"F5\", onInvoke: Refresh)\n    .Item(\"Re&name\", onInvoke: Rename)\n    .Check(\"Show hidden fi&les\", onInvoke: ToggleHidden)\n    .Separator()\n    .Submenu(\"Sort b&y\", sortBy => sortBy\n        .Radio(\"&Kind\", groupName: \"sort\", isChecked: true, onInvoke: SortByKind)\n        .Radio(\"A&ge\", groupName: \"sort\", onInvoke: SortByAge)\n        .Radio(\"Si&ze\", groupName: \"sort\", onInvoke: SortBySize))\n    .Build();")),
             new DocSection(

@@ -318,6 +318,90 @@ public sealed class MenuSurfaceTests
             """);
     }
 
+    /// <summary>Verifies a submenu-bearing row in a vertical menu reserves and renders a trailing
+    /// directional affordance, including a complete local glyph customization.</summary>
+    [Fact]
+    public async Task SubmenuIndicator_WhenVerticalItemHasSubmenu_RendersDefaultAndCustomGlyphAsync()
+    {
+        // Arrange
+        var child = new Menu { Orientation = Orientation.Vertical };
+        child.Items.Add(new MenuItem { Text = "Kind" });
+        var item = new MenuItem { Text = "Sort by", Submenu = child };
+        var menu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MinWidth = Length.Cells(12)
+        };
+        menu.Items.Add(item);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(12, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert default
+        surface.ShouldRender("Sort by    ▶");
+
+        // Act
+        await surface.UpdateAsync(
+            () => item.Style = item.ActualStyle with { SubmenuGlyph = new Rune('>') },
+            "customize submenu indicator");
+
+        // Assert custom
+        surface.ShouldRender("Sort by    >");
+    }
+
+    /// <summary>Verifies menu separators follow the owning menu axis: a row-spanning horizontal
+    /// rule in a vertical menu and a compact vertical divider in a horizontal menu.</summary>
+    [Fact]
+    public async Task Separator_WhenMenuOrientationChanges_UsesAxisAppropriateGeometryAndGlyphAsync()
+    {
+        // Arrange vertical
+        var verticalSeparator = new MenuSeparator();
+        var vertical = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MinWidth = Length.Cells(5)
+        };
+        vertical.Items.Add(verticalSeparator);
+        await using var verticalSurface = await ComponentSurface.MountAsync(
+            vertical,
+            new Size(5, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert vertical menu
+        verticalSeparator.Bounds.Width.ShouldBe(5);
+        verticalSurface.ShouldRender("─────");
+
+        // Arrange horizontal
+        var horizontalSeparator = new MenuSeparator();
+        var horizontal = new Menu
+        {
+            Orientation = Orientation.Horizontal,
+            MinWidth = Length.Cells(1)
+        };
+        horizontal.Items.Add(horizontalSeparator);
+        await using var horizontalSurface = await ComponentSurface.MountAsync(
+            horizontal,
+            new Size(5, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert horizontal menu
+        horizontalSeparator.Bounds.Width.ShouldBe(1);
+        horizontalSurface.Cell(default).Text.ShouldBe("│");
+        horizontalSurface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
+
+        // Act local vertical-divider customization
+        await horizontalSurface.UpdateAsync(
+            () => horizontalSeparator.Style = horizontalSeparator.ActualStyle with
+            {
+                VerticalGlyph = new Rune('!')
+            },
+            "customize horizontal-menu divider glyph");
+
+        // Assert custom
+        horizontalSurface.Cell(default).Text.ShouldBe("!");
+    }
+
     /// <summary>Verifies a caller can deliberately make one submenu narrower than the shared default.</summary>
     [Fact]
     public async Task Submenu_WhenMinimumWidthIsNarrowerThanDefault_UsesConfiguredInteriorWidthAsync()
@@ -1042,6 +1126,156 @@ public sealed class MenuSurfaceTests
         filePopup.IsOpen.ShouldBeFalse();
         editPopup.IsOpen.ShouldBeTrue();
         surface.ShouldHaveFocus(editMenu);
+    }
+
+    /// <summary>Verifies Right opens the selected child branch from a vertical menu and transfers
+    /// focus into that submenu, matching the directional instruction presented by Showcase.</summary>
+    [Fact]
+    public async Task Keyboard_WhenRightPressedOnVerticalSubmenuItem_OpensPopupAndMovesFocusAsync()
+    {
+        // Arrange
+        var sortMenu = new Menu { Orientation = Orientation.Vertical };
+        sortMenu.Items.Add(new MenuItem { Text = "Kind" });
+        sortMenu.Items.Add(new MenuItem { Text = "Name" });
+        var sort = new MenuItem { Text = "Sort by", Submenu = sortMenu };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(new MenuItem { Text = "Refresh" });
+        menu.Items.Add(sort);
+        menu.SelectedItem = sort;
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(sort).ShouldNotBeNull();
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Focus(menu).ShouldBeTrue(),
+            "focus vertical menu before directional submenu open");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        sortMenu.SelectedIndex.ShouldBe(0);
+        surface.ShouldHaveFocus(sortMenu);
+    }
+
+    /// <summary>Verifies opening a selected submenu cancels an authoritative Space hold before
+    /// focus transfers, so the release cannot strand the parent item's pressed presentation.</summary>
+    [Fact]
+    public async Task Keyboard_WhenHeldSpaceThenRightOpensSubmenu_CancelsParentPressBeforeFocusTransferAsync()
+    {
+        // Arrange
+        var childMenu = new Menu { Orientation = Orientation.Vertical };
+        childMenu.Items.Add(new MenuItem { Text = "Child" });
+        var parent = new MenuItem { Text = "Parent", Submenu = childMenu };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(parent);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(30, 8),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(parent).ShouldNotBeNull();
+        await surface.UpdateAsync(
+            () =>
+            {
+                menu.SetCapabilities(TestCapabilities.WithKeyReleases);
+                surface.Application.Focus.Focus(menu).ShouldBeTrue();
+            },
+            "focus a release-aware vertical menu");
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        parent.IsPressed.ShouldBeTrue();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        parent.IsPressed.ShouldBeFalse();
+        popup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(childMenu);
+
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+        parent.IsPressed.ShouldBeFalse();
+        popup.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies Left closes only the current nested branch and returns focus to its owning
+    /// vertical menu without bubbling into the horizontal root's sibling navigation.</summary>
+    [Fact]
+    public async Task Keyboard_WhenLeftPressedInNestedVerticalMenu_ClosesBranchAndRestoresParentFocusAsync()
+    {
+        // Arrange
+        var nestedMenu = new Menu { Orientation = Orientation.Vertical };
+        nestedMenu.Items.Add(new MenuItem { Text = "Today" });
+        var recent = new MenuItem { Text = "Open Recent", Submenu = nestedMenu };
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        fileMenu.Items.Add(recent);
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var root = new Menu { Orientation = Orientation.Horizontal };
+        root.Items.Add(file);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 10),
+            TestContext.Current.CancellationToken);
+        var filePopup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
+        var recentPopup = OwnedTree.Find<Popup>(recent).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(file);
+        await surface.Keyboard.PressAsync(Code.Right);
+        recentPopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(nestedMenu);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        recentPopup.IsOpen.ShouldBeFalse();
+        filePopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(fileMenu);
+        root.SelectedItem.ShouldBe(file);
+        fileMenu.SelectedItem.ShouldBe(recent);
+    }
+
+    /// <summary>Verifies closing a nested branch with Left cancels that child menu's authoritative
+    /// Space hold before focus returns to the parent, so reopening cannot reveal a stuck row.</summary>
+    [Fact]
+    public async Task Keyboard_WhenHeldSpaceThenLeftClosesNestedMenu_CancelsChildPressBeforeFocusTransferAsync()
+    {
+        // Arrange
+        var child = new MenuItem { Text = "Today" };
+        var nestedMenu = new Menu { Orientation = Orientation.Vertical };
+        nestedMenu.Items.Add(child);
+        var recent = new MenuItem { Text = "Open Recent", Submenu = nestedMenu };
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        fileMenu.Items.Add(recent);
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var root = new Menu { Orientation = Orientation.Horizontal };
+        root.Items.Add(file);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(40, 10),
+            TestContext.Current.CancellationToken);
+        var recentPopup = OwnedTree.Find<Popup>(recent).ShouldNotBeNull();
+        await surface.Pointer.ClickAsync(file);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.UpdateAsync(
+            () => nestedMenu.SetCapabilities(TestCapabilities.WithKeyReleases),
+            "enable child key-release reporting");
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        child.IsPressed.ShouldBeTrue();
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left);
+
+        // Assert
+        child.IsPressed.ShouldBeFalse();
+        recentPopup.IsOpen.ShouldBeFalse();
+        surface.ShouldHaveFocus(fileMenu);
+
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+        await surface.Keyboard.PressAsync(Code.Right);
+        recentPopup.IsOpen.ShouldBeTrue();
+        child.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveFocus(nestedMenu);
     }
 
     /// <summary>Verifies a descendant submenu press remains inside the complete popup chain until invocation.</summary>

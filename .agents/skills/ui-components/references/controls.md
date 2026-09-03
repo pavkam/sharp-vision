@@ -50,6 +50,10 @@ exactly, with a local Inheritance diagram and the canonical
   republishes complete chrome.
 - An `AnimatedIndicatorBase` implementation draws only through `OnRenderFrame`;
   the base owns timer resumption, empty-content handling, and `ContentBounds`.
+- A one-focus `ItemsControl` whose private selected face shows Space press state
+  composes `EnableSelectedItemPressActivation`; it does not retain a second
+  control-local Space latch. The shared behavior owns authoritative-release and
+  press-only-terminal completion parity.
 
 ## Focused verification
 

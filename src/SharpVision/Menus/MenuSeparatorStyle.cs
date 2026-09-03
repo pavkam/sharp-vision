@@ -29,25 +29,58 @@ public sealed record MenuSeparatorStyle: ControlStyle
             BarAppearance.CompleteFace(control, state, states),
             control.Border,
             control.Shadow,
-            ControlGlyphs.Separators.Menu.Value);
+            ControlGlyphs.Separators.Menu.Value,
+            ControlGlyphs.Separators.Vertical.Value);
+    }
+
+    /// <summary>Initializes a complete menu-divider presentation with the standard vertical-divider glyph.</summary>
+    /// <param name="face">The complete normal face.</param>
+    /// <param name="border">The complete normal border.</param>
+    /// <param name="shadow">The complete normal shadow.</param>
+    /// <param name="glyph">The printable one-cell horizontal-rule glyph.</param>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
+    [SetsRequiredMembers]
+    public MenuSeparatorStyle(
+        Face face,
+        Border border,
+        Shadow shadow,
+        Rune glyph) : this(face, border, shadow, glyph, ControlGlyphs.Separators.Vertical.Value)
+    {
     }
 
     /// <summary>Initializes a complete menu-divider presentation.</summary>
     /// <param name="face">The complete normal face.</param>
     /// <param name="border">The complete normal border.</param>
     /// <param name="shadow">The complete normal shadow.</param>
-    /// <param name="glyph">The printable one-cell divider glyph.</param>
-    /// <exception cref="ArgumentException"><paramref name="glyph"/> is a control or is not one cell wide.</exception>
+    /// <param name="glyph">The printable one-cell horizontal-rule glyph.</param>
+    /// <param name="verticalGlyph">The printable one-cell vertical-divider glyph.</param>
+    /// <exception cref="ArgumentException">A glyph is a control or is not one cell wide.</exception>
     [SetsRequiredMembers]
-    public MenuSeparatorStyle(Face face, Border border, Shadow shadow, Rune glyph) : base(face, border, shadow) =>
+    public MenuSeparatorStyle(
+        Face face,
+        Border border,
+        Shadow shadow,
+        Rune glyph,
+        Rune verticalGlyph) : base(face, border, shadow)
+    {
         Glyph = glyph;
+        VerticalGlyph = verticalGlyph;
+    }
 
     /// <summary>Gets the standard menu-divider presentation.</summary>
     public static new MenuSeparatorStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
 
-    /// <summary>Gets the divider glyph.</summary>
+    /// <summary>Gets the horizontal-rule glyph used inside a vertical menu.</summary>
     /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
     public required Rune Glyph
+    {
+        get;
+        init => field = value.ValidateSingleCell(nameof(value));
+    }
+
+    /// <summary>Gets the vertical-divider glyph used inside a horizontal menu.</summary>
+    /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
+    public required Rune VerticalGlyph
     {
         get;
         init => field = value.ValidateSingleCell(nameof(value));
