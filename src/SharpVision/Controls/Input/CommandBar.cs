@@ -147,8 +147,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         get => _selectedIndex;
         set
         {
-            VerifyMutable();
-
             if (value < -1 || value >= EntryCount)
             {
                 throw new ArgumentOutOfRangeException(nameof(value), value, "The selected index is outside the command bar.");
