@@ -913,8 +913,13 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
+        // Same Kitty-grammar signal TryHandleLegacyCsiKey uses for the cursor/function-key form:
+        // the disambiguation lease alone, with no event sub-parameter present, is enough to treat
+        // bit 3 of the modifier field as Super rather than legacy Meta.
+        var isKittyGrammar = _kittyKeyboardDisambiguationEnabled || HasKittyEventType(parameters);
+
         if (count is < 1 or > 2 || values[0] < 0 ||
-            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers))
+            !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers, isKittyGrammar))
         {
             Report(DiagnosticCode.Malformed, SequenceKind.Csi);
             return true;
@@ -1366,15 +1371,23 @@ public sealed class InputDecoder: IDisposable
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
-    private static bool TryGetModifier(int value, out Modifiers modifiers)
+    private static bool TryGetModifier(int value, out Modifiers modifiers, bool isKittyGrammar = false)
     {
         value = value < 0 ? 1 : value;
         var flags = value - 1;
 
         // This legacy ctlseqs.txt modifier code has its own 4-bit layout (Shift=1, Alt=2,
         // Control=4, Meta=8) which only coincidentally aligns with the Modifiers enum's bit
-        // layout in bits 0-2; bit 3 means Meta here, not Super, so it cannot be cast directly.
-        modifiers = (Modifiers) (flags & 0b0111) | ((flags & 0b1000) != 0 ? Modifiers.Meta : Modifiers.None);
+        // layout in bits 0-2; bit 3 means Meta here, not Super, so it cannot be cast directly -
+        // except under Kitty grammar, where the wire encoding is reused but bit 3 already means
+        // Super (see the matching remap in TryReadCsiModifiers).
+        modifiers = (Modifiers) (flags & 0b0111) | ((flags & 0b1000) != 0 ? Modifiers.Super : Modifiers.None);
+
+        if (!isKittyGrammar)
+        {
+            RemapLegacySuperToMeta(ref modifiers);
+        }
+
         return value is >= 1 and <= 16;
     }
 

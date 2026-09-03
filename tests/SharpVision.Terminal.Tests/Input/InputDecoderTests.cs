@@ -1823,6 +1823,58 @@ public sealed class InputDecoderTests
         sink.Diagnostics.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a bare tilde-form functional-key press (no event sub-parameter) still
+    /// reports Super, not Meta, once the Kitty disambiguation lease is active: the lease is
+    /// already the signal the decoder trusts to accept this otherwise-ambiguous shape as a real
+    /// Kitty keystroke, so its modifier byte must be read with Kitty semantics too - mirroring
+    /// the cursor-key case in <c>Decode_WhenKittyDisambiguationIsEnabled_MapsSuperCursorPressAtEverySplit</c>.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsEnabled_MapsSuperTildePressAtEverySplit()
+    {
+        var bytes = "[3;9~"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+
+            using (InputDecoder decoder = new(sink))
+            {
+                decoder.EnableKittyKeyboardDisambiguation();
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+            }
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Delete, null, 3, Modifiers.Super, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies the same bare tilde-form functional-key press still reports Meta, not
+    /// Super, when the Kitty disambiguation lease is not active: this is the genuinely-ambiguous
+    /// legacy shape and must not regress.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsNotEnabled_MapsMetaTildePressAtEverySplit()
+    {
+        var bytes = "[3;9~"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+                [new Stroke(Code.Delete, null, 3, Modifiers.Meta, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
     /// <summary>
     /// Verifies that out-of-range Kitty event types are rejected.
     /// Event type 0 is invalid and event type 4+ is out of range.
