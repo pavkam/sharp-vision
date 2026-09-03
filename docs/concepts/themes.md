@@ -371,8 +371,9 @@ Register a library style type's fallback definition with
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` -
 the primary factory most leaf control styles call, and the only public one left
 now that a leaf resolves no section of its own. A handful of leaf styles whose
-completion must preserve theme-owned per-state defaults instead - `Button` and
-the Bar-surface item styles (`CommandBar`, `CommandBarItem`, menu items,
+completion must preserve theme-owned per-state defaults instead - `Button`,
+`HyperlinkButton`, and the Bar-surface item and separator styles (`CommandBar`,
+`CommandBarItem`, `CommandBarSeparator`, `MenuItem`, `MenuSeparator`,
 `StatusBarItem`) - use the internal
 `ControlWithThemeOwnedStateDefaults`/`BarControlWithThemeOwnedStateDefaults`
 variants; both share `Control`'s one-hop fallback shape. `Part<TStyle>` remains
