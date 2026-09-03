@@ -256,11 +256,10 @@ public sealed class ListViewInteractionTests
         list.ActiveIndex.ShouldBe(1);
     }
 
-    /// <summary>Verifies Shift-, Control-, and Alt-modified movement keys are left unhandled so
-    /// neither the active row nor the selection moves.</summary>
+    /// <summary>Verifies Control- and Alt-modified movement keys are left unhandled so neither the
+    /// active row nor the selection moves. Shift navigation has its own range-selection contract.</summary>
     /// <param name="modifiers">The modifier held with the arrow key.</param>
     [Theory]
-    [InlineData(Modifiers.Shift)]
     [InlineData(Modifiers.Control)]
     [InlineData(Modifiers.Alt)]
     public async Task Keyboard_WhenMovementKeyCarriesCommandModifier_LeavesStateUnchangedAsync(Modifiers modifiers)

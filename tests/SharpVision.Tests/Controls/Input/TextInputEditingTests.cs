@@ -661,10 +661,10 @@ public sealed class TextInputEditingTests
         input.Text.ShouldBe("z");
     }
 
-    /// <summary>Verifies the placeholder shows dimmed only while the editor is empty and unfocused:
-    /// it hides on focus even before typing, and returns once the text is cleared and focus leaves.</summary>
+    /// <summary>Verifies the placeholder remains dimmed behind the caret while an empty editor is
+    /// focused, disappears when text is entered, and returns as soon as the text is cleared.</summary>
     [Fact]
-    public async Task Placeholder_WhenFocusAndTextChange_ShowsOnlyWhileEmptyAndUnfocusedAsync()
+    public async Task Placeholder_WhenFocusAndTextChange_ShowsWheneverEmptyAsync()
     {
         // Arrange
         var input = new TextInput
@@ -684,16 +684,17 @@ public sealed class TextInputEditingTests
         surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
         (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
 
-        // Act and assert - focus hides the placeholder immediately
+        // Act and assert - focus keeps the placeholder visible behind the caret
         await surface.FocusAsync(input);
-        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
+        (surface.Cell(new Point(0, 0)).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
         surface.ShouldHaveCursor(new Point(0, 0), visible: true);
 
-        // Act and assert - typing then deleting keeps it hidden while focused
+        // Act and assert - typing replaces the hint and deleting restores it while focused
         await surface.Keyboard.TypeAsync("x");
         surface.Cell(new Point(0, 0)).Text.ShouldBe("x");
         await surface.Keyboard.PressAsync(Code.Backspace);
-        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("N");
 
         // Act and assert - losing focus while empty restores it
         await surface.Keyboard.PressAsync(Code.Tab);
