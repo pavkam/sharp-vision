@@ -64,9 +64,9 @@ internal sealed class PopupCalendarInputProbe: InputBase
     private SegmentDescriptor[] BuildSegments() =>
         [new SegmentDescriptor(Value.ToString("D2", CultureInfo.InvariantCulture), TemporalSegmentKind.Hour, 2, 23)];
 
-    private bool ApplyDigit(TemporalSegmentKind kind, int digit)
+    private bool ApplyDigit(SegmentDescriptor segment, int digit)
     {
-        _ = kind;
+        _ = segment;
         var clamped = Math.Clamp(digit, 0, 23);
 
         if (clamped == Value)
@@ -78,9 +78,9 @@ internal sealed class PopupCalendarInputProbe: InputBase
         return true;
     }
 
-    private bool Increment(TemporalSegmentKind kind, int delta)
+    private bool Increment(SegmentDescriptor segment, int delta)
     {
-        _ = kind;
+        _ = segment;
         var clamped = Math.Clamp(Value + delta, 0, 23);
 
         if (clamped == Value)
@@ -92,9 +92,9 @@ internal sealed class PopupCalendarInputProbe: InputBase
         return true;
     }
 
-    private bool Clear(TemporalSegmentKind kind)
+    private bool Clear(SegmentDescriptor segment)
     {
-        _ = kind;
+        _ = segment;
 
         if (Value == 0)
         {

@@ -163,7 +163,7 @@ public sealed class Menu: ItemsControl
     /// <inheritdoc/>
     /// <remarks>
     /// Beside the pre-existing shared shortcut-column negotiation, this also negotiates one shared
-    /// start-affix column across every owned row: the widest local <see cref="MenuItem.StartAffix"/>
+    /// start-affix column across every owned row: the widest local <see cref="InputBase.StartAffix"/>
     /// reservation among owned items, pushed down to every row through
     /// <see cref="MenuItem.SetSharedStartAffixColumn"/> so a row without its own start affix still
     /// leaves its caption aligned with a sibling that has one. A horizontal Menu resets every row's

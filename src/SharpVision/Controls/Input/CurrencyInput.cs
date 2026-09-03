@@ -293,26 +293,6 @@ public sealed class CurrencyInput: InputBase
 
     #region Layout
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inboard of the
-    /// border and outboard of the value's own composed text.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inboard of the
-    /// border and outboard of the value's own composed text.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {

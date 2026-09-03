@@ -9,8 +9,9 @@ Plain Tab or Shift+Tab closes the open popup and continues application
 traversal. Caps Lock and Num Lock are incidental state; a Tab carrying Control,
 Alt, Super, Hyper, or Meta remains unhandled and leaves the popup open.
 
-Exact Alt+Down opens the popup; lock-key state is ignored, but every additional
-command modifier leaves the chord unhandled for an application or host shortcut.
+Exact Alt+Down or unmodified F4 opens the popup; lock-key state is ignored, but
+every additional command modifier leaves the chord unhandled for an application
+or host shortcut.
 
 The time portion supports `TimeStep`, a positive whole-minute increment that
 Up/Down applies while the minute segment is active. The embedded calendar
@@ -20,8 +21,8 @@ preserves the current time and `DateTimeKind`.
 `DateTimeInput` derives from [`InputBase`](../input-base.md#overview), enabling
 press activation, an owned Calendar popup, and segment editing. It shares its
 complete routed key and pointer editing engine - active-segment navigation,
-digit-entry buffering, popup precedence, AM/PM commands, and focus
-continuation - with [`DateInput`](date-input.md) and
+digit-entry buffering, popup precedence, AM/PM commands, active/null segment
+styling, and focus continuation - with [`DateInput`](date-input.md) and
 [`TimeInput`](time-input.md) through
 [`InputBase.EnableSegmentEditing`](../input-base.md#api). The three controls use
 one generic nullable value state for dispatcher-clock seeding, bounds, repair,
@@ -40,11 +41,15 @@ instance is silent. The time portion keeps the fixed
 hour/minute/[second]/[AM-PM] structure `Use24HourFormat` and `ShowSeconds`
 already select, localizing only its separator, AM/PM designator text, and digit
 glyphs. Set `Format` to a custom combined pattern (for example
-`"yyyy/MM/dd hh:mm tt"`) to override that structure directly; pair a 12-hour
-`h`/`hh` hour token with a `t`/`tt` AM/PM designator token for correct 12-hour
-clamping and rendering. A lowercase hour token without a designator is treated
-as a 24-hour segment for both editing and display, so committed values above 12
-round-trip through the visible digits unchanged.
+`"yyyy/MM/dd HH:mm:ss.fff"`) to override that structure directly. Runs of one to
+seven `f` or `F` tokens expose an editable fractional-second segment at the
+declared precision. Uppercase `F` still omits insignificant trailing zeroes,
+while the field reserves the run's blank cells so focus and pointer targeting do
+not collapse. Pair a 12-hour `h`/`hh` hour token with a `t`/`tt` AM/PM
+designator token for correct 12-hour clamping and rendering. A lowercase hour
+token without a designator is treated as a 24-hour segment for both editing and
+display, so committed values above 12 round-trip through the visible digits
+unchanged.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`
@@ -63,11 +68,11 @@ classDiagram
 | Member                             | Type                                               | Default                          | Description                                                                                                                                 |
 | ---------------------------------- | -------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Value`                            | `DateTime?`                                        | current local date and time      | The nullable value, clamped to the inclusive bounds.                                                                                        |
-| `AllowNull`                        | `bool`                                             | `true`                           | Allows Delete or Backspace to clear the value; disabling it repairs a null value.                                                           |
+| `AllowNull`                        | `bool`                                             | `true`                           | Allows Delete to clear the value; Backspace clears only the active segment; disabling it repairs null.                                      |
 | `Culture`                          | `CultureInfo`                                      | `CultureInfo.InvariantCulture`   | Localizes both the popup calendar and the typed field's date order, separators, designator text, and digits; must use a Gregorian calendar. |
 | `Use24HourFormat`                  | `bool`                                             | `true`                           | Selects 24-hour or AM/PM segments.                                                                                                          |
 | `ShowSeconds`                      | `bool`                                             | `false`                          | Adds the seconds segment.                                                                                                                   |
-| `Format`                           | `string?`                                          | `null`                           | A custom combined pattern overriding the derived segment order and count.                                                                   |
+| `Format`                           | `string?`                                          | `null`                           | A custom combined pattern overriding segment order and count, including editable `f`/`F` fractions.                                         |
 | `TimeStep`                         | `TimeSpan`                                         | one minute                       | The positive whole-minute increment for the minute segment.                                                                                 |
 | `Minimum`                          | `DateTime`                                         | `DateTime.MinValue`              | The inclusive lower bound that repairs the current value.                                                                                   |
 | `Maximum`                          | `DateTime`                                         | `DateTime.MaxValue`              | The inclusive upper bound that repairs the current value.                                                                                   |
@@ -77,8 +82,8 @@ classDiagram
 | `ActualCalendarStyle`              | `CalendarStyle`                                    | Resolved                         | Read-only; the resolved presentation of the owned Calendar.                                                                                 |
 | `PopupChrome`                      | `PopupChrome`                                      | `default`                        | Overrides the owned Calendar popup's border and shadow together.                                                                            |
 | `ResetPopupChrome()`               | `void`                                             | —                                | Returns the Calendar popup's border and shadow to `PopupChrome` ownership.                                                                  |
-| `StartAffix`                       | `Affix?`                                           | `null`                           | Optional leading edge-pinned decoration, reserved inside the field box and strictly inboard of the drop-down indicator.                     |
-| `EndAffix`                         | `Affix?`                                           | `null`                           | Optional trailing edge-pinned decoration, reserved inside the field box and strictly inboard of the drop-down indicator.                    |
+| `StartAffix`                       | `Affix?`                                           | `null`                           | Inherited optional leading edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                    |
+| `EndAffix`                         | `Affix?`                                           | `null`                           | Inherited optional trailing edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                   |
 | Themed disclosure glyph            | —                                                  | `InputStyle.DropDownGlyph` (`▼`) | Authored once for every drop-down input through a theme's `styles.input` section.                                                           |
 | `ValueChanged`                     | `EventHandler<DateTimeInputValueChangedEventArgs>` | no subscribers                   | Raised after a committed value transition.                                                                                                  |
 | `DropDownOpened`, `DropDownClosed` | `EventHandler`                                     | no subscribers                   | Raised after the Calendar popup opens or closes.                                                                                            |
@@ -113,7 +118,7 @@ control's actual bounds on every render.
 | A / P               | Selects AM or PM when an AM/PM segment is present.                                                                 |
 | Backspace           | Clears the active segment while the popup is closed.                                                               |
 | Delete              | Clears the complete value when `AllowNull` is `true`.                                                              |
-| Alt+Down            | Opens the Calendar popup.                                                                                          |
+| Alt+Down / F4       | Opens the Calendar popup.                                                                                          |
 | Enter / Space       | Accepts the active date and closes the open popup.                                                                 |
 | Escape              | Cancels the open popup and restores its opening state.                                                             |
 | Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                            |
@@ -128,8 +133,8 @@ activation accepts the session.
 
 A primary pointer activation accepts that date, including the already-active
 date, preserves the time and `DateTimeKind`, and closes the popup. Repeated
-Alt+Down is consumed by the already-open session without reopening or moving the
-Calendar.
+Alt+Down or F4 is consumed by the already-open session without reopening or
+moving the Calendar.
 
 The Calendar operates at day granularity, so its `Minimum`/`Maximum` bounds are
 the date portions of `Minimum`/`Maximum`, and the `Minimum` or `Maximum`
@@ -166,15 +171,18 @@ var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 
 ## Expected behavior
 
-| Scope                 | Observable evidence                                                                                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Defaults, bounds, culture, the null policy, the time step, glyph validation, segment edits, and event order behave as documented.                                 |
-| Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                                           |
-| Complete runtime path | Date and time formats, culture-driven segment order and separators, the active segment, the popup, focus, the disabled state, and tiny clipping render correctly. |
+| Scope                 | Observable evidence                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | Defaults, bounds, culture, the null policy, the time step, glyph validation, segment edits, and event order behave as documented.                                                        |
+| Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                                                                  |
+| Complete runtime path | Date/time and fractional formats, culture-driven order and separators, focused null placeholders, the active segment, popup styling, disabled state, and tiny clipping render correctly. |
 
 - Direct digit and AM/PM entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),
   leaving command-modified characters unhandled without changing a segment.
+- Navigation, step, and clearing keys carrying command modifiers likewise remain
+  unhandled. Recognized unmodified commands are consumed even when a segment or
+  value bound prevents a change.
 - Initial and repeated Calendar navigation is delivered once regardless of focus
   placement, remains provisional until Enter, Space, or pointer acceptance, and
   restores the opening active date and complete date-time on cancellation.

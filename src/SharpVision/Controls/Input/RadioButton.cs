@@ -133,26 +133,6 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
         ExecuteCommandIfAny(command);
     }
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved before the mark
-    /// glyph and outside the caption's own alignment box.</summary>
-    /// <exception cref="InvalidOperationException">The attached RadioButton is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The RadioButton is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved after the
-    /// caption and outside the caption's own alignment box.</summary>
-    /// <exception cref="InvalidOperationException">The attached RadioButton is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The RadioButton is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {

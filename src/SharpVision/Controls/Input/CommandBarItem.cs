@@ -39,24 +39,6 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public CommandBarItemStyle ActualStyle => _style.Actual;
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration.</summary>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration.</summary>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     /// <summary>Gets whether the current bar layout presents this item through the overflow menu.</summary>
     public bool IsOverflowed { get; private set; }
 

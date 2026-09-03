@@ -19,47 +19,75 @@ internal sealed class DateTimeInputPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         // Combined date-time input with live value tracking.
-        var combinedStatus = new Text("Value: (pick a date and time)");
+        var combinedStatus = CreateStatus();
         var combined = new DateTimeInput
         {
             TimeStep = TimeSpan.FromMinutes(15),
-            DropDownHeight = Length.Percent(50)
+            DropDownHeight = Length.Percent(50),
+            ShowSeconds = true,
+            Value = new DateTime(2026, 9, 3, 14, 30, 5, DateTimeKind.Utc),
+            CalendarStyle = CalendarStyle.Default with { SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff) },
+            PopupChrome = new PopupChrome
+            {
+                Border = new Border(
+                    BorderSide.All,
+                    BorderGlyphStyle.Heavy,
+                    Color.Rgb(0x77, 0xaa, 0xff),
+                    Color.Transparent,
+                    TerminalAttributes.None)
+            }
         };
         combined.ValueChanged += (_, eventArgs) =>
             combinedStatus.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         combinedStatus.Content = $"Value: {FormatDateTime(combined.Value)}";
 
         // 12-hour format with AM/PM.
-        var status12 = new Text("Value: (pick a date and time)");
-        var input12 = new DateTimeInput { Use24HourFormat = false };
+        var status12 = CreateStatus();
+        var input12 = new DateTimeInput
+        {
+            Use24HourFormat = false,
+            Value = new DateTime(2026, 9, 3, 9, 45, 0, DateTimeKind.Utc)
+        };
         input12.ValueChanged += (_, eventArgs) =>
             status12.Content = $"Value: {FormatDateTime(eventArgs.Value, use12Hour: true)}";
         status12.Content = $"Value: {FormatDateTime(input12.Value, use12Hour: true)}";
 
         // Nullable.
-        var statusNull = new Text("Value: (pick a date and time)");
-        var inputNull = new DateTimeInput { AllowNull = true };
+        var statusNull = CreateStatus();
+        var inputNull = new DateTimeInput { AllowNull = true, Value = null };
         inputNull.ValueChanged += (_, eventArgs) =>
             statusNull.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         statusNull.Content = $"Value: {FormatDateTime(inputNull.Value)}";
 
         // Localized culture.
-        var statusCulture = new Text("Value: (pick a date and time)");
-        var inputCulture = new DateTimeInput { Culture = new CultureInfo("de-DE") };
+        var statusCulture = CreateStatus();
+        var inputCulture = new DateTimeInput
+        {
+            Culture = new CultureInfo("de-DE"),
+            Value = new DateTime(2026, 9, 3, 14, 30, 0, DateTimeKind.Utc)
+        };
         inputCulture.ValueChanged += (_, eventArgs) =>
             statusCulture.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         statusCulture.Content = $"Value: {FormatDateTime(inputCulture.Value)}";
 
         // Custom format.
-        var statusFormat = new Text("Value: (pick a date and time)");
-        var inputFormat = new DateTimeInput { Format = "yyyy/MM/dd hh:mm tt" };
+        var statusFormat = CreateStatus();
+        var inputFormat = new DateTimeInput
+        {
+            Format = "yyyy/MM/dd HH:mm:ss.fff",
+            Value = new DateTime(2026, 9, 3, 14, 30, 5, 123, DateTimeKind.Utc)
+        };
         inputFormat.ValueChanged += (_, eventArgs) =>
-            statusFormat.Content = $"Value: {FormatDateTime(eventArgs.Value, use12Hour: true)}";
-        statusFormat.Content = $"Value: {FormatDateTime(inputFormat.Value, use12Hour: true)}";
+            statusFormat.Content = $"Value: {FormatDateTime(eventArgs.Value, showFraction: true)}";
+        statusFormat.Content = $"Value: {FormatDateTime(inputFormat.Value, showFraction: true)}";
 
         // EndAffix reserves a fixed cell for an application-owned reminder marker.
-        var statusReminder = new Text("Value: (pick a date and time)");
-        var inputReminder = new DateTimeInput { EndAffix = new Affix("🔔", "!", SemanticColor.Info) };
+        var statusReminder = CreateStatus();
+        var inputReminder = new DateTimeInput
+        {
+            EndAffix = new Affix("🔔", "!", SemanticColor.Info),
+            Value = new DateTime(2026, 9, 3, 18, 45, 0, DateTimeKind.Utc)
+        };
         inputReminder.ValueChanged += (_, eventArgs) =>
             statusReminder.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
         statusReminder.Content = $"Value: {FormatDateTime(inputReminder.Value)}";
@@ -70,12 +98,12 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             new DocSection(
                 "📅",
                 "Combined input",
-                "Date segments open a Calendar popup on activation. Time segments edit inline; this specimen advances minutes in 15-minute steps. <reverse>Alt+Down</reverse> opens the popup from any segment.",
+                "All segments edit inline; this specimen advances minutes in 15-minute steps. The disclosure, <reverse>Alt+Down</reverse>, or <reverse>F4</reverse> opens the Calendar popup from any segment.",
                 new DocExample(
                     "Responsive date-time field",
-                    "<reverse>Left</reverse>/<reverse>Right</reverse> navigate all segments. The Calendar uses half the usable placement-side height and responds to terminal resize while preserving the current time portion.",
+                    "<reverse>Left</reverse>/<reverse>Right</reverse> navigate all segments. The styled Calendar popup uses half the usable placement-side height and preserves the current time portion.",
                     new DocColumn(combined, combinedStatus),
-                    "var dateTime = new DateTimeInput\n{\n    TimeStep = TimeSpan.FromMinutes(15),\n    DropDownHeight = Length.Percent(50)\n};\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var dateTime = new DateTimeInput\n{\n    Value = new DateTime(2026, 9, 3, 14, 30, 5, DateTimeKind.Utc),\n    ShowSeconds = true,\n    TimeStep = TimeSpan.FromMinutes(15),\n    DropDownHeight = Length.Percent(50),\n    CalendarStyle = CalendarStyle.Default with\n    {\n        SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff)\n    },\n    PopupChrome = new PopupChrome\n    {\n        Border = new Border(BorderSide.All, BorderGlyphStyle.Heavy,\n            Color.Rgb(0x77, 0xaa, 0xff), Color.Transparent, TerminalAttributes.None)\n    }\n};\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
             new DocSection(
                 "🕐",
                 "12-hour format",
@@ -108,10 +136,10 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                 "Custom format",
                 "<info>Format</info> overrides the derived combined pattern entirely, taking precedence over <info>Culture</info>'s date pattern and <info>Use24HourFormat</info>/<info>ShowSeconds</info>.",
                 new DocExample(
-                    "Year-first, 12-hour combined field",
-                    "The pattern's own tokens select both the date segment order and the hour segment's 12-hour clamping.",
+                    "Year-first fractional field",
+                    "The pattern's own tokens select the date segment order and expose an editable millisecond segment.",
                     new DocColumn(inputFormat, statusFormat),
-                    "dateTime.Format = \"yyyy/MM/dd hh:mm tt\";")),
+                    "dateTime.Format = \"yyyy/MM/dd HH:mm:ss.fff\";")),
             new DocSection(
                 "🔔",
                 "Affixes",
@@ -123,10 +151,17 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                     "var dateTime = new DateTimeInput\n{\n    EndAffix = new Affix(\"🔔\", \"!\", SemanticColor.Info)\n};")));
     }
 
-    private static string FormatDateTime(DateTime? dateTime, bool use12Hour = false) =>
+    private static string FormatDateTime(
+        DateTime? dateTime,
+        bool use12Hour = false,
+        bool showFraction = false) =>
         dateTime.HasValue
             ? dateTime.Value.ToString(
-                use12Hour ? "yyyy-MM-dd hh:mm tt" : "yyyy-MM-dd HH:mm",
+                showFraction
+                    ? "yyyy-MM-dd HH:mm:ss.fff"
+                    : use12Hour ? "yyyy-MM-dd hh:mm tt" : "yyyy-MM-dd HH:mm:ss",
                 CultureInfo.InvariantCulture)
             : "(none)";
+
+    private static Text CreateStatus() => new("Value: (none)") { Width = Length.Cells(36) };
 }

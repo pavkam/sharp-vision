@@ -631,6 +631,20 @@ public sealed class DateTimeInputTests
         control.IsOpen.ShouldBeFalse();
     }
 
+    /// <summary>Verifies F4 opens the calendar using the same conventional drop-down gesture as
+    /// DateInput.</summary>
+    [Fact]
+    public void Dispatch_WhenF4IsPressed_OpensCalendarAndHandlesKey()
+    {
+        using var control = new DateTimeInput();
+        var key = Key(Code.F4);
+
+        _ = Router.Route(control, Events.Key, key);
+
+        control.IsOpen.ShouldBeTrue();
+        key.IsHandled.ShouldBeTrue();
+    }
+
     /// <summary>Verifies Alt+Down rejects every additional command modifier.</summary>
     [Theory]
     [InlineData(Modifiers.Alt | Modifiers.Control)]
@@ -843,6 +857,115 @@ public sealed class DateTimeInputTests
         var row = Row(frame, 1);
         row.ShouldContain("2026/07/19");
         row.ShouldContain("02:30 PM");
+    }
+
+    /// <summary>Verifies a custom fixed fractional-second run renders and remains attached to the
+    /// time portion instead of appearing as literal format text.</summary>
+    [Fact]
+    public void Render_WhenFormatContainsFractionalSeconds_DrawsFractionalValue()
+    {
+        using var control = new DateTimeInput
+        {
+            Format = "MM/dd/yyyy HH:mm:ss.fff",
+            Value = new DateTime(2026, 7, 19, 14, 30, 5, 123)
+        };
+        new LayoutEngine().Layout(control, new Size(36, 3));
+        using Frame frame = new(new Size(36, 3));
+
+        control.Render(frame.Canvas);
+
+        Row(frame, 1).ShouldContain("07/19/2026 14:30:05.123");
+    }
+
+    /// <summary>Verifies an empty uppercase optional fraction retains its declared editing width
+    /// in the combined field rather than collapsing its focus and pointer target.</summary>
+    [Fact]
+    public void Render_WhenOptionalFractionIsEmpty_ReservesHighlightedEditingCells()
+    {
+        using var control = new DateTimeInput
+        {
+            Format = "MM/dd/yyyy HH:mm:ss.FFF",
+            Value = new DateTime(2026, 7, 19, 14, 30, 5)
+        };
+        control.SetFocused(true);
+
+        for (var index = 0; index < 6; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        new LayoutEngine().Layout(control, new Size(36, 3));
+        using Frame frame = new(new Size(36, 3));
+
+        control.Render(frame.Canvas);
+
+        for (var x = 21; x <= 23; x++)
+        {
+            (frame.GetCell(new Point(x, 1)).Style.Attributes & TerminalAttributes.Reverse)
+                .ShouldBe(TerminalAttributes.Reverse);
+        }
+    }
+
+    /// <summary>Verifies a focused null field highlights its active segment while the rest of the
+    /// placeholder remains dim, matching DateInput and TimeInput.</summary>
+    [Fact]
+    public void Render_WhenFocusedValueIsNull_HighlightsActivePlaceholderAndDimsTheRest()
+    {
+        using var control = new DateTimeInput { Value = null };
+        control.SetFocused(true);
+        new LayoutEngine().Layout(control, new Size(28, 3));
+        using Frame frame = new(new Size(28, 3));
+
+        control.Render(frame.Canvas);
+
+        (frame.GetCell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
+        (frame.GetCell(new Point(4, 1)).Style.Attributes & TerminalAttributes.Dim)
+            .ShouldBe(TerminalAttributes.Dim);
+    }
+
+    /// <summary>Verifies digit entry replaces a format-driven millisecond segment without
+    /// disturbing the date, whole-second value, or DateTime kind.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatContainsMilliseconds_ReplacesMillisecondSegment()
+    {
+        using var control = new DateTimeInput
+        {
+            Format = "MM/dd/yyyy HH:mm:ss.fff",
+            Value = new DateTime(2026, 7, 19, 14, 30, 5, 450, DateTimeKind.Utc)
+        };
+
+        for (var index = 0; index < 6; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, CharacterKey('1'));
+        _ = Router.Route(control, Events.Key, CharacterKey('2'));
+        _ = Router.Route(control, Events.Key, CharacterKey('3'));
+
+        control.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 5, 123, DateTimeKind.Utc));
+    }
+
+    /// <summary>Verifies Up advances the fractional segment at its declared precision while
+    /// preserving the date, whole time, and DateTime kind.</summary>
+    [Fact]
+    public void Input_WhenUpIsPressedOnMillisecondSegment_IncrementsOneMillisecondAndPreservesKind()
+    {
+        using var control = new DateTimeInput
+        {
+            Format = "MM/dd/yyyy HH:mm:ss.fff",
+            Value = new DateTime(2026, 7, 19, 14, 30, 5, 123, DateTimeKind.Utc)
+        };
+
+        for (var index = 0; index < 6; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        control.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 5, 124, DateTimeKind.Utc));
     }
 
     #endregion
@@ -1195,6 +1318,21 @@ public sealed class DateTimeInputTests
             : new DateTime(2026, 3, 15, 10, 30, 0));
         digit.IsHandled.ShouldBe(expectedEdit);
         designator.IsHandled.ShouldBe(expectedEdit);
+    }
+
+    /// <summary>Verifies an admitted navigation command remains consumed at the first date-time
+    /// segment, matching the other temporal fields.</summary>
+    [Fact]
+    public void Input_WhenLeftIsPressedAtFirstSegment_HandlesWithoutChangingValue()
+    {
+        var value = new DateTime(2026, 3, 15, 10, 30, 0);
+        using var control = new DateTimeInput { Value = value };
+        var key = Key(Code.Left);
+
+        _ = Router.Route(control, Events.Key, key);
+
+        control.Value.ShouldBe(value);
+        key.IsHandled.ShouldBeTrue();
     }
 
     /// <summary>Verifies typing four digits on the Year segment produces a year above 99

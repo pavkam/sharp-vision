@@ -1704,7 +1704,7 @@ public sealed class TextInputTests
         FrameOracle.Get(frame, new Point(3, 0)).ShouldBe("t");
     }
 
-    /// <summary>Regression test: shrinking <see cref="TextInput.StartAffix"/> frees editor width,
+    /// <summary>Regression test: shrinking <see cref="InputBase.StartAffix"/> frees editor width,
     /// which under <see cref="TextInput.WordWrap"/> reflows content into fewer visual lines and
     /// lowers the valid vertical scroll maximum. <c>ArrangeChrome</c> feeds the new maximum into the
     /// scrollbar controller's <c>Synchronize</c> call, but that call suppresses its own change
@@ -1743,7 +1743,7 @@ public sealed class TextInputTests
         control.VerticalOffset.ShouldBe(0);
     }
 
-    /// <summary>Regression test: shrinking <see cref="TextInput.EndAffix"/> frees editor width,
+    /// <summary>Regression test: shrinking <see cref="InputBase.EndAffix"/> frees editor width,
     /// which lowers the valid horizontal scroll maximum for unwrapped content the same way <see
     /// cref="StartAffix_WhenShrunkUnderWordWrap_ReclampsVerticalOffsetImmediately"/> does for the
     /// vertical axis. Asserted immediately after the setter returns, with no intervening layout

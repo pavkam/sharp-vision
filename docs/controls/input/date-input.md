@@ -34,11 +34,11 @@ owned Calendar before `PropertyChanged` is published.
 press activation, an owned Calendar popup, and segment editing. It shares its
 complete routed key and pointer editing engine - including active-segment
 navigation, digit-entry buffering, recognized-without-change handling, popup
-precedence, and focus continuation - with [`TimeInput`](time-input.md) and
-[`DateTimeInput`](date-time-input.md) through
-[`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control keeps its
-own calendar/clock arithmetic and pattern (`ResolveDatePattern` here) on top of
-that shared engine.
+precedence, consistent active/null segment styling, and focus continuation -
+with [`TimeInput`](time-input.md) and [`DateTimeInput`](date-time-input.md)
+through [`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control
+keeps its own calendar/clock arithmetic and pattern (`ResolveDatePattern` here)
+on top of that shared engine.
 
 The three temporal fields also use one generic nullable value state for lazy
 dispatcher-clock seeding, inclusive bounds, endpoint repair, and reentrant-safe
@@ -61,25 +61,25 @@ classDiagram
 
 ## API
 
-| Member                             | Type                                           | Default                                         | Description                                                                                                              |
-| ---------------------------------- | ---------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `Value`                            | `DateOnly?`                                    | current local date                              | The nullable committed date, clamped to the inclusive bounds.                                                            |
-| `AllowNull`                        | `bool`                                         | `true`                                          | Allows clearing the value; disabling it repairs a null value.                                                            |
-| `Culture`                          | `CultureInfo`                                  | current Gregorian culture or invariant fallback | Supplies the segment order and formatting; rejects cultures whose active calendar is not Gregorian.                      |
-| `Format`                           | `string`                                       | `"d"`                                           | A non-null, non-empty date format string.                                                                                |
-| `Minimum`                          | `DateOnly`                                     | `DateOnly.MinValue`                             | The inclusive lower bound that repairs the current value.                                                                |
-| `Maximum`                          | `DateOnly`                                     | `DateOnly.MaxValue`                             | The inclusive upper bound that repairs the current value.                                                                |
-| `DropDownHeight`                   | `Length`                                       | `Length.Cells(10)`                              | The automatic, fixed-cell, or placement-relative maximum visible calendar height.                                        |
-| `IsOpen`                           | `bool`                                         | `false`                                         | Opens or closes the retained Calendar popup.                                                                             |
-| `CalendarStyle`                    | `CalendarStyle?`                               | `null`                                          | Overrides the owned Calendar's complete local presentation.                                                              |
-| `ActualCalendarStyle`              | `CalendarStyle`                                | Resolved                                        | Read-only; the resolved presentation of the owned Calendar.                                                              |
-| `PopupChrome`                      | `PopupChrome`                                  | `default`                                       | Overrides the owned Calendar popup's border and shadow together.                                                         |
-| `ResetPopupChrome()`               | `void`                                         | —                                               | Returns the Calendar popup's border and shadow to `PopupChrome` ownership.                                               |
-| `StartAffix`                       | `Affix?`                                       | `null`                                          | Optional leading edge-pinned decoration, reserved inside the field box and strictly inboard of the drop-down indicator.  |
-| `EndAffix`                         | `Affix?`                                       | `null`                                          | Optional trailing edge-pinned decoration, reserved inside the field box and strictly inboard of the drop-down indicator. |
-| Themed disclosure glyph            | —                                              | `InputStyle.DropDownGlyph` (`▼`)                | Authored once for every drop-down input via `styles.input`.                                                              |
-| `ValueChanged`                     | `EventHandler<DateInputValueChangedEventArgs>` | no subscribers                                  | Raised after a committed value transition.                                                                               |
-| `DropDownOpened`, `DropDownClosed` | `EventHandler`                                 | no subscribers                                  | Raised after the Calendar popup opens or closes.                                                                         |
+| Member                             | Type                                           | Default                                         | Description                                                                                               |
+| ---------------------------------- | ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Value`                            | `DateOnly?`                                    | current local date                              | The nullable committed date, clamped to the inclusive bounds.                                             |
+| `AllowNull`                        | `bool`                                         | `true`                                          | Allows clearing the value; disabling it repairs a null value.                                             |
+| `Culture`                          | `CultureInfo`                                  | current Gregorian culture or invariant fallback | Supplies the segment order and formatting; rejects cultures whose active calendar is not Gregorian.       |
+| `Format`                           | `string`                                       | `"d"`                                           | A non-null, non-empty date format string.                                                                 |
+| `Minimum`                          | `DateOnly`                                     | `DateOnly.MinValue`                             | The inclusive lower bound that repairs the current value.                                                 |
+| `Maximum`                          | `DateOnly`                                     | `DateOnly.MaxValue`                             | The inclusive upper bound that repairs the current value.                                                 |
+| `DropDownHeight`                   | `Length`                                       | `Length.Cells(10)`                              | The automatic, fixed-cell, or placement-relative maximum visible calendar height.                         |
+| `IsOpen`                           | `bool`                                         | `false`                                         | Opens or closes the retained Calendar popup.                                                              |
+| `CalendarStyle`                    | `CalendarStyle?`                               | `null`                                          | Overrides the owned Calendar's complete local presentation.                                               |
+| `ActualCalendarStyle`              | `CalendarStyle`                                | Resolved                                        | Read-only; the resolved presentation of the owned Calendar.                                               |
+| `PopupChrome`                      | `PopupChrome`                                  | `default`                                       | Overrides the owned Calendar popup's border and shadow together.                                          |
+| `ResetPopupChrome()`               | `void`                                         | —                                               | Returns the Calendar popup's border and shadow to `PopupChrome` ownership.                                |
+| `StartAffix`                       | `Affix?`                                       | `null`                                          | Inherited optional leading edge-pinned decoration, reserved strictly inboard of the drop-down indicator.  |
+| `EndAffix`                         | `Affix?`                                       | `null`                                          | Inherited optional trailing edge-pinned decoration, reserved strictly inboard of the drop-down indicator. |
+| Themed disclosure glyph            | —                                              | `InputStyle.DropDownGlyph` (`▼`)                | Authored once for every drop-down input via `styles.input`.                                               |
+| `ValueChanged`                     | `EventHandler<DateInputValueChangedEventArgs>` | no subscribers                                  | Raised after a committed value transition.                                                                |
+| `DropDownOpened`, `DropDownClosed` | `EventHandler`                                 | no subscribers                                  | Raised after the Calendar popup opens or closes.                                                          |
 
 `DropDownHeight` constrains only the Calendar interior and never stretches a
 shorter Calendar to the cap. `Length.Auto` uses its intrinsic height, positive
@@ -115,6 +115,11 @@ every render.
 | Escape              | Cancels the open popup and restores its opening state.                                                             |
 | Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                            |
 
+Navigation, step, clearing, and digit commands carrying Control, Alt, Super,
+Hyper, or Meta remain unhandled and do not mutate the value. Caps Lock and Num
+Lock are incidental. A recognized unmodified command is consumed even at a
+segment boundary or value bound where it produces no change.
+
 ## Popup navigation session
 
 Opening snapshots the committed `Value`, `Calendar.ActiveDate`, and Calendar
@@ -144,11 +149,11 @@ var dateInput = new DateInput();
 
 ## Expected behavior
 
-| Scope                 | Observable evidence                                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Defaults, bounds, the null policy, format and culture validation, segment editing, and event order behave as documented.                              |
-| Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                               |
-| Complete runtime path | The field and active segment render in their exact cells, the popup places correctly, focused and disabled states apply, and tiny bounds clip safely. |
+| Scope                 | Observable evidence                                                                                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | Defaults, bounds, the null policy, format and culture validation, segment editing, and event order behave as documented.                                    |
+| Integrated behavior   | Keyboard and pointer editing, Calendar selection, light dismiss, and focus restoration work end to end.                                                     |
+| Complete runtime path | The field, active segment, and focused null placeholder render consistently; popup placement and styling, disabled state, and tiny clipping remain correct. |
 
 - Direct digit entry follows the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy),

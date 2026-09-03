@@ -22,18 +22,29 @@ internal readonly struct PatternSegment: IEquatable<PatternSegment>
         LiteralText = literalText;
         Kind = null;
         RunLength = 0;
+        PatternCharacter = null;
     }
 
     /// <summary>Initializes an editable token run, such as "yyyy" or "HH".</summary>
     /// <param name="kind">The calendar or clock component the run represents.</param>
     /// <param name="runLength">The number of repeated pattern letters in the run.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="runLength"/> is not positive.</exception>
-    public PatternSegment(TemporalSegmentKind kind, int runLength)
+    /// <param name="patternCharacter">The exact case-sensitive format letter repeated by the run.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="kind"/> is unknown, <paramref
+    /// name="runLength"/> is not positive, or <paramref name="patternCharacter"/> is the null character.</exception>
+    public PatternSegment(TemporalSegmentKind kind, int runLength, char patternCharacter)
     {
+        ArgumentOutOfRangeException.ThrowIfNotDefined(kind);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(runLength);
+
+        if (patternCharacter == '\0')
+        {
+            throw new ArgumentOutOfRangeException(nameof(patternCharacter));
+        }
+
         LiteralText = string.Empty;
         Kind = kind;
         RunLength = runLength;
+        PatternCharacter = patternCharacter;
     }
 
     /// <summary>Gets the literal text for a non-editable run, or the empty string for an editable run.</summary>
@@ -45,15 +56,19 @@ internal readonly struct PatternSegment: IEquatable<PatternSegment>
     /// <summary>Gets the number of repeated pattern letters in an editable run, or zero for a literal run.</summary>
     public int RunLength { get; }
 
+    /// <summary>Gets the case-sensitive format letter for an editable run, or null for a literal run.</summary>
+    public char? PatternCharacter { get; }
+
     /// <inheritdoc/>
     public bool Equals(PatternSegment other) =>
-        LiteralText == other.LiteralText && Kind == other.Kind && RunLength == other.RunLength;
+        LiteralText == other.LiteralText && Kind == other.Kind && RunLength == other.RunLength &&
+        PatternCharacter == other.PatternCharacter;
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is PatternSegment other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(LiteralText, Kind, RunLength);
+    public override int GetHashCode() => HashCode.Combine(LiteralText, Kind, RunLength, PatternCharacter);
 
     /// <summary>Determines whether two pattern segments are equal.</summary>
     public static bool operator ==(PatternSegment left, PatternSegment right) => left.Equals(right);

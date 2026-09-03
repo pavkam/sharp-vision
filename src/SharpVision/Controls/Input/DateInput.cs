@@ -5,8 +5,6 @@ namespace SharpVision.Controls.Input;
 
 using Popups;
 
-using SharpVision.Terminal.Input;
-
 /// <summary>Displays a formatted date with inline segment editing and a Calendar popup for selection.</summary>
 [PublicAPI]
 public sealed class DateInput: InputBase
@@ -97,11 +95,12 @@ public sealed class DateInput: InputBase
             BuildSegments,
             ApplySegmentDigit,
             ApplySegmentIncrement,
-            ClearSegmentValue);
+            ClearSegmentValue,
+            activateFirstSegmentOnFocus: true);
         _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveStepDelta,
+            ResolveSegmentStepDelta,
             ClearValueCommand,
-            handlePopupCommand: HandlePopupCommand,
+            handlePopupCommand: HandleDropDownOpeningCommand,
             handleRecognizedWithoutChange: true);
         TabNavigation = TabNavigation.None;
     }
@@ -302,26 +301,6 @@ public sealed class DateInput: InputBase
     /// <summary>Gets the retained calendar for proving bound synchronization invariants.</summary>
     internal Calendar OwnedCalendar => _calendarDropDown.Calendar;
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     #endregion
 
     #region Input, layout, and rendering
@@ -345,7 +324,7 @@ public sealed class DateInput: InputBase
 
     /// <summary>Resolves the box editable segment text is drawn into: the content box with the
     /// drop-down indicator's own reserved columns subtracted first, then deflated for any active
-    /// <see cref="StartAffix"/>/<see cref="EndAffix"/> - keeping both affixes strictly inboard of
+    /// <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/> - keeping both affixes strictly inboard of
     /// the indicator, and never overlapping it.</summary>
     private Rect ResolveTextBox()
     {
@@ -370,33 +349,12 @@ public sealed class DateInput: InputBase
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
         var textBox = DeflateForAffixes(fieldBox, affixes);
-        var segments = BuildSegments();
-        var isPlaceholder = _state.Value is null;
-        var x = textBox.X;
-        var editableIndex = -1;
-
-        for (var index = 0; index < segments.Length && x < textBox.Right; index++)
-        {
-            var segment = segments[index];
-
-            if (segment.IsEditable)
-            {
-                editableIndex++;
-            }
-
-            var segmentStyle = IsFocused && !IsOpen && segment.IsEditable && editableIndex == _segments.ActiveSegment
-                ? SegmentHighlightStyle(style)
-                : isPlaceholder
-                    ? PlaceholderStyle(style)
-                    : style;
-            var clipped = canvas.Clip(new Rect(x, content.Y, Math.Max(0, textBox.Right - x), 1));
-            _ = clipped.Draw(
-                segment.Text.AsSpan(),
-                new Point(x, content.Y),
-                segmentStyle,
-                background: BackgroundMode.Transparent);
-            x += MeasureCells(segment.Text);
-        }
+        RenderSegmentedValue(
+            canvas,
+            textBox,
+            BuildSegments(),
+            isPlaceholder: _state.Value is null,
+            canHighlight: IsFocused && !IsOpen);
 
         DrawDropDownIndicator(canvas, content, style);
     }
@@ -429,7 +387,7 @@ public sealed class DateInput: InputBase
 
         if (!IsOpen && eventArgs is PointerEventArgs pointer)
         {
-            HandlePointer(pointer);
+            HandleSegmentPointer(pointer, ResolveTextBox());
 
             if (pointer.IsHandled)
             {
@@ -445,17 +403,6 @@ public sealed class DateInput: InputBase
         if (!eventArgs.IsHandled)
         {
             base.OnEvent(eventArgs);
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (focused)
-        {
-            _segments.ActivateFirstSegment();
         }
     }
 
@@ -498,21 +445,6 @@ public sealed class DateInput: InputBase
 
     #region Segment editing
 
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var dispatcher = Dispatcher;
-        _segments.HandlePointer(
-            eventArgs,
-            ResolveTextBox(),
-            CellPolicy.AmbiguousWidth,
-            IsFocused,
-            RequestFocus,
-            () => CanContinueAfterFocus(dispatcher));
-    }
-
-    private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
-        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
-
     private bool ClearValueCommand()
     {
         if (!AllowNull)
@@ -524,38 +456,10 @@ public sealed class DateInput: InputBase
         return true;
     }
 
-    private bool? HandlePopupCommand(KeyEventArgs eventArgs)
+    private bool ApplySegmentIncrement(SegmentDescriptor segment, int delta)
     {
-        var stroke = eventArgs.Stroke;
+        var kind = segment.Kind!.Value;
 
-        if (!eventArgs.IsInitialKeyDown)
-        {
-            return null;
-        }
-
-        var isAltDownGesture = stroke.Code == Code.Down &&
-            (stroke.Modifiers & Modifiers.Alt) != 0;
-        var isF4Gesture = stroke.Code == Code.F4;
-
-        if (!isAltDownGesture && !isF4Gesture)
-        {
-            return null;
-        }
-
-        var admitted = isAltDownGesture
-            ? KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt)
-            : KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.None);
-
-        if (admitted)
-        {
-            IsOpen = true;
-        }
-
-        return admitted;
-    }
-
-    private bool ApplySegmentIncrement(TemporalSegmentKind kind, int delta)
-    {
         if (_state.Value is not { } date)
         {
             // AllowNull defaults to true, so a prior Delete (or an explicit Value = null) can
@@ -605,8 +509,10 @@ public sealed class DateInput: InputBase
         }
     }
 
-    private bool ApplySegmentDigit(TemporalSegmentKind kind, int value)
+    private bool ApplySegmentDigit(SegmentDescriptor segment, int value)
     {
+        var kind = segment.Kind!.Value;
+
         if (_state.Value is not { } date)
         {
             // Same rationale as ApplySegmentIncrement: seed today's date instead of refusing,
@@ -644,8 +550,10 @@ public sealed class DateInput: InputBase
         }
     }
 
-    private bool ClearSegmentValue(TemporalSegmentKind kind)
+    private bool ClearSegmentValue(SegmentDescriptor segment)
     {
+        var kind = segment.Kind!.Value;
+
         if (_state.Value is not { } date)
         {
             return false;
@@ -794,24 +702,6 @@ public sealed class DateInput: InputBase
         MeasureCells(FormatValue(previous)) == MeasureCells(FormatValue(candidate))
             ? InvalidationImpact.Render
             : InvalidationImpact.Measure;
-
-    [Pure]
-    private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(
-        source.Foreground,
-        source.Background,
-        source.Attributes | TerminalAttributes.Reverse,
-        source.Hyperlink,
-        source.Underline,
-        source.UnderlineColor);
-
-    [Pure]
-    private static TerminalStyle PlaceholderStyle(TerminalStyle source) => new(
-        source.Foreground,
-        source.Background,
-        source.Attributes | TerminalAttributes.Dim,
-        source.Hyperlink,
-        source.Underline,
-        source.UnderlineColor);
 
     #endregion
 

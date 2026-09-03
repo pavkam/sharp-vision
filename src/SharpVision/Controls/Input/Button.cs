@@ -228,26 +228,6 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
 
     #region Layout and rendering
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the face
-    /// and outside the caption's own alignment box.</summary>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the face
-    /// and outside the caption's own alignment box.</summary>
-    /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     private bool UsesWholeCellPressedTranslation => ActualShadow.IsVisible;
 
     /// <inheritdoc/>

@@ -496,6 +496,116 @@ public sealed class TimeInputTests
         Row(frame, 1).ShouldContain("02:30:05 PM");
     }
 
+    /// <summary>Verifies a custom fixed fractional-second run is formatted as the value's
+    /// precision rather than copied to the screen as literal format letters.</summary>
+    [Fact]
+    public void Render_WhenFormatContainsFractionalSeconds_DrawsFractionalValue()
+    {
+        using var control = new TimeInput
+        {
+            Format = "HH:mm:ss.fff",
+            Value = new TimeOnly(14, 30, 5, 123)
+        };
+        new LayoutEngine().Layout(control, new Size(24, 3));
+        using Frame frame = new(new Size(24, 3));
+
+        control.Render(frame.Canvas);
+
+        Row(frame, 1).ShouldContain("14:30:05.123");
+    }
+
+    /// <summary>Verifies an uppercase optional fractional run keeps its declared editing cells
+    /// when all digits are omitted, so focus and pointer targeting never collapse to zero width.</summary>
+    [Fact]
+    public void Render_WhenOptionalFractionIsEmpty_ReservesHighlightedEditingCells()
+    {
+        using var control = new TimeInput
+        {
+            Format = "HH:mm:ss.FFF",
+            Value = new TimeOnly(14, 30, 5)
+        };
+        control.SetFocused(true);
+
+        for (var index = 0; index < 3; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        new LayoutEngine().Layout(control, new Size(24, 3));
+        using Frame frame = new(new Size(24, 3));
+
+        control.Render(frame.Canvas);
+
+        for (var x = 10; x <= 12; x++)
+        {
+            (frame.GetCell(new Point(x, 1)).Style.Attributes & TerminalAttributes.Reverse)
+                .ShouldBe(TerminalAttributes.Reverse);
+        }
+    }
+
+    /// <summary>Verifies the fractional-second run participates in ordinary segment navigation
+    /// and direct digit replacement at the precision declared by the format.</summary>
+    [Fact]
+    public void TypeDigit_WhenFormatContainsMilliseconds_ReplacesMillisecondSegment()
+    {
+        using var control = new TimeInput
+        {
+            Format = "HH:mm:ss.fff",
+            Value = new TimeOnly(14, 30, 5, 450)
+        };
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+        _ = Router.Route(control, Events.Key, Key(Code.Right));
+
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '2');
+        TypeCharacter(control, '3');
+
+        control.Value.ShouldBe(new TimeOnly(14, 30, 5, 123));
+    }
+
+    /// <summary>Verifies Up advances a fractional segment by one unit at the precision declared
+    /// by its format run rather than changing the whole-second segment.</summary>
+    [Fact]
+    public void Input_WhenUpIsPressedOnMillisecondSegment_IncrementsOneMillisecond()
+    {
+        using var control = new TimeInput
+        {
+            Format = "HH:mm:ss.fff",
+            Value = new TimeOnly(14, 30, 5, 123)
+        };
+
+        for (var index = 0; index < 3; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Up));
+
+        control.Value.ShouldBe(new TimeOnly(14, 30, 5, 124));
+    }
+
+    /// <summary>Verifies Backspace clears only the active fractional segment and preserves every
+    /// whole-time component.</summary>
+    [Fact]
+    public void Input_WhenBackspaceIsPressedOnFractionalSegment_ClearsFractionOnly()
+    {
+        using var control = new TimeInput
+        {
+            Format = "HH:mm:ss.fffffff",
+            Value = new TimeOnly((new TimeSpan(0, 14, 30, 5, 123) + TimeSpan.FromTicks(4567)).Ticks)
+        };
+
+        for (var index = 0; index < 3; index++)
+        {
+            _ = Router.Route(control, Events.Key, Key(Code.Right));
+        }
+
+        _ = Router.Route(control, Events.Key, Key(Code.Backspace));
+
+        control.Value.ShouldBe(new TimeOnly(14, 30, 5));
+    }
+
     /// <summary>Verifies typing a two-digit hour on a Format-driven 12-hour segment clamps to 12,
     /// proving the hour segment's effective range follows the pattern's own tokens rather than
     /// the unrelated Use24HourFormat flag left at its default.</summary>
@@ -537,6 +647,24 @@ public sealed class TimeInputTests
 
         // Assert
         Row(frame, 1).ShouldContain("14:30");
+    }
+
+    /// <summary>Verifies a focused null field distinguishes its active placeholder segment while
+    /// dimming the remaining placeholder, matching the other temporal inputs.</summary>
+    [Fact]
+    public void Render_WhenFocusedValueIsNull_HighlightsActivePlaceholderAndDimsTheRest()
+    {
+        using var control = new TimeInput { Value = null };
+        control.SetFocused(true);
+        new LayoutEngine().Layout(control, new Size(12, 3));
+        using Frame frame = new(new Size(12, 3));
+
+        control.Render(frame.Canvas);
+
+        (frame.GetCell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
+        (frame.GetCell(new Point(4, 1)).Style.Attributes & TerminalAttributes.Dim)
+            .ShouldBe(TerminalAttributes.Dim);
     }
 
     /// <summary>Verifies a null value renders the placeholder dashes inside the border.</summary>
@@ -792,6 +920,20 @@ public sealed class TimeInputTests
         designatorInput.Value.ShouldBe(expectedEdit ? new TimeOnly(22, 30) : new TimeOnly(10, 30));
         digit.IsHandled.ShouldBe(expectedEdit);
         designator.IsHandled.ShouldBe(expectedEdit);
+    }
+
+    /// <summary>Verifies an admitted navigation command is consumed at the field boundary instead
+    /// of leaking to an ancestor shortcut merely because the active segment cannot move farther.</summary>
+    [Fact]
+    public void Input_WhenLeftIsPressedAtFirstSegment_HandlesWithoutChangingValue()
+    {
+        using var control = new TimeInput { Value = new TimeOnly(10, 30) };
+        var key = Key(Code.Left);
+
+        _ = Router.Route(control, Events.Key, key);
+
+        control.Value.ShouldBe(new TimeOnly(10, 30));
+        key.IsHandled.ShouldBeTrue();
     }
 
     #region Sub-second precision

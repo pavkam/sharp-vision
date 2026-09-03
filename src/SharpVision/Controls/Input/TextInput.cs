@@ -126,44 +126,6 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
         set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
     }
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inboard of the
-    /// border and outboard of the caret/selection viewport - it never scrolls with the text.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set
-        {
-            var impact = GetAffixChangeImpact(field, value);
-
-            if (SetProperty(ref field, value, impact))
-            {
-                ArrangeChrome();
-                EnsureCaretVisible(_editorBounds);
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inboard of the
-    /// border and outboard of the caret/selection viewport - it never scrolls with the text.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set
-        {
-            var impact = GetAffixChangeImpact(field, value);
-
-            if (SetProperty(ref field, value, impact))
-            {
-                ArrangeChrome();
-                EnsureCaretVisible(_editorBounds);
-            }
-        }
-    }
-
     /// <summary>Gets or sets whether user input may mutate text.</summary>
     /// <remarks>Setting this to true clears the retained undo and redo history, since a
     /// pre-existing entry could otherwise re-commit a state this policy would now refuse to
@@ -1716,6 +1678,14 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
         VerticalOffset = nextVertical;
         Invalidate(Invalidation.Render);
         return true;
+    }
+
+    /// <inheritdoc/>
+    private protected override void OnAffixChanged()
+    {
+        base.OnAffixChanged();
+        ArrangeChrome();
+        EnsureCaretVisible(_editorBounds);
     }
 
     private void ArrangeChrome()

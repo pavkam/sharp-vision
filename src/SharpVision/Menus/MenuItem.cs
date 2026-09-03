@@ -10,6 +10,11 @@ using Popups;
 using SharpVision.Terminal.Input;
 
 /// <summary>Defines one focusable command, check, or radio entry in a <see cref="Menu"/>.</summary>
+/// <remarks>
+/// A vertical Menu negotiates one shared leading-affix column across its items so captions align;
+/// a narrower or absent <see cref="InputBase.StartAffix"/> leaves filler in that column. The
+/// <see cref="InputBase.EndAffix"/> remains local to each row and reserves only its own cells.
+/// </remarks>
 [PublicAPI]
 public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 {
@@ -189,39 +194,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     public void ResetSubmenuChrome() => SubmenuChrome = default;
-
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inboard of the
-    /// check or radio marker column and outside the caption's own alignment box.</summary>
-    /// <remarks>
-    /// A vertical <see cref="Menu"/> negotiates one shared start-affix column across every owned
-    /// row, so every row's caption begins at the same cell whether or not that specific row sets
-    /// this property - the same alignment guarantee the shortcut column already gives
-    /// <see cref="ShortcutText"/>. A row without its own <see cref="StartAffix"/> simply leaves that
-    /// shared column blank. This property's own glyph, when set, always draws flush against the
-    /// marker column, never shifted by a wider sibling's column.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved between the
-    /// caption and the shortcut column and outside the caption's own alignment box.</summary>
-    /// <remarks>
-    /// Unlike <see cref="StartAffix"/>, this column is never negotiated across sibling rows - it
-    /// stays purely per-item, matching how only the shortcut column, not a general trailing column,
-    /// is shared today.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
 
     /// <summary>Gets or sets the optional keyboard shortcut hint displayed right-aligned after the label.</summary>
     /// <remarks>
@@ -484,7 +456,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Folds this row's own local <see cref="StartAffix"/>/<see cref="EndAffix"/> reservation into
+    /// Folds this row's own local <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/> reservation into
     /// the desired size, exactly like <see cref="Controls.Input.Button"/> does - so a standalone
     /// item, not owned by any <see cref="Menu"/>, still measures itself correctly. A vertical Menu's
     /// own shared-column negotiation (see <see cref="AffixColumnWidth"/>) only ever widens what this
@@ -525,8 +497,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// <remarks>
     /// The caption's leading inset is the larger of this row's own local start-affix reservation and
     /// the negotiated <see cref="AffixColumnWidth"/>, so every sibling row's caption begins at the
-    /// same column - a row with a narrower or absent <see cref="StartAffix"/> simply leaves blank
-    /// filler before its caption. <see cref="EndAffix"/> is never negotiated and only ever reserves
+    /// same column - a row with a narrower or absent <see cref="InputBase.StartAffix"/> simply leaves blank
+    /// filler before its caption. <see cref="InputBase.EndAffix"/> is never negotiated and only ever reserves
     /// its own local width, between the caption and the shortcut column.
     /// </remarks>
     protected override void ArrangeOverride(Rect bounds)
@@ -796,7 +768,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
     /// <summary>Gets the shared leading affix column a vertical <see cref="Menu"/> negotiated
     /// across every owned row, so a caption begins at the same column whether or not this exact
-    /// row sets <see cref="StartAffix"/>. Zero for an item not owned by a vertical Menu.</summary>
+    /// row sets <see cref="InputBase.StartAffix"/>. Zero for an item not owned by a vertical Menu.</summary>
     internal int AffixColumnWidth { get; private set; }
 
     /// <summary>Applies the shared start-affix column a vertical <see cref="Menu"/> negotiated

@@ -42,17 +42,17 @@ internal readonly struct SegmentDescriptor: IEquatable<SegmentDescriptor>
     /// when <paramref name="digitCapacity"/> is zero.
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="digitCapacity"/> is not 0, 2, or 4.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="digitCapacity"/> is outside 0-7.</exception>
     public SegmentDescriptor(string text, TemporalSegmentKind kind, int digitCapacity, int maxValue)
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        if (digitCapacity is not (0 or 2 or 4))
+        if (digitCapacity is < 0 or > 7)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(digitCapacity),
                 digitCapacity,
-                "An editable segment's digit capacity must be 0 (not digit-typable), 2, or 4.");
+                "An editable segment's digit capacity must be between 0 (not digit-typable) and 7.");
         }
 
         Text = text;
@@ -84,7 +84,7 @@ internal readonly struct SegmentDescriptor: IEquatable<SegmentDescriptor>
     /// minute field commits at once, since no valid minute starts with a digit above 5).</summary>
     public int FirstDigitOverflowThreshold => DigitCapacity switch
     {
-        4 => 9,
+        > 2 => 9,
         2 => MaxValue / 10,
         _ => -1
     };

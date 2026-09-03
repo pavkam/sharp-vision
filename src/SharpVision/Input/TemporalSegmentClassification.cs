@@ -111,6 +111,52 @@ internal static class TemporalSegmentClassification
     public static bool IsAmPmToggle(Rune character) =>
         character.Value is 'a' or 'A' or 'p' or 'P';
 
+    /// <summary>Gets the direct-entry digit capacity for a parsed editable temporal token.</summary>
+    /// <param name="token">The parsed token.</param>
+    /// <returns>Zero for a designator, the declared width for year and fraction runs, or two for another numeric field.</returns>
+    [Pure]
+#pragma warning disable IDE0072 // Every remaining temporal segment kind is a conventional two-digit numeric field.
+    public static int DigitCapacity(PatternSegment token) => token.Kind switch
+    {
+        TemporalSegmentKind.AmPmDesignator => 0,
+        TemporalSegmentKind.FractionalSecond => token.RunLength,
+        TemporalSegmentKind.Year when token.RunLength >= 4 => 4,
+        _ => 2
+    };
+#pragma warning restore IDE0072
+
+    /// <summary>Builds the visible null placeholder for one parsed temporal token.</summary>
+    /// <param name="token">The parsed literal or editable token.</param>
+    /// <returns>The literal text, or one dash per declared wide year or fractional digit.</returns>
+    [Pure]
+#pragma warning disable IDE0072 // Every remaining editable temporal segment uses the conventional two-cell placeholder.
+    public static string Placeholder(PatternSegment token) => token.Kind switch
+    {
+        null => token.LiteralText,
+        TemporalSegmentKind.Year when token.RunLength >= 4 => new string('-', token.RunLength),
+        TemporalSegmentKind.FractionalSecond => new string('-', token.RunLength),
+        _ => "--"
+    };
+#pragma warning restore IDE0072
+
+    /// <summary>Reserves the declared editing width when an optional uppercase fractional-second
+    /// run omits trailing zeroes from its formatted text.</summary>
+    /// <param name="token">The parsed token associated with <paramref name="text"/>.</param>
+    /// <param name="text">The formatted text for the token.</param>
+    /// <returns>The original text, or right-padded text for an uppercase fractional-second run.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
+    [Pure]
+    public static string ReserveOptionalFractionCells(PatternSegment token, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        return token.Kind == TemporalSegmentKind.FractionalSecond &&
+            token.PatternCharacter == 'F' &&
+            text.Length < token.RunLength
+                ? text.PadRight(token.RunLength)
+                : text;
+    }
+
     /// <summary>Converts a clamped 1-12 hour and an AM/PM flag to its 0-23 24-hour equivalent.</summary>
     /// <param name="hour12">The 1-12 hour value.</param>
     /// <param name="isPm">Whether the hour is in the PM half of the day.</param>

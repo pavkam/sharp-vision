@@ -19,7 +19,7 @@ internal static class TemporalPatternSegmenter
 {
     /// <summary>Parses a pattern into literal and editable-token runs.</summary>
     /// <param name="pattern">The custom format pattern, such as a culture's <c>ShortDatePattern</c> or <c>ShortTimePattern</c>.</param>
-    /// <param name="tokenKinds">Maps each recognized pattern letter (for example 'M', 'd', 'y', 'H', 'h', 'm', 's', 't') to the segment kind it produces.</param>
+    /// <param name="tokenKinds">Maps each recognized pattern letter (for example 'M', 'd', 'y', 'H', 'h', 'm', 's', 'f', 'F', 't') to the segment kind it produces.</param>
     /// <param name="culture">Supplies <see cref="DateTimeFormatInfo.DateSeparator"/> and <see cref="DateTimeFormatInfo.TimeSeparator"/> for unquoted '/' and ':' literals.</param>
     /// <returns>The pattern's literal and editable runs, in left-to-right order.</returns>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
@@ -95,7 +95,7 @@ internal static class TemporalPatternSegmenter
                     index++;
                 }
 
-                segments.Add(new PatternSegment(kind, count));
+                segments.Add(new PatternSegment(kind, count, ch));
                 continue;
             }
 

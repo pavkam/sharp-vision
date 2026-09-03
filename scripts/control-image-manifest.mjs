@@ -40,8 +40,36 @@ export const controls = [
     },
     { doc: "controls/input/hyperlink-button", page: "HyperlinkButton" },
     { doc: "controls/input/calendar", page: "Calendar" },
-    { doc: "controls/input/date-input", page: "DateInput" },
-    { doc: "controls/input/date-time-input", page: "DateTimeInput" },
+    {
+        doc: "controls/input/date-input",
+        page: "DateInput",
+        states: [
+            {},
+            { name: "open", popup: true, actions: [{ click: "▼" }] },
+            {
+                name: "nullable-focused",
+                example: "Clearable date field",
+                actions: [{ click: "--/--/----" }],
+            },
+        ],
+    },
+    {
+        doc: "controls/input/date-time-input",
+        page: "DateTimeInput",
+        states: [
+            {},
+            {
+                name: "nullable-focused",
+                example: "Clearable date-time field",
+                actions: [{ click: "--/--/---- --:--" }],
+            },
+            {
+                name: "fractional-focused",
+                example: "Year-first fractional field",
+                actions: [{ click: "14:30:05.123" }],
+            },
+        ],
+    },
     { doc: "controls/input/number-input", page: "NumberInput" },
     { doc: "controls/input/currency-input", page: "CurrencyInput" },
     {
@@ -137,7 +165,23 @@ export const controls = [
         page: "TextInput",
         states: [{}, { name: "focused", actions: [{ click: "Edit me" }] }],
     },
-    { doc: "controls/input/time-input", page: "TimeInput" },
+    {
+        doc: "controls/input/time-input",
+        page: "TimeInput",
+        states: [
+            {},
+            {
+                name: "nullable-focused",
+                example: "Clearable time field",
+                actions: [{ click: "--:--" }],
+            },
+            {
+                name: "fractional-focused",
+                example: "Fractional-second field",
+                actions: [{ click: "14:30:05.123" }],
+            },
+        ],
+    },
     {
         doc: "controls/collections/document",
         page: "Document",
