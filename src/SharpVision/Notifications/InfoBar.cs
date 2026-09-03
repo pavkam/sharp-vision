@@ -304,11 +304,18 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     {
         _ = _dismissTransitions.Commit(this);
         ExceptionDispatchInfo? failure = null;
+        var publishClosedState = false;
 
         if (reason == ReleaseReason.Disposed)
         {
             _contentAvailability.Dispose();
             _dismissAvailability.Dispose();
+
+            if (_isOpen)
+            {
+                _isOpen = false;
+                publishClosedState = true;
+            }
         }
 
         CaptureFailure(_dismissButton.CancelInteraction, ref failure);
@@ -318,6 +325,13 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         {
             DismissRequested = null;
             Dismissed = null;
+        }
+
+        if (publishClosedState)
+        {
+            CaptureFailure(
+                () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
+                ref failure);
         }
 
         failure?.Throw();
