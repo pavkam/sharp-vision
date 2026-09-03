@@ -45,6 +45,20 @@ End-of-stream drops partial payload and reports truncation.
 > MiB default, a paste one byte over produces nothing rather than a truncated
 > prefix. Size the cap for the largest paste the application must accept.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Accumulating: begin marker (CSI 200~)
+    Accumulating --> Accumulating: payload byte, no marker match pending
+    Accumulating --> Accumulating: partial marker mismatch (held prefix bytes re-appended as payload, retried)
+    Accumulating --> Overflowed: buffer reaches MaxPasteBytes (retained bytes discarded)
+    Overflowed --> Overflowed: further payload byte discarded
+    Accumulating --> Idle: exact end marker matched (Paste emitted)
+    Overflowed --> Idle: exact end marker matched (StringLimit diagnostic, no Paste)
+    Accumulating --> Idle: end of stream while active (Truncated diagnostic)
+    Overflowed --> Idle: end of stream while active (Truncated diagnostic)
+```
+
 CSI I/O emit immutable gained/lost `TerminalFocus` values. They are terminal
 focus only; application routing applies the separate
 [UI focus policy](../concepts/input-routing.md#route-construction).
