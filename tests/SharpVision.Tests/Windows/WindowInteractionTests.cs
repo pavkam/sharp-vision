@@ -116,19 +116,24 @@ public sealed class WindowInteractionTests
         surface.Cell(new Point(12, 0)).Text.ShouldBe(" ");
     }
 
-    /// <summary>Verifies an overflowing header is ellipsized to the lane under every placement, so
-    /// no placement can push the truncated run outside the frame.</summary>
+    /// <summary>Verifies an overflowing header is ellipsized by cell width and the truncated run
+    /// is then placed by HeaderPlacement inside the lane: a wide glyph that would straddle the cut
+    /// is dropped whole, leaving one cell of slack that Right uses while Left and Center (which
+    /// rounds the half cell down) do not, and both corners survive under every placement.</summary>
     [Theory]
-    [InlineData(WindowTitlePlacement.Left)]
-    [InlineData(WindowTitlePlacement.Center)]
-    [InlineData(WindowTitlePlacement.Right)]
-    public async Task Render_WhenHeaderOverflowsLane_EllipsizesInsideLaneForEveryPlacementAsync(
-        WindowTitlePlacement placement)
+    [InlineData(WindowTitlePlacement.Left, 0)]
+    [InlineData(WindowTitlePlacement.Center, 0)]
+    [InlineData(WindowTitlePlacement.Right, 1)]
+    public async Task Render_WhenHeaderOverflowsLaneAtAWideGlyph_EllipsizesThenPlacesTheShorterRunAsync(
+        WindowTitlePlacement placement,
+        int expectedOffset)
     {
-        // Arrange - 19 characters need 21 cells; the lane is 18 wide, so 15 glyphs + ellipsis remain.
+        // Arrange - 14 narrow glyphs plus three wide ones need 22 cells with padding; the lane is
+        // 18 wide, so 15 cells remain for glyphs before the ellipsis, and the first wide glyph
+        // would straddle the cut at cell 15.
         var window = new Window
         {
-            Header = "VeryLongWindowTitle",
+            Header = "ABCDEFGHIJKLMN界界界",
             CanClose = false,
             HeaderPlacement = placement,
             Width = Length.Cells(20),
@@ -143,12 +148,188 @@ public sealed class WindowInteractionTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        surface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
-        surface.Cell(new Point(2, 0)).Text.ShouldBe("V");
-        surface.Cell(new Point(16, 0)).Text.ShouldBe("T");
-        surface.Cell(new Point(17, 0)).Text.ShouldBe("…");
-        surface.Cell(new Point(18, 0)).Text.ShouldBe(" ");
-        surface.Cell(new Point(19, 0)).Text.ShouldNotBe(" ");
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("╔");
+        surface.Cell(new Point(1 + expectedOffset, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2 + expectedOffset, 0)).Text.ShouldBe("A");
+        surface.Cell(new Point(15 + expectedOffset, 0)).Text.ShouldBe("N");
+        surface.Cell(new Point(16 + expectedOffset, 0)).Text.ShouldBe("…");
+        surface.Cell(new Point(17 + expectedOffset, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(19, 0)).Text.ShouldBe("╗");
+
+        for (var x = 1; x < 19; x++)
+        {
+            surface.Cell(new Point(x, 0)).Text.ShouldNotBe("界");
+        }
+    }
+
+    /// <summary>Verifies a header whose lane is narrower than four cells is clipped to the lane
+    /// without an ellipsis and never overwrites the close chrome or the far corner.</summary>
+    [Fact]
+    public async Task Render_WhenLaneIsNarrowerThanFourCells_ClipsHeaderInsideLaneAsync()
+    {
+        // Arrange - width 11 with left chrome (columns 1..7) leaves a two-cell lane at 8..9.
+        var window = new Window
+        {
+            Header = "Hello",
+            CanClose = true,
+            Width = Length.Cells(11),
+            Height = Length.Cells(3),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(11, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(8, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(9, 0)).Text.ShouldBe("H");
+        surface.Cell(new Point(10, 0)).Text.ShouldBe("╗");
+    }
+
+    /// <summary>Verifies header text, header placement, close placement, and closability changed
+    /// on a mounted window repaint the title row immediately, and that the close target follows
+    /// the chrome to its new side.</summary>
+    [Fact]
+    public async Task Header_WhenChromePropertiesChangeWhileMounted_RepaintsTitleRowAsync()
+    {
+        // Arrange
+        var closing = 0;
+        var window = new Window
+        {
+            Header = "Hi",
+            CanClose = false,
+            Width = Length.Cells(20),
+            Height = Length.Cells(3),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        window.Closing += (_, _) => closing++;
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(20, 3),
+            TestContext.Current.CancellationToken);
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("H");
+
+        // Act
+        await surface.UpdateAsync(() => window.Header = "Yo", "change the header");
+
+        // Assert
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("Y");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("o");
+
+        // Act
+        await surface.UpdateAsync(() => window.HeaderPlacement = WindowTitlePlacement.Right, "right-align the header");
+
+        // Assert
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("═");
+        surface.Cell(new Point(16, 0)).Text.ShouldBe("Y");
+
+        // Act
+        await surface.UpdateAsync(() => window.CanClose = true, "enable the close affordance");
+
+        // Assert - left chrome appears and the right-aligned header keeps its column
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(16, 0)).Text.ShouldBe("Y");
+
+        // Act
+        await surface.UpdateAsync(() => window.ClosePlacement = WindowClosePlacement.Right, "move the chrome right");
+
+        // Assert - the header is pushed into the shorter lane and the old mark cell is frame again
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("═");
+        surface.Cell(new Point(15, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(9, 0)).Text.ShouldBe("Y");
+
+        // Act - the close target moved with the chrome
+        await surface.Pointer.ClickAsync(window, new Point(4, 0));
+        closing.ShouldBe(0);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        await surface.Pointer.ClickAsync(window, new Point(15, 0));
+
+        // Assert
+        closing.ShouldBe(1);
+        window.Visibility.ShouldBe(Visibility.Collapsed);
+    }
+
+    /// <summary>Verifies a live host resize that shrinks the frame across the chrome thresholds
+    /// degrades the affordance step by step (bracketed at nine, bare mark at eight and four, none
+    /// at three) and re-resolves the close hit target each time, proven by the hover color and by
+    /// the final click.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenFrameCrossesChromeThresholds_DegradesChromeAndReresolvesTargetAsync()
+    {
+        // Arrange
+        var closing = 0;
+        var window = new Window
+        {
+            CanClose = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        window.Closing += (_, _) => closing++;
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(9, 3),
+            TestContext.Current.CancellationToken);
+        var theme = window.Theme.ShouldNotBeNull();
+        var style = theme.GetWindowStyleSet().Normal;
+        var normal = TerminalPalette.Project(style.CloseMarkColor.Resolve(theme), ColorDepth.Basic16);
+        var hovered = TerminalPalette.Project(style.CloseMarkActiveColor.Resolve(theme), ColorDepth.Basic16);
+        normal.ShouldNotBe(hovered);
+        window.Bounds.Width.ShouldBe(9);
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("[");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(5, 0)).Text.ShouldBe("]");
+
+        // Act
+        await surface.Pointer.MoveToAsync(new Point(4, 0));
+
+        // Assert
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(hovered);
+
+        // Act - eight cells: bare mark at column one, the old mark column is plain frame
+        await surface.ResizeAsync(new Size(8, 3));
+
+        // Assert
+        window.Bounds.Width.ShouldBe(8);
+        surface.Cell(new Point(1, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("═");
+        await surface.Pointer.MoveToAsync(new Point(4, 0));
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(normal);
+        await surface.Pointer.MoveToAsync(new Point(1, 0));
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(hovered);
+
+        // Act - four cells: still a bare mark
+        await surface.ResizeAsync(new Size(4, 3));
+
+        // Assert
+        surface.Cell(new Point(1, 0)).Text.ShouldBe("■");
+        surface.Cell(new Point(3, 0)).Text.ShouldBe("╗");
+
+        // Act - three cells: no mark at all, and a press on the old mark cell does not close
+        await surface.ResizeAsync(new Size(3, 3));
+
+        // Assert
+        surface.Cell(new Point(1, 0)).Text.ShouldNotBe("■");
+        await surface.Pointer.MoveToAsync(new Point(1, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        closing.ShouldBe(0);
+        window.Visibility.ShouldBe(Visibility.Visible);
+
+        // Act - growing back re-resolves the target, and the click now closes
+        await surface.ResizeAsync(new Size(9, 3));
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("■");
+        await surface.Pointer.MoveToAsync(new Point(4, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        closing.ShouldBe(1);
+        window.Visibility.ShouldBe(Visibility.Collapsed);
     }
 
     #endregion
@@ -156,10 +337,12 @@ public sealed class WindowInteractionTests
     #region Close chrome
 
     /// <summary>Verifies the close chrome degrades by frame width: full bracketed chrome from nine
-    /// cells, a single mark down to four cells, and nothing below that - for both placements.</summary>
+    /// cells (at ten the two placements resolve to different columns), a single mark down to four
+    /// cells, and nothing below that - for both placements.</summary>
     [Theory]
     [InlineData(9, WindowClosePlacement.Left, 4, true)]
-    [InlineData(9, WindowClosePlacement.Right, 4, true)]
+    [InlineData(10, WindowClosePlacement.Left, 4, true)]
+    [InlineData(10, WindowClosePlacement.Right, 5, true)]
     [InlineData(8, WindowClosePlacement.Left, 1, false)]
     [InlineData(8, WindowClosePlacement.Right, 6, false)]
     [InlineData(4, WindowClosePlacement.Left, 1, false)]
@@ -271,18 +454,24 @@ public sealed class WindowInteractionTests
             new Size(14, 4),
             TestContext.Current.CancellationToken);
         surface.Cell(new Point(9, 0)).Text.ShouldBe("■");
+        var theme = window.Theme.ShouldNotBeNull();
+        var style = theme.GetWindowStyleSet().Normal;
+        var normal = TerminalPalette.Project(style.CloseMarkColor.Resolve(theme), ColorDepth.Basic16);
+        var hovered = TerminalPalette.Project(style.CloseMarkActiveColor.Resolve(theme), ColorDepth.Basic16);
+        normal.ShouldNotBe(hovered);
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(normal);
 
         // Act - hover the frame cell just outside the target
         await surface.Pointer.MoveToAsync(window, new Point(7, 0));
 
-        // Assert
-        window.HasClosePointerOver().ShouldBeFalse();
+        // Assert - the mark does not light up
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(normal);
 
         // Act - hover the mark
         await surface.Pointer.MoveToAsync(window, new Point(9, 0));
 
         // Assert
-        window.HasClosePointerOver().ShouldBeTrue();
+        surface.Cell(new Point(9, 0)).Style.Foreground.ShouldBe(hovered);
 
         // Act
         await surface.Pointer.PressAsync();
