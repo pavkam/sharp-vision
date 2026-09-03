@@ -113,8 +113,7 @@ internal sealed class ComboBoxPane: CompositeControlBase
             SelectedIndex = 0,
             DropDownHeight = Length.Cells(4)
         };
-        edgeChoice.SelectionChanged += (_, _) =>
-            edgeStatus.Content = $"Committed: {edgeChoice.Items[edgeChoice.SelectedIndex]}";
+        ShowcasePaneHelpers.WireComboSelectionStatus(edgeChoice, edgeStatus, "Committed", trailingPeriod: false);
         var edgeStage = ShowcasePaneHelpers.OverlayStage(30, 3, clipToBounds: false);
         Overlay.SetTop(edgeChoice, Length.Cells(1));
         edgeStage.Children.Add(edgeChoice);

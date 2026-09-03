@@ -81,5 +81,7 @@ public enum SemanticColor
     /// <summary>The theme's canonical magenta accent, for differentiating chart series, syntax tokens, and similar content.</summary>
     Magenta,
     /// <summary>The theme's canonical cyan accent, for differentiating chart series, syntax tokens, and similar content.</summary>
-    Cyan
+    Cyan,
+    /// <summary>The raised navigation background shared by menu, command, and status bars.</summary>
+    Bar
 }

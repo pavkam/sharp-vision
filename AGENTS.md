@@ -203,8 +203,8 @@ in the protocol document.
   node. The sealed render pipeline paints intrinsic chrome around
   `OnRenderContent`; custom controls override that content hook and do not call
   a chrome helper.
-- Build a composite control by deriving from `CompositeControl`, creating its
-  retained root in the concrete constructor, and calling `InitializeContent`
+- Build a composite control by deriving from `CompositeControlBase`, creating
+  its retained root in the concrete constructor, and calling `InitializeContent`
   exactly once. `View` and measure-time `Build()` do not exist. Use
   `ContentControl` for caller-replaceable single content and `ItemsControl` for
   typed semantic collections with private presentation hosts; the layout/render

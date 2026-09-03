@@ -125,7 +125,7 @@ internal sealed class ScrollBarPairController
     /// <param name="horizontalVisibility">The horizontal reservation policy.</param>
     /// <param name="verticalVisibility">The vertical reservation policy.</param>
     /// <param name="remeasure">Optionally recomputes content after either reservation changes.</param>
-    /// <param name="remeasureInitial">Whether to remeasure once for initially always-visible rails.</param>
+    /// <param name="remeasureInitial">Whether to remeasure once against the initial candidate viewport before visibility probes, settling AutoSize content and initially reserved rails.</param>
     /// <returns>The final content extent, viewport, and two reservation flags.</returns>
     public (Size Extent, Size Viewport, bool Horizontal, bool Vertical) Resolve(
         Size available,

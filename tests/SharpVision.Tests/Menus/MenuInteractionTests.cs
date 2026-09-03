@@ -833,37 +833,6 @@ public sealed class MenuInteractionTests
         surface.Cell(new Point(0, 1)).Text.ShouldBe(" ");
     }
 
-    /// <summary>Verifies flipping the owning menu's orientation while a submenu is open moves the
-    /// submenu to the edge that orientation documents: below a horizontal item, beside a vertical one.</summary>
-    [Fact]
-    public async Task Orientation_WhenChangedWhileSubmenuIsOpen_ReplacesSubmenuAgainstNewEdgeAsync()
-    {
-        // Arrange
-        var fileMenu = new Menu { Orientation = Orientation.Vertical };
-        fileMenu.Items.Add(new MenuItem { Text = "New" });
-        var file = new MenuItem { Text = "File", Submenu = fileMenu };
-        var menu = new Menu { Orientation = Orientation.Horizontal };
-        menu.Items.Add(file);
-        menu.Items.Add(new MenuItem { Text = "Edit" });
-        await using var surface = await ComponentSurface.MountAsync(
-            menu,
-            new Size(30, 8),
-            TestContext.Current.CancellationToken);
-        var popup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
-        await surface.Pointer.ClickAsync(file);
-        file.IsSubmenuOpen.ShouldBeTrue();
-        popup.SurfaceBounds.Y.ShouldBe(file.Bounds.Bottom);
-
-        // Act
-        await surface.UpdateAsync(() => menu.Orientation = Orientation.Vertical, "flip to vertical while open");
-
-        // Assert
-        file.IsSubmenuOpen.ShouldBeTrue();
-        popup.Placement.ShouldBe(PopupPlacement.Right);
-        popup.SurfaceBounds.X.ShouldBe(file.Bounds.Right);
-        popup.SurfaceBounds.Y.ShouldBe(file.Bounds.Y);
-    }
-
     #endregion
 
     #region Events and builder

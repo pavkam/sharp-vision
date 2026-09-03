@@ -130,6 +130,8 @@ public sealed class PopupSurfaceTests
         var anchor = new Button
         {
             Text = "Anchor",
+            // This fixture proves Popup shadow geometry, independent of Button's compact-control alignment default.
+            VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(8),
             Height = Length.Cells(3)
         };
@@ -318,7 +320,15 @@ public sealed class PopupSurfaceTests
     public async Task IsEnabled_WhenFlyoutIsDisabledDirectlyOrByAncestor_ReflectsDisabledAndRecoversAsync()
     {
         // Arrange
-        var anchor = new Button { Text = "Anchor", Width = Length.Cells(8), Height = Length.Cells(3) };
+        // Keep the anchor fixed while resizing so this fixture proves disabled Flyout surface stability,
+        // rather than the Flyout's intentional dismissal when its anchor reflows.
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
         var action = new Button { Text = "Action", Width = Length.Cells(8), Height = Length.Cells(3) };
         var flyout = new Flyout { Anchor = anchor, Content = action, FocusOnOpen = false };
         var host = new Overlay { Children = { anchor, flyout } };
@@ -351,7 +361,13 @@ public sealed class PopupSurfaceTests
         await surface.ResizeAsync(new Size(24, 10));
         var disabledSurfaceBounds = flyout.SurfaceBounds;
 
-        var referenceAnchor = new Button { Text = "Anchor", Width = Length.Cells(8), Height = Length.Cells(3) };
+        var referenceAnchor = new Button
+        {
+            Text = "Anchor",
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
         var referenceAction = new Button { Text = "Action", Width = Length.Cells(8), Height = Length.Cells(3) };
         var referenceFlyout = new Flyout { Anchor = referenceAnchor, Content = referenceAction, FocusOnOpen = false };
         var referenceHost = new Overlay { Children = { referenceAnchor, referenceFlyout } };
@@ -438,6 +454,8 @@ public sealed class PopupSurfaceTests
         var background = new Button
         {
             Text = "Background",
+            // Pin the outside target so this fixture proves modal dismissal, not Button's layout default.
+            VerticalAlignment = VerticalAlignment.Top,
             Width = Length.Cells(12),
             Height = Length.Cells(3),
         };
@@ -896,5 +914,192 @@ public sealed class PopupSurfaceTests
         dialogScope.IsActive.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
         surface.Application.Focus.Focused.ShouldBeSameAs(menu);
+    }
+
+    /// <summary>Verifies a configured popup exit keeps its logical presentation and modal lifetime
+    /// intact until the shared terminal-cell fade reaches zero.</summary>
+    [Fact]
+    public async Task IsOpen_WhenFadeOutIsPositive_DefersPopupCleanupUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var action = new Button { Text = "Action" };
+        var popup = new Popup
+        {
+            Content = action,
+            FadeOutDuration = TimeSpan.FromMilliseconds(100)
+        };
+        var root = new Overlay { Children = { popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        popup.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open fading Popup");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+        var bounds = popup.SurfaceBounds;
+        await surface.UpdateAsync(() => popup.IsOpen = false, "begin fading Popup close");
+
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldBe(bounds);
+        action.Visibility.ShouldBe(Visibility.Visible);
+        scope.IsActive.ShouldBeTrue();
+        surface.Application.Focus.Focused.ShouldBeSameAs(action);
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish fading Popup close");
+
+        popup.IsOpen.ShouldBeFalse();
+        popup.SurfaceBounds.ShouldBe(default);
+        action.Visibility.ShouldBe(Visibility.Collapsed);
+        scope.IsActive.ShouldBeFalse();
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Popup content, border, and block shadow share one current-frame pattern at
+    /// entrance and exit start, midpoint, and completion.</summary>
+    [Fact]
+    public async Task Render_WhenPopupFades_UsesStableCompleteSurfaceScreensAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(3)
+        };
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = new ControlText("Menu"),
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 1),
+                glyph: new Rune('▓'))
+        };
+        var root = new Overlay { Children = { anchor, popup } };
+        var size = new Size(18, 8);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            size,
+            clock,
+            TestContext.Current.CancellationToken);
+        var baseline = CaptureScreen();
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "begin Popup entrance fade");
+        CaptureScreen().ShouldBe(baseline);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Popup entrance halfway");
+        var midpoint = CaptureScreen();
+        midpoint.ShouldNotBe(baseline);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Popup entrance fade");
+        var fullyVisible = CaptureScreen();
+        fullyVisible.ShouldNotBe(midpoint);
+        surface.Cell(new Point(popup.SurfaceBounds.Right, popup.SurfaceBounds.Y + 1)).Text.ShouldBe("▓");
+
+        await surface.UpdateAsync(() => popup.IsOpen = false, "begin Popup exit fade");
+        CaptureScreen().ShouldBe(fullyVisible);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Popup exit halfway");
+        CaptureScreen().ShouldBe(midpoint);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Popup exit fade");
+        CaptureScreen().ShouldBe(baseline);
+
+        string CaptureScreen()
+        {
+            var cells = new string[size.Width * size.Height];
+
+            for (var y = 0; y < size.Height; y++)
+            {
+                for (var x = 0; x < size.Width; x++)
+                {
+                    cells[(y * size.Width) + x] = surface.Cell(new Point(x, y)).Text;
+                }
+            }
+
+            return string.Concat(cells);
+        }
+    }
+
+    /// <summary>Verifies descendant shadow cells beyond the Popup's own visual bounds participate
+    /// in the same stable entrance and exit dissolve as the root surface.</summary>
+    [Fact]
+    public async Task Render_WhenFadingPopupDescendantOverflowsVisualBounds_DissolvesCompleteSubtreeAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(6),
+            Height = Length.Cells(3)
+        };
+        var content = new Button
+        {
+            Text = "Go",
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Style = TestButtonStyles.WithShadow(
+                AppearanceTestValues.Shadow(
+                    visible: true,
+                    mode: ShadowMode.BlockGlyph,
+                    offset: new Point(3, 2),
+                    glyph: new Rune('▓')))
+        };
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = content,
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var root = new Overlay { Children = { anchor, popup } };
+        Overlay.SetLeft(anchor, Length.Cells(1));
+        Overlay.SetTop(anchor, Length.Cells(1));
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(16, 12),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => popup.IsOpen = true, "begin overflowing Popup entrance");
+        var overflow = OverflowPoints();
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Popup entrance halfway");
+        var midpoint = CaptureOverflow();
+        midpoint.ShouldContain(" ");
+        midpoint.ShouldContain("▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Popup entrance");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.UpdateAsync(() => popup.IsOpen = false, "begin overflowing Popup exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Popup exit halfway");
+        CaptureOverflow().ShouldBe(midpoint);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Popup exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        Point[] OverflowPoints() =>
+        [
+            new Point(popup.SurfaceBounds.Right, content.Bounds.Y + 2),
+            new Point(popup.SurfaceBounds.Right + 1, content.Bounds.Y + 2),
+            new Point(popup.SurfaceBounds.Right, content.Bounds.Y + 3),
+            new Point(popup.SurfaceBounds.Right + 1, content.Bounds.Y + 3),
+            new Point(popup.SurfaceBounds.Right, content.Bounds.Y + 4),
+            new Point(popup.SurfaceBounds.Right + 1, content.Bounds.Y + 4)
+        ];
+
+        string[] CaptureOverflow() => [.. overflow.Select(surface.Cell).Select(static cell => cell.Text)];
     }
 }

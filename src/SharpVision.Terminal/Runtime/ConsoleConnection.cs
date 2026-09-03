@@ -267,6 +267,13 @@ public sealed class ConsoleConnection: IAsyncDisposable
     /// <summary>Gets whether the Windows console host established virtual-terminal processing.</summary>
     internal bool WindowsVirtualTerminal { get; }
 
+    /// <summary>
+    /// Gets or sets a callback invoked exactly once, immediately after the restore lease disposes.
+    /// Used by <see cref="SystemConsoleHost"/> to release its single-open guard once this
+    /// connection's restore lease has run, so a legitimate sequential open-close-open still works.
+    /// </summary>
+    internal Action? DisposalCallback { get; set; }
+
     /// <summary>Resolves one terminal profile as a compatibility projection over <see cref="ResolveDescription"/>.</summary>
     /// <param name="explicitProfile">A complete caller-owned replacement profile, or null for platform discovery.</param>
     /// <param name="allowAnsiFallback">
@@ -338,7 +345,17 @@ public sealed class ConsoleConnection: IAsyncDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
-            _restore.Dispose();
+            try
+            {
+                _restore.Dispose();
+            }
+            finally
+            {
+                // The host-open gate must release even when restoring the terminal mode fails,
+                // or a single failed restore permanently strands every later Open() call behind
+                // a gate nothing can ever clear.
+                DisposalCallback?.Invoke();
+            }
         }
 
         return ValueTask.CompletedTask;

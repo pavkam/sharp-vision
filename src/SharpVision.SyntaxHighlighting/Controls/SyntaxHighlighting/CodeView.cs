@@ -608,6 +608,7 @@ public sealed class CodeView:
     protected override void OnTextSelectionCommitted(TextSelectionChangedEventArgs eventArgs, ulong transitionVersion)
     {
         _ = eventArgs;
+        InvalidateRetainedDescendant(_content, InvalidationImpact.Render);
         RaiseTextSelectionCompatibilityEvent(SelectionChanged, this, EventArgs.Empty, transitionVersion);
     }
 

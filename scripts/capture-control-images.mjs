@@ -59,23 +59,28 @@ export const locateExampleBox = (rows, occurrence = 1) => {
 
 /// Finds the complete Example group box selected by a capture state. A numeric
 /// selector chooses the visible occurrence; a string selector chooses the box
-/// containing that marker. States default to the first example.
+/// containing that marker or whose visible heading immediately precedes it.
+/// States default to the first example.
 export const locateStateExampleBox = (rows, state) => {
     const selector = state.example ?? 1;
 
     if (typeof selector === "number")
         return locateExampleBox(rows, selector);
 
+    let previousBottom = 0;
+
     for (let occurrence = 1; ; occurrence += 1) {
         const rect = locateExampleBox(rows, occurrence);
 
         if (rect === null) return null;
 
-        for (let index = rect.top - 1; index < rect.bottom; index += 1) {
+        for (let index = previousBottom; index < rect.bottom; index += 1) {
             const column = findColumn(rows[index], selector);
 
-            if (column >= rect.left && column <= rect.right) return rect;
+            if (column > 0) return rect;
         }
+
+        previousBottom = rect.bottom;
     }
 };
 
@@ -150,6 +155,33 @@ export const diffBounds = (before, after) => {
     return bounds;
 };
 
+/// Selects the crop owned by one capture state. Ordinary and contained-popup
+/// states use the example interior; overlay popups may widen to changed cells.
+export const selectCaptureRegion = (rect, state, baseline, frame) => {
+    const interior = {
+        top: rect.top + 1,
+        left: rect.left + 1,
+        bottom: rect.bottom - 1,
+        right: rect.right - 1,
+    };
+
+    if (state.popup !== true) return interior;
+
+    const changed = diffBounds(baseline, frame) ?? interior;
+
+    const padding = state.cropPadding;
+
+    if (padding === undefined) return changed;
+
+    const frameWidth = Math.max(0, ...frame.map((row) => expand(row).length));
+    return {
+        top: Math.max(1, changed.top - (padding.top ?? 0)),
+        left: Math.max(1, changed.left - (padding.left ?? 0)),
+        bottom: Math.min(frame.length, changed.bottom + (padding.bottom ?? 0)),
+        right: Math.min(frameWidth, changed.right + (padding.right ?? 0)),
+    };
+};
+
 const expand = (row) => {
     const slots = [];
 
@@ -178,7 +210,7 @@ const sessionHeight = 50;
 const main = async () => {
     const requested = new Set(process.argv.slice(2));
     const root = path.resolve(import.meta.dirname, "..");
-    const output = path.join(root, "docs", "images", "controls");
+    const output = path.join(root, "docs", "images");
     const session = `sharpvision-controls-${process.pid}`;
     const temporary = mkdtempSync(path.join(tmpdir(), "sharpvision-controls-"));
 
@@ -254,7 +286,7 @@ const main = async () => {
         ],
         { stdio: "inherit" },
     );
-    await mkdir(output, { recursive: true });
+    await mkdir(path.join(output, "controls"), { recursive: true });
     tmux(
         "new-session",
         "-d",
@@ -409,6 +441,14 @@ const main = async () => {
                         );
                         sendSgr(0, target.column + 1, target.row, "M");
                         sendSgr(0, target.column + 1, target.row, "m");
+                    } else if (action.secondaryClick !== undefined) {
+                        const target = findTarget(
+                            capture(),
+                            rect,
+                            action.secondaryClick,
+                        );
+                        sendSgr(2, target.column + 1, target.row, "M");
+                        sendSgr(2, target.column + 1, target.row, "m");
                     } else if (action.press !== undefined) {
                         const target = findTarget(
                             capture(),
@@ -451,22 +491,16 @@ const main = async () => {
                 const frame = await settled(
                     entry.animated === true || held !== null,
                 );
-                let region = {
-                    top: rect.top + 1,
-                    left: rect.left + 1,
-                    bottom: rect.bottom - 1,
-                    right: rect.right - 1,
-                };
-
                 // A popup overdraws neighboring content the example box does
-                // not own, so crop to exactly the cells the actions changed.
-                if (state.popup === true) {
-                    const changed = diffBounds(baseline, frame);
-
-                    if (changed !== null) region = changed;
-                }
+                // not own, so overlay states crop to the cells actions changed.
+                const region = selectCaptureRegion(rect, state, baseline, frame);
 
                 const html = path.join(temporary, `${slug}.html`);
+                const imageDirectory = path.join(
+                    output,
+                    entry.imageDirectory ?? "controls",
+                );
+                await mkdir(imageDirectory, { recursive: true });
                 await writeFile(
                     html,
                     renderHtml(crop(frame, region), { padding: 8 }),
@@ -481,7 +515,7 @@ const main = async () => {
                         "50,50",
                         "--full-page",
                         pathToFileURL(html).href,
-                        path.join(output, name),
+                        path.join(imageDirectory, name),
                     ],
                     { stdio: "pipe" },
                 );

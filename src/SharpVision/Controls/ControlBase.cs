@@ -92,8 +92,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets the owning dispatcher while attached.</summary>
     public Dispatcher? Dispatcher { get; private set; }
 
-    /// <summary>Gets the private lifecycle generation backing opaque attachment identities.</summary>
-    private long AttachmentVersion { get; set; }
+    private object _attachmentIdentity = new();
+
+    private object AttachmentIdentity => Volatile.Read(ref _attachmentIdentity);
 
     /// <summary>Captures the exact current dispatcher attachment.</summary>
     /// <returns>An opaque identity invalidated by detach, reattach, or disposal.</returns>
@@ -104,7 +105,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ThrowIfDisposed();
         var dispatcher = Dispatcher ?? throw new InvalidOperationException(
             "An attachment can be captured only while the control is attached.");
-        return new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+        return new ControlAttachmentToken(this, dispatcher, AttachmentIdentity);
     }
 
     /// <summary>Attempts to capture one exact live attachment without throwing when a concurrent
@@ -116,12 +117,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         token = null;
         var dispatcher = Dispatcher;
 
-        if (IsDisposed || dispatcher is null)
+        if (IsDisposed || TerminalDisposalStarted || dispatcher is null)
         {
             return false;
         }
 
-        var captured = new ControlAttachmentToken(this, dispatcher, AttachmentVersion);
+        var captured = new ControlAttachmentToken(this, dispatcher, AttachmentIdentity);
 
         if (!IsCurrent(captured))
         {
@@ -168,7 +169,83 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal bool IsCurrent(ControlAttachmentToken token)
     {
         ArgumentNullException.ThrowIfNull(token);
-        return !IsDisposed && token.Matches(this, Dispatcher, AttachmentVersion);
+        return !IsDisposed &&
+               !TerminalDisposalStarted &&
+               token.Matches(this, Dispatcher, AttachmentIdentity);
+    }
+
+    /// <summary>Attempts to capture one exact live detached lifetime without exposing its private
+    /// identity.</summary>
+    /// <param name="token">The exact owner-bound identity, or null when attached or disposing.</param>
+    /// <returns>True only when a live detached identity was captured and revalidated.</returns>
+    internal bool TryCaptureDetachedAttachment(
+        [NotNullWhen(true)] out ControlDetachedAttachmentToken? token)
+    {
+        token = null;
+        var identity = AttachmentIdentity;
+
+        if (IsDisposed || TerminalDisposalStarted || Dispatcher is not null)
+        {
+            return false;
+        }
+
+        var captured = new ControlDetachedAttachmentToken(this, identity);
+
+        if (!IsCurrentDetachedAttachment(captured))
+        {
+            return false;
+        }
+
+        token = captured;
+        return true;
+    }
+
+    /// <summary>Checks whether an opaque identity still names this exact live detached lifetime.</summary>
+    /// <param name="token">The captured owner-bound identity.</param>
+    /// <returns>True only while this control remains live and detached on that identity.</returns>
+    private bool IsCurrentDetachedAttachment(ControlDetachedAttachmentToken token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return !IsDisposed &&
+               !TerminalDisposalStarted &&
+               Dispatcher is null &&
+               token.Matches(this, AttachmentIdentity);
+    }
+
+    /// <summary>Runs one synchronous publication only while an opaque detached identity remains
+    /// current, excluding attachment context commit and terminal disposal for its full duration.</summary>
+    /// <param name="token">The exact captured detached identity.</param>
+    /// <param name="action">The complete synchronous state and callback publication.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <returns>True when the publication ran; false when lifecycle or domain authority was stale.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="token"/> or <paramref name="action"/> is null.</exception>
+    internal bool TryPublishForCurrentDetachedAttachment(
+        ControlDetachedAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (!OwnedControlRegistry.TryEnterDetachedPublication(this, out var entered))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!IsCurrentDetachedAttachment(token) || !(isOperationCurrent?.Invoke() ?? true))
+            {
+                return false;
+            }
+
+            action();
+            return true;
+        }
+        finally
+        {
+            OwnedControlRegistry.ExitDetachedPublication(entered);
+        }
     }
 
     /// <summary>Posts one callback that runs only while its captured attachment and optional
@@ -935,11 +1012,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <remarks>Derived overlay-owned controls use this viewport record when their own resolved box is intentionally smaller than the host.</remarks>
     internal Constraint? LastMeasureConstraint { get; private set; }
 
+    private int? LastMeasureWidthRequestBase { get; set; }
+
+    private int? LastMeasureHeightRequestBase { get; set; }
+
+    private int? LastMeasureWidthLimitBase { get; set; }
+
+    private int? LastMeasureHeightLimitBase { get; set; }
+
     private Rect? LastArrangeSlot { get; set; }
 
     private bool LastWidthResolved { get; set; }
 
     private bool LastHeightResolved { get; set; }
+
+    private int? LastArrangeWidthRequestBase { get; set; }
+
+    private int? LastArrangeHeightRequestBase { get; set; }
 
     private int? LastWidthLimitBase { get; set; }
 
@@ -961,6 +1050,29 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether disposal is currently unwinding this control, before <see cref="IsDisposed"/> flips true.</summary>
     internal bool IsDisposing { get; private set; }
+
+    private bool _terminalDisposalStarted;
+
+    /// <summary>Gets whether this control owns the active terminal-disposal lifetime boundary.</summary>
+    /// <remarks>Ownership publication uses this only to permit the framework's pre-disposal unlink.</remarks>
+    internal bool TerminalDisposalStarted => Volatile.Read(ref _terminalDisposalStarted);
+
+    /// <summary>Gets whether this control or a retained ancestor has begun terminal disposal.</summary>
+    internal bool TerminalDisposalStartedInAncestry
+    {
+        get
+        {
+            for (var current = this; current is not null; current = current.Parent)
+            {
+                if (current.TerminalDisposalStarted)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
 
     private bool OwnedDisposalRequested { get; set; }
 
@@ -1068,7 +1180,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(cellPolicy);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1076,6 +1187,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             InheritedTheme,
+            prepare: null,
             configure: null);
     }
 
@@ -1097,8 +1209,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(capabilities);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
-        SetCapabilities(capabilities);
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1106,6 +1216,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             InheritedTheme,
+            () => SetCapabilities(capabilities),
             configure: null);
     }
 
@@ -1130,7 +1241,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(configure);
         VerifyLifecycleRoot();
         dispatcher.VerifyAccess();
-        ValidateAttachment();
         CommitAndPublishContext(
             dispatcher,
             cellPolicy,
@@ -1138,6 +1248,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CaptureOwner,
             ModalityOwner,
             theme,
+            prepare: null,
             configure);
     }
 
@@ -1146,7 +1257,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal void Detach()
     {
         VerifyLifecycleRoot();
-        OwnedControlRegistry.VerifyMutationAllowed(this);
         var dispatcher = Dispatcher;
 
         if (dispatcher is null)
@@ -1155,11 +1265,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
 
         dispatcher.VerifyAccess();
-        var entered = OwnedControlRegistry.EnterPublication(this);
+        var lifecycleEntered = OwnedControlRegistry.EnterLifecyclePublication(
+            [this],
+            includeDescendants: true);
+        List<OwnedControlRegistry>? entered = null;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
+            ThrowIfDisposed();
+            VerifyLifecycleRoot();
+            OwnedControlRegistry.VerifyMutationAllowed(this);
+            entered = OwnedControlRegistry.EnterPublication(this);
             ExceptionAggregation.Capture(() => NotifyUnavailable(ReleaseReason.Detached), ref failure);
             var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
             var plan = ContextTransitionPlan.Create(
@@ -1172,6 +1289,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 null,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -1182,7 +1300,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
-            OwnedControlRegistry.ExitPublication(entered);
+            if (entered is not null)
+            {
+                OwnedControlRegistry.ExitPublication(entered);
+            }
+
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
 
         failure?.Throw();
@@ -1214,7 +1337,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached control is accessed off-dispatcher or measure is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Measure(Constraint constraint)
+    internal void Measure(Constraint constraint) => Measure(constraint, null, null, null, null);
+
+    /// <summary>Measures within a slot while retaining the parent's relative request and limit bases.</summary>
+    /// <param name="constraint">The non-negative outer constraint used to contain the requested size.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used to resolve relative width limits.</param>
+    /// <param name="heightLimitBase">The containing height used to resolve relative height limits.</param>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher or measure is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Measure(
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         VerifyMutable();
 
@@ -1223,7 +1361,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             throw new InvalidOperationException("Measure cannot be reentered.");
         }
 
-        if ((Pending & Invalidation.Measure) == 0 && LastMeasureConstraint == constraint)
+        if ((Pending & Invalidation.Measure) == 0 && LastMeasureConstraint == constraint &&
+            LastMeasureWidthRequestBase == widthRequestBase && LastMeasureHeightRequestBase == heightRequestBase &&
+            LastMeasureWidthLimitBase == widthLimitBase && LastMeasureHeightLimitBase == heightLimitBase)
         {
             return;
         }
@@ -1237,17 +1377,36 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             {
                 DesiredSize = default;
                 LastMeasureConstraint = constraint;
+                LastMeasureWidthRequestBase = widthRequestBase;
+                LastMeasureHeightRequestBase = heightRequestBase;
+                LastMeasureWidthLimitBase = widthLimitBase;
+                LastMeasureHeightLimitBase = heightLimitBase;
                 Invalidate(Invalidation.Arrange);
                 return;
             }
 
-            var contentConstraint = OnMeasuringContent(CreateContentConstraint(constraint));
+            var contentConstraint = OnMeasuringContent(CreateContentConstraint(
+                constraint,
+                widthRequestBase,
+                heightRequestBase,
+                widthLimitBase,
+                heightLimitBase));
             var content = MeasureOverride(contentConstraint);
             ContentExtent = content;
-            var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(constraint, content));
+            var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(
+                constraint,
+                content,
+                widthRequestBase,
+                heightRequestBase,
+                widthLimitBase,
+                heightLimitBase));
 
             DesiredSize = desired;
             LastMeasureConstraint = constraint;
+            LastMeasureWidthRequestBase = widthRequestBase;
+            LastMeasureHeightRequestBase = heightRequestBase;
+            LastMeasureWidthLimitBase = widthLimitBase;
+            LastMeasureHeightLimitBase = heightLimitBase;
             Invalidate(Invalidation.Arrange);
         }
         catch
@@ -1267,7 +1426,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached control is accessed off-dispatcher or arrange is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void Arrange(Rect slot) => Arrange(slot, widthResolved: false, heightResolved: false);
+    internal void Arrange(Rect slot) => Arrange(slot, widthResolved: false, heightResolved: false, null, null, null, null);
 
     /// <summary>Arranges with optional parent-resolved border-box axes.</summary>
     /// <param name="slot">The final non-negative outer rectangle including margin.</param>
@@ -1284,7 +1443,27 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         bool widthResolved,
         bool heightResolved,
         int? widthLimitBase = null,
-        int? heightLimitBase = null)
+        int? heightLimitBase = null) =>
+        Arrange(slot, widthResolved, heightResolved, null, null, widthLimitBase, heightLimitBase);
+
+    /// <summary>Arranges with optional parent-resolved border-box axes and relative request and limit bases.</summary>
+    /// <param name="slot">The final non-negative outer rectangle including margin.</param>
+    /// <param name="widthResolved">Whether the parent already resolved the border-box width.</param>
+    /// <param name="heightResolved">Whether the parent already resolved the border-box height.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative limits.</param>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher or arrange is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    internal void Arrange(
+        Rect slot,
+        bool widthResolved,
+        bool heightResolved,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         VerifyMutable();
 
@@ -1297,6 +1476,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastArrangeSlot == slot &&
             LastWidthResolved == widthResolved &&
             LastHeightResolved == heightResolved &&
+            LastArrangeWidthRequestBase == widthRequestBase &&
+            LastArrangeHeightRequestBase == heightRequestBase &&
             LastWidthLimitBase == widthLimitBase &&
             LastHeightLimitBase == heightLimitBase)
         {
@@ -1314,6 +1495,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 LastArrangeSlot = slot;
                 LastWidthResolved = widthResolved;
                 LastHeightResolved = heightResolved;
+                LastArrangeWidthRequestBase = widthRequestBase;
+                LastArrangeHeightRequestBase = heightRequestBase;
                 LastWidthLimitBase = widthLimitBase;
                 LastHeightLimitBase = heightLimitBase;
                 return;
@@ -1330,6 +1513,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                         Width,
                         HorizontalAlignment == HorizontalAlignment.Stretch,
                         slot.Width,
+                        widthRequestBase,
                         available.Width,
                         DesiredSize.Width,
                         minimumWidth,
@@ -1342,6 +1526,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                         Height,
                         VerticalAlignment == VerticalAlignment.Stretch,
                         slot.Height,
+                        heightRequestBase,
                         available.Height,
                         DesiredSize.Height,
                         minimumHeight,
@@ -1355,6 +1540,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LastArrangeSlot = slot;
             LastWidthResolved = widthResolved;
             LastHeightResolved = heightResolved;
+            LastArrangeWidthRequestBase = widthRequestBase;
+            LastArrangeHeightRequestBase = heightRequestBase;
             LastWidthLimitBase = widthLimitBase;
             LastHeightLimitBase = heightLimitBase;
             var content = Padding.Deflate(BorderInset.Deflate(bounds));
@@ -1436,11 +1623,32 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached child is accessed off-dispatcher or measure is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    protected Size MeasureChild(ControlBase child, Constraint constraint)
+    protected Size MeasureChild(ControlBase child, Constraint constraint) =>
+        MeasureChild(child, constraint, null, null, null, null);
+
+    /// <summary>Measures one direct child with parent-resolved relative request and limit bases.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="constraint">The non-negative content constraint supplied to the child.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used to resolve relative width limits.</param>
+    /// <param name="heightLimitBase">The containing height used to resolve relative height limits.</param>
+    /// <returns>The child's committed desired border-box size.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or measure is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    private protected Size MeasureChild(
+        ControlBase child,
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         ArgumentNullException.ThrowIfNull(child);
         EnsureDirectOwnedChild(child);
-        child.Measure(constraint);
+        child.Measure(constraint, widthRequestBase, heightRequestBase, widthLimitBase, heightLimitBase);
         return child.DesiredSize;
     }
 
@@ -1455,10 +1663,49 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// The attached child is accessed off-dispatcher or arrange is reentered.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    protected void ArrangeChild(
+    protected void ArrangeChild(ControlBase child, Rect slot, ResolvedAxes resolvedAxes = ResolvedAxes.None) =>
+        ArrangeChild(child, slot, resolvedAxes, null, null);
+
+    /// <summary>Arranges one direct child with parent-resolved relative-limit bases.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
+    /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative limits.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or arrange is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    private protected void ArrangeChild(
         ControlBase child,
         Rect slot,
-        ResolvedAxes resolvedAxes = ResolvedAxes.None)
+        ResolvedAxes resolvedAxes,
+        int? widthLimitBase,
+        int? heightLimitBase) =>
+        ArrangeChild(child, slot, resolvedAxes, null, null, widthLimitBase, heightLimitBase);
+
+    /// <summary>Arranges one direct child with parent-resolved relative request and limit bases.</summary>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
+    /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
+    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
+    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
+    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
+    /// <param name="heightLimitBase">The containing height used when the parent resolved relative height limits.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or arrange is reentered.</exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    private protected void ArrangeChild(
+        ControlBase child,
+        Rect slot,
+        ResolvedAxes resolvedAxes,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         ArgumentNullException.ThrowIfNull(child);
 
@@ -1468,7 +1715,11 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         child.Arrange(
             slot,
             widthResolved: (resolvedAxes & ResolvedAxes.Width) != 0,
-            heightResolved: (resolvedAxes & ResolvedAxes.Height) != 0);
+            heightResolved: (resolvedAxes & ResolvedAxes.Height) != 0,
+            widthRequestBase,
+            heightRequestBase,
+            widthLimitBase,
+            heightLimitBase);
     }
 
     private void ClearCollapsedOwnedChildBounds() =>
@@ -1550,22 +1801,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             }
             else
             {
-                var appearanceState = GetAppearanceState();
-                var chrome = GetChromeRenderOptions();
-                this.RenderUnderlay(visual, appearanceState, chrome);
-                OnRenderContent(visual);
-                var descendantBounds = DescendantRenderBounds;
-                var descendantClip = ClipsChildren
-                    ? ControlChrome.ResolveClipBox(contentClip, Bounds, descendantBounds, canvas.Bounds)
-                        .Intersect(descendantBounds)
-                    : contentClip;
-                var descendantCanvas = ClipsDescendantVisualOverflow
-                    ? canvas.Clip(descendantBounds)
-                    : canvas;
-                RenderChildren(descendantCanvas, descendantClip);
-                OnRenderAdornment(visual);
-                this.RenderBorder(visual, appearanceState, chrome);
-                RenderOverlay(visual);
+                if (RequiresCompleteRenderEffect)
+                {
+                    RenderFreshWithCompleteEffect(canvas, visual, contentClip);
+                }
+                else
+                {
+                    RenderFresh(canvas, visual, contentClip);
+                }
             }
 
             if (Parent is null)
@@ -1582,6 +1825,26 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             IsRendering = false;
         }
+    }
+
+    private void RenderFresh(TerminalCanvas canvas, TerminalCanvas visual, Rect contentClip)
+    {
+        var appearanceState = GetAppearanceState();
+        var chrome = GetChromeRenderOptions();
+        this.RenderUnderlay(visual, appearanceState, chrome);
+        OnRenderContent(visual);
+        var descendantBounds = DescendantRenderBounds;
+        var descendantClip = ClipsChildren
+            ? ControlChrome.ResolveClipBox(contentClip, Bounds, descendantBounds, canvas.Bounds)
+                .Intersect(descendantBounds)
+            : contentClip;
+        var descendantCanvas = ClipsDescendantVisualOverflow
+            ? canvas.Clip(descendantBounds)
+            : canvas;
+        RenderChildren(descendantCanvas, descendantClip);
+        OnRenderAdornment(visual);
+        this.RenderBorder(visual, appearanceState, chrome);
+        RenderOverlay(visual);
     }
 
     // Narrow, maintainer-approved scope: reuse is safe only for a subtree whose own
@@ -1718,7 +1981,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// would also expand them into - without notifying <see cref="Parent"/> or touching
     /// <see cref="SwallowedArrangeChildren"/>.</summary>
     /// <remarks>
-    /// For a caller that already knows it is about to <see cref="Measure"/> and/or
+    /// For a caller that already knows it is about to <see cref="Measure(Constraint)"/> and/or
     /// <see cref="Arrange(Rect, bool, bool, int?, int?)"/> this exact control synchronously afterward, and only
     /// needs to bypass those methods' own unchanged-constraint/slot short-circuit rather than
     /// schedule a fresh ancestor layout pass. <see cref="Invalidate(Invalidation)"/> would do both:
@@ -1733,7 +1996,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// defeating the point.
     ///
     /// The caller owns the contract this leaves unenforced: <see cref="Pending"/> is set exactly as
-    /// if <see cref="Invalidate(Invalidation)"/> ran, so the very next <see cref="Measure"/>/
+    /// if <see cref="Invalidate(Invalidation)"/> ran, so the very next <see cref="Measure(Constraint)"/>/
     /// <see cref="Arrange(Rect, bool, bool, int?, int?)"/> call clears it in the ordinary way - but if the
     /// caller never makes that call, the bits strand: nothing else clears them, and nothing else
     /// ever notified an ancestor a fresh layout pass is owed.
@@ -1899,53 +2162,76 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </exception>
     public void Dispose()
     {
-        if (IsDisposed || IsDisposing)
+        if (IsDisposed || IsDisposing || TerminalDisposalStarted)
         {
             GC.SuppressFinalize(this);
             return;
         }
 
-        if (!OwnedDisposalRequested)
+        var lifecycleEntered = OwnedControlRegistry.EnterTerminalDisposalPublication(this);
+
+        try
         {
-            OwnedControlRegistry.VerifyMutationAllowed(this);
-
-            if (Parent is IOwnedChildDisposalObserver observer)
-            {
-                observer.OnOwnedChildDisposalRequested(this);
-            }
-
-            OnDirectDisposalRequested();
-
-            if (IsDisposed || IsDisposing)
+            if (IsDisposed || IsDisposing || TerminalDisposalStarted)
             {
                 GC.SuppressFinalize(this);
                 return;
             }
 
-            // A direct-disposal path never restores caller-authored values onto the dying control.
-            // Retire the exact property generation before slot publication so cleanup cannot depend
-            // on multicast subscriber order or be skipped by an earlier throwing callback.
-            RetainedPropertyOverride?.Retire();
-        }
+            VerifyAccess();
 
-        try
-        {
-            DisposeWithPublication();
+            if (!OwnedDisposalRequested)
+            {
+                OwnedControlRegistry.VerifyMutationAllowed(this);
+            }
+
+            InvalidateAttachmentIdentity();
+            Volatile.Write(ref _terminalDisposalStarted, true);
+
+            if (!OwnedDisposalRequested)
+            {
+                if (Parent is IOwnedChildDisposalObserver observer)
+                {
+                    observer.OnOwnedChildDisposalRequested(this);
+                }
+
+                OnDirectDisposalRequested();
+
+                if (IsDisposed || IsDisposing)
+                {
+                    GC.SuppressFinalize(this);
+                    return;
+                }
+
+                // A direct-disposal path never restores caller-authored values onto the dying control.
+                // Retire the exact property generation before slot publication so cleanup cannot depend
+                // on multicast subscriber order or be skipped by an earlier throwing callback.
+                RetainedPropertyOverride?.Retire();
+            }
+
+            try
+            {
+                DisposeWithPublication();
+            }
+            finally
+            {
+                if (IsDisposed)
+                {
+                    GC.SuppressFinalize(this);
+                }
+            }
         }
         finally
         {
-            if (IsDisposed)
-            {
-                GC.SuppressFinalize(this);
-            }
+            Volatile.Write(ref _terminalDisposalStarted, false);
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
     }
 
     /// <summary>Allows a semantic control to reconcile caller-requested disposal before structural publication begins.</summary>
     /// <remarks>
-    /// The hook is skipped during owner-driven teardown. A callback raised by reconciliation may
-    /// complete a reentrant disposal; the outer request detects that commit before entering a
-    /// second publication transaction.
+    /// The hook is skipped during owner-driven teardown. A reentrant request while this
+    /// reconciliation is active is idempotent; the outer request owns the terminal transition.
     /// </remarks>
     internal virtual void OnDirectDisposalRequested()
     {
@@ -2657,8 +2943,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             InvalidateVisualStateCore();
         }
 
-        VisitChildren(child => child.SetSelectedState(value));
+        VisitChildren(child =>
+        {
+            if (child.ReceivesInheritedSelectionState)
+            {
+                child.SetSelectedState(value);
+            }
+        });
     }
+
+    /// <summary>Gets whether semantic selection propagated by an ancestor crosses into this owned branch.</summary>
+    /// <remarks>
+    /// Ordinary retained content participates so a selected row presents one coherent subtree.
+    /// Floating presentation surfaces start an independent interaction plane and stop that inherited
+    /// state before it can select their separately navigated content.
+    /// </remarks>
+    internal virtual bool ReceivesInheritedSelectionState => true;
 
     /// <summary>Propagates collection-current visual state through one realized item subtree.</summary>
     internal void SetCurrentState(bool value)
@@ -2869,6 +3169,28 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Configures the framework-owned chrome surrounding this control's content.</summary>
     /// <returns>The narrow set of chrome adjustments required by a specialized frame.</returns>
     protected virtual ChromeRenderOptions GetChromeRenderOptions() => default;
+
+    /// <summary>Gets whether one complete render callback must be surrounded by a control-owned effect.</summary>
+    /// <remarks>
+    /// This internal derivation seam is evaluated only on fresh renders. Implementations return
+    /// true only while an effect is active so ordinary controls keep the allocation-free render path.
+    /// </remarks>
+    private protected virtual bool RequiresCompleteRenderEffect => false;
+
+    /// <summary>Renders this control's complete underlay, content, descendants, adornment,
+    /// border, and overlay inside a control-owned effect.</summary>
+    /// <param name="canvas">The parent canvas used for descendant overflow.</param>
+    /// <param name="visual">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
+    /// <param name="contentClip">The resolved content clip.</param>
+    /// <remarks>
+    /// The default implementation keeps the ordinary fresh-render behavior. The separate virtual
+    /// path prevents effect callback closures from allocating for controls with no active effect.
+    /// </remarks>
+    private protected virtual void RenderFreshWithCompleteEffect(
+        TerminalCanvas canvas,
+        TerminalCanvas visual,
+        Rect contentClip) =>
+        RenderFresh(canvas, visual, contentClip);
 
     /// <summary>Draws this control's own content into its clipped visual bounds.</summary>
     /// <param name="canvas">The frame-owned canvas clipped to <see cref="VisualBounds"/>.</param>
@@ -3476,6 +3798,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Length length,
         bool stretch,
         int slot,
+        int? requestBase,
         int available,
         int desired,
         int minimum,
@@ -3486,7 +3809,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LengthKind.Auto when stretch => available,
             LengthKind.Auto => desired,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => ResolvePercent(slot, length.Value),
+            LengthKind.Percent => ResolvePercent(requestBase ?? slot, length.Value),
             LengthKind.Star => available,
             _ => throw new UnreachableException()
         };
@@ -3498,19 +3821,21 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private static int ResolveMeasureAxis(
         Length length,
         int? slot,
+        int? requestBase,
+        int? limitBase,
         int margin,
         int inset,
         int intrinsic,
         Length minimum,
         Length? maximum)
     {
-        ResolveLimits(minimum, maximum, slot, out var resolvedMinimum, out var resolvedMaximum);
+        ResolveLimits(minimum, maximum, limitBase, out var resolvedMinimum, out var resolvedMaximum);
         var requested = length.Kind switch
         {
             LengthKind.Auto => intrinsic.SaturatingAdd(inset),
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => slot.HasValue
-                ? ResolvePercent(slot.Value, length.Value)
+            LengthKind.Percent => (requestBase ?? slot).HasValue
+                ? ResolvePercent((requestBase ?? slot)!.Value, length.Value)
                 : intrinsic.SaturatingAdd(inset),
             LengthKind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
@@ -3528,17 +3853,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private static int? ResolveContentAxis(
         Length length,
         int? slot,
+        int? requestBase,
+        int? limitBase,
         int margin,
         int inset,
         Length minimum,
         Length? maximum)
     {
-        ResolveLimits(minimum, maximum, slot, out var resolvedMinimum, out var resolvedMaximum);
+        ResolveLimits(minimum, maximum, limitBase, out var resolvedMinimum, out var resolvedMaximum);
         int? border = length.Kind switch
         {
             LengthKind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => slot.HasValue ? ResolvePercent(slot.Value, length.Value) : null,
+            LengthKind.Percent => (requestBase ?? slot) is { } percentageBase ? ResolvePercent(percentageBase, length.Value) : null,
             LengthKind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             _ => throw new UnreachableException()
         };
@@ -3803,6 +4130,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         return true;
     }
 
+    /// <summary>Runs one required control action while preserving the earliest failure accumulated
+    /// by the caller.</summary>
+    /// <param name="action">The non-null synchronous action.</param>
+    /// <param name="failure">The first captured failure, or null.</param>
+    /// <remarks>
+    /// Concrete controls use this inherited seam when later invariant work must still run after an
+    /// earlier callback fails. Non-control collaborators use their own explicit aggregation policy.
+    /// </remarks>
+    private protected static void CaptureFailure(
+        Action action,
+        ref ExceptionDispatchInfo? failure) =>
+        ExceptionAggregation.Capture(action, ref failure);
+
     /// <summary>Commits one property and begins a current-aware callback transaction.</summary>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
@@ -3811,6 +4151,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="stream">The non-null logical callback stream for this property.</param>
     /// <param name="transition">Receives the committed publication transaction.</param>
     /// <param name="propertyName">The non-empty property name supplied by the compiler.</param>
+    /// <param name="comparer">The optional equality policy for the commit gate.</param>
     /// <returns>Whether a changed value was committed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="stream"/> or
     /// <paramref name="propertyName"/> is null.</exception>
@@ -3825,14 +4166,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         InvalidationImpact impact,
         CallbackTransitionStream stream,
         out CallbackTransitionTransaction transition,
-        [CallerMemberName] string? propertyName = null)
+        [CallerMemberName] string? propertyName = null,
+        IEqualityComparer<T>? comparer = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ValidateImpact(impact);
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         VerifyMutable();
 
-        if (EqualityComparer<T>.Default.Equals(field, value))
+        comparer ??= EqualityComparer<T>.Default;
+
+        if (comparer.Equals(field, value))
         {
             transition = default;
             return false;
@@ -4007,7 +4351,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Initializes the single primary complete-style slot owned by this control.</summary>
     /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
     /// <param name="definition">The immutable primary-style policy.</param>
-    /// <param name="changed">An optional callback after a changed resolved style commits.</param>
+    /// <param name="changed">An optional callback after a changed resolved style or local ownership commits.</param>
     /// <returns>The initialized slot used by the public Style and ActualStyle properties.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> is null.</exception>
     /// <exception cref="InvalidOperationException">A primary slot was already initialized, or
@@ -4050,7 +4394,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <typeparam name="TStyle">The small immutable complete style value.</typeparam>
     /// <param name="definition">The immutable fallback and comparison policy.</param>
     /// <param name="propertyName">The conventional local property name ending in Style.</param>
-    /// <param name="changed">An optional callback after a changed resolved style commits.</param>
+    /// <param name="changed">An optional callback after a changed resolved style or local ownership commits.</param>
     /// <returns>The initialized secondary slot.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="definition"/> or <paramref name="propertyName"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty, Style, or does not end in Style.</exception>
@@ -4291,7 +4635,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             impact,
             previousAppearance,
             currentAppearance,
-            ambientFaceChanged);
+            ambientFaceChanged,
+            (slot.LocalValue is null) != (value is null));
     }
 
     private void ApplyStyleCommit<TStyle>(StyleCommit<TStyle> commit)
@@ -4335,28 +4680,31 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.PropertyName)),
             ref failure);
 
-        if (!IsCurrentStyleCommit(commit) || !commit.ResolvedStyleChanged)
-        {
-            return;
-        }
-
-        ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
-            ref failure);
-
         if (!IsCurrentStyleCommit(commit))
         {
             return;
         }
 
-        if (slot.OwnsAppearance)
+        if (commit.ResolvedStyleChanged)
         {
             ExceptionAggregation.Capture(
-                () => PublishAppearanceChanges(commit.PreviousAppearance, commit.CurrentAppearance),
+                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
                 ref failure);
+
+            if (!IsCurrentStyleCommit(commit))
+            {
+                return;
+            }
+
+            if (slot.OwnsAppearance)
+            {
+                ExceptionAggregation.Capture(
+                    () => PublishAppearanceChanges(commit.PreviousAppearance, commit.CurrentAppearance),
+                    ref failure);
+            }
         }
 
-        if (IsCurrentStyleCommit(commit))
+        if (IsCurrentStyleCommit(commit) && commit.RequiresChangedCallback)
         {
             ExceptionAggregation.Capture(
                 () => slot.PublishChanged(commit.PreviousStyle, commit.CurrentStyle),
@@ -4718,16 +5066,27 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal void PublishLostPointerCapture(PointerCaptureLossReason reason) =>
         LostPointerCapture?.Invoke(this, new PointerCaptureLostEventArgs(reason));
 
-    private Constraint CreateContentConstraint(Constraint constraint)
+    private Constraint CreateContentConstraint(
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
         return new Constraint(
-            ResolveContentAxis(Width, constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
-            ResolveContentAxis(Height, constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
+            ResolveContentAxis(Width, constraint.Width, widthRequestBase, widthLimitBase ?? constraint.Width, Margin.Horizontal, horizontalInset, MinWidth, MaxWidth),
+            ResolveContentAxis(Height, constraint.Height, heightRequestBase, heightLimitBase ?? constraint.Height, Margin.Vertical, verticalInset, MinHeight, MaxHeight));
     }
 
-    private Size ResolveDesiredSize(Constraint constraint, Size content)
+    private Size ResolveDesiredSize(
+        Constraint constraint,
+        Size content,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase)
     {
         var horizontalInset = Padding.Horizontal.SaturatingAdd(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.SaturatingAdd(BorderInset.Vertical);
@@ -4735,6 +5094,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             ResolveMeasureAxis(
                 Width,
                 constraint.Width,
+                widthRequestBase,
+                widthLimitBase ?? constraint.Width,
                 Margin.Horizontal,
                 horizontalInset,
                 content.Width,
@@ -4743,6 +5104,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             ResolveMeasureAxis(
                 Height,
                 constraint.Height,
+                heightRequestBase,
+                heightLimitBase ?? constraint.Height,
                 Margin.Vertical,
                 verticalInset,
                 content.Height,
@@ -4760,7 +5123,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             if (!ReferenceEquals(Dispatcher, transition.Dispatcher))
             {
-                AttachmentVersion++;
+                InvalidateAttachmentIdentity();
             }
 
             Dispatcher = transition.Dispatcher;
@@ -4931,15 +5294,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         PointerManager? captureOwner,
         ModalityManager? modalityOwner,
         Theme? theme,
+        Action? prepare,
         Action? configure)
     {
-        OwnedControlRegistry.VerifyMutationAllowed(this);
-        var entered = OwnedControlRegistry.EnterPublication(this);
-        var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
+        var lifecycleEntered = OwnedControlRegistry.EnterLifecyclePublication(
+            [this],
+            includeDescendants: true);
+        List<OwnedControlRegistry>? entered = null;
         ExceptionDispatchInfo? failure = null;
 
         try
         {
+            VerifyLifecycleRoot();
+            ValidateAttachment();
+            prepare?.Invoke();
+            OwnedControlRegistry.VerifyMutationAllowed(this);
+            entered = OwnedControlRegistry.EnterPublication(this);
+            var previousAppearance = AppearanceSnapshot.CaptureSubtree(this);
             var plan = ContextTransitionPlan.Create(
                 this,
                 dispatcher,
@@ -4950,6 +5321,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             configure?.Invoke();
@@ -4961,7 +5333,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
-            OwnedControlRegistry.ExitPublication(entered);
+            if (entered is not null)
+            {
+                OwnedControlRegistry.ExitPublication(entered);
+            }
+
+            OwnedControlRegistry.ExitLifecyclePublication(lifecycleEntered);
         }
 
         failure?.Throw();
@@ -5014,6 +5391,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);
+
+    private void InvalidateAttachmentIdentity() =>
+        Volatile.Write(ref _attachmentIdentity, new object());
 
     #region Bindings
 
@@ -5618,6 +5998,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             theme,
             previousAppearance,
             AppearanceSnapshot.ResolveParentAmbient(Parent),
+            AppearanceSnapshot.ResolveContinuousBackground(Parent),
             propagateContext: false);
         plan.Commit();
         var appearanceChanges = AppearanceChange.CreateChanges(
@@ -5647,6 +6028,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(Parent),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -5668,6 +6050,37 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether local visual-state changes can affect inherited descendant face values.</summary>
     internal virtual bool StateAffectsAmbientAppearance => false;
+
+    /// <summary>Gets whether this control establishes a continuous background plane that
+    /// framework-owned descendant backgrounds must leave visible.</summary>
+    internal virtual bool ProvidesContinuousBackground => false;
+
+    /// <summary>Gets whether the active state locally authors the background and therefore opts out
+    /// of a continuous ancestor plane.</summary>
+    /// <param name="state">The exact active visual state.</param>
+    /// <returns>True when a complete local face or style, or an active local overlay, authors the background.</returns>
+    internal bool AuthorsLocalBackground(VisualState state)
+    {
+        if (LocalFaceValue is not null || _primaryStyle?.HasLocalValue == true)
+        {
+            return true;
+        }
+
+        foreach (var overlay in VisualStateOrder.OrderedOverlays)
+        {
+            if ((state & overlay) != 0 &&
+                _appearanceSets.TryGetValue(overlay, out var localSet) &&
+                localSet.Face?.Background is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Gets whether any ancestor establishes a continuous background plane for this control.</summary>
+    internal bool UsesContinuousBackground => AppearanceSnapshot.ResolveContinuousBackground(Parent);
 
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;

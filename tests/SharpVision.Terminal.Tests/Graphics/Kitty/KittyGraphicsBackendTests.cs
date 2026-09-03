@@ -312,6 +312,69 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(moved.Placements).ShouldNotContain("i=77");
     }
 
+    /// <summary>Verifies a valid but unsuccessful reply to a number-addressed upload (the terminal
+    /// explicitly rejected it, e.g. <c>i=5,I=1;ENOENT</c>) is not silently dropped. Before this fix,
+    /// <see cref="KittyGraphicsBackend.Accept"/> discarded any non-<c>OK</c> reply outright, so the
+    /// rejected image was never marked failed and its placement just silently never rendered again.
+    /// It must instead surface as a <see cref="GraphicsPlacementSkipReason.TerminalRejectedUpload"/>
+    /// diagnostic on the very next <see cref="KittyGraphicsBackend.Prepare"/> call.</summary>
+    [Fact]
+    public void Accept_WhenTerminalRejectsNumberAddressedUpload_SurfacesSkipDiagnosticOnNextPrepare()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var image = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        using var frame = Frame(image, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(null, frame, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=5,I=1;ENOENT"u8));
+        var result = backend.Prepare(frame, frame, full: false);
+
+        result.SkippedPlacements.ShouldHaveSingleItem().Reason.ShouldBe(
+            GraphicsPlacementSkipReason.TerminalRejectedUpload);
+    }
+
+    /// <summary>Verifies a still-unconfirmed retiring image's number, transferred directly to a
+    /// replacement image in the same <see cref="KittyGraphicsBackend.Prepare"/> call (the
+    /// "identifier transfer" fast path this backend relies on to avoid allocator exhaustion at full
+    /// capacity), is not later misattributed once the retiring image's own stale reply finally
+    /// arrives. Before this fix, that stale reply's wire number matched the new tenant in
+    /// <c>_images</c> and could report it as terminal-rejected even though its own upload was never
+    /// rejected; the transfer itself must still happen (it is load-bearing for capacity), only the
+    /// ambiguous reply's attribution must not land on the wrong image.</summary>
+    [Fact]
+    public void Accept_WhenTransferredNumbersStaleReplyArrives_DoesNotMisattributeToTheNewTenant()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+
+        // Image A rents Number 1 and transmits. Its assignment response is deliberately never
+        // accepted here, simulating a still-outstanding terminal round-trip.
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Image B replaces A in the SAME Prepare call, so the identifier-transfer fast path hands
+        // A's still-unconfirmed Number 1 straight to B - this must still happen unchanged.
+        _ = backend.Prepare(frameA, frameB, full: false);
+        var bBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=1;");
+
+        // A's stale transmit response finally arrives as an explicit rejection, claiming Number 1 -
+        // the exact same number B's own upload now also uses.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=5,I=1;ENOENT"u8));
+        var result = backend.Prepare(frameB, frameB, full: false);
+
+        result.SkippedPlacements.ShouldNotContain(
+            diagnostic => diagnostic.ImageIdentity == imageB.Identity);
+    }
+
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]
     public void Prepare_WhenImageMoves_ReusesIdsWithoutUploadingAndDeletesOnLastUse()

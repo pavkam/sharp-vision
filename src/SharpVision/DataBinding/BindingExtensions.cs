@@ -16,6 +16,7 @@ using Menus;
 
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
+using SharpVision.Navigation;
 
 using ControlCalendar = Controls.Input.Calendar;
 using DisplayText = Controls.Display.Text;
@@ -71,6 +72,42 @@ public static class BindingExtensions
             static value => value,
             BindingMode.TwoWay,
             target.Minimum);
+    }
+
+    /// <summary>Binds an integer model value two-way to a Pager's zero-based current page.</summary>
+    /// <typeparam name="TModel">The reference model type that owns the source property.</typeparam>
+    /// <param name="target">The non-null Pager that owns the binding lifetime.</param>
+    /// <param name="source">The non-null notifying source model.</param>
+    /// <param name="sourceProperty">The direct writable integer property selected from <paramref name="source"/>.</param>
+    /// <returns>A target-owned binding that synchronizes PageIndex until disposed or target disposal.</returns>
+    /// <remarks>Set PageCount before binding a nonempty index. The empty-range natural value is -1;
+    /// an out-of-range source value is rejected rather than clamped or written back.</remarks>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="sourceProperty"/> is not a writable direct property.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The source value is outside the target's current page range.</exception>
+    /// <exception cref="InvalidOperationException">The attached target is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The target is disposed.</exception>
+    [MustDisposeResource]
+    public static Binding Bind<TModel>(
+        this Pager target,
+        TModel source,
+        Expression<Func<TModel, int>> sourceProperty)
+        where TModel : class
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return CreateBinding(
+            target,
+            static control => control.PageIndex,
+            source,
+            sourceProperty,
+            static value => value,
+            static value => value,
+            BindingMode.TwoWay,
+            -1,
+            tracksCollection: false,
+            coordinatesItems: false,
+            refreshAfterItems: false,
+            retryTargetWriteWithFallback: false);
     }
 
     /// <summary>Binds an integer model value two-way to a scroll bar.</summary>
@@ -415,6 +452,89 @@ public static class BindingExtensions
             mode,
             string.Empty);
 
+    /// <summary>Creates a two-way relationship between nullable model text and suggestion input text.</summary>
+    /// <typeparam name="TModel">The reference-type model that owns the source property.</typeparam>
+    /// <param name="target">The suggestion input whose <see cref="SuggestionInput.Text"/> is synchronized.</param>
+    /// <param name="source">The model instance that owns <paramref name="sourceProperty"/>.</param>
+    /// <param name="sourceProperty">
+    /// A public readable and writable property path rooted in <paramref name="source"/>.
+    /// </param>
+    /// <returns>
+    /// The live binding. The target owns the binding and disposes it during target disposal; the
+    /// caller may dispose it earlier to stop synchronization immediately.
+    /// </returns>
+    /// <remarks>
+    /// Initial synchronization flows from source to target, mapping a null source value to empty
+    /// text. Subsequent target edits flow back as non-null strings. Source notifications for an
+    /// attached target are applied through that target's dispatcher; detached notifications are
+    /// retained until a compatible attachment commits.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="target"/>, <paramref name="source"/>, or
+    /// <paramref name="sourceProperty"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// The source expression is not a public property path, its leaf is not writable, or the
+    /// target text property already has a live binding.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached target is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The target has been disposed.</exception>
+    [MustDisposeResource]
+    public static Binding Bind<TModel>(
+        this SuggestionInput target,
+        TModel source,
+        Expression<Func<TModel, string?>> sourceProperty)
+        where TModel : class =>
+        Bind(target, source, sourceProperty, BindingMode.TwoWay);
+
+    /// <summary>Creates a directed relationship between nullable model text and suggestion input text.</summary>
+    /// <typeparam name="TModel">The reference-type model that owns the source property.</typeparam>
+    /// <param name="target">The suggestion input whose <see cref="SuggestionInput.Text"/> is synchronized.</param>
+    /// <param name="source">The model instance that owns <paramref name="sourceProperty"/>.</param>
+    /// <param name="sourceProperty">
+    /// A public readable property path rooted in <paramref name="source"/>. Its leaf must also be
+    /// writable when <paramref name="mode"/> sends target changes to the source.
+    /// </param>
+    /// <param name="mode">The initial and ongoing synchronization direction.</param>
+    /// <returns>
+    /// The live binding. The target owns the binding and disposes it during target disposal; the
+    /// caller may dispose it earlier to stop synchronization immediately.
+    /// </returns>
+    /// <remarks>
+    /// Source-to-target synchronization maps null to empty text; target-to-source synchronization
+    /// writes the target's non-null text. Source notifications for an attached target are applied
+    /// through that target's dispatcher; detached notifications are retained until a compatible
+    /// attachment commits. <see cref="BindingMode.OneWayToSource"/> initializes the source from
+    /// the target instead of reading the model first.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="target"/>, <paramref name="source"/>, or
+    /// <paramref name="sourceProperty"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="mode"/> is undefined.</exception>
+    /// <exception cref="ArgumentException">
+    /// The source expression is not a public property path, its leaf is not writable for the
+    /// requested direction, or the target text property already has a live binding.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached target is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The target has been disposed.</exception>
+    [MustDisposeResource]
+    public static Binding Bind<TModel>(
+        this SuggestionInput target,
+        TModel source,
+        Expression<Func<TModel, string?>> sourceProperty,
+        BindingMode mode)
+        where TModel : class =>
+        BindProperty(
+            target,
+            static control => control.Text,
+            source,
+            sourceProperty,
+            static value => value ?? string.Empty,
+            static value => value,
+            mode,
+            string.Empty);
+
     /// <summary>Binds one finite observable item snapshot to a list.</summary>
     [MustDisposeResource]
     public static Binding BindItems<TModel, TItem>(
@@ -579,6 +699,7 @@ public static class BindingExtensions
         bool tracksCollection,
         bool coordinatesItems,
         bool refreshAfterItems,
+        bool retryTargetWriteWithFallback = true,
         Func<NotifyCollectionChangedEventArgs, bool>? applyIncrementalChange = null)
         where TControl : ControlBase
         where TModel : class
@@ -617,6 +738,7 @@ public static class BindingExtensions
             tracksCollection,
             coordinatesItems,
             refreshAfterItems,
+            retryTargetWriteWithFallback,
             applyIncrementalChange);
         binding.Start();
         return binding;

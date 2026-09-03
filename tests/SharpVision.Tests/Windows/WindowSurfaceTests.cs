@@ -2060,6 +2060,278 @@ public sealed class WindowSurfaceTests
         window.Visibility.ShouldBe(Visibility.Hidden);
     }
 
+    /// <summary>Verifies an accepted modal Window close retains visibility, focus, bounds, and
+    /// modality until its configured terminal-cell fade reaches zero.</summary>
+    [Fact]
+    public async Task Close_WhenFadeOutIsPositive_DefersWindowCleanupUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var action = new Button { Text = "Action" };
+        var window = new Window
+        {
+            Content = action,
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        window.Closed += (_, _) => closed++;
+        ModalScope? scope = null;
+        await surface.UpdateAsync(() => scope = window.ShowModal(), "show fading Window");
+        var bounds = window.SurfaceBounds;
+
+        await surface.UpdateAsync(window.Close, "begin fading Window close");
+
+        window.IsOpen.ShouldBeTrue();
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.SurfaceBounds.ShouldBe(bounds);
+        surface.Application.Focus.Focused.ShouldBeSameAs(action);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish fading Window close");
+
+        window.IsOpen.ShouldBeFalse();
+        window.Visibility.ShouldBe(Visibility.Collapsed);
+        window.SurfaceBounds.ShouldBe(default);
+        scope.IsActive.ShouldBeFalse();
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a committed Window presentation continues its positive entrance after an
+    /// Opened observer fails, while the initiating call still receives that observer failure.</summary>
+    [Fact]
+    public async Task Opened_WhenObserverFailsDuringPositiveFadeIn_CompletesCommittedEntranceAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var expected = new InvalidOperationException("opened failed");
+        var window = new Window
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        window.Opened += (_, _) => throw expected;
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(() =>
+            surface.UpdateAsync(
+                () => window.Visibility = Visibility.Visible,
+                "show fading Window with failing Opened observer"));
+
+        thrown.ShouldBeSameAs(expected);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+        window.FadeProgress.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish committed Window entrance");
+
+        window.FadeProgress.ShouldBe(1);
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Closing observer that hides and restores a Window does not leave the
+    /// retained presentation in a second provisional entrance transition.</summary>
+    [Fact]
+    public async Task Close_WhenClosingHandlerRestoresWindowDuringPositiveFade_RemainsStablyVisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var window = new Window
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Visibility = Visibility.Collapsed,
+            Width = Length.Cells(14),
+            Height = Length.Cells(6)
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        window.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin initial Window entrance");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish initial Window entrance");
+        window.Closing += (_, _) =>
+        {
+            window.Visibility = Visibility.Hidden;
+            window.Visibility = Visibility.Visible;
+        };
+
+        await surface.UpdateAsync(window.Close, "retain Window from Closing during positive fade");
+
+        window.Visibility.ShouldBe(Visibility.Visible);
+        window.IsOpen.ShouldBeTrue();
+        window.FadeProgress.ShouldBe(1);
+        closed.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "prove retained Window owns no provisional fade");
+
+        window.FadeProgress.ShouldBe(1);
+        closed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies the complete Window frame and block shadow use one stable dissolve pattern
+    /// at the entrance and exit endpoints and midpoint.</summary>
+    [Fact]
+    public async Task Render_WhenWindowFades_DissolvesCompleteChromeAtStableCellsAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var window = new Window
+        {
+            CanClose = false,
+            Width = Length.Cells(10),
+            Height = Length.Cells(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: true,
+                mode: ShadowMode.BlockGlyph,
+                offset: new Point(1, 1),
+                glyph: new Rune('▓')),
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { window } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin Window entrance fade");
+        surface.ShouldRender(string.Empty);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Window entrance halfway");
+        surface.ShouldRender("""
+                             ╔═    ═
+                                      ║
+                                      ║
+                                ══ ═══╝
+                              ▓▓▓▓▓  ▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Window entrance fade");
+        surface.ShouldRender("""
+                             ╔════════╗
+                             ║        ║▓
+                             ║        ║▓
+                             ╚════════╝▓
+                              ▓▓▓▓▓▓▓▓▓▓
+                             """);
+
+        await surface.UpdateAsync(window.Close, "begin Window exit fade");
+        surface.ShouldRender("""
+                             ╔════════╗
+                             ║        ║▓
+                             ║        ║▓
+                             ╚════════╝▓
+                              ▓▓▓▓▓▓▓▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance Window exit halfway");
+        surface.ShouldRender("""
+                             ╔═    ═
+                                      ║
+                                      ║
+                                ══ ═══╝
+                              ▓▓▓▓▓  ▓▓▓
+                             """);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish Window exit fade");
+        surface.ShouldRender(string.Empty);
+    }
+
+    /// <summary>Verifies descendant shadow cells beyond the Window's own visual bounds participate
+    /// in the same stable entrance and exit dissolve as the root surface.</summary>
+    [Fact]
+    public async Task Render_WhenFadingWindowDescendantOverflowsVisualBounds_DissolvesCompleteSubtreeAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var content = new Button
+        {
+            Text = "Go",
+            Width = Length.Cells(6),
+            Height = Length.Cells(3),
+            Style = TestButtonStyles.WithShadow(
+                AppearanceTestValues.Shadow(
+                    visible: true,
+                    mode: ShadowMode.BlockGlyph,
+                    offset: new Point(3, 2),
+                    glyph: new Rune('▓')))
+        };
+        var window = new Window
+        {
+            CanClose = false,
+            Content = content,
+            Width = Length.Cells(8),
+            Height = Length.Cells(5),
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100),
+            Shadow = AppearanceTestValues.Shadow(visible: false),
+            Visibility = Visibility.Collapsed
+        };
+        var root = new Overlay { Children = { window } };
+        Overlay.SetLeft(window, Length.Cells(1));
+        Overlay.SetTop(window, Length.Cells(1));
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(16, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => window.Visibility = Visibility.Visible, "begin overflowing Window entrance");
+        var overflow = OverflowPoints();
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Window entrance halfway");
+        var midpoint = CaptureOverflow();
+        midpoint.ShouldContain(" ");
+        midpoint.ShouldContain("▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Window entrance");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.UpdateAsync(window.Close, "begin overflowing Window exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == "▓");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance overflowing Window exit halfway");
+        CaptureOverflow().ShouldBe(midpoint);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "finish overflowing Window exit");
+        CaptureOverflow().ShouldAllBe(static cell => cell == " ");
+
+        Point[] OverflowPoints() =>
+        [
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 2),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 2),
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 3),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 3),
+            new Point(window.SurfaceBounds.Right, content.Bounds.Y + 4),
+            new Point(window.SurfaceBounds.Right + 1, content.Bounds.Y + 4)
+        ];
+
+        string[] CaptureOverflow() => [.. overflow.Select(surface.Cell).Select(static cell => cell.Text)];
+    }
+
     /// <summary>Verifies dragging a modal window preserves the modal scope and pointer capture.</summary>
     [Fact]
     public async Task Drag_WhenModalWindowIsDragged_PreservesModalScopeAsync()

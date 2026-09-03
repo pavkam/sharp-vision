@@ -232,6 +232,8 @@ previously resolved value.
 
 ## Example
 
+![A MessageBox rendered as a live Showcase dialog](../images/controls/message-box.png)
+
 ```csharp
 var result = await MessageBox.ShowAsync(
     owner,

@@ -18,7 +18,8 @@ internal static class AppearanceResolver
                 control.Theme,
                 control.ResolvedAppearanceStates,
                 parentAmbientFace: null,
-                useExplicitAmbient: false);
+                useExplicitAmbient: false,
+                useContinuousBackground: control.UsesContinuousBackground);
         }
 
         /// <summary>Resolves one state from an explicit ambient parent without touching appearance caches.</summary>
@@ -35,6 +36,24 @@ internal static class AppearanceResolver
                 control.ResolvedAppearanceStates,
                 parentAmbientFace);
         }
+
+        /// <summary>Resolves one state from explicit ambient and continuous-background context.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="parentAmbientFace">The explicitly resolved parent ambient face, or null at a root.</param>
+        /// <param name="useContinuousBackground">Whether an ancestor owns the continuous background plane.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        internal ResolvedAppearance ResolveSnapshot(
+            VisualState visualState,
+            Face? parentAmbientFace,
+            bool useContinuousBackground) =>
+            Resolve(
+                control,
+                visualState,
+                control.Theme,
+                control.ResolvedAppearanceStates,
+                parentAmbientFace,
+                useExplicitAmbient: true,
+                useContinuousBackground);
 
         /// <summary>Resolves one prospective visual state from an explicit Theme, appearance states, and ambient context.</summary>
         /// <param name="visualState">The exact defined visual-state flags.</param>
@@ -57,7 +76,34 @@ internal static class AppearanceResolver
                 theme,
                 states,
                 parentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
+        }
+
+        /// <summary>Resolves one prospective state from explicit appearance and continuous-background context.</summary>
+        /// <param name="visualState">The exact defined visual-state flags.</param>
+        /// <param name="theme">The prospective inherited Theme, or null.</param>
+        /// <param name="states">The non-null prospective appearance states.</param>
+        /// <param name="parentAmbientFace">The explicit parent ambient face, or null at a root.</param>
+        /// <param name="useContinuousBackground">Whether an ancestor owns the continuous background plane.</param>
+        /// <returns>The exact concrete resolved appearance.</returns>
+        internal ResolvedAppearance ResolveSnapshot(
+            VisualState visualState,
+            Theme? theme,
+            AppearanceStates states,
+            Face? parentAmbientFace,
+            bool useContinuousBackground)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+            ArgumentNullException.ThrowIfNull(states);
+            return Resolve(
+                control,
+                visualState,
+                theme,
+                states,
+                parentAmbientFace,
+                useExplicitAmbient: true,
+                useContinuousBackground);
         }
 
         /// <summary>Compares the active visual state using explicit old and new ambient parent faces.</summary>
@@ -88,14 +134,16 @@ internal static class AppearanceResolver
                 previousTheme,
                 previousStates,
                 previousParentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
             var current = Resolve(
                 control,
                 state,
                 currentTheme,
                 currentStates,
                 currentParentAmbientFace,
-                useExplicitAmbient: true);
+                useExplicitAmbient: true,
+                useContinuousBackground: control.UsesContinuousBackground);
             return control.GetAppearanceChangeImpact(previous, current);
         }
     }
@@ -110,7 +158,8 @@ internal static class AppearanceResolver
         Theme? theme,
         AppearanceStates states,
         Face? parentAmbientFace,
-        bool useExplicitAmbient)
+        bool useExplicitAmbient,
+        bool useContinuousBackground)
     {
         var normal = states.Normal;
 
@@ -136,13 +185,21 @@ internal static class AppearanceResolver
             inheritedFace = ApplyAmbientFace(inheritedFace, ambient);
         }
 
-        var (authoredAppearance, borderForegroundAuthored) = FoldAuthoredAppearance(
+        var (authoredAppearance, borderForegroundAuthored, faceBackgroundAuthored) = FoldAuthoredAppearance(
             control,
             states,
             visualState,
             new ControlAppearance(inheritedFace, normal.Border, normal.Shadow));
 
         var face = ResolveFace(theme, authoredAppearance.Face);
+        if (useContinuousBackground && !control.AuthorsLocalBackground(visualState) && !faceBackgroundAuthored)
+        {
+            // A status-like strip owns one continuous paint plane. Framework defaults may still
+            // contribute their foreground, decorations, and interaction state, but their opaque
+            // control background must not punch rectangular holes through that plane. Explicit
+            // local face, style, and state-background authoring remain authoritative.
+            face = face with { Background = Color.Transparent };
+        }
         var border = ResolveBorder(theme, authoredAppearance.Border);
         var shadow = ResolveShadow(theme, authoredAppearance.Shadow);
         return CreateResolved(theme, face, border, shadow, borderForegroundAuthored);
@@ -169,7 +226,7 @@ internal static class AppearanceResolver
     /// foreground difference must not suppress the relief during resolved-border creation. See
     /// <see cref="ResolvedBorderStyles.Create"/>.</para>
     /// </remarks>
-    private static (ControlAppearance Appearance, bool BorderForegroundAuthored) FoldAuthoredAppearance(
+    private static (ControlAppearance Appearance, bool BorderForegroundAuthored, bool FaceBackgroundAuthored) FoldAuthoredAppearance(
         ControlBase control,
         AppearanceStates states,
         VisualState visualState,
@@ -200,7 +257,22 @@ internal static class AppearanceResolver
         var borderForegroundAuthored = !states.StateAuthorsOwnRelief &&
             finalAppearance.Border.Foreground != authoredBaseline.Foreground;
 
-        return (finalAppearance, borderForegroundAuthored);
+        // Scoped to a Bar-rebased style (see BarAppearance.Rebase): only there does the fallback's
+        // own Normal already sit on SemanticColor.Bar, so a per-state delta away from it is a
+        // deliberate highlight (MenuItemStyle/CommandBarItemStyle's Pressed/Selected/Focused/
+        // Checked) the continuous plane must not silently erase. An ordinary control folded onto
+        // this same baseline shape - a framework-owned items host with no Bar awareness of its
+        // own, or arbitrary content merely hosted inside a Bar item - never sits on Bar in the
+        // first place, so its own unrelated per-state deltas (a generic Disabled recolor, a
+        // CheckBox's own hover/press/selection theme) must keep opting into the continuous plane
+        // exactly as before, regardless of whether they happen to differ from Normal.
+        var authoredFaceBaseline = control.LocalFace ?? baseAppearance.Face;
+        var facePlaneIsBar = states.Normal.Face.Background is { IsSemantic: true } normalBackground &&
+            normalBackground.SemanticColor == SemanticColor.Bar;
+        var faceBackgroundAuthored = facePlaneIsBar &&
+            finalAppearance.Face.Background != authoredFaceBaseline.Background;
+
+        return (finalAppearance, borderForegroundAuthored, faceBackgroundAuthored);
     }
 
     extension(ResolvedAppearance previous)

@@ -19,6 +19,7 @@ public sealed class Binding: IDisposable
     private readonly Lock _gate = new();
     private readonly ControlBindingRegistry _registry;
     private readonly bool _refreshAfterItems;
+    private readonly bool _retryTargetWriteWithFallback;
     private readonly object _source;
     private readonly PropertyPath _sourcePath;
     private readonly PropertyPath _targetPath;
@@ -49,6 +50,7 @@ public sealed class Binding: IDisposable
         bool tracksCollection = false,
         bool coordinatesItems = false,
         bool refreshAfterItems = false,
+        bool retryTargetWriteWithFallback = true,
         Func<NotifyCollectionChangedEventArgs, bool>? applyIncrementalChange = null)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -70,6 +72,7 @@ public sealed class Binding: IDisposable
         _tracksCollection = tracksCollection;
         _coordinatesItems = coordinatesItems;
         _refreshAfterItems = refreshAfterItems;
+        _retryTargetWriteWithFallback = retryTargetWriteWithFallback;
         _applyIncrementalChange = applyIncrementalChange;
         _hasObservedAttachment = target.Dispatcher is not null;
     }
@@ -258,7 +261,7 @@ public sealed class Binding: IDisposable
             {
                 succeeded = _targetPath.Write(Target, targetValue);
             }
-            catch when (!Equals(targetValue, _fallbackValue))
+            catch when (_retryTargetWriteWithFallback && !Equals(targetValue, _fallbackValue))
             {
                 // A target property that validates rather than clamps (e.g. Slider.Value
                 // outside Minimum/Maximum) can reject an ordinary identity-converted value

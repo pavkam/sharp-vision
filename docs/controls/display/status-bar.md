@@ -113,16 +113,25 @@ from their code-owned defaults.
 ## Defaults and appearance
 
 `StatusBar` defaults to a one-cell fixed height, stretched horizontal alignment,
-the shared code-owned control appearance for its background, and one cell of
-inter-item spacing. It stays hit-testable so ordinary routed pointer events can
-be observed, but it is not focusable and is not a Tab stop. `StatusBarItem` is
-also non-focusable by default. Interactive retained content keeps its own normal
-input and focus behavior.
+the theme's `SemanticColor.Bar` background, and one cell of inter-item spacing.
+It stays hit-testable so ordinary routed pointer events can be observed, but it
+is not focusable and is not a Tab stop. `StatusBarItem` is also non-focusable by
+default. Interactive retained content keeps its own normal input and focus
+behavior.
 
-The inherited `Face` remains theme-owned, so the shared normal appearance
-supplies foreground and background and retained text follows ambient
-inheritance. Assign a complete local `Face` only for a deliberate
-product-specific treatment.
+The inherited `Face` remains theme-owned: Bar supplies the one continuous
+background plane, while the shared control appearance supplies foreground and
+state overlays. Framework-owned backgrounds on `StatusBarItem` and all retained
+descendants become transparent inside that plane, so nested layouts, passive
+content, a playing `Spinner`, and an interactive `CheckBox` do not create
+control-colored rectangles. Physical hover and disablement change ink and
+decorations without replacing the Bar fill.
+
+A locally assigned complete `Face` or `Style`, or a local state overlay that
+authors a background, remains authoritative for that control. This lets an
+application deliberately place a contrasting badge or input surface in a status
+item without losing it to ambient composition. Descendants without such local
+background authoring continue to reveal the nearest painted surface.
 
 Applications may change the inherited control appearance, height, padding,
 border, and shadow properties. Multi-line or taller retained content is clipped
@@ -188,6 +197,12 @@ status.Items.Add(new StatusBarItem
     Alignment = StatusBarItemAlignment.Right,
     Content = new CheckBox { Text = "Autosave" }
 });
+status.Items.Add(new StatusBarItem
+{
+    Alignment = StatusBarItemAlignment.Right,
+    IsEnabled = false,
+    Content = new Text("RO")
+});
 
 Dock.SetSide(status, DockSide.Bottom);
 ```
@@ -209,9 +224,9 @@ Dock.SetSide(status, DockSide.Bottom);
   still observing pointer events, and interactive retained content keeps its own
   input and focus behavior.
 - The showcase includes ordinary document status, right-aligned mode and
-  position parts, a playing activity spinner, a live pointer-coordinate item,
-  and a retained CheckBox inside a full editor workspace. Its surface tests show
-  that a CheckBox needs no local appearance configuration, that the theme
-  preserves contrast through the normal, hover, focus, checked, and disabled
-  states, and that transient activity copy preserves the adjacent branch
-  geometry.
+  position parts, a disabled read-only indicator, a playing activity spinner, a
+  live pointer-coordinate item, and a retained CheckBox inside a full editor
+  workspace. Its surface tests show that nested default content keeps one
+  continuous Bar background through normal, hover, focus, checked, and disabled
+  states, that a locally authored child background still wins, and that
+  transient activity copy preserves the adjacent branch geometry.

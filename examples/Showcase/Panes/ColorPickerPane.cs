@@ -73,7 +73,7 @@ internal sealed class ColorPickerPane: CompositeControlBase
             new DocSection(
                 "🎨",
                 "Adaptive color depth",
-                "The retained component keeps one RGB editor for every color-capable terminal and switches to a default-only surface for monochrome. A saturation/value plane, hue ramp, RGB sliders, preview, and hexadecimal readout cover the full 24-bit model.",
+                "The retained component keeps one RGB editor for every color-capable terminal and switches to a default-only surface for monochrome. A saturation/value plane, hue ramp, RGB sliders, preview, and directly editable value field cover the full 24-bit model.",
                 new DocExample(
                     "Live capability-aware picker",
                     "The authored RGB value survives capability changes; only emitted terminal bytes lose fidelity.",
@@ -82,10 +82,10 @@ internal sealed class ColorPickerPane: CompositeControlBase
             new DocSection(
                 "⌨️",
                 "Keyboard, pointer, and presets",
-                "Click or drag across the plane. <reverse>Tab</reverse> reaches retained parts; arrows edit the surface and sliders; <reverse>Home</reverse> and <reverse>End</reverse> reach range endpoints.",
+                "Click or drag across the plane. <reverse>Tab</reverse> reaches all six retained parts; arrows edit the surface and sliders; the final field accepts #RRGGBB, rgb(r, g, b), decimal components, or DEFAULT directly.",
                 new DocExample(
                     "Preset initial color",
-                    "Set <info>Value</info> before display to open the picker at a known starting color.",
+                    "Set <info>Value</info> before display to open at a known color, then Tab to the final field for direct entry.",
                     new DocColumn(preset, presetStatus),
                     "picker.Value = Color.Rgb(220, 120, 50);")),
             new DocSection(

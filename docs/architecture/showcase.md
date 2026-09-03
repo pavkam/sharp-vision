@@ -12,7 +12,7 @@ across the active shell and selected page, and across every simultaneously open
 menu/submenu path. The shell advertises `Alt+key`, while the Menu and GroupBox
 pages demonstrate invocation and focus transfer.
 
-The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 61
+The sidebar remains one arrow-key `NavigationView`. Its heading, groups, and 68
 catalog items set `UseMnemonic = false`, because no useful single-character
 assignment can be globally unique at that scale. The repeated `DocExample` and
 `C# recipe` structural chrome also opts out. Body prose and generated list data
@@ -75,22 +75,24 @@ blink remain isolated demonstrations rather than general documentation styling.
 
 `Gallery` owns the stable catalog of pane group names, titles, and factories
 (`(string Group, string Name, Func<CompositeControlBase> Create)[]`). The
-sidebar organizes its 61 entries by primary use:
+sidebar organizes its 68 entries by primary use:
 
 - Concepts: ControlBase, Border, Shadow, Data Binding, and Styling.
 - Input: Button, HyperlinkButton, Calendar, DateInput, DateTimeInput, CheckBox,
-  ColorPicker, CommandPalette, ComboBox, CurrencyInput, NumberInput,
-  RadioButton, Slider, TextInput, and TimeInput.
+  ColorPicker, CommandBar, CommandPalette, ComboBox, CurrencyInput, NumberInput,
+  RadioButton, Slider, SuggestionInput, TextInput, and TimeInput.
 - Collections: JsonView, ListView, TabControl, Table, and TreeView.
-- Navigation: Menu, MenuItem, and NavigationView.
-- Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, and Stack.
+- Navigation: Breadcrumb, Menu, NavigationView, and Pager.
+- Layout: Dock, Expander, Grid, GroupBox, Overlay, ScrollBar, SplitPane, Stack,
+  and Wrap.
 - Display: Canvas drawing, CodeView, Document, FigletText, Image, Markdown,
   Prism, Separator, StatusBar, and Text.
 - Charts: HorizontalBarChart, VerticalBarChart, LineChart, AreaChart, and
   Sparkline.
 - Progress: ChaseIndicator, ProgressBar, and Spinner.
-- Dialogs: FilePicker.
-- Windows: MessageBox, Popup, ContextMenu, Tooltip, Flyout, Toast, and Window.
+- Notifications: InfoBar and Toast.
+- Dialogs: MessageBox, OpenFilePicker, and SaveFilePicker.
+- Windows: Popup, ContextMenu, Tooltip, Flyout, and Window.
 
 Each purpose group starts expanded and can be collapsed through the standard
 `NavigationViewGroup` interaction. The first Concepts group owns cross-cutting
@@ -128,11 +130,12 @@ legible across themes.
 The primary Popup specimen opens through `IsOpen` and receives Dismiss modality
 without caller plumbing. It exposes a backdrop action plus scope status; its
 [outside press](../concepts/modality.md#outside-interaction-and-dismissal)
-closes the popup without activating the backdrop. The Window page places the
-normal and dialog constructor roles side by side, exposes a draggable
-close/reopen workflow, and compares light, rounded, heavy, paired, and ASCII
-bracketed close chrome across both close edges and all title placements. Its
-confirmation specimen uses the
+closes the popup without activating the backdrop. The Window page starts with a
+practical retained settings surface whose real `IsDefault` and `IsCancel`
+buttons report Enter and Escape activation, exposes a draggable close/reopen
+workflow, and compares light, rounded, heavy, paired, and ASCII bracketed close
+chrome across both close edges and all title placements. Its confirmation
+specimen uses the
 [modal Window presentation](../concepts/modality.md#popup-and-window-presentations)
 with Ignore, keeps a workspace action visible behind it, cycles focus inside the
 dialog, and reports restoration after Deploy, Cancel, Escape, or frame close.
@@ -142,15 +145,27 @@ sibling switching and the nested Open Recent path remain one
 selection and invocation events rather than internal state. The same page also
 demonstrates `MenuBuilder`'s fluent chain — `Item`, `Check`, `Separator`, and a
 nested `Submenu` — composing an equivalent menu without an object graph
-assembled by hand.
+assembled by hand. Its `Every item role` example owns the former MenuItem helper
+page's command, submenu, separator, shortcut, check, radio, and disabled-state
+proof.
 
-The FilePicker page launches the real `SharpVision.Dialogs.FilePickerDialog` and
-`SaveFileDialog` directly from its Buttons, without a decorative specimen
-surface that cannot host the application-level Window. Single, multiple, and
-save variants expose source, document, and all-file filters; the multiple
-variant begins with hidden entries visible. The retained result label reports
-accepted basenames, the confirmed save basename, or cancellation only after the
-temporary modal surface has restored focus and removed itself.
+The SuggestionInput page keeps one real editor focused while its asynchronous
+resolver publishes a long Unicode result set. Threshold controls re-evaluate the
+current grapheme count, a deliberately cancellation-ignoring slow request races
+a newer swift request, and the activity log distinguishes keyboard and pointer
+acceptance from Escape, Tab, and outside dismissal. Separate disabled and narrow
+specimens expose availability and wide-cell clipping through public control
+state only.
+
+The OpenFilePicker and SaveFilePicker pages launch the real
+`SharpVision.Dialogs.FilePickerDialog` and `SaveFileDialog` directly from their
+Buttons, without a decorative specimen surface that cannot host the
+application-level Window. Open uses a deterministic sample directory for
+single-file, multiple-file, and directory selection, with hidden entries visible
+in the multiple variant. Save separates a new filename from an existing report
+that reaches overwrite confirmation. Each retained result label reports accepted
+basenames, the confirmed save basename, or cancellation only after the temporary
+modal surface has restored focus and removed itself.
 
 The StatusBar page presents the control at application scale inside a bordered
 72-by-11-cell editor workspace. The pretend editor uses the same semantic
@@ -168,6 +183,13 @@ appearances retain contrast against the status surface without local child
 appearance configuration. The example therefore demonstrates live composition
 and dispatcher-affine mutation, not a static row of labels.
 
+The InfoBar page contrasts all four complete semantic presentations, then keeps
+one concise 44-cell warning notification interactive with an aligned checkbox
+and Button action row, public dismissal event log, and external reopen action.
+Its narrow specimen combines long text and Unicode so whole-cluster adornment
+fallback and the trailing keyboard-reachable dismiss cell remain visible under
+constraint.
+
 Canvas demonstrates the frame-owned drawing API through labeled, framed live
 specimens rather than pretending to be a child-owning layout control. Fixed,
 percentage, edge-constrained, layered, and clipped child specimens live on the
@@ -176,7 +198,25 @@ on the Button and Window pages. The former ad hoc Canvas palette grid now lives
 in the dedicated ColorPicker page, where the same swatch language supports
 retained keyboard and pointer selection and adapts to the active terminal color
 depth. The Slider page proves direct signed-range selection independently of
-scrolling viewport semantics.
+scrolling viewport semantics. The Pager page binds one page index, shows empty,
+single, first, middle, and last states, and contrasts the full target sequence
+with deterministic narrow retention.
+
+The CommandBar page presents one resizable typed command surface with access-key
+captions, a separator, a disabled action, and separate semantic-event and
+`ICommand` logs. Narrowing the specimen moves only its source-order tail into
+the live private overflow menu; widening restores the same retained command
+identities without creating a second Tab stop. Named examples on the same page
+own CommandBarItem activation and availability plus CommandBarSeparator styling
+and participation, so those public helper types need no duplicate navigation
+entries.
+
+The Breadcrumb page bounds its primary project path at 44 cells and toggles it
+to an explicit 18-cell overflow state. Its named item example retains current,
+event, command, style, and availability proof without a separate helper page.
+The Wrap page exposes independent Narrow/Widen controls for horizontal rows and
+Shorten/Lengthen controls for vertical columns; visible width, height, and
+source-order status make both reflow axes observable.
 
 The Charts group demonstrates retained chart controls rather than ad hoc Canvas
 drawings. Horizontal and vertical bars cover mixed-sign scaling, category
@@ -215,18 +255,17 @@ to case, collapses nonmatching items, and collapses any group with no remaining
 item. Each page entry is a single-content, caption-and-command-enabled
 `InputBase` row whose `Text` content is measured and arranged beside its marker;
 the selected, focused, hovered, and pressed states follow the active application
-theme. The Styling concept page shows every Color representation, the complete
-visual-state overlay vocabulary, theme metadata, zero-configuration built-in
-controls, and an ordinary third-party control. The active theme updates type and
-state colors while local RGB values, code-owned glyphs, and geometry stay
-stable. Passive Control-role content remains visually stable under pointer and
-focus ancestry; Input-role and specialized interactive specimens carry those
-cues. `Ctrl+Q` exits from anywhere: the gallery handles it as a key in the
-preview pass without stealing ordinary text-editing input. The executable app
-runs through `ConsoleApplication.RunAsync` with a `Gallery` screen and one
-builder call, `TreatControlCAsInput()`, which is why `Ctrl+Q` rather than
-`Ctrl+C` is the exit chord - Ctrl+C reaches the application as ordinary input
-instead of requesting cooperative shutdown (see
+theme. The Styling concept page enumerates every `SemanticColor` into compact
+theme-resolved swatches, keeps concrete `Color` samples literal, and compares
+bounded `Face`, border, and shadow channels. Its normal, focused, pressed,
+selected, and disabled specimens are ordinary mounted controls driven by real
+focus, pointer, selection, and availability state. `Ctrl+Q` exits from anywhere:
+the gallery handles it as a key in the preview pass without stealing ordinary
+text-editing input. The executable app runs through
+`ConsoleApplication.RunAsync` with a `Gallery` screen and one builder call,
+`TreatControlCAsInput()`, which is why `Ctrl+Q` rather than `Ctrl+C` is the exit
+chord - Ctrl+C reaches the application as ordinary input instead of requesting
+cooperative shutdown (see
 [hosting.md](../concepts/hosting.md#treatcontrolcasinput)). Everything else is
 default, so it gets the default xterm any-event (`1003`) SGR cell mouse
 reporting from `ConsoleRunOptions`, while `ConsoleApplication` owns the Unix
@@ -291,10 +330,12 @@ The showcase compiles with the solution as production code and uses only public
 library APIs. Behavioral, input, layout, rendering, and Unicode guarantees are
 proved by the terminal and UI suites at the library boundaries that own them —
 the showcase carries no test project of its own, and no suite mounts its panes.
-An example demonstrates behavior the owning library's tests already cover, so
-its verification is the solution-wide compile plus those library suites. The
-checked-in live image demonstrates the runnable gallery but is illustrative, not
-an automated contract.
+The control-image manifest maps full documentation paths to primary pages and
+named examples, including every concrete control and dialog document. The
+deterministic capture workflow drives declared actions, expands popup crops for
+overlay surfaces, and regenerates the checked-in images; the coverage validator
+requires every mapped page, asset, and document reference to agree. The complete
+gallery image remains illustrative rather than an automated contract.
 
 Modality is not covered at the showcase-pane layer. Window isolation, popup
 dismissal, and `ModalScope` identity across menu and submenu transitions are

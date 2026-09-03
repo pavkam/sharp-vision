@@ -184,9 +184,9 @@ public abstract class Screen: CompositeControlBase
         var application = Application;
         application?.Started -= OnApplicationStartedCore;
         ExceptionDispatchInfo? failure = null;
-        ExceptionAggregation.Capture(OnDispose, ref failure);
+        CaptureFailure(OnDispose, ref failure);
         Application = null;
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
         failure?.Throw();
     }
 

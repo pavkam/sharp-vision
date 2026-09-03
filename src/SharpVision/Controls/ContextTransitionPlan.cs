@@ -45,6 +45,7 @@ internal sealed class ContextTransitionPlan
         Theme? theme,
         Dictionary<ControlBase, AppearanceSnapshot> previousAppearance,
         Face? currentParentAmbientFace,
+        bool useContinuousBackground,
         bool propagateContext)
     {
         ArgumentNullException.ThrowIfNull(root);
@@ -59,8 +60,8 @@ internal sealed class ContextTransitionPlan
         var currentAppearance = new Dictionary<ControlBase, AppearanceSnapshot>();
         var attached = new List<ControlBase>();
         var detached = new List<ControlBase>();
-        var stack = new Stack<(ControlBase Control, Face? ParentAmbient, bool IsRoot)>();
-        stack.Push((root, currentParentAmbientFace, true));
+        var stack = new Stack<(ControlBase Control, Face? ParentAmbient, bool ContinuousBackground, bool IsRoot)>();
+        stack.Push((root, currentParentAmbientFace, useContinuousBackground, true));
 
         while (stack.TryPop(out var entry))
         {
@@ -80,10 +81,20 @@ internal sealed class ContextTransitionPlan
                 entry.ParentAmbient);
             var profile = control.ResolveAppearanceStates(currentTheme);
             var state = control.GetAppearanceState();
-            var actual = control.ResolveSnapshot(state, currentTheme, profile, entry.ParentAmbient);
+            var actual = control.ResolveSnapshot(
+                state,
+                currentTheme,
+                profile,
+                entry.ParentAmbient,
+                entry.ContinuousBackground);
             var ambientFace = control.AmbientAppearanceState == state
                 ? actual.Face
-                : control.ResolveSnapshot(control.AmbientAppearanceState, currentTheme, profile, entry.ParentAmbient).Face;
+                : control.ResolveSnapshot(
+                    control.AmbientAppearanceState,
+                    currentTheme,
+                    profile,
+                    entry.ParentAmbient,
+                    entry.ContinuousBackground).Face;
             currentAppearance.Add(
                 control,
                 new AppearanceSnapshot(entry.ParentAmbient, actual, ambientFace));
@@ -114,7 +125,11 @@ internal sealed class ContextTransitionPlan
 
             for (var index = control.OwnedControlCount - 1; index >= 0; index--)
             {
-                stack.Push((control.OwnedControlAt(index), ambientFace, false));
+                stack.Push((
+                    control.OwnedControlAt(index),
+                    ambientFace,
+                    entry.ContinuousBackground || control.ProvidesContinuousBackground,
+                    false));
             }
         }
 

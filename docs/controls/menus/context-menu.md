@@ -32,6 +32,8 @@ classDiagram
 | `ContextMenu(Menu menu)`       | —                     | —              | Initializes a closed context menu that adopts an already-built menu. Throws `ArgumentNullException` for a null menu and `ArgumentException` when the menu already belongs to a tree.                                      |
 | `Items`                        | `MenuEntryCollection` | Empty          | The typed collection of menu entries the menu manages.                                                                                                                                                                    |
 | `IsOpen`                       | `bool`                | `false`        | Reports the committed popup visibility. Read-only.                                                                                                                                                                        |
+| `FadeInDuration`               | `TimeSpan`            | Zero           | Forwards an optional entrance dissolve to the retained Popup.                                                                                                                                                             |
+| `FadeOutDuration`              | `TimeSpan`            | Zero           | Forwards an optional dismissal dissolve to the retained Popup.                                                                                                                                                            |
 | `PopupChrome`                  | `PopupChrome`         | Theme-owned    | Gets or sets the owned popup's border and shadow together.                                                                                                                                                                |
 | `Show(int row, int col)`       | `void`                | —              | Opens or repositions at a non-negative zero-based root-cell position; throws `ArgumentOutOfRangeException` for either negative coordinate and otherwise remains a no-op until assigned to some `ControlBase.ContextMenu`. |
 | `Close()`                      | `void`                | —              | Closes the menu and clears its fixed origin; safe to call again.                                                                                                                                                          |
@@ -63,12 +65,24 @@ configures all five pointer buttons, modal-boundary interception, and its
 fixed-origin reset, and focus policy. Indirect Popup closure therefore releases
 the handler without depending on a wrapper property-change subscription.
 
+`FadeInDuration` and `FadeOutDuration` forward configuration without exposing
+the retained control identity. Shared progress remains a property of the Popup,
+not this relationship wrapper. A positive dismissal keeps `IsOpen`, the menu,
+and its input plane committed while cells disappear; input is consumed until the
+final `Closed`, when fixed origin and ownership cleanup complete. Both durations
+validate through the Popup contract and cannot change during a live
+presentation.
+
 ## Example
 
 ![The ContextMenu control rendered in the live showcase](../../images/controls/context-menu.png)
 
 ```csharp
-var contextMenu = new ContextMenu();
+var contextMenu = new ContextMenu
+{
+    FadeInDuration = TimeSpan.FromMilliseconds(120),
+    FadeOutDuration = TimeSpan.FromMilliseconds(120)
+};
 ```
 
 ```csharp
@@ -98,6 +112,8 @@ var contextMenu = new ContextMenu(
 - The open surface is placed relative to the root, clips to it, renders with
   menu appearance, and draws elevated above ordinary content. Calling `Show`
   again while open immediately rearranges the surface at the new position.
+- Optional forwarded fades preserve the menu's committed presentation and
+  consume exit input until the retained Popup becomes invisible.
 - Right-click opens the menu on its owning control, keyboard navigation works
   within it, invoking an item closes it after every `ItemInvoked` subscriber has
   observed the still-open menu chain, and any primary, middle, secondary, back,

@@ -288,6 +288,8 @@ in place.
 
 ## Example
 
+![The save-file picker rendered as a live Showcase dialog](../images/controls/save-file-dialog.png)
+
 ```csharp
 using SharpVision.Dialogs;
 

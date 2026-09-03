@@ -11,7 +11,22 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// <summary>Coordinates every visual ownership edge for one control.</summary>
 internal sealed class OwnedControlRegistry
 {
+    // The monitor protects only atomic reservation metadata. Complete state and callback
+    // publication runs after the monitor is released, so unrelated lifetimes can proceed and no
+    // user code ever executes under an internal lock.
+    private static readonly object _lifecyclePublicationGate = new();
+
+    // Any lifecycle callback can reach an independent root. Retaining one root while waiting for
+    // another allows reciprocal callbacks to deadlock, so cross-root waits are rejected whenever
+    // the current thread already owns a lifecycle publication scope.
+    [ThreadStatic]
+    private static int _currentThreadLifecyclePublicationDepth;
+
     private readonly List<OwnedControlSlot> _slots = [];
+    private bool _lifecyclePublicationAllowsDetachedPublicationReentry;
+    private bool _lifecyclePublicationAllowsTerminalDisposalReentry;
+    private Thread? _lifecyclePublicationOwner;
+    private int _lifecyclePublicationDepth;
     private int _transactionDepth;
 
     /// <summary>Initializes an empty registry for one non-null owner.</summary>
@@ -24,6 +39,19 @@ internal sealed class OwnedControlRegistry
 
     /// <summary>Gets the control whose visual edges are registered here.</summary>
     public ControlBase Owner { get; }
+
+    /// <summary>Gets or sets a test synchronization observer invoked when a lifecycle mutation
+    /// waits for detached publication owned by another thread.</summary>
+    /// <remarks>The observer exists to prove exact cross-thread exclusion without timing loops.</remarks>
+    internal Action? PublicationWaitStarted { get; set; }
+
+    /// <summary>Gets or sets a test synchronization observer invoked immediately before mutable
+    /// descendant discovery begins under a lifecycle request.</summary>
+    internal Action? DescendantDiscoveryStarted { get; set; }
+
+    /// <summary>Gets or sets a test synchronization callback invoked after a slot snapshot changes
+    /// and before the matching parent identities commit.</summary>
+    internal Action? StructuralMutationPaused { get; set; }
 
     /// <summary>Gets the total number of direct controls across every registered slot.</summary>
     public int Count
@@ -77,6 +105,128 @@ internal sealed class OwnedControlRegistry
     {
         ArgumentNullException.ThrowIfNull(owner);
         return EnterCompoundPublication([owner], candidates);
+    }
+
+    /// <summary>Attempts to reserve one exact control lifetime and its stable detached ancestry
+    /// for state publication.</summary>
+    /// <param name="owner">The control whose detached tree is about to publish.</param>
+    /// <param name="entered">The registry snapshot to release when publication completes.</param>
+    /// <returns>True when authority was acquired; false when another guarded lifetime rejects it.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    internal static bool TryEnterDetachedPublication(
+        ControlBase owner,
+        out List<OwnedControlRegistry> entered)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+
+        return TryEnterStableAncestryPublication(
+            owner,
+            static _ => false,
+            acceptDetachedPublicationReentry: true,
+            acceptTerminalDisposalReentry: false,
+            establishDetachedPublicationBoundary: true,
+            establishTerminalDisposalBoundary: false,
+            out entered);
+    }
+
+    /// <summary>Releases one detached-publication ancestry and its current-thread wait scope.</summary>
+    /// <param name="entered">The non-null distinct registry snapshot.</param>
+    internal static void ExitDetachedPublication(List<OwnedControlRegistry> entered)
+    {
+        ArgumentNullException.ThrowIfNull(entered);
+        ExitLifecyclePublication(entered);
+    }
+
+    /// <summary>Reserves one exact control and its stable ancestry for terminal disposal.</summary>
+    /// <param name="owner">The control whose terminal lifetime will end.</param>
+    /// <returns>The exact stable ancestry snapshot to release after terminal publication.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">A callback reenters a guarded lifetime.</exception>
+    internal static List<OwnedControlRegistry> EnterTerminalDisposalPublication(ControlBase owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+
+        return TryEnterStableAncestryPublication(
+            owner,
+            static _ => false,
+            acceptDetachedPublicationReentry: false,
+            acceptTerminalDisposalReentry: true,
+            establishDetachedPublicationBoundary: false,
+            establishTerminalDisposalBoundary: true,
+            out var entered)
+            ? entered
+            : throw new InvalidOperationException("Owned-control mutation cannot be reentered.");
+    }
+
+    /// <summary>Reserves exact control lifetimes before a context or terminal-lifetime mutation.</summary>
+    /// <param name="roots">The roots whose exact lifetimes will change.</param>
+    /// <param name="includeDescendants">Whether every owned descendant changes with each root.</param>
+    /// <param name="canReenter">Selects framework-owned nested lifetime work that is already guarded.</param>
+    /// <param name="acceptTerminalDisposalReentry">Whether framework cleanup may nest inside an
+    /// already-reserved terminal-disposal ancestry.</param>
+    /// <returns>The distinct registry snapshot to release after synchronous publication.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="roots"/> or an element is null.</exception>
+    /// <exception cref="InvalidOperationException">A callback reenters a guarded lifetime.</exception>
+    internal static List<OwnedControlRegistry> EnterLifecyclePublication(
+        IEnumerable<ControlBase> roots,
+        bool includeDescendants,
+        Func<ControlBase, bool>? canReenter = null,
+        bool acceptTerminalDisposalReentry = false)
+    {
+        ArgumentNullException.ThrowIfNull(roots);
+
+        return TryEnterLifecyclePublication(
+            roots,
+            includeDescendants,
+            canReenter ?? (static _ => false),
+            acceptDetachedPublicationReentry: false,
+            acceptTerminalDisposalReentry,
+            establishDetachedPublicationBoundary: false,
+            establishTerminalDisposalBoundary: false,
+            out var entered)
+            ? entered
+            : throw new InvalidOperationException(
+                "Owned-control mutation cannot be reentered.");
+    }
+
+    /// <summary>Releases exact control lifetimes after synchronous lifecycle publication.</summary>
+    /// <param name="entered">The non-null distinct registry snapshot.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="entered"/> is null.</exception>
+    internal static void ExitLifecyclePublication(List<OwnedControlRegistry> entered)
+    {
+        ArgumentNullException.ThrowIfNull(entered);
+        Debug.Assert(_currentThreadLifecyclePublicationDepth > 0,
+            "Current-thread lifecycle publication scopes are balanced.");
+
+        try
+        {
+            lock (_lifecyclePublicationGate)
+            {
+                for (var index = entered.Count - 1; index >= 0; index--)
+                {
+                    var registry = entered[index];
+                    Debug.Assert(registry._lifecyclePublicationDepth > 0,
+                        "Lifecycle publication depth is balanced.");
+                    Debug.Assert(
+                        ReferenceEquals(registry._lifecyclePublicationOwner, Thread.CurrentThread),
+                        "Lifecycle publication exits on its owning thread.");
+                    registry._lifecyclePublicationDepth--;
+
+                    if (registry._lifecyclePublicationDepth == 0)
+                    {
+                        registry._lifecyclePublicationAllowsDetachedPublicationReentry = false;
+                        registry._lifecyclePublicationAllowsTerminalDisposalReentry = false;
+                        registry._lifecyclePublicationOwner = null;
+                    }
+                }
+
+                Monitor.PulseAll(_lifecyclePublicationGate);
+            }
+        }
+        finally
+        {
+            _currentThreadLifecyclePublicationDepth--;
+        }
     }
 
     /// <summary>Releases registries previously marked by
@@ -718,15 +868,38 @@ internal sealed class OwnedControlRegistry
         var committed = false;
         var invalidated = false;
         List<OwnedControlRegistry>? entered = null;
-
-        if (!publicationAlreadyActive)
-        {
-            var changingRoots = changes.SelectMany(change => change.Removed.Concat(change.Added));
-            entered = EnterCompoundPublication(changes.Select(change => change.Slot.Registry.Owner), changingRoots);
-        }
+        List<OwnedControlRegistry>? lifecycleEntered = null;
 
         try
         {
+            var changingRoots = changes.SelectMany(change => change.Removed.Concat(change.Added)).ToArray();
+            var changingRootSet = changingRoots.ToHashSet<ControlBase>(ReferenceEqualityComparer.Instance);
+            var ownershipAncestry = new HashSet<ControlBase>(ReferenceEqualityComparer.Instance);
+
+            foreach (var owner in changes.Select(change => change.Slot.Registry.Owner))
+            {
+                for (var current = owner; current is not null; current = current.Parent)
+                {
+                    _ = ownershipAncestry.Add(current);
+                }
+            }
+
+            // Existing-owner ancestry may nest because retained-state publication legitimately
+            // updates private slots. A root being attached, detached, or disposed may not nest;
+            // terminal disposal is the sole framework-owned exception for its pre-disposal unlink.
+            lifecycleEntered = EnterLifecyclePublication(
+                ownershipAncestry.Concat(changingRoots),
+                includeDescendants: false,
+                control => ownershipAncestry.Contains(control) && !changingRootSet.Contains(control),
+                acceptTerminalDisposalReentry: true);
+
+            if (!publicationAlreadyActive)
+            {
+                entered = EnterCompoundPublication(
+                    changes.Select(change => change.Slot.Registry.Owner),
+                    changingRoots);
+            }
+
             foreach (var change in changes)
             {
                 if (!change.NotifyUnavailable)
@@ -772,6 +945,7 @@ internal sealed class OwnedControlRegistry
                     null,
                     previousAppearance,
                     currentParentAmbientFace: null,
+                    useContinuousBackground: false,
                     propagateContext: true));
             }
 
@@ -792,6 +966,7 @@ internal sealed class OwnedControlRegistry
                         owner.InheritedTheme,
                         previousAppearance,
                         ownerAmbientFace,
+                        AppearanceSnapshot.ResolveContinuousBackground(owner),
                         propagateContext: true));
                 }
             }
@@ -801,6 +976,11 @@ internal sealed class OwnedControlRegistry
             {
                 change.Slot.Items.Clear();
                 change.Slot.Items.AddRange(change.Next);
+
+                if (change.Slot.Registry.StructuralMutationPaused is { } structuralMutationPaused)
+                {
+                    ExceptionAggregation.Capture(structuralMutationPaused, ref failure);
+                }
             }
 
             foreach (var change in changes)
@@ -940,6 +1120,11 @@ internal sealed class OwnedControlRegistry
             {
                 ExitPublication(entered);
             }
+
+            if (lifecycleEntered is not null)
+            {
+                ExitLifecyclePublication(lifecycleEntered);
+            }
         }
 
         failure?.Throw();
@@ -1049,6 +1234,320 @@ internal sealed class OwnedControlRegistry
 
         registry._transactionDepth++;
         entered.Add(registry);
+    }
+
+    private static bool TryEnterStableAncestryPublication(
+        ControlBase owner,
+        Func<ControlBase, bool> canReenter,
+        bool acceptDetachedPublicationReentry,
+        bool acceptTerminalDisposalReentry,
+        bool establishDetachedPublicationBoundary,
+        bool establishTerminalDisposalBoundary,
+        out List<OwnedControlRegistry> entered)
+    {
+        while (true)
+        {
+            var ancestry = new List<ControlBase>();
+
+            for (var current = owner; current is not null; current = current.Parent)
+            {
+                ancestry.Add(current);
+            }
+
+            if (!TryEnterLifecyclePublication(
+                    ancestry,
+                    includeDescendants: false,
+                    canReenter,
+                    acceptDetachedPublicationReentry,
+                    acceptTerminalDisposalReentry,
+                    establishDetachedPublicationBoundary,
+                    establishTerminalDisposalBoundary,
+                    out entered))
+            {
+                return false;
+            }
+
+            var index = 0;
+            var stable = true;
+
+            for (var current = owner; current is not null; current = current.Parent)
+            {
+                if (index >= ancestry.Count || !ReferenceEquals(current, ancestry[index]))
+                {
+                    stable = false;
+                    break;
+                }
+
+                index++;
+            }
+
+            if (stable && index == ancestry.Count)
+            {
+                return true;
+            }
+
+            // Ownership publication reserves the changing root before committing Parent, so a
+            // mismatched ancestry means the complete move already finished. Retry against the new
+            // tree rather than publishing under a stale ancestor reservation.
+            ExitLifecyclePublication(entered);
+        }
+    }
+
+    private static bool TryEnterLifecyclePublication(
+        IEnumerable<ControlBase> roots,
+        bool includeDescendants,
+        Func<ControlBase, bool> canReenter,
+        bool acceptDetachedPublicationReentry,
+        bool acceptTerminalDisposalReentry,
+        bool establishDetachedPublicationBoundary,
+        bool establishTerminalDisposalBoundary,
+        out List<OwnedControlRegistry> entered)
+    {
+        var requestedRoots = new List<ControlBase>();
+
+        foreach (var root in roots)
+        {
+            ArgumentNullException.ThrowIfNull(root);
+            requestedRoots.Add(root);
+        }
+
+        if (!includeDescendants)
+        {
+            return TryEnterExactLifecyclePublication(
+                requestedRoots,
+                canReenter,
+                acceptDetachedPublicationReentry,
+                acceptTerminalDisposalReentry,
+                establishDetachedPublicationBoundary,
+                establishTerminalDisposalBoundary,
+                out entered);
+        }
+
+        while (true)
+        {
+            var ancestrySnapshots = new List<List<ControlBase>>(requestedRoots.Count);
+            var barrierControls = new List<ControlBase>();
+            var barrierUnique = new HashSet<OwnedControlRegistry>(ReferenceEqualityComparer.Instance);
+
+            foreach (var root in requestedRoots)
+            {
+                var ancestry = new List<ControlBase>();
+
+                for (var current = root; current is not null; current = current.Parent)
+                {
+                    ancestry.Add(current);
+
+                    if (barrierUnique.Add(current.OwnedControls))
+                    {
+                        barrierControls.Add(current);
+                    }
+                }
+
+                ancestrySnapshots.Add(ancestry);
+            }
+
+            if (!TryEnterExactLifecyclePublication(
+                    barrierControls,
+                    canReenter,
+                    acceptDetachedPublicationReentry,
+                    acceptTerminalDisposalReentry,
+                    establishDetachedPublicationBoundary,
+                    establishTerminalDisposalBoundary,
+                    out var barrierEntered))
+            {
+                entered = [];
+                return false;
+            }
+
+            var completeEntered = false;
+
+            try
+            {
+                if (!AncestriesAreStable(requestedRoots, ancestrySnapshots))
+                {
+                    continue;
+                }
+
+                // Every ownership mutation reserves its owner ancestry. Holding these stable
+                // root barriers therefore freezes each mutable subtree while it is discovered;
+                // the expanded reservation is acquired before the barriers are released.
+                var completeControls = new List<ControlBase>();
+                var completeUnique = new HashSet<OwnedControlRegistry>(
+                    ReferenceEqualityComparer.Instance);
+
+                foreach (var root in requestedRoots)
+                {
+                    AddDescendants(root);
+                }
+
+                var barrierRegistries = barrierEntered.ToHashSet(
+                    ReferenceEqualityComparer.Instance);
+                completeEntered = TryEnterExactLifecyclePublication(
+                    completeControls,
+                    control => barrierRegistries.Contains(control.OwnedControls) ||
+                               canReenter(control),
+                    acceptDetachedPublicationReentry,
+                    acceptTerminalDisposalReentry,
+                    establishDetachedPublicationBoundary,
+                    establishTerminalDisposalBoundary,
+                    out entered);
+                return completeEntered;
+
+                void AddDescendants(ControlBase control)
+                {
+                    if (!completeUnique.Add(control.OwnedControls))
+                    {
+                        return;
+                    }
+
+                    completeControls.Add(control);
+                    control.OwnedControls.DescendantDiscoveryStarted?.Invoke();
+                    control.OwnedControls.Visit(AddDescendants);
+                }
+            }
+            finally
+            {
+                ExitLifecyclePublication(barrierEntered);
+
+                if (!completeEntered)
+                {
+                    entered = [];
+                }
+            }
+        }
+    }
+
+    private static bool TryEnterExactLifecyclePublication(
+        IEnumerable<ControlBase> controls,
+        Func<ControlBase, bool> canReenter,
+        bool acceptDetachedPublicationReentry,
+        bool acceptTerminalDisposalReentry,
+        bool establishDetachedPublicationBoundary,
+        bool establishTerminalDisposalBoundary,
+        out List<OwnedControlRegistry> entered)
+    {
+        var unique = new HashSet<OwnedControlRegistry>(ReferenceEqualityComparer.Instance);
+        var requested = new List<OwnedControlRegistry>();
+
+        foreach (var control in controls)
+        {
+            ArgumentNullException.ThrowIfNull(control);
+
+            if (unique.Add(control.OwnedControls))
+            {
+                requested.Add(control.OwnedControls);
+            }
+        }
+
+        var reentrant = requested.ToDictionary(
+            registry => registry,
+            registry => canReenter(registry.Owner));
+        var currentThread = Thread.CurrentThread;
+        var waitReported = false;
+
+        while (true)
+        {
+            Action? waitObserver = null;
+
+            lock (_lifecyclePublicationGate)
+            {
+                if (requested.Exists(registry =>
+                        ReferenceEquals(registry._lifecyclePublicationOwner, currentThread) &&
+                        !reentrant[registry] &&
+                        !(acceptDetachedPublicationReentry &&
+                          registry._lifecyclePublicationAllowsDetachedPublicationReentry) &&
+                        !(acceptTerminalDisposalReentry &&
+                          registry._lifecyclePublicationAllowsTerminalDisposalReentry)))
+                {
+                    entered = [];
+                    return false;
+                }
+
+                var blocked = requested.Find(registry =>
+                    registry._lifecyclePublicationDepth > 0 &&
+                    !ReferenceEquals(registry._lifecyclePublicationOwner, currentThread));
+
+                if (blocked is null)
+                {
+                    foreach (var registry in requested)
+                    {
+                        if (establishDetachedPublicationBoundary)
+                        {
+                            registry._lifecyclePublicationAllowsDetachedPublicationReentry = true;
+                        }
+
+                        if (establishTerminalDisposalBoundary)
+                        {
+                            registry._lifecyclePublicationAllowsTerminalDisposalReentry = true;
+                        }
+
+                        registry._lifecyclePublicationOwner = currentThread;
+                        registry._lifecyclePublicationDepth++;
+                    }
+
+                    _currentThreadLifecyclePublicationDepth++;
+                    entered = requested;
+                    return true;
+                }
+
+                // Waiting while any callback owns another root can close a reciprocal wait cycle.
+                // Reject before blocking while ordinary top-level lifecycle callers remain waitable.
+                if (_currentThreadLifecyclePublicationDepth > 0)
+                {
+                    entered = [];
+                    return false;
+                }
+
+                var observedBlocked = !waitReported
+                    ? requested.Find(registry =>
+                        registry._lifecyclePublicationDepth > 0 &&
+                        !ReferenceEquals(registry._lifecyclePublicationOwner, currentThread) &&
+                        registry.PublicationWaitStarted is not null)
+                    : null;
+
+                if (observedBlocked?.PublicationWaitStarted is { } observer)
+                {
+                    waitObserver = observer;
+                    waitReported = true;
+                }
+                else
+                {
+                    _ = Monitor.Wait(_lifecyclePublicationGate);
+                }
+            }
+
+            waitObserver?.Invoke();
+        }
+    }
+
+    [Pure]
+    private static bool AncestriesAreStable(
+        List<ControlBase> roots,
+        List<List<ControlBase>> snapshots)
+    {
+        for (var rootIndex = 0; rootIndex < roots.Count; rootIndex++)
+        {
+            var ancestry = snapshots[rootIndex];
+            var ancestryIndex = 0;
+
+            for (var current = roots[rootIndex]; current is not null; current = current.Parent)
+            {
+                if (ancestryIndex >= ancestry.Count ||
+                    !ReferenceEquals(current, ancestry[ancestryIndex]))
+                {
+                    return false;
+                }
+
+                ancestryIndex++;
+            }
+
+            if (ancestryIndex != ancestry.Count)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     [Pure]

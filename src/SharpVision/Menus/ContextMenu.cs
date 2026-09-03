@@ -88,6 +88,44 @@ public class ContextMenu: IDisposable
         }
     }
 
+    /// <summary>Gets or sets the duration of the retained Popup's terminal-cell entrance fade.</summary>
+    /// <remarks>Progress remains a property of the retained surface rather than this relationship wrapper.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative or exceeds timer limits.</exception>
+    /// <exception cref="InvalidOperationException">The retained Popup is presented, exiting, or mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The context menu relationship is disposed.</exception>
+    public TimeSpan FadeInDuration
+    {
+        get
+        {
+            VerifyNotDisposed();
+            return _popup.FadeInDuration;
+        }
+        set
+        {
+            VerifyNotDisposed();
+            _popup.FadeInDuration = value;
+        }
+    }
+
+    /// <summary>Gets or sets the duration of the retained Popup's terminal-cell dismissal fade.</summary>
+    /// <remarks>Progress remains a property of the retained surface rather than this relationship wrapper.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The value is negative or exceeds timer limits.</exception>
+    /// <exception cref="InvalidOperationException">The retained Popup is presented, exiting, or mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The context menu relationship is disposed.</exception>
+    public TimeSpan FadeOutDuration
+    {
+        get
+        {
+            VerifyNotDisposed();
+            return _popup.FadeOutDuration;
+        }
+        set
+        {
+            VerifyNotDisposed();
+            _popup.FadeOutDuration = value;
+        }
+    }
+
     internal ControlBase Presentation => _popup;
 
     internal Menu Menu { get; }

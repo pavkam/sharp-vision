@@ -26,8 +26,8 @@ public static class ThemeJson
     public const int DefaultReservedPaletteEntryCount = 17;
 
     /// <summary>Creates one complete semantic theme document. <paramref name="background"/>,
-    /// <paramref name="foreground"/>, <paramref name="accent"/>, <paramref name="muted"/>,
-    /// <paramref name="error"/>, <paramref name="hotkey"/>,
+    /// <paramref name="foreground"/>, <paramref name="bar"/>, <paramref name="accent"/>,
+    /// <paramref name="muted"/>, <paramref name="error"/>, <paramref name="hotkey"/>,
     /// <paramref name="controlBorderForeground"/>, <paramref name="selectedText"/>, and
     /// <paramref name="selectedControl"/> each accept either a raw hex literal - which this
     /// method synthesizes into its own reserved palette entry, since a hex literal is no longer
@@ -47,6 +47,7 @@ public static class ThemeJson
         string name = "T",
         string background = "#101010",
         string foreground = "#e0e0e0",
+        string? bar = null,
         string accent = "#77aaff",
         string muted = "#707070",
         string error = "#ff0000",
@@ -71,6 +72,9 @@ public static class ThemeJson
         var glyphsField = glyphs is null ? "" : $", \"glyphs\": \"{glyphs}\"";
         var (backgroundRef, backgroundEntry) = ColorRef("background", background);
         var (foregroundRef, foregroundEntry) = ColorRef("foreground", foreground);
+        var (barRef, barEntry) = bar is null
+            ? (backgroundRef, null)
+            : ColorRef("bar", bar);
         var (accentRef, accentEntry) = ColorRef("accent", accent);
         var (mutedRef, mutedEntry) = ColorRef("muted", muted);
         var (errorRef, errorEntry) = ColorRef("error", error);
@@ -126,6 +130,7 @@ public static class ThemeJson
         var extraPalette = string.Concat(
             backgroundEntry,
             foregroundEntry,
+            barEntry,
             accentEntry,
             mutedEntry,
             errorEntry,
@@ -161,6 +166,7 @@ public static class ThemeJson
               "colors": {
                 "window":"{{backgroundRef}}", "windowSurface":"{{backgroundRef}}", "windowText":"{{foregroundRef}}",
                 "surface":"{{backgroundRef}}", "surfaceText":"{{foregroundRef}}",
+                "bar":"{{barRef}}",
                 "control":"{{backgroundRef}}", "controlText":"{{foregroundRef}}",
                 "controlBorder":"{{controlBorderRef}}", "controlShadow":"__controlShadow",
                 "reliefHighlight":"{{foregroundRef}}", "reliefShade":"__controlShadow",

@@ -22,19 +22,22 @@ public sealed record StatusBarItemStyle: ControlStyle
     /// <summary>Gets the primary status-bar-entry style definition. Falls back to
     /// <see cref="ControlStyle"/>'s "control" role section; both separator glyphs are code-owned,
     /// shared by every item.</summary>
-    internal static StyleDefinition<StatusBarItemStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<StatusBarItemStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static StatusBarItemStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
-        new(
-            control.Face,
+    private static StatusBarItemStyle Complete(ControlStyle control, VisualState state, Theme theme)
+    {
+        var states = theme.GetStyleSet(ControlStyle.Default);
+        return new StatusBarItemStyle(
+            BarAppearance.CompleteFace(control, state, states),
             control.Border,
             control.Shadow,
             StatusBarSeparatorGlyphs.Bar,
             StatusBarSeparatorGlyphs.Bar);
+    }
 
     /// <summary>Initializes a complete status-bar entry presentation.</summary>
     /// <param name="face">The complete normal face.</param>

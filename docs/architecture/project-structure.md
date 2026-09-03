@@ -101,12 +101,12 @@ these infrastructure namespaces:
 | `SharpVision.Controls`             | Foundational mutable control tree, ownership, invalidation, and drawing.       |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation controls.                   |
 | `SharpVision.Controls.Charts`      | Reactive bar, line, area, and compact trend charts.                            |
-| `SharpVision.Controls.Input`       | Buttons, editors, pickers, calendars, and value controls.                      |
+| `SharpVision.Controls.Input`       | Buttons, command bars, suggestion editors, pickers, and value controls.        |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.                               |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization.                   |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.                          |
 | `SharpVision.Menus`                | Menus, typed menu entries, and context menus.                                  |
-| `SharpVision.Navigation`           | Sidebar navigation controls and entries.                                       |
+| `SharpVision.Navigation`           | Breadcrumb, sidebar, and scalar page navigation controls.                      |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle, bounds, and modality coordination.          |
 | `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                                  |
 | `SharpVision.Windows`              | Free-standing retained window surfaces.                                        |
@@ -118,7 +118,7 @@ these infrastructure namespaces:
 | `SharpVision.DataBinding`          | Typed model bindings, property-path observation, and collection tracking.      |
 | `SharpVision.Fonts`                | FIG-font parsing, layout metadata, and glyph rendering for FIGlet text.        |
 | `SharpVision.Text`                 | Grapheme-safe text layout, wrapping, editing, and selection primitives.        |
-| `SharpVision.Notifications`        | The `Toast` notification surface and its stacking host.                        |
+| `SharpVision.Notifications`        | Persistent in-flow `InfoBar` and floating `Toast` notification lifecycles.     |
 | `SharpVision.Runtime`              | Application-facing runtime seams such as `IClipboardCopySource`.               |
 
 `SharpVision.FigletFonts` is an optional package over the public FIGlet engine
@@ -139,14 +139,15 @@ document model nor Markdown parser.
 
 The UI project ships the complete
 [control catalog](../controls/index.md#control-catalog): layout panels, text and
-editing, selection and item controls, menus, context menus, popups, tooltips,
-flyouts, windows, intrinsic container scrolling, styling, focus, and routed
-input all follow these feature and shared-service boundaries. Border and shadow
-properties live on `ControlBase`, and `Border` always participates in its base
-box model. The sealed control render pipeline always paints configured intrinsic
-chrome around `OnRenderContent`; specialized controls select narrow chrome
-options rather than bypassing the pipeline. Neither feature requires a dedicated
-wrapper type or moves terminal protocol or renderer behavior into the UI layer.
+editing, asynchronous suggestions, selection and item controls, menus, context
+menus, popups, tooltips, flyouts, windows, intrinsic container scrolling,
+styling, focus, and routed input all follow these feature and shared-service
+boundaries. Border and shadow properties live on `ControlBase`, and `Border`
+always participates in its base box model. The sealed control render pipeline
+always paints configured intrinsic chrome around `OnRenderContent`; specialized
+controls select narrow chrome options rather than bypassing the pipeline.
+Neither feature requires a dedicated wrapper type or moves terminal protocol or
+renderer behavior into the UI layer.
 
 `SharpVision.Controls` is foundational in the sense that every feature namespace
 derives from and depends on it, not in the sense that it depends on nothing. It

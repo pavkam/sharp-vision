@@ -15,13 +15,15 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
 
     private readonly StyleSlot<ButtonStyle> _style;
 
-    /// <summary>Initializes an empty focusable Button that inherits its presentation from the active Theme.</summary>
+    /// <summary>Initializes an empty focusable Button that inherits its presentation from the active Theme
+    /// and centers its desired chrome vertically by default.</summary>
     public Button()
     {
         EnablePressActivation();
         EnableCaption();
         EnableCommand();
         _style = InitializeStyle(ButtonStyle.Definition);
+        VerticalAlignment = VerticalAlignment.Center;
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>

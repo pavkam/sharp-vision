@@ -16,7 +16,11 @@ internal sealed class ContextMenuPane: CompositeControlBase
     {
         var status = new Text("Right-click a control to open its context menu.");
 
-        var customMenu = new ContextMenu();
+        var customMenu = new ContextMenu
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(120),
+            FadeOutDuration = TimeSpan.FromMilliseconds(160)
+        };
         customMenu.Items.Add(new MenuItem { Text = "&Inspect" });
         customMenu.Items.Add(new MenuItem { Text = "&Run", ShortcutText = "F5" });
         customMenu.Items.Add(new MenuItem { Text = "&Debug", ShortcutText = "F9" });
@@ -32,6 +36,21 @@ internal sealed class ContextMenuPane: CompositeControlBase
             Width = Length.Cells(20),
             Height = Length.Cells(3),
             ContextMenu = customMenu
+        };
+        ShowcasePaneHelpers.Place(target, 2, 2);
+        ShowcasePaneHelpers.Place(status, 2, 10);
+        var customStage = new Overlay
+        {
+            Width = Length.Cells(34),
+            Height = Length.Cells(12),
+            ClipToBounds = true,
+            Children =
+            {
+                ShowcasePaneHelpers.ApplicationSurface(
+                    "Workspace\n\n\n\n\n\n\n\n\nContext menu closed."),
+                target,
+                status
+            }
         };
 
         var textInput = new TextInput
@@ -81,11 +100,12 @@ internal sealed class ContextMenuPane: CompositeControlBase
             new DocSection(
                 "🖱️",
                 "Custom context menu",
-                "Right-click the button to open a context menu with action items. The <warning>Deploy</warning> entry is disabled and cannot be invoked.",
+                "Right-click the button to open a context menu with action items. Shared Popup fades preserve the menu plane through visual entrance and dismissal. The <warning>Deploy</warning> entry is disabled and cannot be invoked.",
                 new DocExample(
                     "Right-click target",
                     "Right-click the button to see the context menu. <reverse>Escape</reverse> or clicking outside dismisses it.",
-                    new DocColumn(target, status))),
+                    customStage,
+                    "menu.FadeInDuration = TimeSpan.FromMilliseconds(120);\nmenu.FadeOutDuration = TimeSpan.FromMilliseconds(160);")),
             new DocSection(
                 "📋",
                 "TextInput context menu",

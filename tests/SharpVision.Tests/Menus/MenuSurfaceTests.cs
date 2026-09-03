@@ -6,6 +6,184 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Proves menu entries and navigation through mounted terminal surfaces.</summary>
 public sealed class MenuSurfaceTests
 {
+    /// <summary>Verifies the semantic bar plane fills normal and disabled entries plus unused cells
+    /// while state foregrounds, selected backgrounds, and a complete local item style remain authoritative.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenThemeAndLocalStyleVary_PreservesTheRequiredPrecedenceAsync()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            controlExtra: """, "disabled": { "face": { "foreground":"disabledText", "background":"disabledControl" } }""",
+            inputStates: """, "selected": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        var normal = new MenuItem { Text = "Normal" };
+        var disabled = new MenuItem { Text = "Disabled", IsEnabled = false };
+        var localBackground = Color.Rgb(120, 30, 60);
+        var local = new MenuItem
+        {
+            Text = "Local",
+            Style = MenuItemStyle.Default with
+            {
+                Face = MenuItemStyle.Default.Face with { Background = localBackground }
+            }
+        };
+        var menu = new Menu { Orientation = Orientation.Vertical, Spacing = 1 };
+        menu.Items.Add(normal);
+        menu.Items.Add(disabled);
+        menu.Items.Add(local);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(14, 5),
+            options,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply semantic bar theme");
+
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(menu.Bounds.X, normal.Bounds.Bottom)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), colorDepth));
+        surface.Cell(new Point(local.Bounds.X, local.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(localBackground, colorDepth));
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => menu.SelectedIndex = 0, "select normal menu item");
+
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+    }
+
+    /// <summary>Verifies a menu item's theme-authored Selected and Pressed highlights survive the
+    /// continuous Bar plane instead of being silently forced transparent.
+    /// <see cref="BarAppearance.Rebase"/> only rebases Normal, IsPointerOver, and Disabled onto
+    /// <see cref="SemanticColor.Bar"/> - Selected and Pressed remain theme-authored on purpose, so
+    /// <see cref="Menu"/> becoming a continuous background plane must not erase them.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenItemIsSelectedOrPressed_KeepsThemeOwnedHighlightBackgroundAsync()
+    {
+        // Arrange
+        var target = new MenuItem { Text = "Target" };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(target);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var position = new Point(target.Bounds.X, target.Bounds.Y);
+
+        // Act select
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(() => menu.SelectedIndex = 0, "select target menu item");
+
+        // Assert the Selected highlight is not absorbed into the continuous Bar plane
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        // Act press
+        await surface.Pointer.MoveToAsync(target);
+        await surface.Pointer.PressAsync();
+
+        // Assert the Pressed highlight is not absorbed into the continuous Bar plane either
+        target.IsPressed.ShouldBeTrue();
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
+    }
+
+    /// <summary>Verifies a menu item's theme-authored Checked highlight survives the continuous Bar
+    /// plane too, the same way Selected and Pressed do. No bundled theme currently authors a
+    /// distinct "checked" input state, so this test authors one explicitly - otherwise the
+    /// continuous-plane fix's Checked coverage would be entirely unexercised.
+    /// <see cref="BarAppearance.Rebase"/> never touches Checked, so it stays theme-authored on
+    /// purpose.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenItemIsChecked_KeepsThemeOwnedHighlightBackgroundAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            inputStates: """, "checked": { "face": { "foreground":"selectedText", "background":"selectedControl" } }"""));
+        var target = new MenuItem { Text = "Target", Kind = MenuItemKind.Check };
+        var menu = new Menu { Orientation = Orientation.Vertical };
+        menu.Items.Add(target);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply themed checked state");
+        var position = new Point(target.Bounds.X, target.Bounds.Y);
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+
+        // Act
+        await surface.UpdateAsync(() => target.IsChecked = true, "check target menu item");
+
+        // Assert the Checked highlight is not absorbed into the continuous Bar plane
+        surface.Cell(position).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+        surface.Cell(position).Style.Background.ShouldNotBe(expectedBar);
+    }
+
+    /// <summary>Verifies a Menu's unused and gap cells stay Bar-colored under the actual bundled
+    /// Dark theme, where Bar differs from both Control and DisabledControl - proving the
+    /// continuous background plane, and not a coincidentally-matching literal, is what fills the
+    /// cells the entry stack itself paints rather than a stray Control-colored hole.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenBarDiffersFromControlInTheBundledTheme_ShowsNoStrayControlColoredCellAsync()
+    {
+        // Arrange
+        var normal = new MenuItem { Text = "N" };
+        var disabled = new MenuItem { Text = "D", IsEnabled = false };
+        var menu = new Menu { Orientation = Orientation.Vertical, Spacing = 1 };
+        menu.Items.Add(normal);
+        menu.Items.Add(disabled);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(14, 5),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+        var strayControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Control), colorDepth);
+        var strayDisabledControl = TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledControl), colorDepth);
+        expectedBar.ShouldNotBe(strayControl);
+
+        // Assert - the gap row/column beyond both items is painted by Menu's own private entry
+        // stack, a plain framework-owned items host with no Bar-aware style of its own; it must
+        // stay Bar-colored rather than show its own generic Control-colored background.
+        var gap = new Point(menu.Bounds.X, normal.Bounds.Bottom);
+        surface.Cell(gap).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(gap).Style.Background.ShouldNotBe(strayControl);
+        surface.Cell(new Point(menu.Bounds.Right - 1, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+
+        // Assert - each item's own cell also stays on the Bar plane in both Normal and Disabled.
+        surface.Cell(new Point(normal.Bounds.X, normal.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(disabled.Bounds.X, disabled.Bounds.Y)).Style.Background.ShouldNotBe(strayDisabledControl);
+    }
+
     /// <summary>Verifies an owner-managed submenu opening does not close an unrelated
     /// owner-managed popup elsewhere in the same tree.</summary>
     [Fact]
@@ -36,6 +214,44 @@ public sealed class MenuSurfaceTests
         // Assert
         help.IsSubmenuOpen.ShouldBeTrue();
         pinned.IsOpen.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an owning menu item's selected state stops at the floating-surface
+    /// boundary instead of selecting every row inside its submenu.</summary>
+    [Fact]
+    public async Task Submenu_WhenOpened_KeepsUnselectedRowsOnBarPlaneAsync()
+    {
+        // Arrange
+        var first = new MenuItem { Text = "New" };
+        var second = new MenuItem { Text = "Open" };
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(first);
+        submenu.Items.Add(second);
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(24, 8),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(file);
+
+        // Assert
+        surface.ShouldHaveFocus(submenu);
+        submenu.SelectedItem.ShouldBeSameAs(first);
+        surface.Cell(new Point(first.Bounds.X, first.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth));
     }
 
     /// <summary>Verifies SubmenuChrome's border override reaches the rendered open submenu frame,
@@ -72,7 +288,7 @@ public sealed class MenuSurfaceTests
 
     /// <summary>Verifies a short submenu uses the shipped menu minimum before popup framing.</summary>
     [Fact]
-    public async Task Submenu_WhenShortDefaultOpens_UsesTenCellMenuWidthAsync()
+    public async Task Submenu_WhenShortDefaultOpens_UsesFifteenCellMenuWidthAsync()
     {
         // Arrange
         var submenu = new Menu { Orientation = Orientation.Vertical };
@@ -90,16 +306,44 @@ public sealed class MenuSurfaceTests
         await surface.Pointer.ClickAsync(help);
 
         // Assert
-        submenu.MinWidth.ShouldBe(Length.Cells(10));
-        submenu.Bounds.Width.ShouldBe(10);
-        popup.SurfaceBounds.Width.ShouldBe(12);
+        submenu.MinWidth.ShouldBe(Length.Cells(15));
+        submenu.Bounds.Width.ShouldBe(15);
+        popup.SurfaceBounds.Width.ShouldBe(17);
         surface.ShouldRender("""
             Help
-            ╭──────────╮
-            │About     │
-            ╰──────────╯
+            ╭───────────────╮
+            │About          │
+            ╰───────────────╯
 
             """);
+    }
+
+    /// <summary>Verifies a caller can deliberately make one submenu narrower than the shared default.</summary>
+    [Fact]
+    public async Task Submenu_WhenMinimumWidthIsNarrowerThanDefault_UsesConfiguredInteriorWidthAsync()
+    {
+        // Arrange
+        var submenu = new Menu
+        {
+            Orientation = Orientation.Vertical,
+            MinWidth = Length.Cells(8)
+        };
+        submenu.Items.Add(new MenuItem { Text = "About" });
+        var help = new MenuItem { Text = "Help", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(help);
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(help);
+
+        // Assert
+        submenu.Bounds.Width.ShouldBe(8);
+        popup.SurfaceBounds.Width.ShouldBe(10);
     }
 
     /// <summary>Verifies an explicit submenu minimum controls the popup interior before framing.</summary>
@@ -203,7 +447,7 @@ public sealed class MenuSurfaceTests
             TestContext.Current.CancellationToken);
         var popup = OwnedTree.Find<Popup>(help).ShouldNotBeNull();
         await surface.Pointer.ClickAsync(help);
-        popup.SurfaceBounds.Width.ShouldBe(12);
+        popup.SurfaceBounds.Width.ShouldBe(17);
 
         // Act
         await surface.UpdateAsync(() => submenu.MinWidth = Length.Cells(14), "increase open submenu minimum width");
@@ -535,7 +779,12 @@ public sealed class MenuSurfaceTests
         // Assert
         menu.SelectedIndex.ShouldBe(1);
         second.IsPointerOver.ShouldBeTrue();
-        second.GetResolvedAppearance(second.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Opaque);
+
+        // Menu is a continuous Bar plane (see BarAppearance.Rebase): physical hover carries no
+        // Face.Background delta of its own, so it leaves the item transparent rather than
+        // repainting it with an opaque, independently resolved copy of the same color. Either way
+        // the rendered pixel is identical - the assertions below prove that.
+        second.GetResolvedAppearance(second.GetAppearanceState()).BackgroundMode.ShouldBe(BackgroundMode.Transparent);
         surface.Cell(new Point(0, 1)).Style.Background.ShouldBe(containingBackground);
         surface.Cell(new Point(second.Bounds.Right - 1, 1)).Style.Background.ShouldBe(containingBackground);
     }

@@ -1444,6 +1444,141 @@ public sealed class TerminalCanvasTests
 
     #endregion
 
+    #region Current-frame dissolve
+
+    /// <summary>Verifies a zero-progress dissolve restores the underlay painted earlier in the
+    /// same frame without consulting a previous-frame baseline.</summary>
+    [Fact]
+    public void DrawWithCurrentFrameDissolve_WhenProgressIsZero_RestoresCurrentUnderlay()
+    {
+        using var frame = new Frame(new Size(6, 1));
+        var canvas = frame.Canvas;
+        _ = canvas.Draw("fresh", default);
+        var effect = canvas.Clip(new Rect(1, 0, 4, 1));
+
+        effect.DrawWithCurrentFrameDissolve(
+            progress: 0,
+            revealNewImages: false,
+            () => effect.Fill(effect.Bounds, new Rune('x')));
+
+        AssertRows(frame, "fresh ");
+        canvas.HasPreviousFrame.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies overlapping underlay and surface wide graphemes are selected as one
+    /// owner-safe union instead of producing a mixed lead or continuation.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(0.25)]
+    [InlineData(0.5)]
+    [InlineData(0.75)]
+    [InlineData(1)]
+    public void DrawWithCurrentFrameDissolve_WhenWideOwnersOverlap_SelectsOneCompleteOwner(double progress)
+    {
+        using var frame = new Frame(new Size(5, 1));
+        var canvas = frame.Canvas;
+        _ = canvas.Draw("界", new Point(1, 0));
+        var effect = canvas.Clip(new Rect(1, 0, 3, 1));
+
+        effect.DrawWithCurrentFrameDissolve(
+            progress,
+            revealNewImages: false,
+            () => _ = effect.Draw("界", new Point(2, 0)));
+
+        var underlaySelected = frame.GetCell(new Point(1, 0)).Width == 2;
+        var surfaceSelected = frame.GetCell(new Point(2, 0)).Width == 2;
+        (underlaySelected ^ surfaceSelected).ShouldBeTrue();
+
+        if (underlaySelected)
+        {
+            frame.GetCell(new Point(2, 0)).Continuation.ShouldBeTrue();
+            frame.GetCell(new Point(2, 0)).Lead.ShouldBe(new Point(1, 0));
+        }
+        else
+        {
+            frame.GetCell(new Point(3, 0)).Continuation.ShouldBeTrue();
+            frame.GetCell(new Point(3, 0)).Lead.ShouldBe(new Point(2, 0));
+        }
+    }
+
+    /// <summary>Verifies stable absolute-cell thresholds reveal monotonically and retain the same
+    /// selection when a clipped surface moves across an overlapping coordinate.</summary>
+    [Fact]
+    public void DrawWithCurrentFrameDissolve_WhenProgressIncreases_RevealsMonotonicallyAtAbsoluteCoordinates()
+    {
+        HashSet<int> previous = [];
+
+        foreach (var progress in new[] { 0d, 0.25, 0.5, 0.75, 1 })
+        {
+            var current = RenderVisibleColumns(new Rect(1, 0, 5, 1), progress);
+            previous.IsSubsetOf(current).ShouldBeTrue();
+            previous = current;
+        }
+
+        var beforeMove = RenderVisibleColumns(new Rect(1, 0, 5, 1), 0.5);
+        var afterMove = RenderVisibleColumns(new Rect(3, 0, 5, 1), 0.5);
+
+        for (var x = 3; x < 6; x++)
+        {
+            afterMove.Contains(x).ShouldBe(beforeMove.Contains(x));
+        }
+
+        static HashSet<int> RenderVisibleColumns(Rect bounds, double progress)
+        {
+            using var frame = new Frame(new Size(9, 1));
+            var effect = frame.Canvas.Clip(bounds);
+            effect.DrawWithCurrentFrameDissolve(
+                progress,
+                revealNewImages: false,
+                () => effect.Fill(effect.Bounds, new Rune('x')));
+            HashSet<int> result = [];
+
+            for (var x = 0; x < frame.Size.Width; x++)
+            {
+                if (FrameTests.GetText(frame, new Point(x, 0)) == "x")
+                {
+                    _ = result.Add(x);
+                }
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>Verifies surface-authored image placements stay atomic while underlay placements
+    /// remain available throughout a partial cell dissolve.</summary>
+    [Theory]
+    [InlineData(0.5, 1)]
+    [InlineData(1, 2)]
+    public void DrawWithCurrentFrameDissolve_WhenImagesAreDrawn_RevealsNewPlacementsOnlyAtCompletion(
+        double progress,
+        int expectedPlacements)
+    {
+        var underlay = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 4]);
+        var surface = GraphicsImage.FromRgba(new Size(1, 1), [5, 6, 7, 8]);
+        using var frame = new Frame(new Size(2, 1));
+        var canvas = frame.Canvas;
+        canvas.DrawImage(underlay, new Rect(0, 0, 1, 1), Terminal.Graphics.PlacementMode.Stretch);
+
+        canvas.DrawWithCurrentFrameDissolve(
+            progress,
+            revealNewImages: progress == 1,
+            () => canvas.DrawImage(
+                surface,
+                new Rect(1, 0, 1, 1),
+                Terminal.Graphics.PlacementMode.Stretch));
+
+        frame.PlacementCount.ShouldBe(expectedPlacements);
+        frame.GetPlacement(0).Image.ShouldBeSameAs(underlay);
+
+        if (expectedPlacements == 2)
+        {
+            frame.GetPlacement(1).Image.ShouldBeSameAs(surface);
+        }
+    }
+
+    #endregion
+
     #region Frame region copy
 
     // The copy is the mechanism behind render-clean subtree reuse, so an invalid destination here

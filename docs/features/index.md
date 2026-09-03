@@ -11,13 +11,17 @@ table; the current support state for each terminal protocol lives only in the
 | ------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | Interactive console hosting                      | `ConsoleApplication` and `ConsoleApplicationBuilder`                 | [Hosting](../concepts/hosting.md#overview)                         |
 | Retained mutable controls                        | `ControlBase`, `Container`, `ContentControl`, `CompositeControlBase` | [Control catalog](../controls/index.md#control-catalog)            |
+| Adaptive command surfaces                        | `CommandBar`, `CommandBarItem`, `CommandBarSeparator`                | [CommandBar](../controls/input/command-bar.md#overview)            |
 | Strongly typed model binding                     | `Bind`, `BindItems`, `BindSelection`, `BindingMode`                  | [Data binding](../concepts/data-binding.md#overview)               |
+| Editable asynchronous suggestions                | `SuggestionInput` and `SuggestionResolver`                           | [SuggestionInput](../controls/input/suggestion-input.md#overview)  |
+| Finite scalar page navigation                    | `Pager`, `PageCount`, `PageIndex`, `PageChanged`                     | [Pager](../controls/navigation/pager.md#overview)                  |
 | Fixed, auto, percentage, and proportional layout | `Length`, `Stack`, `Dock`, `Grid`, `Overlay`                         | [Layout](../concepts/layout.md#overview)                           |
 | Elevated windows, dialogs, popups, and tooltips  | `FloatingSurfaceBase`, `Window`, `Dialog<TResult>`, `Popup`          | [Floating surfaces](../concepts/floating-surfaces.md#overview)     |
 | Routed keyboard and pointer input                | Preview/bubble events, focus, pointer capture                        | [Input routing](../concepts/input-routing.md#overview)             |
 | Scrollable content                               | `Container.AutoScroll` and scrollbar policy                          | [Scrolling](../concepts/scrolling.md#overview)                     |
 | Styling and themes                               | `Color` and `Theme`                                                  | [Themes](../concepts/themes.md#overview)                           |
 | Unicode-safe cells                               | Grapheme segmentation, width policy, wide-cell repair                | [Unicode geometry](../concepts/unicode-cell-geometry.md#overview)  |
+| Hierarchical path navigation                     | `Breadcrumb` and `BreadcrumbItem`                                    | [Breadcrumb](../controls/navigation/breadcrumb.md#overview)        |
 | Menus, popups, and windows                       | Retained controls and popup render layer                             | [Control catalog](../controls/index.md#control-catalog)            |
 | Images                                           | `Image`, `ImageStretch`, and immutable graphics sources              | [Image control](../controls/display/image.md#overview)             |
 | Toast notifications                              | `Toast` and its edge-slot stacking                                   | [Toast](../controls/notifications/toast.md#overview)               |

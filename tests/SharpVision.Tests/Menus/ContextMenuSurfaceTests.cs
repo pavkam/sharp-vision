@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies context menu behaviour with real pointer routing across control types and configurations.</summary>
 public sealed class ContextMenuSurfaceTests
 {
+    /// <summary>Verifies a short context-menu row receives the shared Menu minimum before its popup frame.</summary>
+    [Fact]
+    public async Task Show_WhenShortDefaultMenuOpens_UsesFifteenCellMenuWidthAsync()
+    {
+        // Arrange
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Text = "Open" });
+        var button = new Button
+        {
+            Text = "Target",
+            Width = Length.Cells(10),
+            Height = Length.Cells(1),
+            ContextMenu = menu
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(30, 10),
+            TestContext.Current.CancellationToken);
+        var popup = (Popup) menu.Presentation;
+
+        // Act
+        await surface.UpdateAsync(() => menu.Show(2, 2), "show short context menu");
+
+        // Assert
+        popup.Content.ShouldBeOfType<Menu>().MinWidth.ShouldBe(Length.Cells(15));
+        popup.Content.Bounds.Width.ShouldBe(15);
+        popup.SurfaceBounds.Width.ShouldBe(17);
+    }
+
     /// <summary>Verifies showing an already-open context menu at a new root-cell position
     /// immediately rearranges its retained popup.</summary>
     [Fact]
@@ -318,8 +347,8 @@ public sealed class ContextMenuSurfaceTests
         var filler = new ControlText("filler") { Width = Length.Cells(10) };
         var row = new Stack
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 1,
+            Orientation = Orientation.Vertical,
+            Spacing = 5,
             Children = { button, filler }
         };
 
@@ -688,8 +717,8 @@ public sealed class ContextMenuSurfaceTests
         var filler = new ControlText("filler") { Width = Length.Cells(10) };
         var row = new Stack
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 1,
+            Orientation = Orientation.Vertical,
+            Spacing = 5,
             Children = { button, filler }
         };
 

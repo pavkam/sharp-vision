@@ -256,6 +256,7 @@ public sealed class TerminalServicesTests
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
+        application.Terminal.IsTitleSupported.ShouldBeTrue();
         application.Terminal.SetTitle("hi");
 
         var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -266,7 +267,8 @@ public sealed class TerminalServicesTests
 
     /// <summary>Verifies a configured multiplexer route that has not approved the title family
     /// suppresses the OSC 2 title entirely rather than posting an unwrapped OSC that the
-    /// multiplexer would otherwise consume and never forward.</summary>
+    /// multiplexer would otherwise consume and never forward, and that the advisory flag reflects
+    /// the same restriction instead of promising output the route will actually refuse to carry.</summary>
     [Fact]
     public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_AnsiPathIsSuppressedAndByteQuietAsync()
     {
@@ -283,7 +285,7 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         var before = terminal.Writes.Count;
 
-        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.IsTitleSupported.ShouldBeFalse();
         application.Terminal.SetTitle("hi");
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
@@ -331,7 +333,8 @@ public sealed class TerminalServicesTests
     }
 
     /// <summary>Verifies a configured multiplexer route that has not approved the title family
-    /// suppresses the described TS/fsl title program's bytes as well, matching the OSC 2 path.</summary>
+    /// suppresses the described TS/fsl title program's bytes as well, matching the OSC 2 path, and
+    /// that the advisory flag reflects the same restriction for this evidence source too.</summary>
     [Fact]
     public async Task SetTitle_WhenTmuxRouteDoesNotApproveTitleFamily_DescribedPathIsSuppressedAndByteQuietAsync()
     {
@@ -353,7 +356,7 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         var before = terminal.Writes.Count;
 
-        application.Terminal.IsTitleSupported.ShouldBeTrue();
+        application.Terminal.IsTitleSupported.ShouldBeFalse();
         application.Terminal.SetTitle("hi");
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
@@ -2026,6 +2029,7 @@ public sealed class TerminalServicesTests
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
+        application.Terminal.Bell.IsSupported.ShouldBeTrue();
         application.Terminal.Bell.Ring();
 
         var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -2035,7 +2039,10 @@ public sealed class TerminalServicesTests
 
     /// <summary>Verifies a configured multiplexer route that has not approved the bell family
     /// suppresses the BEL byte entirely rather than posting a bare byte that the multiplexer
-    /// would otherwise consume and never forward.</summary>
+    /// would otherwise consume and never forward, and that the advisory flag reflects the same
+    /// restriction instead of promising output the route will actually refuse to carry, even
+    /// though the underlying profile evidence (an intrinsic "bel" program) would otherwise report
+    /// support.</summary>
     [Fact]
     public async Task Bell_WhenTmuxRouteDoesNotApproveBellFamily_IsSuppressedAndByteQuietAsync()
     {
@@ -2052,6 +2059,7 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         var before = terminal.Writes.Count;
 
+        application.Terminal.Bell.IsSupported.ShouldBeFalse();
         application.Terminal.Bell.Ring();
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
 
@@ -2222,6 +2230,7 @@ public sealed class TerminalServicesTests
         await using Application application = new(new ProbeControl(), terminal, terminal, options);
         await application.StartAsync(TestContext.Current.CancellationToken);
 
+        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
         application.Terminal.Notifications.Notify("hi");
 
         var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -2232,7 +2241,8 @@ public sealed class TerminalServicesTests
 
     /// <summary>Verifies a configured multiplexer route that has not approved the notification
     /// family suppresses the notification entirely rather than posting an unwrapped OSC that the
-    /// multiplexer would otherwise consume and never forward.</summary>
+    /// multiplexer would otherwise consume and never forward, and that the advisory flag reflects
+    /// the same restriction instead of promising output the route will actually refuse to carry.</summary>
     [Fact]
     public async Task Notify_WhenTmuxRouteDoesNotApproveFamily_IsSuppressedAndByteQuietAsync()
     {
@@ -2255,7 +2265,7 @@ public sealed class TerminalServicesTests
         await application.StartAsync(TestContext.Current.CancellationToken);
         var before = terminal.Writes.Count;
 
-        application.Terminal.Notifications.IsSupported.ShouldBeTrue();
+        application.Terminal.Notifications.IsSupported.ShouldBeFalse();
         application.Terminal.Notifications.Notify("hi");
         application.Terminal.Notifications.Notify("title", "hi");
         await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);

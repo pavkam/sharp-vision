@@ -52,8 +52,11 @@ internal readonly struct AppearanceSnapshot
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(snapshots);
-        var stack = new Stack<(ControlBase Control, Face? ParentAmbient)>();
-        stack.Push((root, ResolveParentAmbient(root.Parent)));
+        var stack = new Stack<(ControlBase Control, Face? ParentAmbient, bool ContinuousBackground)>();
+        stack.Push((
+            root,
+            ResolveParentAmbient(root.Parent),
+            ResolveContinuousBackground(root.Parent)));
 
         while (stack.TryPop(out var entry))
         {
@@ -63,19 +66,44 @@ internal readonly struct AppearanceSnapshot
             }
 
             var state = entry.Control.GetAppearanceState();
-            var actual = entry.Control.ResolveSnapshot(state, entry.ParentAmbient);
+            var actual = entry.Control.ResolveSnapshot(
+                state,
+                entry.ParentAmbient,
+                entry.ContinuousBackground);
             var ambientFace = entry.Control.AmbientAppearanceState == state
                 ? actual.Face
-                : entry.Control.ResolveSnapshot(entry.Control.AmbientAppearanceState, entry.ParentAmbient).Face;
+                : entry.Control.ResolveSnapshot(
+                    entry.Control.AmbientAppearanceState,
+                    entry.ParentAmbient,
+                    entry.ContinuousBackground).Face;
             snapshots.Add(
                 entry.Control,
                 new AppearanceSnapshot(entry.ParentAmbient, actual, ambientFace));
 
             for (var index = entry.Control.OwnedControlCount - 1; index >= 0; index--)
             {
-                stack.Push((entry.Control.OwnedControlAt(index), ambientFace));
+                stack.Push((
+                    entry.Control.OwnedControlAt(index),
+                    ambientFace,
+                    entry.ContinuousBackground || entry.Control.ProvidesContinuousBackground));
             }
         }
+    }
+
+    /// <summary>Resolves whether an external parent chain establishes a continuous background plane.</summary>
+    /// <param name="parent">The nearest parent, or null for a root.</param>
+    /// <returns>True when the control below <paramref name="parent"/> must leave the plane visible.</returns>
+    internal static bool ResolveContinuousBackground(ControlBase? parent)
+    {
+        for (var current = parent; current is not null; current = current.Parent)
+        {
+            if (current.ProvidesContinuousBackground)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Resolves one external parent chain top-down without reading or populating caches.</summary>

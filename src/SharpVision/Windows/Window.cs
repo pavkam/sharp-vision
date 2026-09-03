@@ -143,7 +143,8 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <see cref="FloatingSurfaceBase.Closing"/> and, by default, collapses and closes the Window afterward,
     /// ending its modal presentation; a <see cref="FloatingSurfaceBase.Closing"/> handler that itself changes
     /// <see cref="Visibility"/> (hiding, restoring, or disposing the Window) takes responsibility for the
-    /// outcome instead. This call suppresses only the legacy visibility autofocus transaction,
+    /// outcome instead. A configured positive dismissal fade keeps the accepted Window visible,
+    /// focused, and modal until it becomes visually absent. This call suppresses only the legacy visibility autofocus transaction,
     /// allowing modal entry to snapshot background focus and select <paramref name="initialFocus"/> once.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -738,7 +739,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     {
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -758,12 +759,12 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// <remarks>
     /// Raises <see cref="FloatingSurfaceBase.CloseRequested"/> first; a handler that cancels leaves the
     /// Window untouched. Otherwise raises <see cref="FloatingSurfaceBase.Closing"/> and, by default,
-    /// collapses the Window - unless a <see cref="FloatingSurfaceBase.Closing"/> handler itself changes
-    /// <see cref="Visibility"/> and leaves the Window visible and presented, in which case it has taken
-    /// responsibility for the outcome and <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike
-    /// <see cref="CanClose"/>, which only gates the close affordance and <see cref="CloseOnEscape"/>, this
-    /// method always attempts to close regardless of <see cref="CanClose"/>, matching how modal
-    /// outside-dismissal already behaves.
+    /// collapses the Window - synchronously by default or after a configured dismissal fade - unless
+    /// a <see cref="FloatingSurfaceBase.Closing"/> handler itself changes <see cref="Visibility"/> and
+    /// leaves the Window visible and presented, in which case it has taken responsibility for the
+    /// outcome and <see cref="FloatingSurfaceBase.Closed"/> is suppressed. Unlike <see cref="CanClose"/>,
+    /// which only gates the close affordance and <see cref="CloseOnEscape"/>, this method always attempts
+    /// to close regardless of <see cref="CanClose"/>, matching how modal outside-dismissal already behaves.
     /// </remarks>
     public void Close() => RequestClose();
 
@@ -784,17 +785,15 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             VisibilityChanged -= OnVisibilityChangedDuringClosing;
 
-            if (visibilityTouchedByHandler)
-            {
-                return !IsSurfacePresented;
-            }
+            return !visibilityTouchedByHandler || !IsSurfacePresented;
+        }
 
-            if (IsSurfacePresented)
+        void CommitUnavailableState()
+        {
+            if (IsSurfacePresented && Visibility == Visibility.Visible)
             {
                 Visibility = Visibility.Collapsed;
             }
-
-            return true;
         }
 
         try
@@ -802,7 +801,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             _ = CloseSurfaceAfterClosing(
                 PrepareClosingState,
                 CommitClosingState,
-                static () => { });
+                CommitUnavailableState);
         }
         finally
         {
@@ -1097,7 +1096,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         if (Visibility == Visibility.Visible && !IsSurfacePresented)
         {
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+            CaptureFailure(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
             var presentationVersion = SurfacePresentationVersion;
 
             // Mirrors the Shown notification OnWindowPropertyChanged raises for an explicit
@@ -1116,7 +1115,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // changed) in the meantime.
             if (CanContinueShownPresentation(presentationVersion))
             {
-                ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+                CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
             }
 
             var dispatcher = Dispatcher;
@@ -1180,26 +1179,26 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (Dispatcher is null)
         {
-            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
             failure?.Throw();
             return;
         }
 
         if (!IsSurfacePresented)
         {
-            ExceptionAggregation.Capture(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
+            CaptureFailure(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
         }
 
         var presentationVersion = SurfacePresentationVersion;
 
         if (CanContinueShownPresentation(presentationVersion))
         {
-            ExceptionAggregation.Capture(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
+            CaptureFailure(() => Shown?.Invoke(this, EventArgs.Empty), ref failure);
         }
 
         if (!_isShowingModal && CanContinueShownPresentation(presentationVersion))
         {
-            ExceptionAggregation.Capture(ApplyVisibleFocusFallback, ref failure);
+            CaptureFailure(ApplyVisibleFocusFallback, ref failure);
         }
 
         failure?.Throw();

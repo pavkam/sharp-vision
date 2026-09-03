@@ -12,17 +12,22 @@ namespace SharpVision.Controls;
 internal sealed class ControlAttachmentToken
 {
     private ControlBase Control { get; }
-    private long Generation { get; }
+    private object Identity { get; }
 
     /// <summary>Captures one validated attachment identity.</summary>
     /// <param name="control">The exact attached control.</param>
     /// <param name="dispatcher">The exact owning dispatcher.</param>
-    /// <param name="generation">The control-owned lifecycle generation.</param>
-    internal ControlAttachmentToken(ControlBase control, Dispatcher dispatcher, long generation)
+    /// <param name="identity">The control-owned opaque lifecycle identity.</param>
+    /// <exception cref="ArgumentNullException">An argument is null.</exception>
+    internal ControlAttachmentToken(ControlBase control, Dispatcher dispatcher, object identity)
     {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(identity);
+
         Control = control;
         Dispatcher = dispatcher;
-        Generation = generation;
+        Identity = identity;
     }
 
     /// <summary>Gets the dispatcher captured by this identity for framework marshalling.</summary>
@@ -31,10 +36,10 @@ internal sealed class ControlAttachmentToken
     /// <summary>Checks exact owner, dispatcher, and lifecycle identity.</summary>
     /// <param name="control">The candidate owner.</param>
     /// <param name="dispatcher">The candidate dispatcher.</param>
-    /// <param name="generation">The candidate lifecycle generation.</param>
+    /// <param name="identity">The candidate opaque lifecycle identity.</param>
     /// <returns>True only when every identity component still matches.</returns>
-    internal bool Matches(ControlBase control, Dispatcher? dispatcher, long generation) =>
+    internal bool Matches(ControlBase control, Dispatcher? dispatcher, object identity) =>
         ReferenceEquals(Control, control) &&
         ReferenceEquals(Dispatcher, dispatcher) &&
-        Generation == generation;
+        ReferenceEquals(Identity, identity);
 }

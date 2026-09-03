@@ -36,7 +36,39 @@ public sealed class RadioButtonSurfaceTests
         wide.Width.ShouldBe(2);
         surface.Cell(new Point(5, 2)).Continuation.ShouldBeTrue();
         surface.Cell(new Point(0, 1)).Style.Foreground.ShouldBe(
-            TerminalPalette.Project(ThemeColorHelper.InactiveBorder(ThemeCatalog.Dark), ColorDepth.Basic16));
+            TerminalPalette.Project(ThemeColorHelper.DisabledForeground(ThemeCatalog.Dark), ColorDepth.Basic16));
+    }
+
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted RadioButton's rendered mark - the ascii family's dot/star pair, not the code-owned
+    /// defaults (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsAnAsciiGlyphFamily_DrawsItsRadioButtonMarkAsync()
+    {
+        // Arrange
+        var unselected = Radio("Off");
+        var selected = Radio("On", isChecked: true);
+        var group = Group(unselected, selected);
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("""
+                             ( ) Off
+                             (•) On
+                             """);
+
+        // Act
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "ascii")),
+            "author an ascii glyph family");
+
+        // Assert the unchecked and checked marks switch to the ascii family's own dot/star pair,
+        // still inside the code-owned Parentheses layout.
+        surface.ShouldRender("""
+                             (.) Off
+                             (*) On
+                             """);
     }
 
     /// <summary>Verifies parenthesized marks show exact unchecked and checked terminal rows.</summary>
@@ -289,6 +321,79 @@ public sealed class RadioButtonSurfaceTests
 
         radio.Bounds.ShouldBe(reference.Bounds);
         radio.DesiredSize.ShouldBe(reference.DesiredSize);
+    }
+
+    /// <summary>Verifies a RadioButton keeps its desired mark height and centers it in an oversized
+    /// horizontal row by default.</summary>
+    [Fact]
+    public async Task Render_WhenRadioButtonSharesOversizedHorizontalRow_CentersDesiredMarkByDefaultAsync()
+    {
+        // Arrange
+        var parentBackground = ReferenceColors.Get(1);
+        var radioBackground = ReferenceColors.Get(4);
+        var radio = new RadioButton
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            Face = AppearanceTestValues.Face(background: radioBackground)
+        };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
+            Children = { radio }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            row,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        radio.Bounds.ShouldBe(new Rect(0, 2, 12, 1));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("(");
+        surface.Cell(new Point(4, 2)).Text.ShouldBe("G");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(parentBackground);
+        surface.Cell(new Point(0, 2)).Style.Background.ShouldBe(radioBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(parentBackground);
+    }
+
+    /// <summary>Verifies a RadioButton can explicitly stretch its mark face across an oversized horizontal row.</summary>
+    [Fact]
+    public async Task Render_WhenRadioButtonSharesOversizedHorizontalRowAndStretchIsSelected_FillsRowAsync()
+    {
+        // Arrange
+        var parentBackground = ReferenceColors.Get(1);
+        var radioBackground = ReferenceColors.Get(4);
+        var radio = new RadioButton
+        {
+            Text = "Go",
+            Width = Length.Cells(12),
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Face = AppearanceTestValues.Face(background: radioBackground)
+        };
+        var row = new Stack
+        {
+            Orientation = Orientation.Horizontal,
+            Face = AppearanceTestValues.Face(background: parentBackground),
+            Children = { radio }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            row,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        radio.Bounds.ShouldBe(new Rect(0, 0, 12, 5));
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("(");
+        surface.Cell(new Point(0, 4)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(radioBackground);
+        surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(radioBackground);
     }
 
     /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before

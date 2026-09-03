@@ -36,13 +36,227 @@ public sealed class CuratedThemesTests
         }
     }
 
+    /// <summary>Verifies every curated theme resolves its deliberately authored raised-navigation color.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorResolves_UsesCuratedRaisedNavigationValue()
+    {
+        var expected = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["catppuccin-latte"] = Color.FromHex("#c2d0e9"),
+            ["catppuccin-mocha"] = Color.FromHex("#1e2860"),
+            ["default-dark"] = Color.FromHex("#585858"),
+            ["default-light"] = Color.FromHex("#878787"),
+            ["dracula"] = Color.FromHex("#2d3c7c"),
+            ["gruvbox-dark"] = Color.FromHex("#5f574f"),
+            ["gruvbox-light"] = Color.FromHex("#d5c490"),
+            ["monokai"] = Color.FromHex("#6b6756"),
+            ["nord"] = Color.FromHex("#4c566a"),
+            ["one-dark"] = Color.FromHex("#17285c"),
+            ["solarized-dark"] = Color.FromHex("#001d40"),
+            ["solarized-light"] = Color.FromHex("#ffffff"),
+            ["tokyo-night"] = Color.FromHex("#030c3a"),
+            ["tokyo-night-day"] = Color.FromHex("#f8f9fc"),
+            ["tokyo-night-storm"] = Color.FromHex("#1a2658"),
+            ["turbo-vision"] = Color.FromHex("#ffffff")
+        };
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            ThemeCatalog.Load(slug).ResolveColor(SemanticColor.Bar).ShouldBe(expected[slug], slug);
+        }
+    }
+
+    /// <summary>Verifies every curated theme resolves the deliberately selected disabled ink that
+    /// remains subdued and legible on its raised-navigation plane.</summary>
+    [Fact]
+    public void EveryTheme_WhenDisabledTextColorResolves_UsesCuratedBarLegibleValue()
+    {
+        var expected = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["catppuccin-latte"] = Color.FromHex("#65687f"),
+            ["catppuccin-mocha"] = Color.FromHex("#7f849c"),
+            ["default-dark"] = Color.FromHex("#b9b9b9"),
+            ["default-light"] = Color.FromHex("#333333"),
+            ["dracula"] = Color.FromHex("#b9c0d1"),
+            ["gruvbox-dark"] = Color.FromHex("#c5b597"),
+            ["gruvbox-light"] = Color.FromHex("#6a6157"),
+            ["monokai"] = Color.FromHex("#cecdc3"),
+            ["nord"] = Color.FromHex("#aeb5c3"),
+            ["one-dark"] = Color.FromHex("#7f8693"),
+            ["solarized-dark"] = Color.FromHex("#76888c"),
+            ["solarized-light"] = Color.FromHex("#657b83"),
+            ["tokyo-night-day"] = Color.FromHex("#7664ae"),
+            ["tokyo-night-storm"] = Color.FromHex("#7881ac"),
+            ["tokyo-night"] = Color.FromHex("#6b749f"),
+            ["turbo-vision"] = Color.FromHex("#494949")
+        };
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            ThemeCatalog.Load(slug).ResolveColor(SemanticColor.DisabledText).ShouldBe(expected[slug], slug);
+        }
+    }
+
+    /// <summary>Verifies each raised-navigation plane remains visibly distinct from ordinary
+    /// application, window, input-surface, and control backgrounds.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorResolves_IsDistinctFromOrdinaryPlanes()
+    {
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var bar = theme.ResolveColor(SemanticColor.Bar);
+
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Window), $"{slug} Bar must differ from Window");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.WindowSurface), $"{slug} Bar must differ from WindowSurface");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Surface), $"{slug} Bar must differ from Surface");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Control), $"{slug} Bar must differ from Control");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.ActiveControl), $"{slug} Bar must differ from ActiveControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.PressedControl), $"{slug} Bar must differ from PressedControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.SelectedControl), $"{slug} Bar must differ from SelectedControl");
+            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.DisabledControl), $"{slug} Bar must differ from DisabledControl");
+        }
+    }
+
+    /// <summary>Verifies each raised-navigation plane remains visibly distinct from ordinary
+    /// application, window, input-surface, and control backgrounds after xterm-256 projection.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarColorProjectsAtIndexed256Depth_IsDistinctFromOrdinaryPlanes()
+    {
+        var ordinaryPlanes = new[]
+        {
+            SemanticColor.Window,
+            SemanticColor.WindowSurface,
+            SemanticColor.Surface,
+            SemanticColor.Control,
+            SemanticColor.ActiveControl,
+            SemanticColor.PressedControl,
+            SemanticColor.SelectedControl,
+            SemanticColor.DisabledControl
+        };
+        var collisions = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var bar = TerminalPalette.Project(
+                theme.ResolveColor(SemanticColor.Bar),
+                ColorDepth.Indexed256);
+
+            foreach (var plane in ordinaryPlanes)
+            {
+                var ordinary = TerminalPalette.Project(
+                    theme.ResolveColor(plane),
+                    ColorDepth.Indexed256);
+
+                if (bar == ordinary)
+                {
+                    collisions.Add($"{slug} projects Bar onto {plane} at 256 colors");
+                }
+            }
+        }
+
+        collisions.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies resting and physically hovered bar text remains readable at the two
+    /// color depths used for curated RGB presentation.</summary>
+    [Fact]
+    public void EveryTheme_WhenBarTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
+    {
+        const double minimumContrastRatio = 4.5;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var foregrounds = new[]
+        {
+            SemanticColor.ControlText,
+            SemanticColor.ActiveText,
+            SemanticColor.Hotkey
+        };
+        var failures = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            foreach (var depth in depths)
+            {
+                var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), depth);
+
+                foreach (var foreground in foregrounds)
+                {
+                    var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
+                    var ratio = ContrastRatio(text, bar);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} {foreground} on Bar at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
+            }
+        }
+
+        failures.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disabled text remains visibly subdued on Bar and readable on both Bar and
+    /// the ordinary disabled-control plane at either curated RGB presentation depth.</summary>
+    [Fact]
+    public void EveryTheme_WhenDisabledTextResolves_RemainsDistinctAndReadableAtTrueColorAndIndexed256Depth()
+    {
+        const double minimumContrastRatio = 3;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var backgrounds = new[]
+        {
+            (SemanticColor.Bar, "Bar"),
+            (SemanticColor.DisabledControl, "DisabledControl")
+        };
+        var failures = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            foreach (var depth in depths)
+            {
+                var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), depth);
+                var disabled = TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), depth);
+                var enabled = TerminalPalette.Project(theme.ResolveColor(SemanticColor.ControlText), depth);
+
+                foreach (var (backgroundColor, backgroundName) in backgrounds)
+                {
+                    var background = TerminalPalette.Project(theme.ResolveColor(backgroundColor), depth);
+                    var ratio = ContrastRatio(disabled, background);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} DisabledText on {backgroundName} at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
+
+                if (disabled == enabled)
+                {
+                    failures.Add($"{slug} DisabledText matches ControlText on Bar at {depth}");
+                }
+
+                if (ContrastRatio(disabled, bar) >= ContrastRatio(enabled, bar))
+                {
+                    failures.Add($"{slug} DisabledText is not subdued from ControlText on Bar at {depth}");
+                }
+            }
+        }
+
+        failures.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies every curated theme's six well-known role sections ("control"/"input"/
     /// "container"/"window"/"popup"/"tooltip") round-trip through the real reflective engine: each
     /// role's resolved Normal face differs from that role's bare code-owned default, proving the
     /// theme's own "styles.&lt;role&gt;.normal" JSON was actually read and applied rather than
     /// silently ignored (the exact class of bug an earlier root-cause fix addressed, and that this
     /// follow-up investigation continues to guard). Unlike <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle"/>,
-    /// this covers ALL 15 themes including the two zero-config defaults, since every curated theme
+    /// this covers all 16 themes including the two zero-config defaults, since every curated theme
     /// (including "default-dark"/"default-light") authors all six well-known roles - only the eight
     /// LEAF registrable sections are deliberately left unauthored for the two defaults.</summary>
     [Fact]
@@ -164,7 +378,7 @@ public sealed class CuratedThemesTests
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aaaa"));
         theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aa00"));
-        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
+        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
         sunken.Relief.ShouldBe(BorderRelief.Sunken);
@@ -438,21 +652,63 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies every shipped palette provides a legible paired selection surface.</summary>
+    /// <summary>Verifies every shipped palette keeps ordinary and mnemonic selection text readable at
+    /// the two color depths used for curated RGB presentation.</summary>
     [Fact]
-    public void EveryTheme_UsesContrastingSelectionColors()
+    public void EveryTheme_WhenSelectionTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
     {
+        const double minimumContrastRatio = 4.5;
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var foregrounds = new[] { SemanticColor.SelectedText, SemanticColor.Hotkey };
+        var failures = new List<string>();
+
         foreach (var slug in ThemeCatalog.Slugs)
         {
             var theme = ThemeCatalog.Load(slug);
-            var foreground = ThemeColorHelper.SelectionForeground(theme);
-            var background = ThemeColorHelper.SelectionBackground(theme);
 
-            if (foreground != Color.Default && background != Color.Default)
+            foreach (var depth in depths)
             {
-                foreground.ShouldNotBe(background, $"{slug} should keep selection text visible");
+                var selection = TerminalPalette.Project(
+                    theme.ResolveColor(SemanticColor.SelectedControl),
+                    depth);
+
+                foreach (var foreground in foregrounds)
+                {
+                    var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
+                    var ratio = ContrastRatio(text, selection);
+
+                    if (ratio < minimumContrastRatio)
+                    {
+                        failures.Add(
+                            $"{slug} {foreground} on SelectedControl at {depth} has {ratio:F2}:1 contrast");
+                    }
+                }
             }
         }
+
+        failures.ShouldBeEmpty();
+    }
+
+    private static double ContrastRatio(Color first, Color second)
+    {
+        var firstLuminance = RelativeLuminance(first);
+        var secondLuminance = RelativeLuminance(second);
+        var lighter = Math.Max(firstLuminance, secondLuminance);
+        var darker = Math.Min(firstLuminance, secondLuminance);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private static double RelativeLuminance(Color color) =>
+        (0.2126 * Linearize(color.Red)) +
+        (0.7152 * Linearize(color.Green)) +
+        (0.0722 * Linearize(color.Blue));
+
+    private static double Linearize(byte component)
+    {
+        var normalized = component / 255d;
+        return normalized <= 0.04045
+            ? normalized / 12.92
+            : Math.Pow((normalized + 0.055) / 1.055, 2.4);
     }
 
     /// <summary>Verifies pressed colors remain distinct from hover while focus uses decoration and

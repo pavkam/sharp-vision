@@ -6,6 +6,123 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic Container scrolling geometry, offsets, clipping, and chrome.</summary>
 public sealed class ContainerTests
 {
+    /// <summary>Verifies AutoSize reserves an always-visible rail outside a percentage child's settled viewport.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHasAlwaysVisibleVerticalRail_PreservesThePercentageViewport()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            VerticalBarVisibility = ScrollBarVisibility.Always
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 1)) { Width = Length.Percent(100) });
+
+        // Act
+        new LayoutEngine().Layout(container, new Size(20, 3));
+
+        // Assert
+        container.Bounds.Width.ShouldBe(6);
+        container.Viewport.Width.ShouldBe(5);
+        container.Extent.Width.ShouldBe(5);
+    }
+
+    /// <summary>Verifies a clamped scrolling height remains unbounded for extent discovery before the vertical rail is reserved.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeVerticalScrollHeightClamps_PreservesTheOverflowExtent()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            MaxHeight = Length.Cells(4)
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 10)));
+
+        // Act
+        new LayoutEngine().Layout(container, new Size(20, 20));
+
+        // Assert
+        container.Bounds.ShouldBe(new Rect(0, 0, 6, 4));
+        container.Viewport.ShouldBe(new Size(5, 4));
+        container.Extent.ShouldBe(new Size(5, 10));
+    }
+
+    /// <summary>Verifies a clamped scrolling width remains unbounded for extent discovery before the horizontal rail is reserved.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHorizontalScrollWidthClamps_PreservesTheOverflowExtent()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            MaxWidth = Length.Cells(4)
+        };
+        container.Children.Add(new ProbeControl(new Size(10, 5)));
+
+        // Act
+        new LayoutEngine().Layout(container, new Size(20, 20));
+
+        // Assert
+        container.Bounds.ShouldBe(new Rect(0, 0, 4, 6));
+        container.Viewport.ShouldBe(new Size(4, 5));
+        container.Extent.ShouldBe(new Size(10, 5));
+    }
+
+    /// <summary>Verifies an automatic horizontal rail does not consume a row after an opposite always rail grows the physical width.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHasAlwaysVerticalAndAutomaticHorizontalRails_UsesTheGrownWidthForTheProbe()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            HorizontalBarVisibility = ScrollBarVisibility.Auto
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 1)));
+
+        // Act
+        new LayoutEngine().Layout(container, new Size(20, 20));
+
+        // Assert
+        container.Bounds.ShouldBe(new Rect(0, 0, 6, 1));
+        container.Viewport.ShouldBe(new Size(5, 1));
+        container.Extent.ShouldBe(new Size(5, 1));
+    }
+
+    /// <summary>Verifies an automatic vertical rail does not consume a column after an opposite always rail grows the physical height.</summary>
+    [Fact]
+    public void Layout_WhenAutoSizeHasAlwaysHorizontalAndAutomaticVerticalRails_UsesTheGrownHeightForTheProbe()
+    {
+        // Arrange
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            VerticalBarVisibility = ScrollBarVisibility.Auto
+        };
+        container.Children.Add(new ProbeControl(new Size(1, 5)));
+
+        // Act
+        new LayoutEngine().Layout(container, new Size(20, 20));
+
+        // Assert
+        container.Bounds.ShouldBe(new Rect(0, 0, 1, 6));
+        container.Viewport.ShouldBe(new Size(1, 5));
+        container.Extent.ShouldBe(new Size(1, 5));
+    }
+
     /// <summary>Verifies scrolling getters reject access after disposal instead of returning stale
     /// retained values contrary to their documented lifetime contract.</summary>
     [Fact]
@@ -2310,20 +2427,10 @@ public sealed class ContainerTests
         container.DesiredSize.ShouldBe(new Size(4, 5));
     }
 
-    /// <summary>Verifies OnMeasuredDesired catches a vertical scrollbar need that only exists
-    /// because the horizontal bar's row narrows the height viewport - the independent, pre-fix
-    /// check compares vertical overflow against the unreserved viewport and misses it entirely.
-    /// The offered width (5) is narrower than the content's natural width (10), forcing a
-    /// horizontal bar independently of any induction. The content's height (6) is deliberately
-    /// equal to the offered height (40 is never binding, so result.Height mirrors content height
-    /// exactly at 6), so extent.Height(6) > result.Height(6) is false and the pre-fix code would
-    /// never flag vertical overflow. Only once the horizontal bar's one-row reservation narrows
-    /// the height viewport to 5 does extent.Height(6) > 5 become true, inducing the vertical bar.
-    /// Width growing from 5 to 6 (MinWidth/MaxWidth are left unbounded, so nothing masks the
-    /// growth) is the only way to observe the fix, since the induced vertical bar's own
-    /// reservation lands on the width axis.</summary>
+    /// <summary>Verifies an automatic horizontal rail grows the physical height before probing
+    /// vertical overflow, so a former candidate row does not leave a dead vertical rail cell.</summary>
     [Fact]
-    public void AutoScroll_WhenHorizontalBarReservationInducesVerticalOverflow_ReservesBothBars()
+    public void AutoScroll_WhenHorizontalBarReservationWouldInduceVerticalOverflow_SettlesWithoutADeadRail()
     {
         var container = new LayoutProbe
         {
@@ -2334,7 +2441,57 @@ public sealed class ContainerTests
 
         new LayoutEngine().Layout(container, new Size(5, 40));
 
-        container.DesiredSize.ShouldBe(new Size(6, 7));
+        container.DesiredSize.ShouldBe(new Size(5, 7));
+        container.Viewport.ShouldBe(new Size(5, 39));
+        container.Extent.ShouldBe(new Size(10, 6));
+    }
+
+    /// <summary>Verifies a max-clamped always-visible vertical rail exposes horizontal overflow
+    /// against its actual narrowed viewport, and the induced horizontal rail grows the unconstrained
+    /// physical height before the desired size commits.</summary>
+    [Fact]
+    public void AutoSize_WhenAlwaysVerticalRailIsMaxClamped_GrowsForInducedHorizontalRail()
+    {
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            VerticalBarVisibility = ScrollBarVisibility.Always,
+            MaxWidth = Length.Cells(5)
+        };
+        container.Children.Add(new ProbeControl(new Size(5, 1)));
+
+        new LayoutEngine().Layout(container, new Size(40, 40));
+
+        container.DesiredSize.ShouldBe(new Size(5, 2));
+        container.Bounds.ShouldBe(new Rect(0, 0, 5, 2));
+        container.Viewport.ShouldBe(new Size(4, 1));
+        container.Extent.ShouldBe(new Size(5, 1));
+    }
+
+    /// <summary>Verifies a max-clamped always-visible horizontal rail exposes vertical overflow
+    /// against its actual shortened viewport, and the induced vertical rail grows the unconstrained
+    /// physical width before the desired size commits.</summary>
+    [Fact]
+    public void AutoSize_WhenAlwaysHorizontalRailIsMaxClamped_GrowsForInducedVerticalRail()
+    {
+        var container = new LayoutProbe
+        {
+            AutoSize = true,
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Both,
+            HorizontalBarVisibility = ScrollBarVisibility.Always,
+            MaxHeight = Length.Cells(5)
+        };
+        container.Children.Add(new ProbeControl(new Size(1, 5)));
+
+        new LayoutEngine().Layout(container, new Size(40, 40));
+
+        container.DesiredSize.ShouldBe(new Size(2, 5));
+        container.Bounds.ShouldBe(new Rect(0, 0, 2, 5));
+        container.Viewport.ShouldBe(new Size(1, 4));
+        container.Extent.ShouldBe(new Size(1, 5));
     }
 
     /// <summary>Verifies a Vertical Stack's own Auto cross-axis sizing - which reads a child's

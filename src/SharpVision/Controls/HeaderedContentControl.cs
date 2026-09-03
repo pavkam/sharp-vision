@@ -153,8 +153,8 @@ public abstract class HeaderedContentControl: ContentControl, IAccessKeyCaptionO
         var current = change.Current.Length == 0 ? null : change.Current.Span[0];
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => OnHeaderChanged(previous, current), ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(() => OnHeaderChanged(previous, current), ref failure);
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(Header), InvalidationImpact.None),
             ref failure);
 

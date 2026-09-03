@@ -13,6 +13,24 @@ accept: it holds either a concrete `Color` or a library-defined `SemanticColor`.
 `ControlDecoration` likewise holds either concrete `TerminalAttributes` or a
 `SemanticDecoration`. Both convert implicitly from either branch.
 
+The Styling page in the live Showcase keeps concrete color samples beside the
+complete `SemanticColor` palette. Its swatches retain semantic values and let
+the active application theme resolve them; it does not build a detached theme or
+copy a hand-maintained list.
+
+![Every semantic color resolved by the active Showcase theme](../images/concepts/styling-palette.png)
+
+The same page compares bounded `Face`, border, and shadow specimens, then uses
+ordinary controls for element-state evidence. Selection and disabled state are
+real control state; the focused and pressed captures are produced by pointer
+actions against the mounted controls.
+
+![Normal, selected, and disabled controls in the Styling page](../images/concepts/styling-states.png)
+
+![A real focused control in the Styling page](../images/concepts/styling-states-focused.png)
+
+![A real held press in the Styling page](../images/concepts/styling-states-pressed.png)
+
 Appearance is grouped by responsibility:
 
 | Complete value      | Partial set         | Members                                                              |
@@ -204,6 +222,16 @@ style value, whose structural members are code-owned defaults completed with the
 active theme-resolved appearance. Ordinary controls follow theme changes
 automatically, so application code needs no Theme plumbing. Local complete Style
 values remain authoritative.
+
+Bar surfaces use `SemanticColor.Bar` for their complete normal face rather than
+borrowing `Control` or `Surface` by accident. Menus, command bars, status bars,
+their ordinary items and separators, and otherwise unoccupied cells therefore
+form one continuous theme-authored plane. This rebase keeps the fallback's
+foreground, hotkey decoration, border, shadow, and explicitly authored state
+contributions. Physical hover omits only its `Face.Background`; disablement
+restores the Bar background. Every other theme-authored state member still
+applies, while a caller's complete local style bypasses those theme overlays and
+wins unchanged in every state.
 
 The [Control page](../controls/control.md#intrinsic-appearance) defines the
 public properties, layout effects, and rendering order. The

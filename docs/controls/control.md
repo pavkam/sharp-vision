@@ -584,6 +584,12 @@ activation, for example - overrides the protected `IsPressedState` seam
 directly, the same pattern `IsCheckedState`, `IsSelectedState`,
 `IsCurrentState`, and `IsIndeterminateState` already use for their own facts.
 
+A collection owner may explicitly propagate selection through an ordinary
+retained item subtree so composite row content paints as one selected unit. That
+propagation stops at `FloatingSurfaceBase`: a Popup, Window, Toast, or other
+floating surface starts an independent interaction plane whose own collection or
+navigator controls selection inside the surface.
+
 Intrinsic body, border, and shadow rendering is framework-owned. A custom
 `OnRenderContent` implementation draws semantic content with `ResolvedStyle`; it
 does not emit escape bytes or manually invoke a chrome helper.

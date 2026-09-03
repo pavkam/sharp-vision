@@ -56,6 +56,10 @@ internal sealed class ProbeOwnedControl: ControlBase
     /// <summary>Gets or sets work invoked after this owner's parent commits.</summary>
     internal Action<ProbeOwnedControl, ControlBase?, ControlBase?>? ParentChanging { get; set; }
 
+    /// <summary>Gets or sets work invoked after terminal disposal starts and before structural
+    /// publication begins.</summary>
+    internal Action<ProbeOwnedControl>? DirectDisposalRequesting { get; set; }
+
     /// <summary>Gets one primary control by index.</summary>
     /// <param name="index">The zero-based index.</param>
     /// <returns>The control at the requested index.</returns>
@@ -166,4 +170,7 @@ internal sealed class ProbeOwnedControl: ControlBase
     /// <inheritdoc/>
     protected override void OnParentChanged(ControlBase? previous, ControlBase? current) =>
         ParentChanging?.Invoke(this, previous, current);
+
+    /// <inheritdoc/>
+    internal override void OnDirectDisposalRequested() => DirectDisposalRequesting?.Invoke(this);
 }

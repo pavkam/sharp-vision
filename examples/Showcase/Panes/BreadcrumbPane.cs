@@ -1,0 +1,238 @@
+// Copyright (c) SharpVision contributors. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+namespace SharpVision.Showcase.Panes;
+
+using Text = SharpVision.Controls.Display.Text;
+
+/// <summary>Documents Breadcrumb paths, overflow, participation, styling, and activation.</summary>
+internal sealed class BreadcrumbPane: CompositeControlBase
+{
+    /// <summary>Initializes the retained Breadcrumb showcase content.</summary>
+    internal BreadcrumbPane() => InitializeContent(CreateContent());
+
+    /// <summary>The exact catalog/page name.</summary>
+    internal const string Title = "Breadcrumb";
+
+    /// <summary>Creates the retained documentation page and all live Breadcrumb specimens.</summary>
+    /// <returns>The complete page root.</returns>
+    private static DocPage CreateContent()
+    {
+        var activity = new Text { Overflow = Overflow.Wrap };
+        var activityEntries = new List<string>();
+
+        void AppendActivity(string entry)
+        {
+            activityEntries.Add(entry);
+
+            while (activityEntries.Count > 4)
+            {
+                activityEntries.RemoveAt(0);
+            }
+
+            activity.Content = "<d>Activity</d>\n" +
+                string.Join('\n', activityEntries.Select(static value => Text.Escape($"• {value}")));
+        }
+
+        var interactive = new Breadcrumb { Width = Length.Cells(44) };
+        var home = CreateItem("&Home", "Home", AppendActivity);
+        var projects = CreateItem("Pr&ojects", "Projects", AppendActivity);
+        var design = CreateItem("界 &Design", "界 Design", AppendActivity);
+        var release = CreateItem("Relea&se 🚀", "Release 🚀", AppendActivity);
+        interactive.Items.Add(home);
+        interactive.Items.Add(projects);
+        interactive.Items.Add(design);
+        interactive.Items.Add(release);
+        interactive.CurrentChanged += (_, eventArgs) =>
+            AppendActivity($"CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}");
+        AppendActivity("Ready: Release 🚀 is current.");
+
+        var clearCurrent = new Button { Text = "Clear &current" };
+        clearCurrent.Click += (_, _) =>
+        {
+            interactive.CurrentIndex = -1;
+            AppendActivity("Current: none (explicit state).");
+        };
+
+        var restoreLeaf = new Button { Text = "Restore &leaf" };
+        restoreLeaf.Click += (_, _) =>
+        {
+            interactive.CurrentItem = release;
+            AppendActivity("Current: Release 🚀 restored.");
+        };
+
+        var toggleWidth = new Button { Text = "&Narrow path" };
+        toggleWidth.Click += (_, _) =>
+        {
+            var isNarrow = interactive.Width == Length.Cells(18);
+            interactive.Width = Length.Cells(isNarrow ? 44 : 18);
+            toggleWidth.Text = isNarrow ? "&Narrow path" : "&Widen path";
+            AppendActivity(isNarrow
+                ? "Width: bounded 44-cell path restored."
+                : "Width: narrow overflow projection active.");
+        };
+        var actions = new Wrap { Width = Length.Percent(100), Spacing = 1, LineSpacing = 1 };
+        actions.Children.Add(clearCurrent);
+        actions.Children.Add(restoreLeaf);
+        actions.Children.Add(toggleWidth);
+
+        var itemLog = new Text("BreadcrumbItem.Invoked: waiting") { Overflow = Overflow.Wrap };
+        var currentLog = new Text("Breadcrumb.CurrentChanged: waiting") { Overflow = Overflow.Wrap };
+        var commandLog = new Text("ICommand: waiting") { Overflow = Overflow.Wrap };
+        var availabilityLog = new Text("Design availability: enabled") { Overflow = Overflow.Wrap };
+        var itemHome = new BreadcrumbItem { Text = "St&art" };
+        var itemArchive = new BreadcrumbItem { Text = "&Archive", IsEnabled = false };
+        var itemDesign = new BreadcrumbItem
+        {
+            Text = "界 Des&ign 🚀",
+            Style = BreadcrumbItemStyle.Default with
+            {
+                Face = BreadcrumbItemStyle.Default.Face with
+                {
+                    Foreground = SemanticColor.Accent,
+                    Attributes = TerminalAttributes.Bold
+                }
+            },
+            CommandParameter = "design-system"
+        };
+        itemDesign.Invoked += (_, eventArgs) =>
+            itemLog.Content = $"BreadcrumbItem.Invoked: 界 Design 🚀 ({eventArgs.Cause})";
+        itemDesign.Command = new ShowcaseCommand(
+            parameter => commandLog.Content = $"ICommand: navigated to {parameter}",
+            static _ => true);
+        var itemPath = new Breadcrumb { Width = Length.Cells(42) };
+        itemPath.Items.Add(itemHome);
+        itemPath.Items.Add(itemArchive);
+        itemPath.Items.Add(itemDesign);
+        itemPath.CurrentChanged += (_, eventArgs) =>
+            currentLog.Content =
+                $"Breadcrumb.CurrentChanged: {Plain(eventArgs.PreviousItem)} → {Plain(eventArgs.CurrentItem)}";
+        var invokeDesign = new Button { Text = "Invo&ke Design" };
+        invokeDesign.Click += (_, _) => itemDesign.PerformInvoke();
+        var toggleDesign = new Button { Text = "Toggle Design availabilit&y" };
+        toggleDesign.Click += (_, _) =>
+        {
+            itemDesign.IsEnabled = !itemDesign.IsEnabled;
+            availabilityLog.Content = itemDesign.IsEnabled
+                ? "Design availability: enabled"
+                : "Design availability: disabled · activation is inert";
+        };
+        var itemActions = new Wrap { Width = Length.Cells(42), Spacing = 1, LineSpacing = 1 };
+        itemActions.Children.Add(invokeDesign);
+        itemActions.Children.Add(toggleDesign);
+
+        var overflow = new Breadcrumb
+        {
+            Width = Length.Cells(18),
+            Style = BreadcrumbStyle.Default with
+            {
+                SeparatorGlyph = new ControlGlyph(new Rune('/'), new Rune('>')),
+                SeparatorColor = SemanticColor.Accent,
+                SeparatorSpacingBefore = 2,
+                SeparatorSpacingAfter = 0
+            }
+        };
+        overflow.Items.Add(new BreadcrumbItem { Text = "Wo&rkspace" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "A&pplications" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "界 Desi&gn" });
+        overflow.Items.Add(new BreadcrumbItem { Text = "Releas&e 🚀" });
+
+        var participation = new Breadcrumb { Width = Length.Cells(39) };
+        participation.Items.Add(new BreadcrumbItem { Text = "Roo&t" });
+        participation.Items.Add(new BreadcrumbItem
+        {
+            Text = "Hi&dden cache",
+            Visibility = Visibility.Hidden
+        });
+        participation.Items.Add(new BreadcrumbItem
+        {
+            Text = "Collapsed bran&ch",
+            Visibility = Visibility.Collapsed
+        });
+        participation.Items.Add(new BreadcrumbItem
+        {
+            Text = "Locked",
+            IsEnabled = false
+        });
+        participation.Items.Add(new BreadcrumbItem { Text = "A&vailable leaf" });
+
+        return new DocPage(
+            Title,
+            "<info>Breadcrumb</info> retains a root-to-location path, keeps semantic current state separate from keyboard movement, and compresses whole Unicode entries into one overflow menu.",
+            new DocSection(
+                "🧭",
+                "Current path and commands",
+                "Use the mnemonic keys or focus the owner and move with arrows. Activation commits current before publishing the item event and captured command.",
+                new DocExample(
+                    "Bounded project path",
+                    "The path is explicitly bounded at 44 cells. Clear current to reveal prefix-first overflow behavior, narrow it to 18 cells, or restore the leaf to return to the conventional final location.",
+                    new DocColumn(
+                        interactive,
+                        actions,
+                        activity),
+                    "var path = new Breadcrumb();\n" +
+                    "path.Items.Add(new BreadcrumbItem { Text = \"&Home\" });\n" +
+                    "path.Items.Add(new BreadcrumbItem { Text = \"界 &Design\" });\n" +
+                    "path.CurrentChanged += (_, args) => Navigate(args.CurrentItem);"),
+                new DocExample(
+                    "Item activation and availability",
+                    "Activate Start or Design through the owner, invoke Design programmatically, or disable it. The readouts distinguish current-state commit, the named item's event, and captured ICommand execution.",
+                    new DocColumn(
+                        itemPath,
+                        itemActions,
+                        availabilityLog,
+                        currentLog,
+                        itemLog,
+                        commandLog),
+                    "var item = new BreadcrumbItem { Text = \"界 &Design 🚀\" };\n" +
+                    "item.Invoked += (_, args) => Log(args.Cause);\n" +
+                    "path.Items.Add(item);\n" +
+                    "item.PerformInvoke();")),
+            new DocSection(
+                "📐",
+                "Automatic overflow",
+                "Finite width preserves complete entries and separators. The retained overflow trigger projects omitted available sources without reparenting them.",
+                new DocExample(
+                    "Automatic overflow",
+                    "This 18-cell path keeps the current suffix and exposes earlier available locations through one menu. Its local style uses an accent slash with two cells before it and none after it.",
+                    new DocColumn(
+                        overflow,
+                        new Text("Spacing: before 2 · after 0")),
+                    "path.Style = BreadcrumbStyle.Default with\n" +
+                    "{\n" +
+                    "    SeparatorGlyph = new ControlGlyph(new Rune('/'), new Rune('>')),\n" +
+                    "    SeparatorColor = SemanticColor.Accent,\n" +
+                    "    SeparatorSpacingBefore = 2,\n" +
+                    "    SeparatorSpacingAfter = 0\n" +
+                    "};")),
+            new DocSection(
+                "👁️",
+                "Participation states",
+                "Hidden retains its measured slot, Collapsed releases it, and disabled entries remain authored but cannot become current, active, or projected.",
+                new DocExample(
+                    "Unavailable ancestors",
+                    "The available leaf remains the final represented location while the three unavailable ancestors keep their distinct ownership and layout semantics.",
+                    participation)));
+    }
+
+    /// <summary>Creates one mnemonic-aware command item with observable activation.</summary>
+    /// <param name="text">The authored caption.</param>
+    /// <param name="name">The plain location name used by the activity readout.</param>
+    /// <param name="appendActivity">The retained ordered readout callback updated by item callbacks.</param>
+    /// <returns>The initialized breadcrumb item.</returns>
+    private static BreadcrumbItem CreateItem(string text, string name, Action<string> appendActivity)
+    {
+        var item = new BreadcrumbItem { Text = text, CommandParameter = name };
+        item.Invoked += (_, eventArgs) => appendActivity($"Invoked: {name} ({eventArgs.Cause})");
+        item.Command = new ShowcaseCommand(
+            parameter => appendActivity($"Command: {parameter}"),
+            static _ => true);
+        return item;
+    }
+
+    /// <summary>Returns a current-item caption without mnemonic syntax for an event readout.</summary>
+    /// <param name="item">The current or previous item, or null.</param>
+    /// <returns>The plain caption or <c>none</c>.</returns>
+    private static string Plain(BreadcrumbItem? item) =>
+        item is null ? "none" : DocCaption.PlainCaption(item.Text);
+}

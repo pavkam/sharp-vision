@@ -204,11 +204,31 @@ public sealed class ThemeCatalogTests
     [Fact]
     public void Parse_WhenSemanticThemeIsComplete_LoadsGlobalValues()
     {
-        var theme = ThemeCatalog.Parse(ThemeJson.Create(name: "Test", background: "#1a1a2e", foreground: "#e0e0e0"));
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            name: "Test",
+            background: "#1a1a2e",
+            foreground: "#e0e0e0",
+            bar: "#30304a"));
 
         theme.Name.ShouldBe("Test");
+        theme.ResolveColor(SemanticColor.Bar).ShouldBe(Color.FromHex("#30304a"));
         theme.ResolveColor(SemanticColor.Control).ShouldBe(Color.FromHex("#1a1a2e"));
         theme.ResolveColor(SemanticColor.ControlText).ShouldBe(Color.FromHex("#e0e0e0"));
+    }
+
+    /// <summary>Verifies the raised-navigation color is mandatory rather than silently defaulted.</summary>
+    [Fact]
+    public void Parse_WhenBarColorIsMissing_ReportsTheExactRequiredPath()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"bar\":\"__background\",",
+            "",
+            StringComparison.Ordinal);
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "missing-bar"));
+
+        error.Message.ShouldContain("missing-bar");
+        error.Message.ShouldContain("colors.bar");
     }
 
     /// <summary>Verifies unsafe external slugs are normalized as source-labelled data failures.</summary>
@@ -348,6 +368,7 @@ public sealed class ThemeCatalogTests
             "windowText": "#ffffff",
             "surface": "#202020",
             "surfaceText": "#ffffff",
+            "bar": "#303030",
             "control": "#303030",
             "controlText": "#ffffff",
             "controlBorder": "#808080",
@@ -388,6 +409,7 @@ public sealed class ThemeCatalogTests
             "windowText": "windowText",
             "surface": "surface",
             "surfaceText": "surfaceText",
+            "bar": "bar",
             "control": "control",
             "controlText": "controlText",
             "controlBorder": "controlBorder",

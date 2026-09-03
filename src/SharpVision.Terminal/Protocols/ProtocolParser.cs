@@ -262,6 +262,57 @@ public sealed class ProtocolParser: IDisposable
         _state = ParserState.StringPayload;
     }
 
+    /// <summary>
+    /// Reports whether <paramref name="value"/> is one of the six eight-bit C1
+    /// sequence introducers (CSI/DCS/OSC/APC/PM/SOS), without mutating state.
+    /// </summary>
+    private static bool IsEightBitIntroducer(byte value) => value is
+        ControlBytes.EightBitCsi or
+        ControlBytes.EightBitDcs or
+        ControlBytes.EightBitOsc or
+        ControlBytes.EightBitApc or
+        ControlBytes.EightBitPm or
+        ControlBytes.EightBitSos;
+
+    /// <summary>
+    /// Begins the sequence introduced by one eight-bit C1 byte, mirroring the
+    /// seven-bit ESC-prefixed equivalents. Returns <see langword="false"/>
+    /// without side effects when <paramref name="value"/> is not one of the
+    /// six recognized introducers.
+    /// </summary>
+    private bool TryBeginFromEightBitIntroducer(byte value)
+    {
+        switch (value)
+        {
+            case ControlBytes.EightBitCsi:
+                BeginCsi();
+                return true;
+
+            case ControlBytes.EightBitDcs:
+                BeginDcs();
+                return true;
+
+            case ControlBytes.EightBitOsc:
+                BeginString(SequenceKind.Osc);
+                return true;
+
+            case ControlBytes.EightBitApc:
+                BeginString(SequenceKind.Apc);
+                return true;
+
+            case ControlBytes.EightBitPm:
+                BeginString(SequenceKind.Pm);
+                return true;
+
+            case ControlBytes.EightBitSos:
+                BeginString(SequenceKind.Sos);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     private void BeginIgnore(
         DiagnosticCode code,
         SequenceKind kind,
@@ -446,6 +497,27 @@ public sealed class ProtocolParser: IDisposable
 
             ClearHeader();
             _state = ParserState.Escape;
+            return;
+        }
+
+        if (_limits.AcceptEightBitControls && IsEightBitIntroducer(value))
+        {
+            if (IsIgnoring)
+            {
+                ReportPending(ref sink);
+            }
+            else if (_state != ParserState.Ground)
+            {
+                var diagnostic = new Diagnostic(
+                    DiagnosticCode.Cancelled,
+                    CurrentKind,
+                    currentOffset,
+                    0);
+                sink.Report(in diagnostic);
+            }
+
+            var began = TryBeginFromEightBitIntroducer(value);
+            Debug.Assert(began, "value already matched IsEightBitIntroducer.");
             return;
         }
 
@@ -905,35 +977,9 @@ public sealed class ProtocolParser: IDisposable
     {
         Debug.Assert(_limits.AcceptEightBitControls, "Only configured C1 bytes reach ground processing.");
 
-        switch (value)
+        if (!TryBeginFromEightBitIntroducer(value))
         {
-            case ControlBytes.EightBitCsi:
-                BeginCsi();
-                break;
-
-            case ControlBytes.EightBitDcs:
-                BeginDcs();
-                break;
-
-            case ControlBytes.EightBitOsc:
-                BeginString(SequenceKind.Osc);
-                break;
-
-            case ControlBytes.EightBitApc:
-                BeginString(SequenceKind.Apc);
-                break;
-
-            case ControlBytes.EightBitPm:
-                BeginString(SequenceKind.Pm);
-                break;
-
-            case ControlBytes.EightBitSos:
-                BeginString(SequenceKind.Sos);
-                break;
-
-            default:
-                sink.Control(value);
-                break;
+            sink.Control(value);
         }
     }
 

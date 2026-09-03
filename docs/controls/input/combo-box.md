@@ -151,8 +151,9 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   scope without closing the drop-down; restoring availability enters one fresh
   scope for the still-open plane.
 
-`ComboBox` has no typed-text input path; it only selects from `Items`. For an
-editable suggestion field, compose `TextInput` with a `Popup` directly.
+`ComboBox` has no typed-text input path; it only selects from `Items`. Use
+[`SuggestionInput`](suggestion-input.md#overview) when text must remain freely
+editable while an asynchronous resolver supplies explicit completion choices.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column inside the field
 box, strictly inboard of the drop-down indicator - setting either never moves

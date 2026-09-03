@@ -20,6 +20,7 @@ internal readonly struct InteractionTargets
     /// <param name="captureOwner">The active capture owner, or null.</param>
     /// <param name="modality">The modality manager captured for this record, or null.</param>
     /// <param name="modalScope">The active scope captured for this record, or null.</param>
+    /// <param name="isOutsideModalPlane">Whether the physical hit lies outside that scope before other filters.</param>
     public InteractionTargets(
         ControlBase? physicalLeaf,
         ControlBase? hoverTarget,
@@ -28,7 +29,8 @@ internal readonly struct InteractionTargets
         ControlBase? deliveryBoundary,
         ControlBase? captureOwner,
         ModalityManager? modality,
-        ModalScope? modalScope)
+        ModalScope? modalScope,
+        bool isOutsideModalPlane)
     {
         PhysicalLeaf = physicalLeaf;
         HoverTarget = hoverTarget;
@@ -38,6 +40,7 @@ internal readonly struct InteractionTargets
         CaptureOwner = captureOwner;
         Modality = modality;
         ModalScope = modalScope;
+        IsOutsideModalPlane = isOutsideModalPlane;
     }
 
     /// <summary>Gets the exact geometric hit-test result before modal filtering.</summary>
@@ -65,6 +68,5 @@ internal readonly struct InteractionTargets
     public ModalScope? ModalScope { get; }
 
     /// <summary>Gets whether the geometric hit lies outside the captured modal plane.</summary>
-    public bool IsOutsideModalPlane =>
-        ModalScope is not null && (PhysicalLeaf is null || HoverTarget is null);
+    public bool IsOutsideModalPlane { get; }
 }

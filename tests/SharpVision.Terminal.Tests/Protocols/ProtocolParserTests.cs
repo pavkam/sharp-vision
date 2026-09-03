@@ -242,6 +242,31 @@ public sealed class ProtocolParserTests
         sink.Observations[1].Final.ShouldBe((byte) 'A');
     }
 
+    /// <summary>
+    /// Verifies a fresh eight-bit CSI introducer restarting a sequence while mid-header
+    /// reports the abandoned sequence exactly like the seven-bit ESC restart does, rather
+    /// than falling through to the malformed catch-all and leaking the restarted sequence
+    /// as literal ground text.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenEightBitIntroducerRestartsMidHeaderCsi_ReportsCancelled()
+    {
+        var limits = ParserLimits.Default with { AcceptEightBitControls = true };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+        byte[] input = [0x9b, (byte) '1', 0x9b, (byte) '2', (byte) 'J'];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        _ = sink.Observations[0].Diagnostic.ShouldNotBeNull();
+        sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Cancelled);
+        sink.Observations[0].Diagnostic!.Value.Kind.ShouldBe(SequenceKind.Csi);
+        sink.Observations[1].Type.ShouldBe("Csi");
+        sink.Observations[1].First.ShouldBe("2"u8.ToArray());
+        sink.Observations[1].Final.ShouldBe((byte) 'J');
+    }
+
     #endregion
 
     #region DCS header, payload, termination, and recovery

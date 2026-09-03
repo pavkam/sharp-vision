@@ -71,6 +71,39 @@ public readonly struct TerminalCanvas
         }
     }
 
+    /// <summary>Draws one current-frame cell dissolve over the underlay already present inside
+    /// this canvas clip.</summary>
+    /// <param name="progress">The inclusive zero-through-one reveal progress.</param>
+    /// <param name="revealNewImages">Whether placements recorded by <paramref name="draw"/> remain visible.</param>
+    /// <param name="draw">The non-null synchronous surface render callback.</param>
+    /// <remarks>
+    /// The underlay comes from this frame, never its previous-frame baseline. Complete owners from
+    /// the underlay and rendered surface form union groups selected by stable absolute coordinates,
+    /// so progress is monotonic and no wide grapheme can be split. Placements recorded during the
+    /// callback are all retained or all discarded independently of cell selection.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="draw"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="progress"/> is not finite or is outside zero through one.</exception>
+    /// <exception cref="ObjectDisposedException">The owning frame is disposed.</exception>
+    /// <exception cref="Exception"><paramref name="draw"/> throws; the same exception propagates.</exception>
+    internal void DrawWithCurrentFrameDissolve(
+        double progress,
+        bool revealNewImages,
+        [InstantHandle] Action draw)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+
+        if (!double.IsFinite(progress) || progress is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(progress),
+                progress,
+                "Dissolve progress must be finite and between zero and one.");
+        }
+
+        _frame.DrawWithCurrentFrameDissolve(_clip, progress, revealNewImages, draw);
+    }
+
     /// <summary>Creates a child canvas clipped to the requested rectangle.</summary>
     /// <param name="clip">The requested rectangle in frame coordinates.</param>
     /// <returns>A canvas using the geometric intersection.</returns>

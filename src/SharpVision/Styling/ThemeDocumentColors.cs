@@ -29,6 +29,10 @@ internal sealed class ThemeDocumentColors
     [JsonPropertyName("surfaceText")]
     public string? SurfaceText { get; set; }
 
+    /// <summary>Gets or sets the raised navigation background.</summary>
+    [JsonPropertyName("bar")]
+    public string? Bar { get; set; }
+
     /// <summary>Gets or sets the normal control face.</summary>
     [JsonPropertyName("control")]
     public string? Control { get; set; }
@@ -170,6 +174,7 @@ internal sealed class ThemeDocumentColors
         SemanticColor.WindowText => WindowText,
         SemanticColor.Surface => Surface,
         SemanticColor.SurfaceText => SurfaceText,
+        SemanticColor.Bar => Bar,
         SemanticColor.Control => Control,
         SemanticColor.ControlText => ControlText,
         SemanticColor.ControlBorder => ControlBorder,

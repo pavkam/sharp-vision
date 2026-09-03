@@ -6,6 +6,39 @@ namespace SharpVision.Tests.Input;
 /// <summary>Verifies modal-aware discovery and semantic dispatch of application access keys.</summary>
 public sealed class AccessKeyManagerTests
 {
+    /// <summary>Verifies access-key discovery excludes every descendant of an accepted exiting surface.</summary>
+    [Fact]
+    public async Task Process_WhenMatchingControlBelongsToExitingSurface_DeclinesWithoutActivationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var button = new Button { Text = "&Save" };
+            var floating = new FloatingSurfaceProbe
+            {
+                Content = button,
+                FadeOutDuration = TimeSpan.FromSeconds(10)
+            };
+            using var root = new Stack { Children = { floating } };
+            root.Attach(dispatcher);
+            using var focus = new FocusManager(root);
+            using var pointer = new PointerManager(root);
+            using var modality = new ModalityManager(root, focus, pointer);
+            var manager = new AccessKeyManager(root, focus, modality);
+            var clicks = 0;
+            button.Click += (_, _) => clicks++;
+            floating.PublishBounds(new Rect(0, 0, 8, 1));
+            floating.CloseForTest().ShouldBeTrue();
+
+            var handled = manager.Process(Alt('s'));
+
+            handled.ShouldBeFalse();
+            clicks.ShouldBe(0);
+            focus.Focused.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies an Alt character focuses and keyboard-activates a captioned pressable.</summary>
     [Fact]
     public async Task Process_WhenButtonCaptionMatches_FocusesAndActivatesWithKeyboardCauseAsync()

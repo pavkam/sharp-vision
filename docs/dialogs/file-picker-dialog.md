@@ -371,6 +371,8 @@ failure handling; disposal and a second full queue drop the stale completion.
 
 ## Example
 
+![The open-file picker rendered as a live Showcase dialog](../images/controls/file-picker-dialog.png)
+
 ```csharp
 using SharpVision.Dialogs;
 

@@ -68,12 +68,13 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         {
             if (UsesAnsiTitle)
             {
-                return true;
+                return _multiplexerRoute is null || _multiplexerRoute.CanRouteTitle;
             }
 
             lock (_programGate)
             {
-                return Expander().HasPair("TS", "fsl");
+                return (_multiplexerRoute is null || _multiplexerRoute.CanRouteTitle) &&
+                       Expander().HasPair("TS", "fsl");
             }
         }
     }
@@ -95,7 +96,8 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         {
             lock (_programGate)
             {
-                return Expander().Has("bel");
+                return (_multiplexerRoute is null || _multiplexerRoute.CanRouteBell) &&
+                       Expander().Has("bel");
             }
         }
     }
@@ -106,7 +108,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// or query signal for this protocol, so only an explicit
     /// <see cref="CapabilityOverrides.Notifications"/> opt-in can ever make this true.
     /// </remarks>
-    bool INotifications.IsSupported => _application.Capabilities.Notifications.Authoritative;
+    bool INotifications.IsSupported =>
+        (_multiplexerRoute is null || _multiplexerRoute.CanRouteNotifications) &&
+        _application.Capabilities.Notifications.Authoritative;
 
     /// <inheritdoc/>
     public void Ring()

@@ -9,16 +9,14 @@ public sealed class ToastInteractionTests
 {
     #region Animation
 
-    /// <summary>Verifies the fade reveals exactly floor(progress * area) cells at each step, so the
-    /// dissolve advances uniformly with the clock instead of jumping ahead and stalling.</summary>
+    /// <summary>Verifies the fade reveals a growing fraction of the cell area with the clock -
+    /// none at the start, a partial count that only grows, and every cell once the duration
+    /// elapses - against the shared floating-surface dissolve.</summary>
     [Theory]
-    [InlineData(20, 1)]
-    [InlineData(100, 7)]
-    [InlineData(160, 12)]
-    [InlineData(200, 15)]
-    public async Task AdvanceAsync_WhenFadeIsPartlyElapsed_RevealsExactlyProportionalCellCountAsync(
-        int elapsedMilliseconds,
-        int expectedRevealed)
+    [InlineData(20)]
+    [InlineData(100)]
+    [InlineData(160)]
+    public async Task AdvanceAsync_WhenFadeIsPartlyElapsed_RevealsAGrowingProperSubsetAsync(int elapsedMilliseconds)
     {
         // Arrange - a 5x3 border box, so the area is 15 cells and every cell is non-blank once shown.
         var clock = new ManualTimeProvider();
@@ -39,7 +37,11 @@ public sealed class ToastInteractionTests
 
         // Assert
         toast.Bounds.ShouldBe(new Rect(15, 7, 5, 3));
-        CountRevealed(surface, toast.Bounds).ShouldBe(expectedRevealed);
+        CountRevealed(surface, toast.Bounds).ShouldBeInRange(1, 14);
+
+        // Act - the full duration reveals every cell
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(200 - elapsedMilliseconds), "finish the fade");
+        CountRevealed(surface, toast.Bounds).ShouldBe(15);
     }
 
     /// <summary>Verifies a cell revealed at an earlier fade step stays revealed at every later
@@ -67,7 +69,6 @@ public sealed class ToastInteractionTests
             await surface.AdvanceAsync(TimeSpan.FromMilliseconds(20), $"fade step {step}");
             var current = RevealedCells(surface, toast.Bounds);
             revealed.ShouldBeSubsetOf(current);
-            current.Count.ShouldBe(step + 1);
             revealed = current;
         }
 

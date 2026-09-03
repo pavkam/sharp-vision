@@ -484,7 +484,7 @@ public sealed class ColorPickerInteractionTests
         picker.Plane.Value.ShouldBe(0);
         picker.Preview.Value.ShouldBe(Color.Default);
         var origin = new Point(picker.Preview.Bounds.X, picker.Preview.Bounds.Y);
-        surface.Cell(new Point(origin.X + 1, origin.Y)).Text.ShouldBe("D");
+        surface.Cell(origin).Text.ShouldBe("D");
 
         await surface.UpdateAsync(() => picker.Value = Color.Rgb(1, 2, 3), "assign an RGB value again");
 

@@ -539,9 +539,12 @@ namespace SharpVision.Terminal.Diagnostics
     public sealed class TerminalRouteDiagnostics
     {
         public SharpVision.Terminal.Multiplexing.MultiplexingOperation ApprovedOperations { get; }
+        public bool CanRouteBell { get; }
         public bool CanRouteCapabilityQueries { get; }
         public bool CanRouteClipboard { get; }
         public bool CanRouteGraphics { get; }
+        public bool CanRouteNotifications { get; }
+        public bool CanRouteTitle { get; }
         public bool IsActive { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Multiplexing.MultiplexerKind> Layers { get; }
         public int MaxDepth { get; }
@@ -618,6 +621,7 @@ namespace SharpVision.Terminal.Graphics
         PlacementNotEncodable = 2,
         OutputLimitExceeded = 3,
         OverlapBlocked = 4,
+        TerminalRejectedUpload = 5,
     }
     public enum ImageFormat
     {

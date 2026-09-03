@@ -144,7 +144,7 @@ internal sealed class CommandPalettePane: CompositeControlBase
                 "Place the same component with ordinary Overlay alignment; the palette owns search and results, while layout owns where it appears.",
                 new DocExample(
                     "Centered and top-centered variants",
-                    "Open either presentation, type to narrow the live results, and invoke a row. The centered variant uses a shadow; the top-centered variant uses ASCII field and popup borders.",
+                    "Open either presentation, type to narrow the live results, and invoke a compact one-line command. The centered variant uses a shadow; the top-centered variant uses ASCII field and popup borders.",
                     presentationStage,
                     "palette.HorizontalAlignment = HorizontalAlignment.Center;\npalette.VerticalAlignment = VerticalAlignment.Center;\npalette.Visibility = Visibility.Visible;\npalette.Open();")));
     }
@@ -155,9 +155,7 @@ internal sealed class CommandPalettePane: CompositeControlBase
         {
             Placeholder = "Type a command…",
             Resolver = ResolveCommands,
-            DropDownHeight = Length.Percent(50),
-            RowHeight = Length.Percent(25),
-            ItemTemplate = item => new Text((string) item!) { Height = Length.Star(1) }
+            DropDownHeight = Length.Percent(50)
         };
 
         if (borderless)

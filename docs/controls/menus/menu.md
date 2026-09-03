@@ -22,7 +22,7 @@ classDiagram
 | `Items`         | `MenuEntryCollection`                    | Empty              | Holds only `MenuItem` and `MenuSeparator` values.                            |
 | `Orientation`   | `Orientation`                            | `Horizontal`       | Chooses menu-bar or vertical-flyout geometry and arrow behavior.             |
 | `Spacing`       | `int`                                    | `0`                | Non-negative cells inserted between semantic entries.                        |
-| `MinWidth`      | `Length`                                 | `Length.Cells(10)` | Inherited; this control's own default minimum Menu border-box width.         |
+| `MinWidth`      | `Length`                                 | `Length.Cells(15)` | Inherited; this control's own default minimum Menu border-box width.         |
 | `MaxWidth`      | `Length?`                                | `null`             | Inherited; unchanged unbounded maximum Menu border-box width.                |
 | `SelectedIndex` | `int`                                    | `-1`               | Tracks the active non-separator navigation cursor.                           |
 | `SelectedItem`  | `MenuItem?`                              | `null`             | Gets or selects the active non-separator item; derived from `SelectedIndex`. |
@@ -57,12 +57,12 @@ classDiagram
 - `Orientation` and `Spacing` control horizontal or vertical geometry. `Spacing`
   defaults to zero, so vertical flyout entries occupy adjacent rows; horizontal
   bars can opt into additional separation.
-- The inherited `MinWidth` defaults to `Length.Cells(10)`, while `MaxWidth`
+- The inherited `MinWidth` defaults to `Length.Cells(15)`, while `MaxWidth`
   keeps its unbounded null default. Both constrain the Menu border box through
   the ordinary [layout contract](../../concepts/layout.md#lengths). Set
   `MinWidth = Length.Cells(0)` if you want label-tight sizing. A retained
   submenu Popup adds its one-cell frame outside both horizontal Menu edges, so
-  the default produces a 12-cell framed surface when space permits. A smaller
+  the default produces a 17-cell framed surface when space permits. A smaller
   root clamps the complete framed surface without drawing outside the viewport.
 - `SelectedIndex` tracks the active `MenuItem` navigation cursor. Setting `-1`
   clears it, and a separator index is rejected. The cursor paints with selection
@@ -97,6 +97,15 @@ a dormant menu. Once one sibling submenu is open, moving or keyboard-navigating
 to another item closes the previous sibling and opens the new item's submenu.
 Moving to an item without a submenu closes the previous submenu without invoking
 the command.
+
+The menu, its normal item and separator faces, and unoccupied host cells use the
+theme's `SemanticColor.Bar` background. Explicitly authored focus, selection,
+checked, and press faces may overlay that normal plane. Disablement changes
+foreground and other authored state members while restoring the Bar background.
+A complete local item style bypasses those theme overlays and remains
+authoritative. A submenu Popup starts a new inherited-selection boundary:
+selecting the owning heading does not select the submenu surface or all of its
+rows; the submenu's own `SelectedIndex` controls its one active row.
 
 Selection callbacks may synchronously mutate or detach the menu. A pending
 submenu transition retains the selected item's identity and continues only if

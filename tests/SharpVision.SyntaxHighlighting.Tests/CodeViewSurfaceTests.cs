@@ -1154,6 +1154,33 @@ public sealed class CodeViewSurfaceTests
         view.SelectedText.ShouldBe("ab");
     }
 
+    /// <summary>Verifies Shift+Up immediately repaints cells removed from a shrinking selection
+    /// without requiring a later pointer event to invalidate the retained code surface.</summary>
+    [Fact]
+    public async Task Keyboard_WhenShiftUpShrinksSelection_RepaintsDeselectedCellsImmediatelyAsync()
+    {
+        var view = new CodeView
+        {
+            Code = "abc\ndef",
+            IsFoldingEnabled = false,
+        };
+        view.SetSelection(new Selection(1, 5));
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(8, 2),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => view.Focus().ShouldBeTrue(), "focus the code view");
+        var deselectedPoint = new Point(1, 0);
+        var selectedStyle = surface.Cell(deselectedPoint).Style;
+
+        await surface.Keyboard.PressAsync(Code.Up, Modifiers.Shift);
+
+        view.Selection.ShouldBe(new Selection(1, 1));
+        surface.Cell(deselectedPoint).Text.ShouldBe("b");
+        surface.Cell(deselectedPoint).Style.ShouldNotBe(selectedStyle);
+    }
+
     /// <summary>Verifies Ctrl+A selects the entire document.</summary>
     [Fact]
     public async Task Keyboard_WhenControlAIsPressed_SelectsAllAsync()

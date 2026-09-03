@@ -16,12 +16,16 @@ contracts as the surfaces your application builds itself.
 `Dialog<TResult>` derives directly from `Window`, so the dialog object you
 construct is the same object that is retained, drawn, made modal, and disposed.
 Each dialog's asynchronous helper first publishes `CloseRequested`; an unvetoed
-request then publishes `Closing`, removes the dialog from its presentation host,
-publishes `Closed`, disposes it, and only then settles the result task. A
-handler that sets `SurfaceCloseRequestedEventArgs.Cancel` on `CloseRequested`
-vetoes the close: neither `Closing` nor `Closed` follows, the dialog stays
-presented, and the awaited `ShowAsync`/`PresentAsync` task stays unsettled until
-a later `Complete`/`Cancel` call retries and succeeds.
+request then publishes `Closing`. Inherited `FadeInDuration` and
+`FadeOutDuration` default to zero. With a positive fade-out, the selected result
+is latched but the dialog remains attached, modal, focused, undisposed, and
+task-pending until shared `FadeProgress` reaches zero. The helper then removes
+the dialog from its presentation host, publishes `Closed`, disposes it, and only
+then settles the result task. A handler that sets
+`SurfaceCloseRequestedEventArgs.Cancel` on `CloseRequested` vetoes the close:
+neither `Closing` nor `Closed` follows, the dialog stays presented, and the
+awaited `ShowAsync`/`PresentAsync` task stays unsettled until a later
+`Complete`/`Cancel` call retries and succeeds.
 
 ```mermaid
 sequenceDiagram
@@ -39,6 +43,9 @@ sequenceDiagram
         Note over Awaiter: task stays unsettled; dialog stays presented
     else not cancelled
         FloatingSurfaceBase->>FloatingSurfaceBase: RaiseSurfaceClosing() [Closing]
+        opt positive FadeOutDuration
+            FloatingSurfaceBase->>FloatingSurfaceBase: Consume input while FadeProgress decreases
+        end
         FloatingSurfaceBase->>PresentationHost: Remove(dialog)
         FloatingSurfaceBase->>FloatingSurfaceBase: RaiseSurfaceClosed() [Closed]
         FloatingSurfaceBase-->>Dialog: closure completed
@@ -97,9 +104,10 @@ handled, and leaves the modeless surface mounted; command-modified Escape
 remains available to routed ancestors. Dialogs do not introduce a second layout,
 input, or rendering framework.
 
-A presented dialog detached while completion is queued cannot attach to another
-dispatcher until the original completion transaction finishes. Attachment
-validation rejects that ownership change before the new tree mutates; the old
-presentation then settles and disposes on its original dispatcher. Structural
-descendant detachment clears the common mounted presentation and modal lifetime
-without publishing a user-requested `Closing` or `Closed` event.
+A presented dialog detached while completion is queued or visually exiting
+cannot attach to another dispatcher until the original completion transaction
+finishes. Attachment validation rejects that ownership change before the new
+tree mutates; the old presentation then settles and disposes on its original
+dispatcher. Direct hide, structural detachment, or disposal cancels an active
+fade and resolves the retained completion coherently, without inventing another
+`Closing` or `Closed` event.

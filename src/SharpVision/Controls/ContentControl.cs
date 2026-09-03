@@ -16,12 +16,18 @@ using SharpVision.Text;
 [PublicAPI]
 public abstract class ContentControl: ControlBase
 {
-    private readonly OwnedControlSlot _contentSlot;
+    /// <summary>Gets the exact ownership slot backing <see cref="Content"/>.</summary>
+    /// <remarks>
+    /// This assembly-only seam lets derived framework controls retain temporary property overrides
+    /// for inherited content without registering a second ownership edge. Callers continue to own
+    /// content exclusively through <see cref="Content"/>.
+    /// </remarks>
+    internal OwnedControlSlot ContentOwnershipSlot { get; }
 
     /// <summary>Initializes an empty single-content control.</summary>
     protected ContentControl()
     {
-        _contentSlot = RegisterOwnedSlot(
+        ContentOwnershipSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
                 OwnedControlRole.Content,
                 OwnedControlLayer.Normal,
@@ -30,7 +36,7 @@ public abstract class ContentControl: ControlBase
                 partKey: null,
                 InvalidationImpact.Measure),
             capacity: 1);
-        _contentSlot.Changed += OnContentSlotChanged;
+        ContentOwnershipSlot.Changed += OnContentSlotChanged;
     }
 
     /// <summary>Gets or sets the single publicly replaceable content control.</summary>
@@ -53,8 +59,8 @@ public abstract class ContentControl: ControlBase
     /// <exception cref="ObjectDisposedException">The owner or assigned control is disposed.</exception>
     public ControlBase? Content
     {
-        get => _contentSlot.Count == 0 ? null : _contentSlot[0];
-        set => _contentSlot.ReplaceAll(value is null ? [] : [value]);
+        get => ContentOwnershipSlot.Count == 0 ? null : ContentOwnershipSlot[0];
+        set => ContentOwnershipSlot.ReplaceAll(value is null ? [] : [value]);
     }
 
     /// <inheritdoc/>
@@ -127,8 +133,8 @@ public abstract class ContentControl: ControlBase
         var current = change.Current.Length == 0 ? null : change.Current.Span[0];
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => OnContentChanged(previous, current), ref failure);
-        ExceptionAggregation.Capture(
+        CaptureFailure(() => OnContentChanged(previous, current), ref failure);
+        CaptureFailure(
             () => NotifyPropertyChanged(nameof(Content), InvalidationImpact.None),
             ref failure);
 

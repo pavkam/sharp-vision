@@ -28,6 +28,9 @@ internal abstract class StyleSlotBase
     /// <summary>Gets whether this slot owns the control's primary appearance.</summary>
     internal abstract bool OwnsAppearance { get; }
 
+    /// <summary>Gets whether the slot currently has a locally authored complete value.</summary>
+    internal abstract bool HasLocalValue { get; }
+
     /// <summary>Resolves the primary appearance for one Theme.</summary>
     internal abstract AppearanceStates GetAppearance(Theme? theme);
 

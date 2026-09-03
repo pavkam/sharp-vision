@@ -39,11 +39,15 @@ public sealed class Menu: ItemsControl
     private int _submenuSurfaceCloseDepth;
     private int _submenuTransitionDepth;
 
-    /// <summary>Initializes an empty horizontal menu with typed managed items and a 10-cell minimum width.</summary>
+    /// <summary>Initializes an empty horizontal menu with typed managed items and a 15-cell minimum width.</summary>
     public Menu()
     {
-        MinWidth = Length.Cells(10);
-        _stack = new LayoutStack { Orientation = Orientation.Horizontal, Spacing = 0 };
+        MinWidth = Length.Cells(15);
+        _stack = new LayoutStack
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 0
+        };
         InitializeItemsHost(_stack);
         _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         _modalSession = new ModalSession(OnModalDismissRequested, OnModalScopeExited);
@@ -54,6 +58,13 @@ public sealed class Menu: ItemsControl
         FocusEntered += OnFocusEntered;
         FocusLeft += OnFocusLeft;
     }
+
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
+
+    /// <inheritdoc/>
+    internal override bool ProvidesContinuousBackground => true;
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;
@@ -385,7 +396,7 @@ public sealed class Menu: ItemsControl
                 string.Equals(candidates[index].GroupName, groupName, StringComparison.Ordinal) &&
                 candidates[index].IsCheckedCommitCurrent(versions[index], expected))
             {
-                ExceptionAggregation.Capture(candidates[index].PublishChecked, ref failure);
+                CaptureFailure(candidates[index].PublishChecked, ref failure);
             }
         }
 
@@ -744,7 +755,7 @@ public sealed class Menu: ItemsControl
 
         ExceptionDispatchInfo? failure = null;
 
-        ExceptionAggregation.Capture(() => MoveItemControl(oldIndex, newIndex), ref failure);
+        CaptureFailure(() => MoveItemControl(oldIndex, newIndex), ref failure);
 
         var previousSelectedIndex = _selectedIndex;
 
@@ -862,7 +873,7 @@ public sealed class Menu: ItemsControl
 
         if (_spacePressedItem is { } item)
         {
-            ExceptionAggregation.Capture(() => item.SetPressed(false), ref failure);
+            CaptureFailure(() => item.SetPressed(false), ref failure);
             _spacePressedItem = null;
         }
 
@@ -870,10 +881,10 @@ public sealed class Menu: ItemsControl
         if (ReferenceEquals(sessionOwner, this) ||
             (sessionOwner.IsSessionArmed && sessionOwner._submenuSurfaceCloseDepth == 0))
         {
-            ExceptionAggregation.Capture(sessionOwner.CloseChain, ref failure);
+            CaptureFailure(sessionOwner.CloseChain, ref failure);
         }
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -910,7 +921,7 @@ public sealed class Menu: ItemsControl
 
         try
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () =>
                 {
                     var index = IndexOfItemControl(eventArgs.Item);
@@ -927,7 +938,7 @@ public sealed class Menu: ItemsControl
             {
                 foreach (var handler in handlers)
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => ((EventHandler<MenuItemInvokedEventArgs>) handler).Invoke(this, eventArgs),
                         ref failure);
                 }
@@ -942,7 +953,7 @@ public sealed class Menu: ItemsControl
             if (owner._itemInvocationDepth == 0 && owner._closeChainAfterInvocation)
             {
                 owner._closeChainAfterInvocation = false;
-                ExceptionAggregation.Capture(owner.CloseChain, ref failure);
+                CaptureFailure(owner.CloseChain, ref failure);
                 invocationCompleted = true;
             }
         }
@@ -955,7 +966,7 @@ public sealed class Menu: ItemsControl
         {
             foreach (var handler in completionHandlers)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => ((EventHandler<MenuItemInvokedEventArgs>) handler).Invoke(this, eventArgs),
                     ref failure);
             }
@@ -1083,7 +1094,7 @@ public sealed class Menu: ItemsControl
         owner.ExecuteSubmenuTransition(() =>
         {
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(() => item.CommitSubmenu(value), ref failure);
+            CaptureFailure(() => item.CommitSubmenu(value), ref failure);
 
             if (wasOpen && ReferenceEquals(item.Submenu, value))
             {
@@ -1093,7 +1104,7 @@ public sealed class Menu: ItemsControl
                 }
                 else
                 {
-                    ExceptionAggregation.Capture(
+                    CaptureFailure(
                         () => owner.TransitionToSubmenuCore(this, item, openedFromPointerSelection: false),
                         ref failure);
                 }
@@ -1305,7 +1316,7 @@ public sealed class Menu: ItemsControl
         try
         {
             CloseOpenSubmenus(this, ref failure);
-            ExceptionAggregation.Capture(_modalSession.Exit, ref failure);
+            CaptureFailure(_modalSession.Exit, ref failure);
         }
         finally
         {
@@ -1314,7 +1325,7 @@ public sealed class Menu: ItemsControl
 
         if (replayPendingSubmenuTransition && failure is null)
         {
-            ExceptionAggregation.Capture(ReplayPendingSubmenuTransition, ref failure);
+            CaptureFailure(ReplayPendingSubmenuTransition, ref failure);
         }
         else
         {
@@ -1332,7 +1343,7 @@ public sealed class Menu: ItemsControl
 
         try
         {
-            ExceptionAggregation.Capture(action, ref failure);
+            CaptureFailure(action, ref failure);
         }
         finally
         {
@@ -1351,13 +1362,13 @@ public sealed class Menu: ItemsControl
         {
             if (_closeChainPending)
             {
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => CloseChain(replayPendingSubmenuTransition: !transitionFailed),
                     ref failure);
             }
             else if (_pendingSubmenuOpen is not null)
             {
-                ExceptionAggregation.Capture(ReplayPendingSubmenuTransition, ref failure);
+                CaptureFailure(ReplayPendingSubmenuTransition, ref failure);
             }
         }
 
@@ -1384,7 +1395,7 @@ public sealed class Menu: ItemsControl
             CloseOpenSubmenus(submenu, ref failure);
         }
 
-        ExceptionAggregation.Capture(item.CloseSubmenu, ref failure);
+        CaptureFailure(item.CloseSubmenu, ref failure);
         failure?.Throw();
     }
 
@@ -1424,7 +1435,7 @@ public sealed class Menu: ItemsControl
 
         foreach (var item in closeOrder)
         {
-            ExceptionAggregation.Capture(item.CloseSubmenu, ref failure);
+            CaptureFailure(item.CloseSubmenu, ref failure);
         }
     }
 

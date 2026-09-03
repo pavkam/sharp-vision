@@ -107,7 +107,7 @@ public sealed class ButtonTests
         button.Style.ShouldBe(ButtonStyle.Filled);
         button.ActualStyle.ShouldBe(ButtonStyle.Filled);
         button.ActualStyle.Padding.ShouldBe(new Thickness(horizontal: 2, vertical: 0));
-        button.VerticalAlignment.ShouldBe(VerticalAlignment.Stretch);
+        button.VerticalAlignment.ShouldBe(VerticalAlignment.Center);
         button.ActualBorder.Sides.ShouldBe(BorderSide.None);
         button.ActualFace.Background.ShouldBe(Color.Transparent);
         button.ActualShadow.IsVisible.ShouldBeTrue();
@@ -278,9 +278,9 @@ public sealed class ButtonTests
         button.Pending.ShouldBe(Invalidation.Render);
     }
 
-    /// <summary>Verifies a filled style does not silently replace the caller's layout alignment.</summary>
+    /// <summary>Verifies a filled Button uses the compact centered default in a taller row.</summary>
     [Fact]
-    public void Arrange_WhenFilledButtonSharesTallHorizontalRow_PreservesStretchAlignment()
+    public void Arrange_WhenFilledButtonSharesTallHorizontalRow_UsesCenteredDefault()
     {
         // Arrange
         var filled = new Button { Style = ButtonStyle.Filled, Text = "Add" };
@@ -296,18 +296,18 @@ public sealed class ButtonTests
 
         // Assert
         standard.Bounds.Height.ShouldBe(3);
-        filled.Bounds.ShouldBe(new Rect(0, 0, 7, 3));
+        filled.Bounds.ShouldBe(new Rect(0, 1, 7, 1));
     }
 
-    /// <summary>Verifies callers can explicitly center a filled Button within a taller row.</summary>
+    /// <summary>Verifies callers can explicitly stretch a filled Button across a taller row.</summary>
     [Fact]
-    public void Arrange_WhenFilledButtonAlignmentIsCenter_CentersOneRowFace()
+    public void Arrange_WhenFilledButtonAlignmentIsStretch_FillsTallRow()
     {
         // Arrange
         var filled = new Button
         {
             Style = ButtonStyle.Filled,
-            VerticalAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Stretch,
             Text = "Add"
         };
         var standard = new Button { Text = "Standard" };
@@ -322,7 +322,7 @@ public sealed class ButtonTests
 
         // Assert
         standard.Bounds.Height.ShouldBe(3);
-        filled.Bounds.ShouldBe(new Rect(0, 1, 7, 1));
+        filled.Bounds.ShouldBe(new Rect(0, 0, 7, 3));
     }
 
     /// <summary>Verifies the default chrome preserves one content cell on every physical edge.</summary>

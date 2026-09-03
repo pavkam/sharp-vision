@@ -6,6 +6,26 @@ namespace SharpVision.Tests.Menus;
 /// <summary>Verifies context menu construction, ownership, and item management.</summary>
 public sealed class ContextMenuTests
 {
+    /// <summary>Verifies ContextMenu forwards both shared fade duration properties to its retained
+    /// Popup while preserving the Popup validation contract.</summary>
+    [Fact]
+    public void FadeDurations_WhenSet_ForwardToRetainedPopup()
+    {
+        using var menu = new ContextMenu
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(40),
+            FadeOutDuration = TimeSpan.FromMilliseconds(60)
+        };
+
+        menu.FadeInDuration.ShouldBe(TimeSpan.FromMilliseconds(40));
+        menu.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(60));
+        var popup = menu.Presentation.ShouldBeOfType<Popup>();
+        popup.FadeInDuration.ShouldBe(menu.FadeInDuration);
+        popup.FadeOutDuration.ShouldBe(menu.FadeOutDuration);
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => menu.FadeOutDuration = TimeSpan.FromTicks(-1));
+        menu.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(60));
+    }
+
     /// <summary>Verifies directly disposing the adopted menu retires a closed or open context-menu relationship.</summary>
     [Theory]
     [InlineData(false)]
@@ -37,6 +57,8 @@ public sealed class ContextMenuTests
         menu.IsOpen.ShouldBeFalse();
         menu.Items.ShouldBeEmpty();
         menu.PopupChrome.ShouldBe(default);
+        menu.FadeInDuration.ShouldBe(TimeSpan.Zero);
+        menu.FadeOutDuration.ShouldBe(TimeSpan.Zero);
     }
 
     /// <summary>Verifies assigning a ContextMenu to an already-laid-out, clean control dirties

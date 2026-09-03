@@ -136,10 +136,13 @@ five siblings), and registers a `static StyleDefinition<TStyle>` for it with a
 declared **one-hop fallback** to whichever of the six well-known types is the
 closest semantic match -
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)`.
-This is the one factory every leaf control style in the library calls today -
-`Button`, `CheckBox`, `RadioButton`, `ScrollBar`, and the rest - so a restyled
-`"input"` or `"control"` role section automatically reaches every control that
-falls back to it, with nothing to hand-list per control:
+This is the factory most leaf control styles in the library call today -
+`CheckBox`, `RadioButton`, `ScrollBar`, and the rest - so a restyled `"input"`
+or `"control"` role section automatically reaches every control that falls back
+to it, with nothing to hand-list per control. A few styles with theme-owned
+per-state defaults - `Button` and the Bar-surface controls - use the internal
+`ControlWithThemeOwnedStateDefaults`/`BarControlWithThemeOwnedStateDefaults`
+variants instead, which keep the same one-hop fallback shape:
 
 ```csharp
 public sealed record CommandTileStyle : ControlStyle

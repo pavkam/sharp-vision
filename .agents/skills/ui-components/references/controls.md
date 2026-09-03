@@ -30,7 +30,7 @@ exactly, with a local Inheritance diagram and the canonical
 
 ## Workflow
 
-1. Choose `Control`, `Container`, `ContentControl`, `CompositeControl`, or
+1. Choose `Control`, `Container`, `ContentControl`, `CompositeControlBase`, or
    `ItemsControl` from the public ownership contract.
 2. Define validation, default, state precedence, input parity, focus, layout,
    rendering, invalidation, cleanup, and disposal.

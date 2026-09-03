@@ -23,5 +23,8 @@ public enum GraphicsPlacementSkipReason
     /// The placement could be encoded on its own, but a later, overlapping placement that could not
     /// be encoded forced it to fall back instead.
     /// </summary>
-    OverlapBlocked
+    OverlapBlocked,
+
+    /// <summary>The terminal explicitly rejected an already-sent number-addressed image upload.</summary>
+    TerminalRejectedUpload
 }

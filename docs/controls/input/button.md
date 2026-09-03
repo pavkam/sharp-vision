@@ -21,22 +21,23 @@ classDiagram
 
 ## API
 
-| Member                       | Type                                | Default            | Description                                                                                                     |
-| ---------------------------- | ----------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `Button()`                   | —                                   | —                  | Initializes an empty Button that inherits its presentation from the active Theme.                               |
-| `Button(string text)`        | —                                   | —                  | Initializes a Button with the given caption; rejects `null`.                                                    |
-| Inherited `Text`             | `string`                            | `""`               | The button's caption.                                                                                           |
-| `TextAlignment`              | `Alignment`                         | `Alignment.Center` | Horizontal placement of the caption inside the style padding.                                                   |
-| `StartAffix`                 | `Affix?`                            | `null`             | Optional leading edge-pinned decoration, reserved inside the face and outside the caption's own alignment box.  |
-| `EndAffix`                   | `Affix?`                            | `null`             | Optional trailing edge-pinned decoration, reserved inside the face and outside the caption's own alignment box. |
-| `Style`                      | `ButtonStyle?`                      | `null`             | Optional complete developer-authored presentation.                                                              |
-| `ActualStyle`                | `ButtonStyle`                       | Resolved           | Read-only; the complete local, theme-owned, or code-owned presentation.                                         |
-| Inherited `Command`          | `ICommand?`                         | `null`             | Runs after `Click`, when bound and `CanExecute` allows it.                                                      |
-| Inherited `CommandParameter` | `object?`                           | `null`             | The borrowed parameter passed to `Command` queries and execution.                                               |
-| `IsDefault`                  | `bool`                              | `false`            | Whether an owning Window treats Enter as a fallback activation for this button.                                 |
-| `IsCancel`                   | `bool`                              | `false`            | Whether an owning Window treats Escape as a fallback activation for this button.                                |
-| `PerformClick()`             | `void`                              | —                  | Activates an available, visible, enabled Button through its public API.                                         |
-| `Click`                      | `EventHandler<ActivationEventArgs>` | No subscribers     | Raised after the released state commits and before command execution.                                           |
+| Member                        | Type                                | Default                    | Description                                                                                                     |
+| ----------------------------- | ----------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Button()`                    | —                                   | —                          | Initializes an empty Button that inherits its presentation from the active Theme.                               |
+| `Button(string text)`         | —                                   | —                          | Initializes a Button with the given caption; rejects `null`.                                                    |
+| Inherited `Text`              | `string`                            | `""`                       | The button's caption.                                                                                           |
+| Inherited `VerticalAlignment` | `VerticalAlignment`                 | `VerticalAlignment.Center` | Centers the desired button chrome vertically in its arranged slot; assign `Stretch` to fill the slot.           |
+| `TextAlignment`               | `Alignment`                         | `Alignment.Center`         | Horizontal placement of the caption inside the style padding.                                                   |
+| `StartAffix`                  | `Affix?`                            | `null`                     | Optional leading edge-pinned decoration, reserved inside the face and outside the caption's own alignment box.  |
+| `EndAffix`                    | `Affix?`                            | `null`                     | Optional trailing edge-pinned decoration, reserved inside the face and outside the caption's own alignment box. |
+| `Style`                       | `ButtonStyle?`                      | `null`                     | Optional complete developer-authored presentation.                                                              |
+| `ActualStyle`                 | `ButtonStyle`                       | Resolved                   | Read-only; the complete local, theme-owned, or code-owned presentation.                                         |
+| Inherited `Command`           | `ICommand?`                         | `null`                     | Runs after `Click`, when bound and `CanExecute` allows it.                                                      |
+| Inherited `CommandParameter`  | `object?`                           | `null`                     | The borrowed parameter passed to `Command` queries and execution.                                               |
+| `IsDefault`                   | `bool`                              | `false`                    | Whether an owning Window treats Enter as a fallback activation for this button.                                 |
+| `IsCancel`                    | `bool`                              | `false`                    | Whether an owning Window treats Escape as a fallback activation for this button.                                |
+| `PerformClick()`              | `void`                              | —                          | Activates an available, visible, enabled Button through its public API.                                         |
+| `Click`                       | `EventHandler<ActivationEventArgs>` | No subscribers             | Raised after the released state commits and before command execution.                                           |
 
 `ButtonStyle : InputStyle` is a complete immutable presentation: it carries
 `Padding` alongside the inherited `Face`/`Border`/`Shadow`.

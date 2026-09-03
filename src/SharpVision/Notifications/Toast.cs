@@ -112,6 +112,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     } = ToastPosition.TopRight;
 
     /// <summary>Gets or sets the deterministic entrance animation.</summary>
+    /// <remarks>
+    /// Fade uses the shared floating-surface dissolve. Slide and Expand geometry may run
+    /// concurrently with an inherited positive <see cref="FloatingSurfaceBase.FadeInDuration"/>.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is undefined.</exception>
     /// <exception cref="InvalidOperationException">The Toast is open or is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Toast is disposed.</exception>
@@ -183,7 +187,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         {
             var wasDismissible = field;
             ExceptionDispatchInfo? failure = null;
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => _ = SetProperty(ref field, value, InvalidationImpact.Measure),
                 ref failure);
 
@@ -193,8 +197,8 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
                 return;
             }
 
-            ExceptionAggregation.Capture(_closeInteraction.Unavailable, ref failure);
-            ExceptionAggregation.Capture(
+            CaptureFailure(_closeInteraction.Unavailable, ref failure);
+            CaptureFailure(
                 () =>
                 {
                     if (HasPointerCapture)
@@ -211,6 +215,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     public bool IsOpen { get; private set; }
 
     /// <summary>Gets normalized entrance progress from zero through one.</summary>
+    /// <remarks>For <see cref="ToastAnimation.Fade"/>, this mirrors <see cref="FloatingSurfaceBase.FadeProgress"/> in both directions.</remarks>
     public double AnimationProgress { get; private set; }
 
     #endregion
@@ -251,27 +256,28 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         catch (Exception exception)
         {
             var failure = ExceptionDispatchInfo.Capture(exception);
-            ExceptionAggregation.Capture(ReleasePresentation, ref failure);
+            CaptureFailure(ReleasePresentation, ref failure);
 
             if (IsOpen)
             {
                 IsOpen = false;
                 AnimationProgress = 0;
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
                     ref failure);
-                ExceptionAggregation.Capture(
+                CaptureFailure(
                     () => NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None),
                     ref failure);
             }
 
             _coordinator = null;
-            ExceptionAggregation.Capture(() => coordinator.Remove(this), ref failure);
+            CaptureFailure(() => coordinator.Remove(this), ref failure);
             failure!.Throw();
         }
     }
 
     /// <summary>Requests dismissal; a closed Toast is unchanged.</summary>
+    /// <remarks>A positive inherited fade-out keeps the non-modal Toast as an input barrier until disappearance.</remarks>
     /// <exception cref="InvalidOperationException">The attached Toast is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Toast is disposed.</exception>
     /// <exception cref="Exception">A close callback fails.</exception>
@@ -286,22 +292,39 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         var coordinator = _coordinator;
 
+        void CommitClosedState()
+        {
+            DisposeTimers();
+            IsOpen = false;
+            AnimationProgress = 0;
+            NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
+            NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None);
+        }
+
+        void CommitUnavailableState()
+        {
+            _coordinator = null;
+            coordinator?.Remove(this);
+        }
+
+        void CommitDeferredUnavailableState()
+        {
+            ExceptionDispatchInfo? failure = null;
+            CaptureFailure(CommitClosedState, ref failure);
+            CaptureFailure(CommitUnavailableState, ref failure);
+            failure?.Throw();
+        }
+
         try
         {
-            _ = CloseSurface(
-                () =>
-                {
-                    DisposeTimers();
-                    IsOpen = false;
-                    AnimationProgress = 0;
-                    NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
-                    NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None);
-                },
-                () =>
-                {
-                    _coordinator = null;
-                    coordinator?.Remove(this);
-                });
+            if (FadeOutDuration == TimeSpan.Zero)
+            {
+                _ = CloseSurface(CommitClosedState, CommitUnavailableState);
+            }
+            else
+            {
+                _ = CloseSurfaceWithOutcome(static () => { }, CommitDeferredUnavailableState);
+            }
         }
         finally
         {
@@ -397,11 +420,6 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     {
         base.OnRenderContent(canvas);
 
-        if (Animation == ToastAnimation.Fade && IsOpen && AnimationProgress == 0)
-        {
-            return;
-        }
-
         var header = ResolveHeaderBounds();
         if (header.Width == 0 || header.Height == 0)
         {
@@ -441,94 +459,11 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
     /// <inheritdoc/>
     protected override ChromeRenderOptions GetChromeRenderOptions() =>
-        Animation == ToastAnimation.Fade && IsOpen && AnimationProgress < 1
-            ? new ChromeRenderOptions { SkipBodyFill = true, SkipBorder = true, SkipShadow = true }
-            : default;
+        base.GetChromeRenderOptions();
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
-    {
-        if (Animation != ToastAnimation.Fade || AnimationProgress > 0)
-        {
-            base.RenderChildren(canvas, contentClip);
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnRenderAdornment(TerminalCanvas canvas)
-    {
+    protected override void OnRenderAdornment(TerminalCanvas canvas) =>
         base.OnRenderAdornment(canvas);
-
-        if (Animation != ToastAnimation.Fade || !IsOpen || AnimationProgress >= 1)
-        {
-            return;
-        }
-
-        if (AnimationProgress == 0)
-        {
-            return;
-        }
-
-        this.RenderBorder(canvas, GetAppearanceState());
-
-        if (!canvas.HasPreviousFrame)
-        {
-            return;
-        }
-
-        var area = Math.Max(1L, (long) Bounds.Width * Bounds.Height);
-        var threshold = (long) Math.Floor(AnimationProgress * area);
-
-        // Each cell gets a distinct reveal ordinal in [0, area): a row-major index multiplied by a
-        // step coprime with the area is a permutation, so exactly floor(progress * area) cells are
-        // revealed at every progress value and the dissolve advances at the animation's own pace.
-        // A fixed hash of the coordinates was not a permutation - its ordinals collided and left
-        // gaps for most sizes, so the reveal jumped ahead early and then stalled.
-        var step = DissolveStep(area);
-
-        for (var y = Bounds.Y; y < Bounds.Bottom; y++)
-        {
-            for (var x = Bounds.X; x < Bounds.Right; x++)
-            {
-                var relativeX = x - Bounds.X;
-                var relativeY = y - Bounds.Y;
-                var index = ((long) relativeY * Bounds.Width) + relativeX;
-                var ordinal = index * step % area;
-
-                if (ordinal >= threshold)
-                {
-                    canvas.CopyFromPrevious(new Rect(x, y, 1, 1));
-                }
-            }
-        }
-    }
-
-    [Pure]
-    private static long DissolveStep(long area)
-    {
-        // Start near the golden-ratio point so consecutive indexes land far apart, then walk down
-        // to the nearest value coprime with the area; 1 always qualifies.
-        for (var candidate = Math.Max(1L, (long) Math.Round(area * 0.618)); candidate > 1; candidate--)
-        {
-            if (GreatestCommonDivisor(candidate, area) == 1)
-            {
-                return candidate;
-            }
-        }
-
-        return 1;
-    }
-
-    [Pure]
-    private static long GreatestCommonDivisor(long left, long right)
-    {
-        while (right != 0)
-        {
-            (left, right) = (right, left % right);
-        }
-
-        return left;
-    }
 
     #endregion
 
@@ -569,11 +504,11 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Hidden or ReleaseReason.Disposed)
         {
-            ExceptionAggregation.Capture(DisposeTimers, ref failure);
+            CaptureFailure(DisposeTimers, ref failure);
             var coordinator = _coordinator;
             _coordinator = null;
             hiddenCoordinator = reason == ReleaseReason.Hidden ? coordinator : null;
-            ExceptionAggregation.Capture(() => coordinator?.Forget(this), ref failure);
+            CaptureFailure(() => coordinator?.Forget(this), ref failure);
 
             if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
             {
@@ -589,7 +524,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             }
         }
 
-        ExceptionAggregation.Capture(() => base.OnUnavailable(reason), ref failure);
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (hiddenCoordinator is not null)
         {
@@ -598,10 +533,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         if (publishClosedState)
         {
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
                 ref failure);
-            ExceptionAggregation.Capture(
+            CaptureFailure(
                 () => NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None),
                 ref failure);
         }
@@ -756,10 +691,17 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     {
         Debug.Assert(Dispatcher is not null, "An open Toast has an owning dispatcher.");
 
+        if (Animation == ToastAnimation.Fade)
+        {
+            SetAnimationProgress(FadeProgress);
+            TryStartDisplayTimer();
+            return;
+        }
+
         if (AnimationDuration == TimeSpan.Zero)
         {
             SetAnimationProgress(1);
-            StartDisplayTimer();
+            TryStartDisplayTimer();
             return;
         }
 
@@ -787,7 +729,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         _animationTimer?.Dispose();
         _animationTimer = null;
         _animationState = null;
-        StartDisplayTimer();
+        TryStartDisplayTimer();
     }
 
     private void SetAnimationProgress(double value)
@@ -804,11 +746,16 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         NotifyPropertyChanged(nameof(AnimationProgress), InvalidationImpact.None);
     }
 
-    private void StartDisplayTimer()
+    private void TryStartDisplayTimer()
     {
         Debug.Assert(Dispatcher is not null, "An open Toast has an owning dispatcher.");
 
-        if (DisplayDuration == Timeout.InfiniteTimeSpan || !IsOpen)
+        if (_displayTimer is not null ||
+            DisplayDuration == Timeout.InfiniteTimeSpan ||
+            !IsOpen ||
+            IsSurfaceExiting ||
+            FadeProgress < 1 ||
+            AnimationProgress < 1)
         {
             return;
         }
@@ -832,6 +779,37 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         _animationState = null;
         _displayTimer?.Dispose();
         _displayTimer = null;
+    }
+
+    /// <inheritdoc/>
+    private protected override TimeSpan ResolveFadeInDuration() =>
+        Animation == ToastAnimation.Fade ? AnimationDuration : base.ResolveFadeInDuration();
+
+    /// <inheritdoc/>
+    private protected override void OnFadeProgressChanged()
+    {
+        base.OnFadeProgressChanged();
+
+        if (Animation == ToastAnimation.Fade)
+        {
+            SetAnimationProgress(FadeProgress);
+        }
+    }
+
+    /// <inheritdoc/>
+    private protected override void OnSurfaceEntranceCompleted()
+    {
+        base.OnSurfaceEntranceCompleted();
+        TryStartDisplayTimer();
+    }
+
+    /// <inheritdoc/>
+    private protected override void OnSurfaceExitAccepted()
+    {
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(base.OnSurfaceExitAccepted, ref failure);
+        CaptureFailure(DisposeTimers, ref failure);
+        failure?.Throw();
     }
 
     #endregion

@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
+using SharpVision.Surfaces;
 using SharpVision.Terminal.Input;
 using SharpVision.Windows;
 
@@ -16,6 +17,8 @@ using SharpVision.Windows;
 /// <remarks>
 /// The dialog object is the retained, presented, modal, and disposed surface identity. Presentation
 /// owns a temporary host edge and one modal scope until completion, cancellation, or disposal.
+/// A configured dismissal fade keeps the result task pending and the dialog attached, modal, and
+/// undisposed until visual disappearance commits.
 /// </remarks>
 [PublicAPI]
 public abstract class Dialog<TResult>: Window
@@ -28,9 +31,13 @@ public abstract class Dialog<TResult>: Window
     private CancellationTokenRegistration _externalCancellation;
     private bool _completed;
     private bool _completesWithCancellation;
+    private bool _hasClaimedAcceptedCompletion;
+    private bool _hasDetachedCompletionOwner;
+    private bool _hasScheduledDetachedCompletion;
     private bool _hasPendingResult;
     private bool _isFinishingCompletion;
     private bool _closingRequestObserved;
+    private bool _requiresDetachedCompletionFallback;
     private bool _scheduledInvoked;
     private long _selectedResultVersion;
     private CancellationToken _pendingCancellationToken;
@@ -281,7 +288,7 @@ public abstract class Dialog<TResult>: Window
     private void FinishCompletion()
     {
         ExceptionDispatchInfo? failure = null;
-        var vetoed = false;
+        var outcome = FloatingSurfaceCloseOutcome.Ignored;
 
         _isFinishingCompletion = true;
 
@@ -289,23 +296,21 @@ public abstract class Dialog<TResult>: Window
         {
             if (IsSurfacePresented && !IsDisposed)
             {
-                var closed = true;
-                ExceptionAggregation.Capture(() => closed = ClosePresentedDialog(), ref failure);
-
-                // A handler vetoing CloseRequested reports failure through the returned bool, not
-                // an exception, so only a clean (non-exceptional) false counts as a veto. An actual
-                // exception from the close attempt still falls through to the unconditional cleanup
-                // below, preserving the existing exception-aggregation behavior for that case.
-                vetoed = failure is null && !closed;
+                CaptureFailure(() => outcome = ClosePresentedDialog(), ref failure);
             }
 
-            if (vetoed)
+            if (failure is not null)
+            {
+                CleanupPresentation(dispose: true, ref failure);
+                SettleCompletion();
+            }
+            else if (outcome == FloatingSurfaceCloseOutcome.Vetoed)
             {
                 RollbackPendingCompletion();
             }
-            else
+            else if (outcome == FloatingSurfaceCloseOutcome.Ignored)
             {
-                CleanupPresentation(dispose: true, ref failure);
+                FinishAcceptedCompletion();
             }
         }
         finally
@@ -313,18 +318,171 @@ public abstract class Dialog<TResult>: Window
             _isFinishingCompletion = false;
         }
 
-        if (!vetoed)
-        {
-            SettleCompletion();
-        }
-
         failure?.Throw();
     }
 
-    private bool ClosePresentedDialog() =>
-        _closingRequestObserved
-            ? CloseSurfaceAfterClosingRequest(static () => { }, RemoveFromHost)
-            : CloseSurface(static () => { }, RemoveFromHost);
+    private FloatingSurfaceCloseOutcome ClosePresentedDialog()
+    {
+        var dispatcher = Dispatcher ?? throw new InvalidOperationException(
+            "A presented dialog requires an attached dispatcher.");
+
+        return _closingRequestObserved
+            ? CloseSurfaceAfterClosingRequestWithOutcome(
+                static () => { },
+                RemoveFromHost,
+                FinishAcceptedCompletion,
+                () => AbandonAcceptedCompletion(dispatcher))
+            : CloseSurfaceWithOutcome(
+                static () => { },
+                RemoveFromHost,
+                FinishAcceptedCompletion,
+                () => AbandonAcceptedCompletion(dispatcher));
+    }
+
+    private void FinishAcceptedCompletion()
+    {
+        if (!TryClaimAcceptedCompletion())
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? failure = null;
+        var wasFinishing = _isFinishingCompletion;
+        _isFinishingCompletion = true;
+
+        try
+        {
+            CleanupPresentation(dispose: true, ref failure);
+        }
+        finally
+        {
+            _isFinishingCompletion = wasFinishing;
+        }
+
+        SettleCompletion();
+        ReleaseDetachedCompletionOwnership();
+        failure?.Throw();
+    }
+
+    private void FinishDetachedAcceptedCompletion()
+    {
+        if (!TryClaimAcceptedCompletion())
+        {
+            return;
+        }
+
+        ExceptionDispatchInfo? failure = null;
+
+        if (!IsDisposed)
+        {
+            CaptureFailure(Dispose, ref failure);
+        }
+
+        SettleCompletion();
+        ReleaseDetachedCompletionOwnership();
+        failure?.Throw();
+    }
+
+    private bool TryClaimAcceptedCompletion()
+    {
+        lock (_completionGate)
+        {
+            if (_hasClaimedAcceptedCompletion)
+            {
+                return false;
+            }
+
+            _hasClaimedAcceptedCompletion = true;
+            _requiresDetachedCompletionFallback = false;
+            return true;
+        }
+    }
+
+    private void ReleaseDetachedCompletionOwnership()
+    {
+        lock (_completionGate)
+        {
+            _hasDetachedCompletionOwner = false;
+            _hasScheduledDetachedCompletion = false;
+            _requiresDetachedCompletionFallback = false;
+        }
+    }
+
+    private bool TryOwnDetachedCompletion()
+    {
+        lock (_completionGate)
+        {
+            if (_completion is null ||
+                !_completed ||
+                _hasClaimedAcceptedCompletion ||
+                _hasDetachedCompletionOwner)
+            {
+                return false;
+            }
+
+            _hasDetachedCompletionOwner = true;
+            return true;
+        }
+    }
+
+    private bool RequiresDetachedCompletionFallback()
+    {
+        lock (_completionGate)
+        {
+            return _hasDetachedCompletionOwner &&
+                !_hasClaimedAcceptedCompletion &&
+                _requiresDetachedCompletionFallback;
+        }
+    }
+
+    private void AbandonAcceptedCompletion(Dispatcher dispatcher)
+    {
+        bool finishAttached;
+        bool scheduleDetached;
+
+        lock (_completionGate)
+        {
+            if (_hasClaimedAcceptedCompletion)
+            {
+                return;
+            }
+
+            scheduleDetached = _hasDetachedCompletionOwner || Dispatcher is null;
+            finishAttached = dispatcher.CheckAccess();
+
+            if (scheduleDetached)
+            {
+                _hasDetachedCompletionOwner = true;
+            }
+            else if (!finishAttached)
+            {
+                _requiresDetachedCompletionFallback = true;
+            }
+        }
+
+        if (scheduleDetached)
+        {
+            ScheduleAcceptedCompletionAfterDetach(dispatcher);
+            return;
+        }
+
+        if (!finishAttached)
+        {
+            SettleCompletion();
+            return;
+        }
+
+        try
+        {
+            FinishAcceptedCompletion();
+        }
+        catch (Exception exception)
+        {
+            // The normal dispatcher callback reports through Dispatcher.UnhandledException.
+            // Its abandonment twin has no caller, so preserve the same bounded reporting path.
+            dispatcher.ReportRejectedBackgroundCompletion(exception);
+        }
+    }
 
     /// <summary>Undoes a latched <see cref="TryBeginResult"/>/<see cref="TryBeginCancellation"/> commit
     /// after the close attempt it was staged for turned out to be vetoed by a <c>CloseRequested</c>
@@ -446,16 +604,16 @@ public abstract class Dialog<TResult>: Window
 
     private void CleanupPresentation(bool dispose, ref ExceptionDispatchInfo? failure)
     {
-        ExceptionAggregation.Capture(_externalCancellation.Dispose, ref failure);
+        CaptureFailure(_externalCancellation.Dispose, ref failure);
         _externalCancellation = default;
 
-        ExceptionAggregation.Capture(ExitSurfaceModal, ref failure);
+        CaptureFailure(ExitSurfaceModal, ref failure);
 
-        ExceptionAggregation.Capture(RemoveFromHost, ref failure);
+        CaptureFailure(RemoveFromHost, ref failure);
 
         if (dispose && !IsDisposed)
         {
-            ExceptionAggregation.Capture(Dispose, ref failure);
+            CaptureFailure(Dispose, ref failure);
         }
     }
 
@@ -547,16 +705,33 @@ public abstract class Dialog<TResult>: Window
     protected override void OnUnavailable(ReleaseReason reason)
     {
         var dispatcher = Dispatcher;
+        var ownsDetachedCompletion = false;
+        var scheduleCompletion = false;
 
-        if (reason == ReleaseReason.Detached &&
-            !_isFinishingCompletion &&
-            dispatcher is not null &&
-            TryBeginResult(_cancelledResult))
+        // Reserve terminal cleanup before observers can trigger dispatcher shutdown. The accepted
+        // dispatcher callback stays primary; the pool owner activates only after rejection or
+        // cancellation, and Dispose's lifecycle gate then waits for the actual detach commit.
+        if (reason == ReleaseReason.Detached && !_isFinishingCompletion && dispatcher is not null)
         {
-            _ = ScheduleCompletion(dispatcher);
+            scheduleCompletion = TryBeginResult(_cancelledResult);
+            ownsDetachedCompletion = TryOwnDetachedCompletion();
         }
 
-        base.OnUnavailable(reason);
+        ExceptionDispatchInfo? failure = null;
+
+        if (scheduleCompletion)
+        {
+            CaptureFailure(() => _ = ScheduleCompletion(dispatcher!), ref failure);
+        }
+
+        CaptureFailure(() => base.OnUnavailable(reason), ref failure);
+
+        if (ownsDetachedCompletion && RequiresDetachedCompletionFallback())
+        {
+            CaptureFailure(() => ScheduleAcceptedCompletionAfterDetach(dispatcher!), ref failure);
+        }
+
+        failure?.Throw();
     }
 
     #endregion
@@ -571,11 +746,11 @@ public abstract class Dialog<TResult>: Window
         if (!_isFinishingCompletion)
         {
             _ = TryBeginResult(_cancelledResult);
-            ExceptionAggregation.Capture(_externalCancellation.Dispose, ref failure);
+            CaptureFailure(_externalCancellation.Dispose, ref failure);
             _externalCancellation = default;
         }
 
-        ExceptionAggregation.Capture(base.OnDisposing, ref failure);
+        CaptureFailure(base.OnDisposing, ref failure);
         failure?.Throw();
     }
 
@@ -592,6 +767,38 @@ public abstract class Dialog<TResult>: Window
     #endregion
 
     #region Dispatcher scheduling
+
+    // Same-thread disposal before OnUnavailable returns would reenter the ownership publication
+    // that is still unwinding. The pool turn's first lifecycle mutation is Dispose, whose terminal
+    // publication gate waits until that transaction commits Parent and Dispatcher detachment.
+    private void ScheduleAcceptedCompletionAfterDetach(Dispatcher dispatcher)
+    {
+        lock (_completionGate)
+        {
+            if (_hasClaimedAcceptedCompletion || _hasScheduledDetachedCompletion)
+            {
+                return;
+            }
+
+            _hasDetachedCompletionOwner = true;
+            _hasScheduledDetachedCompletion = true;
+            _requiresDetachedCompletionFallback = false;
+        }
+
+        _ = Task.Run(() => FinishAbandonedCompletion(dispatcher));
+    }
+
+    private void FinishAbandonedCompletion(Dispatcher dispatcher)
+    {
+        try
+        {
+            FinishDetachedAcceptedCompletion();
+        }
+        catch (Exception exception)
+        {
+            dispatcher.ReportRejectedBackgroundCompletion(exception);
+        }
+    }
 
     private bool ScheduleCompletion(Dispatcher dispatcher)
     {
@@ -617,18 +824,26 @@ public abstract class Dialog<TResult>: Window
 
         try
         {
-            dispatcher.Post(RunScheduledCompletion);
+            dispatcher.Post(RunScheduledCompletion, OnScheduledCompletionCancelled);
             return true;
         }
         catch (ObjectDisposedException)
         {
-            CancelScheduledCompletion();
+            OnScheduledCompletionCancelled();
             return false;
         }
         catch (InvalidOperationException)
         {
-            // A full bounded queue will eventually reach Idle on this dispatcher;
-            // the one-shot handler performs cleanup without a retry loop.
+            lock (_completionGate)
+            {
+                if (!_scheduledInvoked && ReferenceEquals(_scheduledDispatcher, dispatcher))
+                {
+                    _requiresDetachedCompletionFallback = true;
+                }
+            }
+
+            // Idle remains the attached-dialog owner. If direct detachment makes dispatcher
+            // progress unavailable, its durable owner consumes this marker on one pool turn.
             return true;
         }
     }
@@ -657,6 +872,7 @@ public abstract class Dialog<TResult>: Window
             idle = _scheduledIdle;
             _scheduledDispatcher = null;
             _scheduledIdle = null;
+            _requiresDetachedCompletionFallback = false;
         }
 
         if (dispatcher is not null && idle is not null)
@@ -667,10 +883,60 @@ public abstract class Dialog<TResult>: Window
         FinishCompletion();
     }
 
-    // Runs when the owning dispatcher was already stopping by the time Post itself
-    // rejected the scheduled completion. Unlike RunScheduledCompletion's FinishCompletion
-    // call, this settles the result directly instead of also attempting the dispatcher-
-    // dependent close/cleanup FinishCompletion performs, which would fail the same way.
+    private void OnScheduledCompletionCancelled()
+    {
+        Dispatcher? dispatcher;
+        EventHandler? idle;
+        bool completionClaimed;
+        bool finishAcceptedCompletion;
+        bool scheduleDetachedCompletion;
+
+        lock (_completionGate)
+        {
+            if (_scheduledInvoked)
+            {
+                return;
+            }
+
+            _scheduledInvoked = true;
+            dispatcher = _scheduledDispatcher;
+            idle = _scheduledIdle;
+            _scheduledDispatcher = null;
+            _scheduledIdle = null;
+            completionClaimed = _hasClaimedAcceptedCompletion;
+            _requiresDetachedCompletionFallback = !completionClaimed;
+            scheduleDetachedCompletion = !completionClaimed && _hasDetachedCompletionOwner;
+            finishAcceptedCompletion = !completionClaimed && !scheduleDetachedCompletion &&
+                (Dispatcher is null || (dispatcher is not null && dispatcher.CheckAccess()));
+        }
+
+        if (dispatcher is not null && idle is not null)
+        {
+            dispatcher.Idle -= idle;
+        }
+
+        if (completionClaimed)
+        {
+            return;
+        }
+
+        if (scheduleDetachedCompletion && dispatcher is not null)
+        {
+            ScheduleAcceptedCompletionAfterDetach(dispatcher);
+            return;
+        }
+
+        if (finishAcceptedCompletion && dispatcher is not null)
+        {
+            AbandonAcceptedCompletion(dispatcher);
+            return;
+        }
+
+        SettleCompletion();
+    }
+
+    // Disposal has already completed structural cleanup, so it only needs to retire any queued
+    // scheduler state and settle the selected result.
     private void CancelScheduledCompletion()
     {
         Dispatcher? dispatcher;

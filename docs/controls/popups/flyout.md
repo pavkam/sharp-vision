@@ -51,6 +51,11 @@ same rule applies both inside and outside that plane: only the Flyout closes,
 and the older modal scope remains active. Moving or resizing the anchor closes
 the open Flyout, so a stale placement is never kept on screen.
 
+Sibling replacement remains cancellable through the retained Flyout's inherited
+`CloseRequested` event. A veto keeps that Flyout as the sole light-dismiss plane
+and rolls the initiating Flyout back before `Opened`, content visibility,
+autofocus, or light-dismiss observation commits.
+
 The inherited Popup lifecycle owns the registration itself. The Flyout supplies
 only primary-button dismissal, anchor inclusion, and its close callback.
 Registration begins after committed presentation, follows an anchor replacement,
@@ -97,7 +102,9 @@ flyout.ShowAt(triggerButton);
 - Opening one flyout closes a sibling under the same logical root, and moving or
   resizing the anchor closes the open flyout. A nested Flyout preserves its open
   ancestor. Sibling closure snapshots and revalidates retained identities across
-  callback-driven tree mutation.
+  callback-driven tree mutation; a veto leaves the retained sibling as the sole
+  open light-dismiss plane, preserves its focused content, and rolls the
+  initiating opening back without exposing its content.
 - The lifecycle events fire in their documented order, and detaching or
   disposing the flyout cleans it up, including its Popup-owned light-dismiss
   registration.

@@ -85,6 +85,56 @@ public sealed class BindingTests
         input.Text.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies SuggestionInput's natural binding initializes nullable model text as
+    /// empty and synchronizes both directions by default.</summary>
+    [Fact]
+    public void Bind_WhenSuggestionInputUsesDefaultMode_MapsNullAndSynchronizesTwoWay()
+    {
+        // Arrange
+        var model = new BindingModel();
+        var target = new SuggestionInput { Text = "stale" };
+
+        // Act
+        using var binding = target.Bind(model, source => source.Name);
+        target.Text = "target";
+
+        // Assert target-to-model propagation before the source changes again
+        binding.Mode.ShouldBe(BindingMode.TwoWay);
+        model.Name.ShouldBe("target");
+
+        // Act source-to-target propagation
+        model.Name = null;
+
+        // Assert
+        target.Text.ShouldBeEmpty();
+        model.Name.ShouldBeNull();
+    }
+
+    /// <summary>Verifies SuggestionInput's explicit binding overload preserves the selected
+    /// direction while still projecting nullable source text to empty.</summary>
+    [Fact]
+    public void Bind_WhenSuggestionInputUsesExplicitMode_MapsNullAndHonorsDirection()
+    {
+        // Arrange
+        var model = new BindingModel { Name = "model" };
+        var target = new SuggestionInput();
+
+        // Act
+        using var binding = target.Bind(model, source => source.Name, BindingMode.OneWay);
+        target.Text = "target";
+
+        // Assert target edits do not flow back in one-way mode
+        binding.Mode.ShouldBe(BindingMode.OneWay);
+        model.Name.ShouldBe("model");
+
+        // Act source-to-target propagation
+        model.Name = null;
+
+        // Assert
+        target.Text.ShouldBeEmpty();
+        model.Name.ShouldBeNull();
+    }
+
     /// <summary>Verifies CheckBox maps its nullable state two-way.</summary>
     [Fact]
     public void Bind_WhenCheckBoxChanges_SynchronizesNullableState()

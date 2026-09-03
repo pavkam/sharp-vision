@@ -77,6 +77,7 @@ The natural adapters each choose a concrete default:
 | `TextInput`                                                                     | `Text`             | `TwoWay`     |
 | `CheckBox`, `RadioButton`                                                       | `IsChecked`        | `TwoWay`     |
 | `Slider`, `ScrollBar`                                                           | `Value`            | `TwoWay`     |
+| `Pager`                                                                         | `PageIndex`        | `TwoWay`     |
 | `ProgressBar`                                                                   | `Value`            | `OneWay`     |
 | `ColorPicker`                                                                   | `Value`            | `TwoWay`     |
 | `ListView`, `ComboBox`, `TabControl`, and `Menu`                                | `SelectedIndex`    | `TwoWay`     |
@@ -96,6 +97,14 @@ control has called `EnableCommand`. The existing `ICommand.CanExecuteChanged`
 handling, click ordering, and execution stay owned by the control itself
 (`Button`, `HyperlinkButton`, or any other `EnableCommand`-enabled `InputBase`).
 
+Pager's natural adapter preserves its exact page-range invariant. Configure
+`PageCount` before binding a nonempty source index; `-1` is the natural value
+only while the range is empty. An initial or later source value outside the
+current range throws `ArgumentOutOfRangeException`, leaves Pager at its prior
+valid index, and is not clamped or written back to the model. The returned
+`Binding` remains target-owned and otherwise follows the ordinary two-way,
+dispatcher-coalescing, source-replacement, and disposal rules.
+
 The generic escape hatch names both properties and supplies typed conversion:
 
 ```csharp
@@ -112,7 +121,8 @@ label.BindProperty(
 Converted `TwoWay` and `OneWayToSource` bindings require a reverse converter. A
 binding declaration error - a read-only leaf, an unsupported expression, a
 duplicate target property - throws with its original identity. A runtime value
-rejection from a converter or a property setter does not: a forward converter or
+rejection from a converter or a property setter does not, except for Pager's
+range-preserving adapter described above: an ordinary forward converter or
 target write that throws applies the declared fallback value instead, and a
 reverse converter or model setter that throws drops the update, leaving the
 model untouched.

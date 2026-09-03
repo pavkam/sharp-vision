@@ -31,7 +31,7 @@ validated when assigned. Differently written limits cannot be compared until
 layout: if they resolve to minimum greater than maximum, the minimum wins
 deterministically, followed by the final slot containment clamp. A parent that
 pre-resolves a child's axis carries the original containing extent through
-arrange, so Dock, Stack, Overlay, Grid, and popup placement never apply a
+arrange, so Dock, Stack, Overlay, Grid, Wrap, and popup placement never apply a
 percentage a second time to the already-clipped child slot.
 
 ## Primitive API
@@ -191,11 +191,16 @@ so the final combined extent is exact.
 ## Panels
 
 Every concrete [`Container`](../controls/container.md#overview) defines both
-child layout passes. `Stack` uses the common track allocator along its
-sequential axis and the base box model across it. Reversing the order affects
-geometry, rendering, and default focus traversal together. Setting `Border` on
-any panel reserves the enabled edges before the panel-specific arrangement runs,
-so no wrapper control is needed for layout reservation.
+child layout passes. `Wrap` packs direct children in source order into rows or
+columns, breaking only when the next margin-inclusive child cannot fit in its
+finite primary lane. Its percentage and proportional children measure against
+that full lane; a primary scroll axis is unbounded and therefore forms one
+scrollable line or column rather than wrapping at the viewport. `Stack` uses the
+common track allocator along its sequential axis and the base box model across
+it. Reversing the order affects geometry, rendering, and default focus traversal
+together. Setting `Border` on any panel reserves the enabled edges before the
+panel-specific arrangement runs, so no wrapper control is needed for layout
+reservation.
 
 `Grid` supports fixed, percentage, automatic, and proportional tracks, plus
 spacing, spans, and an implicit automatic track when no definitions are given.
@@ -206,6 +211,17 @@ rendering and hit testing. Use Overlay positioning for diagrams, badges, and
 other deliberate placement — not for general responsive flow. Any panel can add
 validated border edges through the complete `Border` composite without changing
 its child ownership model.
+
+[`SplitPane`](../controls/layout/split-pane.md#overview) owns at most two panes
+and reserves one divider cell between them. Its fixed or percentage leading
+request and both panes' limits resolve against the divider-excluded content-axis
+pool; the same allocation maps to left/right or top/bottom geometry. The divider
+supplies focusable keyboard and captured-pointer resizing without replacing
+descendant input routing. When `AutoScroll` arms the split axis, each measure
+pass resolves percentage requests against the candidate visible viewport minus
+the divider cell while the trailing proportional pane retains its intrinsic
+extent. Automatic scrollbar feedback repeats that resolution against the
+narrowed candidate viewport before committing the final extent and rail cells.
 
 `SharpVision.Terminal.Rendering.TerminalCanvas` is a frame-owned drawing API,
 not a layout panel or a `Container`. Custom controls draw through it in
@@ -253,18 +269,18 @@ into the auto-sized case.
 per-axis `Length.Auto` request — both are treated identically for
 growth-then-scroll purposes.
 
-`AutoSize` measures content unbounded first, to discover its natural size, so a
-wrap-capable child reports one natural line with nothing to wrap against. When
-`MaxWidth` or the incoming slot then clamps the reported width below that
-natural size, `Container` re-measures content once more at the clamped width
-before committing anything content depends on downstream, exactly mirroring
-`Grid`'s own row-remeasure after resolving column widths: height depends on
-width through wrapping in this framework, never the reverse, so only a clamped
-width triggers the second pass. The re-measure height constraint stays unbounded
-regardless of `MaxHeight`, since content taller than `MaxHeight` still exists
-and simply scrolls when `AutoScroll` covers that axis — only the final reported
-border-box height is capped, not the content a `MaxHeight`-only clamp measures
-against.
+`AutoSize` measures content unbounded first to discover its natural size. A
+finite clamp then remeasures both axes: a narrower width can reflow height, and
+a shorter height can make a vertical Wrap create columns. When `AutoScroll`
+selects an axis, that correction keeps the selected axis unbounded for extent
+discovery while carrying the finite candidate viewport as the percentage base.
+The scrollbar resolver then remeasures each newly reserved candidate viewport,
+at most once per rail, before committing the final extent and physical rail
+cells. A rail grows its own physical axis when limits permit; if a maximum
+prevents growth, it instead narrows the viewport and reflows content against
+that smaller base. The narrowed candidate is probed after its resolved limits
+apply, so it can induce the opposite automatic rail; that opposite rail still
+grows its own unconstrained physical axis when available.
 
 An `AutoScroll` viewport and its framework scrollbar rails are resolved inside
 the border-and-padding-deflated content box. Bars never consume border or

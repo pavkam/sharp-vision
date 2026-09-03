@@ -3,7 +3,7 @@
 ## Load this reference when
 
 Changing parentage, owned controls, Container children, ContentControl,
-CompositeControl, ItemsControl, private presentation hosts, removal, or
+CompositeControlBase, ItemsControl, private presentation hosts, removal, or
 disposal.
 
 ## Normative documentation

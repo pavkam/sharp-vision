@@ -92,6 +92,62 @@ check or the escape-sequence grammar `HlCStringChar` and `HlCChar` share - was
 verified line-for-line against the upstream KSyntaxHighlighting C++ source, not
 inferred from the XML format documentation alone.
 
+At each offset, the tokenizer tries the current top context's rules in order,
+falls through to a declared fallthrough context when none match, and resolves a
+lookahead rule's context switch without consuming a character. A budget on
+same-offset transitions keeps a malformed or interacting fallthrough/lookahead
+pair from stalling a line forever:
+
+```mermaid
+flowchart TD
+    A[At current offset in the line] --> B{Offset unchanged since last iteration?}
+    B -->|Yes| C{Stall count exceeds 1,024?}
+    C -->|Yes| D1[Flush the pending run, if any, in the style active before the stall]
+    D1 --> D2[Emit the rest of the line as one token in the current top context's own style; stop this line]
+    C -->|No| E[Increment stall count]
+    B -->|No| F[Reset stall count to 0]
+    E --> G[Try each rule in the top context's rule list, in order]
+    F --> G
+    G --> H{A rule matches at this offset?}
+    H -->|No| I{Context declares a Fallthrough target other than #stay?}
+    I -->|Yes| J[Apply the fallthrough context switch; retry the same offset]
+    J --> A
+    I -->|No| K[Advance one character in the context's own default style]
+    K --> A
+    H -->|Yes| L{Rule is a lookahead rule?}
+    L -->|Yes| M[Apply the rule's context switch only; do not advance the offset]
+    M --> A
+    L -->|No| N[Apply the rule's context switch; advance past the match]
+    N --> A
+```
+
+A resolved context switch (`#stay`, `#pop`, `#pop!Name`, or a multi-context
+`#pop!A!B`) is then applied against the context stack, which never pops its root
+frame:
+
+```mermaid
+flowchart TD
+    A[Resolved context-switch target] --> B{Target is #stay?}
+    B -->|Yes| C[No-op; keep the current top context]
+    B -->|No| D[Pop PopCount frames, one at a time]
+    D --> E{Only the root frame would remain?}
+    E -->|Yes| F[Stop popping; the root frame is never removed]
+    E -->|No| D
+    F --> G{Target pushes one or more contexts? e.g. #pop!A!B}
+    G -->|Yes| H[Push each context in order, carrying the match's captures and its own grammar]
+    G -->|No| I[No pushes]
+    H --> J[Signal the caller: keep chasing stay-less switches on the new top context]
+    I --> K{Did the pop stay within bounds, without bottoming out?}
+    K -->|Yes| J
+    K -->|No| L[Signal the caller: stop - the pop bottomed out]
+```
+
+Applying a switch only returns this chase-or-stop signal; it does not chase
+further switches itself. Only the empty-line and end-of-line context loops
+actually consume the signal to keep chasing. The main per-offset loop above
+applies one switch and returns to evaluating the new top context's rules from
+scratch, rather than chasing a further switch chain on its own.
+
 Case-insensitive keywords, `StringDetect`, and `WordDetect` use Qt-compatible
 Unicode simple case folding rather than .NET ordinal-ignore-case semantics. The
 same allocation-free scalar folding primitive therefore handles ordinary case
@@ -216,3 +272,31 @@ values rather than a new syntax-specific one: adding global theme roles just for
 source-code tokens would ripple into every built-in theme's own required color
 set well beyond this optional package's boundary. A theme, or a control
 instance's own local `Style`, can still repaint any individual role directly.
+
+## Expected behavior
+
+| Scope                 | Observable evidence                                                                                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | `SyntaxDefinitionReader`, `SyntaxGrammar.Compile`, and `SyntaxTokenizer.Tokenize` validate input and produce deterministic, immutable results for the same grammar and text. |
+| Integrated behavior   | `CodeView` re-tokenizes a complete document on `Code`/`Language` change and applies `SyntaxDefaultStyle` roles through the active `CodeViewStyle`.                           |
+| Complete runtime path | The embedded catalog's audited licensing set and missing-definition inventory stay frozen and observable through `SyntaxDefinitionInfo` and `SyntaxGrammar.Diagnostics`.     |
+
+- Every non-empty tokenized line is completely tiled by tokens with no gap or
+  overlap, even when a malformed or pathological rule forces the tokenizer to
+  fall back after 1,024 context transitions.
+- A missing `kateversion`, an unsupported format version, or a structural XML
+  violation (unknown content, duplicate singleton sections, invalid ordering)
+  fails before a directory catalog publishes the definition.
+- A cross-definition reference that cannot be resolved degrades to contributing
+  nothing for that reference, recorded in `SyntaxGrammar.Diagnostics` rather
+  than throwing or logging silently.
+- Concurrent first lookups of the same grammar share one parse and compilation;
+  a failed lazy load is removed so a corrected resource can be retried.
+- Parsed definitions, compiled grammars, and highlight results expose read-only
+  collection snapshots that cannot be cast back to mutable internal state.
+- The embedded catalog's 160 definitions and their 34-entry partial-dependency
+  set stay a frozen, explicitly tracked inventory; growing either requires an
+  explicit update.
+- `RegExpr` matching has bounded backtracking, nesting, and heap budgets per
+  rule per line; exhausting a budget suppresses only that rule for the rest of
+  the line.

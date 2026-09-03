@@ -11,7 +11,8 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
     private readonly CallbackTransitionStream _stateTransitions = new();
     private readonly StyleSlot<CheckBoxStyle> _style;
 
-    /// <summary>Initializes an unchecked two-state CheckBox.</summary>
+    /// <summary>Initializes an unchecked two-state CheckBox that centers its desired mark and caption
+    /// vertically by default.</summary>
     public CheckBox()
     {
         EnablePressActivation();
@@ -19,6 +20,7 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
         EnableCommand();
         _style = InitializeStyle(CheckBoxStyle.Definition);
         HorizontalAlignment = HorizontalAlignment.Left;
+        VerticalAlignment = VerticalAlignment.Center;
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>

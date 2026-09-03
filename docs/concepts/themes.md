@@ -47,10 +47,10 @@ consistently by programmatic, parsed, and catalog-entry metadata.
 
 ## Global values
 
-`colors` requires these 38 properties:
+`colors` requires these 39 properties:
 
 ```text
-window, windowSurface, windowText, surface, surfaceText, control, controlText,
+window, windowSurface, windowText, surface, surfaceText, bar, control, controlText,
 controlBorder, controlShadow, reliefHighlight, reliefShade, activeControl, activeText, activeBorder,
 focusedControl, focusedText, focusedBorder, pressedControl, pressedText,
 pressedBorder, selectedControl, selectedText, disabledControl,
@@ -63,6 +63,24 @@ literal is legal only inside `palette` itself, never here. Palette entries are
 RGB literals and cannot reference each other. Loading a theme resolves every
 value to a concrete `Color` instance, and `Theme.ResolveColor(SemanticColor)` is
 the typed public lookup.
+
+`bar` is the normal raised-navigation background for `Menu`, `MenuItem`,
+`MenuSeparator`, `CommandBar`, `CommandBarItem`, `CommandBarSeparator`,
+`StatusBar`, and `StatusBarItem`. Each bundled theme maps it deliberately to a
+palette tier that retains at least 4.5:1 contrast with `controlText`,
+`activeText`, and `hotkey` at truecolor and xterm-256 depth, and stays distinct
+from ordinary planes and the active, selected, pressed, and disabled fills used
+around it. Physical hover omits only its `Face.Background`, while disablement
+restores the Bar background; every other authored state member still applies.
+Focus, selection, checked, and press may replace the Bar background while
+active. A complete local style bypasses these theme overlays and remains
+authoritative in every state. Each bundled `disabledText` remains different from
+`controlText` and retains at least 3:1 contrast with both Bar and
+`disabledControl` at truecolor and xterm-256 depth, keeping unavailable entries
+subdued but legible. Every bundled `selectedControl` pairing likewise retains at
+least 4.5:1 contrast with `selectedText` and `hotkey` at truecolor and xterm-256
+depth so a selected bar row does not make either its caption or mnemonic
+disappear.
 
 `reliefHighlight` and `reliefShade` model one light source above and to the left
 of the surface: `BorderRelief.Raised` paints the top and left edges with
@@ -351,10 +369,17 @@ type's own key would compute to.
 
 Register a library style type's fallback definition with
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` -
-the one factory every leaf control style calls, and the only one left now that a
-leaf resolves no section of its own. `Part<TStyle>` remains for a secondary
-style forwarded to a control's retained pieces rather than owning that control's
-own appearance. Both are public and require no internal access; see
+the primary factory most leaf control styles call, and the only public one left
+now that a leaf resolves no section of its own. A handful of leaf styles whose
+completion must preserve theme-owned per-state defaults instead - `Button`,
+`HyperlinkButton`, and the Bar-surface item and separator styles (`CommandBar`,
+`CommandBarItem`, `CommandBarSeparator`, `MenuItem`, `MenuSeparator`,
+`StatusBarItem`) - use the internal
+`ControlWithThemeOwnedStateDefaults`/`BarControlWithThemeOwnedStateDefaults`
+variants; both share `Control`'s one-hop fallback shape. `Part<TStyle>` remains
+for a secondary style forwarded to a control's retained pieces rather than
+owning that control's own appearance. `Control` and `Part` are public and
+require no internal access; see
 [theming-new-controls.md](theming-new-controls.md) for a worked example.
 
 ## Example
@@ -373,6 +398,7 @@ own appearance. Both are public and require no internal access; see
     "ink": "#e7e9ee",
     "surface": "#181b24",
     "panel": "#202431",
+    "barSurface": "#242938",
     "outline": "#596170",
     "shadow": "#050608",
     "highlight": "#283044",
@@ -395,6 +421,7 @@ own appearance. Both are public and require no internal access; see
     "windowText": "ink",
     "surface": "surface",
     "surfaceText": "ink",
+    "bar": "barSurface",
     "control": "panel",
     "controlText": "ink",
     "controlBorder": "outline",

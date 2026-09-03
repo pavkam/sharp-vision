@@ -139,6 +139,466 @@ public sealed class FloatingSurfaceBaseTests
         probe.SurfaceBounds.ShouldBe(default);
     }
 
+    /// <summary>Verifies shared fade durations validate timer bounds and remain immutable for the
+    /// complete presented lifetime.</summary>
+    [Fact]
+    public async Task FadeDurations_WhenInvalidOrPresented_RejectBeforeMutationAsync()
+    {
+        using var probe = new FloatingSurfaceProbe
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(40),
+            FadeOutDuration = TimeSpan.FromMilliseconds(60)
+        };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => probe.FadeInDuration = TimeSpan.FromTicks(-1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            probe.FadeOutDuration = TimeSpan.FromMilliseconds((double) int.MaxValue + 1));
+        probe.FadeInDuration.ShouldBe(TimeSpan.FromMilliseconds(40));
+        probe.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(60));
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            new ManualTimeProvider(),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                _ = Should.Throw<InvalidOperationException>(() => probe.FadeInDuration = TimeSpan.Zero);
+                _ = Should.Throw<InvalidOperationException>(() => probe.FadeOutDuration = TimeSpan.Zero);
+            },
+            "reject presented fade mutation");
+
+        probe.FadeInDuration.ShouldBe(TimeSpan.FromMilliseconds(40));
+        probe.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(60));
+    }
+
+    /// <summary>Verifies positive entrance commits logical presentation at zero progress, raises
+    /// Opened synchronously, and advances to stable visibility on the dispatcher clock.</summary>
+    [Fact]
+    public async Task Open_WhenFadeInIsPositive_AdvancesFromZeroAfterOpenedAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe { FadeInDuration = TimeSpan.FromMilliseconds(100) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var opened = 0;
+        probe.Opened += (_, _) =>
+        {
+            opened++;
+            probe.FadeProgress.ShouldBe(0);
+            probe.IsPresented.ShouldBeTrue();
+        };
+
+        await surface.UpdateAsync(
+            () => probe.PublishBounds(new Rect(1, 2, 3, 4)),
+            "open fading surface");
+
+        opened.ShouldBe(1);
+        probe.FadeProgress.ShouldBe(0);
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance entrance halfway");
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        probe.IsPresented.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "complete entrance");
+        probe.FadeProgress.ShouldBe(1);
+        probe.IsPresented.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies accepted positive exit preserves presentation, bounds, modality, and
+    /// family availability until progress reaches zero, then commits cleanup exactly once.</summary>
+    [Fact]
+    public async Task Close_WhenFadeOutIsPositive_DefersStructuralCleanupUntilInvisibleAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var order = new List<string>();
+        using var child = new ProbeControl();
+        using var probe = new FloatingSurfaceProbe
+        {
+            Content = child,
+            FadeOutDuration = TimeSpan.FromMilliseconds(100)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        probe.Closing += (_, _) => order.Add("closing");
+        probe.Closed += (_, _) => order.Add("closed");
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                scope = probe.EnterModalForTest(OutsideInteraction.Ignore);
+                probe.CloseForTest(
+                    () => order.Add("commit-closing"),
+                    () =>
+                    {
+                        order.Add("commit-unavailable");
+                        child.Visibility = Visibility.Collapsed;
+                    }).ShouldBeTrue();
+                probe.CloseForTest().ShouldBeFalse();
+            },
+            "begin deferred surface close");
+
+        order.ShouldBe(["commit-closing", "closing"]);
+        probe.IsPresented.ShouldBeTrue();
+        probe.SurfaceBounds.ShouldBe(new Rect(1, 2, 3, 4));
+        probe.FadeProgress.ShouldBe(1);
+        child.Visibility.ShouldBe(Visibility.Visible);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance exit halfway");
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        probe.IsPresented.ShouldBeTrue();
+        scope.IsActive.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "complete exit");
+        order.ShouldBe(["commit-closing", "closing", "commit-unavailable", "closed"]);
+        probe.FadeProgress.ShouldBe(0);
+        probe.IsPresented.ShouldBeFalse();
+        probe.SurfaceBounds.ShouldBe(default);
+        child.Visibility.ShouldBe(Visibility.Collapsed);
+        scope.IsActive.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies closure during entrance reverses from the currently committed progress
+    /// instead of jumping to full opacity or restarting from zero.</summary>
+    [Fact]
+    public async Task Close_WhenEntranceIsActive_FadesFromCurrentProgressAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(200),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => probe.PublishBounds(new Rect(1, 2, 3, 4)),
+            "open reversing surface");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "advance entrance halfway");
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+
+        await surface.UpdateAsync(
+            () => probe.CloseForTest().ShouldBeTrue(),
+            "reverse entrance into exit");
+
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        probe.IsPresented.ShouldBeTrue();
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance reversed exit halfway");
+        probe.FadeProgress.ShouldBe(0.25, tolerance: 0.001);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "complete reversed exit");
+        probe.FadeProgress.ShouldBe(0);
+        probe.IsPresented.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies failures raised by deferred finalization use dispatcher reporting after
+    /// every structural and lifecycle stage has still completed.</summary>
+    [Fact]
+    public async Task Close_WhenDeferredFinalizationFails_ReportsAsynchronouslyAfterCleanupAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe { FadeOutDuration = TimeSpan.FromMilliseconds(100) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var expected = new InvalidOperationException("Deferred cleanup failed.");
+        var observed = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = 0;
+        surface.Application.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = observed.TrySetResult(eventArgs.Exception);
+        };
+        probe.Closed += (_, _) => closed++;
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                probe.CloseForTest(
+                    commitUnavailableState: () => throw expected).ShouldBeTrue();
+            },
+            "begin failing deferred close");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish failing deferred close");
+
+        (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(expected);
+        probe.IsPresented.ShouldBeFalse();
+        probe.SurfaceBounds.ShouldBe(default);
+        probe.FadeProgress.ShouldBe(0);
+        closed.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Closed runs after transition guards release so its handler may begin a
+    /// distinct presentation without a stale timer clearing the new state.</summary>
+    [Fact]
+    public async Task Close_WhenClosedHandlerReopens_PreservesNewPresentationAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe { FadeOutDuration = TimeSpan.FromMilliseconds(100) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var reopenedBounds = new Rect(7, 1, 4, 3);
+        probe.Closed += (_, _) => probe.PublishBounds(reopenedBounds);
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                probe.CloseForTest().ShouldBeTrue();
+            },
+            "begin close that reopens from Closed");
+
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "finish close and reopen");
+        await surface.AdvanceAsync(TimeSpan.FromSeconds(1), "prove stale ticks do not clear reopen");
+
+        probe.IsPresented.ShouldBeTrue();
+        probe.SurfaceBounds.ShouldBe(reopenedBounds);
+        probe.FadeProgress.ShouldBe(1);
+    }
+
+    /// <summary>Verifies an already-captured tick carrying an old timer, clock plan, and
+    /// presentation version cannot update a later presentation of the same surface instance.</summary>
+    [Fact]
+    public async Task FadeTick_WhenCapturedPresentationIsReplaced_CannotAffectNewPresentationAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe { FadeInDuration = TimeSpan.FromMilliseconds(100) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        Action? staleTick = null;
+        var previousVersion = 0L;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 1, 4, 2));
+                previousVersion = probe.PresentationVersion;
+                staleTick = probe.CaptureFadeTickForInvariant();
+                var host = probe.Parent.ShouldBeOfType<Overlay>();
+                host.Children.Remove(probe).ShouldBeTrue();
+                probe.FadeInDuration = TimeSpan.FromMilliseconds(200);
+                host.Children.Add(probe);
+                probe.PublishBounds(new Rect(8, 1, 5, 2));
+            },
+            "replace one fading presentation before its captured tick runs");
+
+        probe.PresentationVersion.ShouldBeGreaterThan(previousVersion);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(100), "advance only the replacement fade halfway");
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+
+        await surface.UpdateAsync(staleTick!, "deliver stale tick from replaced presentation");
+
+        probe.FadeProgress.ShouldBe(0.5, tolerance: 0.001);
+        probe.SurfaceBounds.ShouldBe(new Rect(8, 1, 5, 2));
+        probe.PresentationVersion.ShouldBeGreaterThan(previousVersion);
+    }
+
+    /// <summary>Verifies direct detachment aborts transition resources and performs immediate
+    /// structural cleanup without inventing lifecycle notifications.</summary>
+    [Fact]
+    public async Task Detach_WhenFadeIsActive_CancelsTransitionWithoutClosedAsync()
+    {
+        var clock = new ManualTimeProvider();
+        using var probe = new FloatingSurfaceProbe
+        {
+            FadeInDuration = TimeSpan.FromMilliseconds(100),
+            FadeOutDuration = TimeSpan.FromMilliseconds(100)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var closed = 0;
+        probe.Closed += (_, _) => closed++;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(new Rect(1, 2, 3, 4));
+                ((Overlay) probe.Parent!).Children.Remove(probe).ShouldBeTrue();
+            },
+            "detach entering surface");
+
+        probe.FadeProgress.ShouldBe(0);
+        probe.IsPresented.ShouldBeFalse();
+        closed.ShouldBe(0);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        probe.FadeProgress.ShouldBe(0);
+        closed.ShouldBe(0);
+    }
+
+    /// <summary>Verifies disposal during either fade direction retires the owned timer and every
+    /// deferred close plan before a later clock advance can publish lifecycle work.</summary>
+    [Fact]
+    public async Task Dispose_WhenFadeIsEnteringOrExiting_ClearsTransitionAndDeferredPlanAsync()
+    {
+        var clock = new ManualTimeProvider();
+        var entering = new FloatingSurfaceProbe { FadeInDuration = TimeSpan.FromSeconds(10) };
+        var exiting = new FloatingSurfaceProbe { FadeOutDuration = TimeSpan.FromSeconds(10) };
+        var root = new Overlay { Children = { entering, exiting } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            clock,
+            TestContext.Current.CancellationToken);
+        var enteringClosed = 0;
+        var exitingClosed = 0;
+        entering.Closed += (_, _) => enteringClosed++;
+        exiting.Closed += (_, _) => exitingClosed++;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                entering.PublishBounds(new Rect(1, 1, 4, 2));
+                exiting.PublishBounds(new Rect(6, 1, 4, 2));
+                exiting.CloseForTest().ShouldBeTrue();
+            },
+            "start entering and exiting fades before disposal");
+
+        entering.HasActiveFadeTransition.ShouldBeTrue();
+        entering.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        exiting.HasActiveFadeTransition.ShouldBeTrue();
+        exiting.HasDeferredSurfaceClosePlan.ShouldBeTrue();
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                entering.Dispose();
+                exiting.Dispose();
+            },
+            "dispose both active fade directions");
+
+        entering.HasActiveFadeTransition.ShouldBeFalse();
+        entering.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        exiting.HasActiveFadeTransition.ShouldBeFalse();
+        exiting.HasDeferredSurfaceClosePlan.ShouldBeFalse();
+        entering.IsDisposed.ShouldBeTrue();
+        exiting.IsDisposed.ShouldBeTrue();
+
+        await surface.AdvanceAsync(TimeSpan.FromSeconds(20), "prove disposed fade work cannot resume");
+
+        enteringClosed.ShouldBe(0);
+        exitingClosed.ShouldBe(0);
+        entering.FadeProgress.ShouldBe(0);
+        exiting.FadeProgress.ShouldBe(0);
+    }
+
+    /// <summary>Verifies accepted exit immediately clears pointer state, consumes direct and
+    /// application keyboard routes, retains existing focus, and blocks pointer click-through.</summary>
+    [Fact]
+    public async Task Input_WhenFadeOutIsActive_SuppressesTheCompleteSurfaceSubtreeAsync()
+    {
+        var background = new Button { Text = "Background" };
+        var action = new Button { Text = "Action" };
+        using var probe = new FloatingSurfaceProbe
+        {
+            Content = action,
+            FadeOutDuration = TimeSpan.FromSeconds(10)
+        };
+        var root = new Overlay { Children = { background, probe } };
+        var actionClicks = 0;
+        var backgroundClicks = 0;
+        var routedKeys = 0;
+        var routedPastes = 0;
+        var routedText = 0;
+        action.Click += (_, _) => actionClicks++;
+        background.Click += (_, _) => backgroundClicks++;
+        _ = action.AddHandler(Events.Key, (_, _) => routedKeys++, handledEventsToo: true);
+        _ = action.AddHandler(Events.Paste, (_, _) => routedPastes++, handledEventsToo: true);
+        _ = action.AddHandler(Events.Text, (_, _) => routedText++, handledEventsToo: true);
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 6),
+            new ManualTimeProvider(),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.PublishBounds(probe.Bounds);
+                action.Focus().ShouldBeTrue();
+            },
+            "open and focus interactive floating surface");
+        await surface.Pointer.MoveToAsync(action);
+        await surface.Pointer.PressAsync();
+        surface.ShouldHaveCapture(action);
+        action.IsPressed.ShouldBeTrue();
+        RouteResult direct = default;
+        RouteResult directPaste = default;
+        RouteResult directText = default;
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                probe.CloseForTest().ShouldBeTrue();
+                direct = Router.Route(
+                    action,
+                    Events.Key,
+                    new KeyEventArgs(new Stroke(
+                        Code.Enter,
+                        character: null,
+                        nativeCode: 0,
+                        Modifiers.None,
+                        KeyAction.Press)));
+                directText = Router.Route(
+                    action,
+                    Events.Text,
+                    new TextEventArgs(new TerminalText(new Rune('x'))));
+                directPaste = Router.Route(
+                    action,
+                    Events.Paste,
+                    new PasteEventArgs(new Paste("y"u8)));
+            },
+            "begin exit and attempt direct route");
+
+        direct.IsHandled.ShouldBeTrue();
+        directText.IsHandled.ShouldBeTrue();
+        directPaste.IsHandled.ShouldBeTrue();
+        routedKeys.ShouldBe(0);
+        routedText.ShouldBe(0);
+        routedPastes.ShouldBe(0);
+        surface.ShouldHaveCapture(null);
+        surface.Application.Capture.Hovered.ShouldBeNull();
+        action.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveFocus(action);
+        var focusResolutionCount = surface.Application.Capture.FocusResolutionCount;
+
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Keyboard.TypeAsync("x");
+        await surface.Keyboard.PasteAsync("y");
+        await surface.Pointer.ReleaseAsync();
+        await surface.Pointer.ClickAsync(action);
+
+        actionClicks.ShouldBe(0);
+        backgroundClicks.ShouldBe(0);
+        routedKeys.ShouldBe(0);
+        routedText.ShouldBe(0);
+        routedPastes.ShouldBe(0);
+        surface.ShouldHaveFocus(action);
+        surface.Application.Capture.Hovered.ShouldBeNull();
+        surface.Application.Capture.FocusResolutionCount.ShouldBe(focusResolutionCount);
+    }
+
     /// <summary>Verifies closure publishes family state, lifecycle, modality, and availability in order.</summary>
     [Fact]
     public async Task Close_WhenSurfaceIsPresented_PublishesOrderedLifecycleAndClearsBoundsAsync()

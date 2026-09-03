@@ -55,13 +55,7 @@ internal sealed class ListViewPane: CompositeControlBase
             _ = multiple.SetSelected(2, true);
         };
         var selectAllMultiple = new Button { Text = "Select &all" };
-        selectAllMultiple.Click += (_, _) =>
-        {
-            for (var index = 0; index < multiple.Items.Count; index++)
-            {
-                _ = multiple.SetSelected(index, true);
-            }
-        };
+        selectAllMultiple.Click += (_, _) => multiple.SelectAll();
         var clearMultiple = new Button { Text = "&Clear" };
         clearMultiple.Click += (_, _) =>
         {

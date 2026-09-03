@@ -6,6 +6,167 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves ColorPicker behavior through retained mounted composition and terminal input.</summary>
 public sealed class ColorPickerSurfaceTests
 {
+    /// <summary>Verifies the sixth retained focus stop edits the selected color immediately through
+    /// ordinary mounted TextInput selection and text input, without waiting for Enter.</summary>
+    [Fact]
+    public async Task Input_WhenRgbTextIsTyped_CommitsColorWithoutSubmitAsync()
+    {
+        // Arrange
+        var picker = new ColorPicker
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(
+            picker,
+            new Size(40, 18),
+            TestContext.Current.CancellationToken);
+
+        // Act: plane, hue, red, green, blue, then the retained value editor.
+        for (var index = 0; index < 6; index++)
+        {
+            await surface.Keyboard.PressAsync(Code.Tab);
+        }
+
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Keyboard.PressAsync(Code.End, Modifiers.Shift);
+        await surface.Keyboard.TypeAsync("rgb(12, 34, 56)");
+
+        // Assert
+        surface.ShouldHaveFocus(picker.ValueTextInput);
+        picker.Value.ShouldBe(Color.Rgb(12, 34, 56));
+        picker.ValueTextInput.Text.ShouldBe("#0C2238");
+        picker.RedSlider.Value.ShouldBe(12);
+        picker.GreenSlider.Value.ShouldBe(34);
+        picker.BlueSlider.Value.ShouldBe(56);
+        changes.ShouldBe(1);
+    }
+
+    /// <summary>Verifies invalid mounted text keeps focus and raw input while painting the semantic
+    /// error face, including after caller style and application Theme changes.</summary>
+    [Fact]
+    public async Task Render_WhenRgbTextIsInvalid_KeepsFocusedTextAndRefreshesErrorContrastAsync()
+    {
+        // Arrange
+        var picker = new ColorPicker
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            picker,
+            new Size(40, 18),
+            TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 6; index++)
+        {
+            await surface.Keyboard.PressAsync(Code.Tab);
+        }
+
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Keyboard.PressAsync(Code.End, Modifiers.Shift);
+
+        // Act
+        await surface.Keyboard.TypeAsync("rgb(1, 2,");
+        await surface.UpdateAsync(
+            () => picker.Style = new ColorPickerStyle(
+                ControlStyle.DefaultFace,
+                ControlStyle.NoBorder,
+                ControlStyle.NoShadow,
+                null,
+                ColorPickerStyle.DefaultStatusFace with
+                {
+                    Background = Color.Rgb(1, 2, 3),
+                    Attributes = TerminalAttributes.Bold
+                },
+                null),
+            "change ColorPicker status style while value text is invalid");
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("default-light"),
+            "change Theme while ColorPicker value text is invalid");
+
+        // Assert
+        surface.ShouldHaveFocus(picker.ValueTextInput);
+        picker.ValueTextInput.Text.ShouldBe("rgb(1, 2,");
+        picker.Value.ShouldBe(Color.Rgb(255, 0, 0));
+        picker.ActualStyle.StatusFace.ShouldNotBeNull().Background.ShouldBe((ControlColor) SemanticColor.Error);
+        picker.ValueTextInput.ActualStyle.Face.Background.ShouldBe((ControlColor) SemanticColor.Error);
+        picker.ValueTextInput.ActualStyle.Face.Attributes.ShouldBe((ControlDecoration) TerminalAttributes.Bold);
+        picker.ValueTextInput.ActualStyle.Face.Foreground.ShouldBe((ControlColor) ThemeCatalog.White.Error.Contrast());
+
+        var cell = surface.Cell(new Point(picker.ValueTextInput.Bounds.X, picker.ValueTextInput.Bounds.Y));
+        cell.Text.ShouldBe("r");
+        cell.Style.Background.ShouldBe(ThemeCatalog.White.Error);
+        cell.Style.Foreground.ShouldBe(ThemeCatalog.White.Error.Contrast());
+    }
+
+    /// <summary>Verifies direct value changes replace invalid text while focused and canonical text
+    /// while unfocused without taking focus from another retained part.</summary>
+    [Fact]
+    public async Task Value_WhenChangedWhileEditorFocusedOrUnfocused_CanonicalizesWithoutMovingFocusAsync()
+    {
+        // Arrange
+        var picker = new ColorPicker
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            picker,
+            new Size(40, 18),
+            TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 6; index++)
+        {
+            await surface.Keyboard.PressAsync(Code.Tab);
+        }
+
+        await surface.UpdateAsync(
+            () => picker.ValueTextInput.Text = "invalid",
+            "enter invalid focused ColorPicker text");
+
+        // Act and assert while focused.
+        await surface.UpdateAsync(
+            () => picker.Value = Color.Rgb(1, 2, 3),
+            "change ColorPicker value while its editor is focused");
+        surface.ShouldHaveFocus(picker.ValueTextInput);
+        picker.ValueTextInput.Text.ShouldBe("#010203");
+
+        // Act and assert while unfocused.
+        await surface.Keyboard.PressAsync(Code.Tab);
+        picker.ValueTextInput.IsFocused.ShouldBeFalse();
+        var focus = surface.Application.Focus.Focused;
+        await surface.UpdateAsync(
+            () => picker.Value = Color.Default,
+            "change ColorPicker value while its editor is unfocused");
+        surface.ShouldHaveFocus(focus);
+        picker.ValueTextInput.Text.ShouldBe("DEFAULT");
+    }
+
+    /// <summary>Verifies the wider retained value row saturates inside narrow picker bounds rather
+    /// than overflowing its Overlay or exposing partial editor chrome.</summary>
+    [Fact]
+    public async Task Layout_WhenPickerIsNarrow_ContainsValueEditorAndPreviewAsync()
+    {
+        var picker = new ColorPicker
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            picker,
+            new Size(12, 9),
+            TestContext.Current.CancellationToken);
+
+        picker.ValueTextInput.Bounds.X.ShouldBeGreaterThanOrEqualTo(picker.Bounds.X);
+        picker.ValueTextInput.Bounds.Right.ShouldBeLessThanOrEqualTo(picker.Bounds.Right);
+        picker.ValueTextInput.Bounds.Y.ShouldBeGreaterThanOrEqualTo(picker.Bounds.Y);
+        picker.ValueTextInput.Bounds.Bottom.ShouldBeLessThanOrEqualTo(picker.Bounds.Bottom);
+        picker.Preview.Bounds.ShouldBe(picker.ValueTextInput.Bounds);
+    }
+
     /// <summary>Verifies the hexadecimal readout remains inside and legible against light and dark previews.</summary>
     [Fact]
     public async Task Surface_WhenSelectedColorChanges_DrawsContrastingHexInsidePreviewAsync()
@@ -259,18 +420,22 @@ public sealed class ColorPickerSurfaceTests
         Color background,
         Color foreground)
     {
-        _ = background;
-        _ = foreground;
-        var origin = new Point(picker.Preview.Bounds.X, picker.Preview.Bounds.Y);
-        picker.Preview.Bounds.Width.ShouldBeGreaterThan(0);
-        picker.Preview.Bounds.Height.ShouldBeGreaterThan(0);
-        var textX = origin.X + ((picker.Preview.Bounds.Width - text.Length) / 2);
+        var bounds = picker.ValueTextInput.Bounds;
+        var projectedBackground = TerminalPalette.Project(background, picker.EffectiveColorDepth);
+        var projectedForeground = TerminalPalette.Project(foreground, picker.EffectiveColorDepth);
+        bounds.Width.ShouldBeGreaterThan(0);
+        bounds.Height.ShouldBe(1);
 
-        for (var index = 0; index < text.Length; index++)
+        for (var index = 0; index < bounds.Width; index++)
         {
-            var cell = surface.Cell(new Point(textX + index, origin.Y));
-            cell.Text.ShouldBe(text[index].ToString());
-            cell.Style.Background.IsRgb.ShouldBeTrue();
+            var cell = surface.Cell(new Point(bounds.X + index, bounds.Y));
+            cell.Style.Background.ShouldBe(projectedBackground);
+
+            if (index < text.Length)
+            {
+                cell.Text.ShouldBe(text[index].ToString());
+                cell.Style.Foreground.ShouldBe(projectedForeground);
+            }
         }
     }
 }

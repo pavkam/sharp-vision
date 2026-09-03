@@ -6,6 +6,164 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies adaptive ColorPicker value, composition, layout, rendering, and input.</summary>
 public sealed class ColorPickerTests
 {
+    /// <summary>Verifies the retained value field is a borderless single-line editor sized for the
+    /// longest accepted functional form plus its caret.</summary>
+    [Fact]
+    public void ValueTextInput_WhenConstructed_HasBoundedBorderlessFieldPolicy()
+    {
+        using var picker = new ColorPicker();
+
+        picker.ValueTextInput.MaxLength.ShouldBe(18);
+        picker.ValueTextInput.Width.ShouldBe(Length.Cells(19));
+        picker.ValueTextInput.Height.ShouldBe(Length.Cells(1));
+        picker.ValueTextInput.AcceptsReturn.ShouldBeFalse();
+        picker.ValueTextInput.AcceptsTab.ShouldBeFalse();
+        picker.ValueTextInput.ScrollBars.ShouldBe(ScrollBars.None);
+        picker.ValueTextInput.ActualStyle.Border.ShouldBe(ControlStyle.NoBorder);
+    }
+
+    /// <summary>Verifies every supported RGB text grammar commits the exact color and canonicalizes
+    /// the retained editor without requiring a submit gesture.</summary>
+    [Theory]
+    [InlineData("#aBcDeF", 0xab, 0xcd, 0xef)]
+    [InlineData("0C2238", 12, 34, 56)]
+    [InlineData("rgb(0, 127, 255)", 0, 127, 255)]
+    [InlineData("RGB(255,0,1)", 255, 0, 1)]
+    [InlineData("12, 34, 56", 12, 34, 56)]
+    [InlineData("0,0,0", 0, 0, 0)]
+    public void ValueTextInput_WhenTextUsesAcceptedSyntax_CommitsAndCanonicalizes(
+        string text,
+        int red,
+        int green,
+        int blue)
+    {
+        // Arrange
+        using var picker = new ColorPicker();
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+
+        // Act
+        picker.ValueTextInput.Text = text;
+
+        // Assert
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+        picker.ValueTextInput.Text.ShouldBe($"#{red:X2}{green:X2}{blue:X2}");
+        picker.RedSlider.Value.ShouldBe(red);
+        picker.GreenSlider.Value.ShouldBe(green);
+        picker.BlueSlider.Value.ShouldBe(blue);
+        picker.Preview.Value.ShouldBe(picker.Value);
+        changes.ShouldBe(1);
+    }
+
+    /// <summary>Verifies DEFAULT is case-insensitive and synchronizes the retained editor and
+    /// graphical parts to the terminal-default value.</summary>
+    [Fact]
+    public void ValueTextInput_WhenDefaultIsTyped_CommitsAndCanonicalizes()
+    {
+        using var picker = new ColorPicker();
+
+        picker.ValueTextInput.Text = "dEfAuLt";
+
+        picker.Value.ShouldBe(Color.Default);
+        picker.ValueTextInput.Text.ShouldBe("DEFAULT");
+        picker.Preview.Value.ShouldBe(Color.Default);
+        picker.RedSlider.Value.ShouldBe(0);
+        picker.GreenSlider.Value.ShouldBe(0);
+        picker.BlueSlider.Value.ShouldBe(0);
+    }
+
+    /// <summary>Verifies malformed, incomplete, culture-dependent, signed, and out-of-range text
+    /// stays raw and never mutates the last valid color or any retained graphical part.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("#fff")]
+    [InlineData("red")]
+    [InlineData(" rgb(1, 2, 3)")]
+    [InlineData("rgb(1, 2, 3) ")]
+    [InlineData("rgb(1 , 2, 3)")]
+    [InlineData("rgb(1,\u00a02, 3)")]
+    [InlineData("rgb(+1, 2, 3)")]
+    [InlineData("rgb(-1, 2, 3)")]
+    [InlineData("rgb(1.0, 2, 3)")]
+    [InlineData("rgb(1%, 2, 3)")]
+    [InlineData("rgb(256, 2, 3)")]
+    [InlineData("rgb(1, 2, 3, 4)")]
+    [InlineData("rgb(1, 2,")]
+    public void ValueTextInput_WhenTextIsInvalid_PreservesRawTextAndLastValidState(string text)
+    {
+        // Arrange
+        using var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
+        var previousPlane = (picker.Plane.Hue, picker.Plane.Saturation, picker.Plane.Value);
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+
+        // Act
+        picker.ValueTextInput.Text = text;
+
+        // Assert
+        picker.ValueTextInput.Text.ShouldBe(text);
+        picker.Value.ShouldBe(Color.Rgb(10, 20, 30));
+        picker.Preview.Value.ShouldBe(Color.Rgb(10, 20, 30));
+        picker.RedSlider.Value.ShouldBe(10);
+        picker.GreenSlider.Value.ShouldBe(20);
+        picker.BlueSlider.Value.ShouldBe(30);
+        (picker.Plane.Hue, picker.Plane.Saturation, picker.Plane.Value).ShouldBe(previousPlane);
+        picker.ActualStyle.StatusFace.ShouldNotBeNull().Background.ShouldBe((ControlColor) SemanticColor.Error);
+        picker.ValueTextInput.ActualStyle.Face.Background.ShouldBe((ControlColor) SemanticColor.Error);
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies an equivalent valid edit canonicalizes without publishing a color change.</summary>
+    [Fact]
+    public void ValueTextInput_WhenEquivalentColorIsTyped_CanonicalizesWithoutValueChanged()
+    {
+        using var picker = new ColorPicker();
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+
+        picker.ValueTextInput.Text = "ff0000";
+
+        picker.Value.ShouldBe(Color.Rgb(255, 0, 0));
+        picker.ValueTextInput.Text.ShouldBe("#FF0000");
+        changes.ShouldBe(0);
+    }
+
+    /// <summary>Verifies graphical slider and plane changes replace invalid text with the newest
+    /// canonical value and clear the error presentation through the shared synchronization guard.</summary>
+    [Fact]
+    public void GraphicalParts_WhenChangedAfterInvalidText_ReplaceTextAndClearError()
+    {
+        using var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
+        picker.ValueTextInput.Text = "invalid";
+
+        picker.RedSlider.Value = 11;
+
+        picker.Value.ShouldBe(Color.Rgb(11, 20, 30));
+        picker.ValueTextInput.Text.ShouldBe("#0B141E");
+        picker.ValueTextInput.ActualStyle.Face.Background.ShouldNotBe((ControlColor) SemanticColor.Error);
+
+        picker.ValueTextInput.Text = "rgb(11,";
+        var key = Key(Code.Home);
+        _ = Router.Route(picker.Plane, Events.Key, key);
+
+        key.IsHandled.ShouldBeTrue();
+        picker.Value.ShouldBe(Color.Rgb(30, 30, 30));
+        picker.ValueTextInput.Text.ShouldBe("#1E1E1E");
+        picker.ValueTextInput.ActualStyle.Face.Background.ShouldNotBe((ControlColor) SemanticColor.Error);
+    }
+
+    /// <summary>Verifies disposal removes the owner callback and disposes the retained editor.</summary>
+    [Fact]
+    public void Dispose_WhenValueTextInputIsRetained_DisposesEditor()
+    {
+        var picker = new ColorPicker();
+        var editor = picker.ValueTextInput;
+
+        picker.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => editor.Text = "000000");
+    }
+
     /// <summary>Verifies reentrant publication leaves the typed payload aligned with the newest color.</summary>
     [Fact]
     public void Value_WhenPropertyObserverCommitsNewerValue_SuppressesStaleTypedEvent()
@@ -213,7 +371,7 @@ public sealed class ColorPickerTests
             picker.Bounds.ShouldBe(new Rect(0, 0, 40, 18));
             picker.Plane.Bounds.Width.ShouldBeGreaterThan(0);
             picker.Plane.Bounds.Height.ShouldBeGreaterThan(0);
-            picker.Preview.Bounds.Width.ShouldBe(10);
+            picker.Preview.Bounds.Width.ShouldBe(19);
             frame.GetCell(new Point(picker.Preview.Bounds.X, picker.Preview.Bounds.Y))
                 .Style.Background.ShouldBe(Color.Rgb(255, 0, 0));
         }, TestContext.Current.CancellationToken);
@@ -352,7 +510,7 @@ public sealed class ColorPickerTests
     }
 
     /// <summary>Verifies the resolved presentation defaults to each Slider's own semantic profile
-    /// and the library-default status face until an explicit local style is assigned.</summary>
+    /// and a value-colored editor face until an explicit local style is assigned.</summary>
     [Fact]
     public void Style_WhenUnset_SlidersAndStatusFollowTheLibraryDefault()
     {
@@ -367,18 +525,17 @@ public sealed class ColorPickerTests
         picker.ActualStyle.SliderStyle.ShouldBe(expectedSlider.ActualStyle);
         picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(Color.Transparent);
+        statusFace.Background.ShouldBe(Color.Rgb(255, 0, 0));
         statusFace.Attributes.ShouldBe((ControlDecoration) SemanticDecoration.NormalText);
         statusFace.Underline.ShouldBe(Underline.None);
         picker.ActualStyle.SelectedMarker.ShouldBeNull();
         picker.Plane.SelectedMarker.ShouldBeNull();
     }
 
-    /// <summary>Verifies an explicit local style propagates to all four owned Sliders and to the
-    /// status readout's background, attributes, and underline, while the foreground stays the
-    /// contrast color computed for the current value.</summary>
+    /// <summary>Verifies an explicit local style propagates to all four owned Sliders and preserves
+    /// value-derived editor colors while applying authored attributes and underline.</summary>
     [Fact]
-    public void Style_WhenSet_PropagatesToAllFourSlidersAndTheStatusBackground()
+    public void Style_WhenSet_PropagatesSlidersAndPreservesValueColoredStatus()
     {
         var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
         var sliderStyle = new SliderStyle(
@@ -412,7 +569,7 @@ public sealed class ColorPickerTests
         picker.ActualStyle.SliderStyle.ShouldBe(sliderStyle);
         picker.ActualStyle.HueSliderStyle.ShouldBe(picker.HueSlider.ActualStyle);
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(face.Background);
+        statusFace.Background.ShouldBe(Color.Rgb(10, 20, 30));
         statusFace.Attributes.ShouldBe(face.Attributes);
         statusFace.Underline.ShouldBe(face.Underline);
         statusFace.Foreground.ShouldBe(ColorMath.Contrast(Color.Rgb(10, 20, 30)));
@@ -642,11 +799,10 @@ public sealed class ColorPickerTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a caller-supplied status background survives a later value commit, while
-    /// the foreground is refreshed to the newly computed contrast color rather than the value that
-    /// was current when the style was applied.</summary>
+    /// <summary>Verifies a later value commit refreshes both value-derived editor colors while
+    /// preserving the caller-supplied status decorations.</summary>
     [Fact]
-    public void Value_WhenCommittedAfterStatusStyleIsSet_PreservesContrastForegroundAndCallerBackground()
+    public void Value_WhenCommittedAfterStatusStyleIsSet_RefreshesValueColorsAndPreservesDecorations()
     {
         var picker = new ColorPicker { Value = Color.Rgb(10, 20, 30) };
         var face = new Face(
@@ -666,9 +822,11 @@ public sealed class ColorPickerTests
         picker.Value = Color.Rgb(200, 210, 220);
 
         var statusFace = picker.ActualStyle.StatusFace.ShouldNotBeNull();
-        statusFace.Background.ShouldBe(face.Background);
+        statusFace.Background.ShouldBe(Color.Rgb(200, 210, 220));
         statusFace.Foreground.ShouldBe(ColorMath.Contrast(Color.Rgb(200, 210, 220)));
         statusFace.Foreground.ShouldNotBe(ColorMath.Contrast(Color.Rgb(10, 20, 30)));
+        statusFace.Attributes.ShouldBe(face.Attributes);
+        statusFace.Underline.ShouldBe(face.Underline);
     }
 
     /// <summary>Verifies replacing Style notifies observers exactly once per distinct value and

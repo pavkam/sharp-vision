@@ -63,6 +63,74 @@ public sealed class ScrollBarSurfaceTests
             TerminalPalette.Project(secondTheme.ResolveColor(SemanticColor.Muted), ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies a theme document authoring the root-level "glyphs" field reaches a
+    /// mounted ScrollBar's rendered track and thumb - the dots family's line-fill pair for both
+    /// orientations, not the code-owned block defaults (see themes.md#glyph-families).</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsADotsGlyphFamily_DrawsItsScrollBarTrackAndThumbAsync()
+    {
+        // Arrange a horizontal rail under the default, unstyled theme.
+        var horizontal = new ScrollBar
+        {
+            Orientation = Orientation.Horizontal,
+            Maximum = 80,
+            Value = 40,
+            ViewportSize = 20,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = Length.Cells(1)
+        };
+        await using var horizontalSurface = await ComponentSurface.MountAsync(
+            horizontal,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        horizontalSurface.ShouldRender("◀░░░▓▓░░░▶");
+
+        // Act
+        await horizontalSurface.UpdateAsync(
+            () => horizontalSurface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "dots")),
+            "author a dots glyph family");
+
+        // Assert the block track and thumb switch to the dots family's line-fill pair - the
+        // buttons are unchanged, since "dots" keeps the code-owned arrow glyphs.
+        horizontalSurface.ShouldRender("◀╌╌╌━━╌╌╌▶");
+
+        // Arrange a vertical rail under the default, unstyled theme.
+        var vertical = new ScrollBar
+        {
+            Maximum = 100,
+            Value = 50,
+            Width = Length.Cells(1),
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var verticalSurface = await ComponentSurface.MountAsync(
+            vertical,
+            new Size(1, 6),
+            TestContext.Current.CancellationToken);
+        verticalSurface.ShouldRender("""
+                                     ▲
+                                     ░
+                                     ░
+                                     ▓
+                                     ░
+                                     ▼
+                                     """);
+
+        // Act
+        await verticalSurface.UpdateAsync(
+            () => verticalSurface.Application.Theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: "dots")),
+            "author a dots glyph family");
+
+        // Assert the vertical track and thumb switch too.
+        verticalSurface.ShouldRender("""
+                                     ▲
+                                     ╎
+                                     ╎
+                                     ┃
+                                     ╎
+                                     ▼
+                                     """);
+    }
+
     /// <summary>Verifies full horizontal and vertical rails expose exact buttons, track, and thumb cells.</summary>
     [Fact]
     public async Task Render_WhenFullChromeUsesDeterministicGlyphs_DrawsExactOrientationGeometryAsync()

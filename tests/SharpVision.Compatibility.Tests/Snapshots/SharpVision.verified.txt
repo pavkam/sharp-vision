@@ -1297,6 +1297,7 @@ namespace SharpVision.Controls.Display
         public StatusBar() { }
         public SharpVision.Controls.Display.StatusBarItemCollection Items { get; }
         public int Spacing { get; set; }
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
     }
     public sealed class StatusBarItem : SharpVision.Controls.ContentControl, SharpVision.Controls.IStyled<SharpVision.Controls.Display.StatusBarItemStyle>
     {
@@ -1596,6 +1597,91 @@ namespace SharpVision.Controls.Input
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
     }
+    public sealed class CommandBar : SharpVision.Controls.ItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarStyle>
+    {
+        public CommandBar() { }
+        public SharpVision.Controls.Input.CommandBarStyle ActualStyle { get; }
+        public bool IsOverflowOpen { get; }
+        public SharpVision.Controls.Input.CommandBarEntryCollection Items { get; }
+        public int SelectedIndex { get; set; }
+        public SharpVision.Controls.Input.CommandBarItem? SelectedItem { get; set; }
+        public int Spacing { get; set; }
+        public SharpVision.Controls.Input.CommandBarStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Input.CommandBarItemInvokedEventArgs>? ItemInvoked;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class CommandBarEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
+    {
+        public int Count { get; }
+        public SharpVision.Controls.ControlBase this[int index] { get; set; }
+        public void Add(SharpVision.Controls.Input.CommandBarItem item) { }
+        public void Add(SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void Clear() { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
+        public int IndexOf(SharpVision.Controls.ControlBase entry) { }
+        public void Insert(int index, SharpVision.Controls.Input.CommandBarItem item) { }
+        public void Insert(int index, SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void Move(int oldIndex, int newIndex) { }
+        public bool Remove(SharpVision.Controls.Input.CommandBarItem item) { }
+        public bool Remove(SharpVision.Controls.Input.CommandBarSeparator separator) { }
+        public void RemoveAt(int index) { }
+    }
+    public sealed class CommandBarItem : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarItemStyle>
+    {
+        public CommandBarItem() { }
+        public SharpVision.Controls.Input.CommandBarItemStyle ActualStyle { get; }
+        public SharpVision.Styling.Affix? EndAffix { get; set; }
+        public bool IsOverflowed { get; }
+        public SharpVision.Styling.Affix? StartAffix { get; set; }
+        public SharpVision.Controls.Input.CommandBarItemStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void PerformInvoke() { }
+    }
+    public sealed class CommandBarItemInvokedEventArgs : System.EventArgs
+    {
+        public CommandBarItemInvokedEventArgs(SharpVision.Controls.Input.CommandBarItem item, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
+        public SharpVision.Controls.Input.CommandBarItem Item { get; }
+    }
+    public sealed class CommandBarItemStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarItemStyle>
+    {
+        public CommandBarItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding) { }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarItemStyle Default { get; }
+    }
+    public sealed class CommandBarSeparator : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarSeparatorStyle>
+    {
+        public CommandBarSeparator() { }
+        public SharpVision.Controls.Input.CommandBarSeparatorStyle ActualStyle { get; }
+        public SharpVision.Controls.Input.CommandBarSeparatorStyle? Style { get; set; }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+    }
+    public sealed class CommandBarSeparatorStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarSeparatorStyle>
+    {
+        public CommandBarSeparatorStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph glyph) { }
+        public required SharpVision.Styling.ControlGlyph Glyph { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarSeparatorStyle Default { get; }
+    }
+    public sealed class CommandBarStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.CommandBarStyle>
+    {
+        public CommandBarStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding, SharpVision.Styling.ControlGlyph overflowGlyph, SharpVision.Styling.ControlColor overflowColor) { }
+        public required SharpVision.Styling.ControlColor OverflowColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph OverflowGlyph { get; init; }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public new static SharpVision.Controls.Input.CommandBarStyle Default { get; }
+    }
     public sealed class CommandPalette : SharpVision.Controls.CompositeControlBase
     {
         public CommandPalette() { }
@@ -1878,6 +1964,47 @@ namespace SharpVision.Controls.Input
         public required SharpVision.Styling.ControlColor TrackColor { get; init; }
         public new static SharpVision.Controls.Input.SliderStyle Default { get; }
     }
+    public sealed class SuggestionInput : SharpVision.Controls.CompositeControlBase
+    {
+        public SuggestionInput() { }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
+        public SharpVision.Layout.Length DropDownHeight { get; set; }
+        public SharpVision.Styling.Affix? EndAffix { get; set; }
+        public bool IsOpen { get; set; }
+        public bool IsResolving { get; }
+        public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
+        public int MinimumPrefixLength { get; set; }
+        public string? Placeholder { get; set; }
+        public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
+        public SharpVision.Controls.Input.SuggestionResolver? Resolver { get; set; }
+        public SharpVision.Layout.Length RowHeight { get; set; }
+        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
+        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
+        public SharpVision.Styling.Affix? StartAffix { get; set; }
+        public System.Collections.Generic.IReadOnlyList<object?> Suggestions { get; }
+        public string Text { get; set; }
+        public System.Func<object?, string>? TextSelector { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Input.SuggestionResolutionFailedEventArgs>? ResolutionFailed;
+        public event System.EventHandler<SharpVision.Input.ItemInvokedEventArgs>? SuggestionAccepted;
+        public event System.EventHandler? SuggestionsChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public void Close() { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public bool Open() { }
+        public void Refresh() { }
+        public void ResetPopupChrome() { }
+    }
+    public sealed class SuggestionResolutionFailedEventArgs : System.EventArgs
+    {
+        public SuggestionResolutionFailedEventArgs(string searchTerms, System.Exception exception) { }
+        public System.Exception Exception { get; }
+        public string SearchTerms { get; }
+    }
+    public delegate System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<object?>> SuggestionResolver(string searchTerms, System.Threading.CancellationToken cancellationToken);
     public sealed class TextInput : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
@@ -2058,6 +2185,33 @@ namespace SharpVision.Controls.Layout
         public static void SetRight(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
         public static void SetTop(SharpVision.Controls.ControlBase control, SharpVision.Layout.Length? value) { }
         public static void SetZIndex(SharpVision.Controls.ControlBase control, int value) { }
+    }
+    public sealed class SplitChangedEventArgs : System.EventArgs
+    {
+        public SplitChangedEventArgs(SharpVision.Layout.Length previousLength, SharpVision.Layout.Length length) { }
+        public SharpVision.Layout.Length Length { get; }
+        public SharpVision.Layout.Length PreviousLength { get; }
+    }
+    public sealed class SplitPane : SharpVision.Controls.Container
+    {
+        public SplitPane() { }
+        public override bool CanTabStop { get; }
+        public SharpVision.Layout.Length FirstPaneLength { get; set; }
+        public bool IsResizable { get; set; }
+        public int LargeChange { get; set; }
+        public SharpVision.Layout.Orientation Orientation { get; set; }
+        public int SmallChange { get; set; }
+        public event System.EventHandler<SharpVision.Controls.Layout.SplitChangedEventArgs>? SplitChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnChildrenChanged() { }
+        protected override void OnDisposing() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
+        protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class Stack : SharpVision.Controls.Container
     {
@@ -2287,6 +2441,15 @@ namespace SharpVision.Controls.Layout
         public required SharpVision.Styling.ControlColor PlaceholderForeground { get; init; }
         public new static SharpVision.Controls.Layout.TableStyle Default { get; }
     }
+    public sealed class Wrap : SharpVision.Controls.Container
+    {
+        public Wrap() { }
+        public int LineSpacing { get; set; }
+        public SharpVision.Layout.Orientation Orientation { get; set; }
+        public int Spacing { get; set; }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+    }
 }
 namespace SharpVision.Controls.Scrolling
 {
@@ -2396,6 +2559,8 @@ namespace SharpVision.DataBinding
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.Slider target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.SuggestionInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty)
+            where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TimeInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, System.TimeOnly?>> sourceProperty)
@@ -2407,6 +2572,10 @@ namespace SharpVision.DataBinding
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Scrolling.ScrollBar target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Menus.Menu target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
+            where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Navigation.Pager target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, int>> sourceProperty)
+            where TModel :  class { }
+        public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.SuggestionInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
         public static SharpVision.DataBinding.Binding Bind<TModel>(this SharpVision.Controls.Input.TextInput target, TModel source, System.Linq.Expressions.Expression<System.Func<TModel, string?>> sourceProperty, SharpVision.DataBinding.BindingMode mode)
             where TModel :  class { }
@@ -3225,6 +3394,8 @@ namespace SharpVision.Menus
     {
         public ContextMenu() { }
         public ContextMenu(SharpVision.Menus.Menu menu) { }
+        public System.TimeSpan FadeInDuration { get; set; }
+        public System.TimeSpan FadeOutDuration { get; set; }
         public bool IsOpen { get; }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
@@ -3246,6 +3417,7 @@ namespace SharpVision.Menus
         public SharpVision.Menus.MenuItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -3345,6 +3517,71 @@ namespace SharpVision.Menus
 }
 namespace SharpVision.Navigation
 {
+    public sealed class Breadcrumb : SharpVision.Controls.ItemsControl, SharpVision.Controls.IStyled<SharpVision.Navigation.BreadcrumbStyle>
+    {
+        public Breadcrumb() { }
+        public SharpVision.Navigation.BreadcrumbStyle ActualStyle { get; }
+        public int CurrentIndex { get; set; }
+        public SharpVision.Navigation.BreadcrumbItem? CurrentItem { get; set; }
+        public SharpVision.Navigation.BreadcrumbItemCollection Items { get; }
+        public SharpVision.Navigation.BreadcrumbStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Navigation.BreadcrumbCurrentChangedEventArgs>? CurrentChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnFocusChanged(bool focused) { }
+        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class BreadcrumbCurrentChangedEventArgs : System.EventArgs
+    {
+        public BreadcrumbCurrentChangedEventArgs(SharpVision.Navigation.BreadcrumbItem? previousItem, SharpVision.Navigation.BreadcrumbItem? currentItem) { }
+        public SharpVision.Navigation.BreadcrumbItem? CurrentItem { get; }
+        public SharpVision.Navigation.BreadcrumbItem? PreviousItem { get; }
+    }
+    public sealed class BreadcrumbItem : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Navigation.BreadcrumbItemStyle>
+    {
+        public BreadcrumbItem() { }
+        protected override string? AccessKeyText { get; }
+        public SharpVision.Navigation.BreadcrumbItemStyle ActualStyle { get; }
+        public bool IsCurrent { get; }
+        protected override bool IsSelectedState { get; }
+        public SharpVision.Navigation.BreadcrumbItemStyle? Style { get; set; }
+        public override string Text { get; set; }
+        public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
+        protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        public void PerformInvoke() { }
+    }
+    public sealed class BreadcrumbItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Navigation.BreadcrumbItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Navigation.BreadcrumbItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Navigation.BreadcrumbItem>, System.Collections.IEnumerable
+    {
+        public int Count { get; }
+        public SharpVision.Navigation.BreadcrumbItem this[int index] { get; set; }
+        public void Add(SharpVision.Navigation.BreadcrumbItem item) { }
+        public void Clear() { }
+        public System.Collections.Generic.IEnumerator<SharpVision.Navigation.BreadcrumbItem> GetEnumerator() { }
+        public int IndexOf(SharpVision.Navigation.BreadcrumbItem item) { }
+        public void Insert(int index, SharpVision.Navigation.BreadcrumbItem item) { }
+        public void Move(int oldIndex, int newIndex) { }
+        public bool Remove(SharpVision.Navigation.BreadcrumbItem item) { }
+        public void RemoveAt(int index) { }
+    }
+    public sealed class BreadcrumbItemStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.BreadcrumbItemStyle>
+    {
+        public BreadcrumbItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
+        public new static SharpVision.Navigation.BreadcrumbItemStyle Default { get; }
+    }
+    public sealed class BreadcrumbStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.BreadcrumbStyle>
+    {
+        public BreadcrumbStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph separatorGlyph, SharpVision.Styling.ControlColor separatorColor, int separatorSpacingBefore, int separatorSpacingAfter) { }
+        public required SharpVision.Styling.ControlColor SeparatorColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph SeparatorGlyph { get; init; }
+        public required int SeparatorSpacingAfter { get; init; }
+        public required int SeparatorSpacingBefore { get; init; }
+        public new static SharpVision.Navigation.BreadcrumbStyle Default { get; }
+    }
     public sealed class NavigationView : SharpVision.Controls.CompositeControlBase
     {
         public NavigationView() { }
@@ -3469,9 +3706,85 @@ namespace SharpVision.Navigation
         public required System.Text.Rune Glyph { get; init; }
         public new static SharpVision.Navigation.NavigationViewSeparatorStyle Default { get; }
     }
+    public sealed class PageChangedEventArgs : System.EventArgs
+    {
+        public PageChangedEventArgs(int previousPageIndex, int currentPageIndex, SharpVision.Input.ActivationCause cause) { }
+        public SharpVision.Input.ActivationCause Cause { get; }
+        public int CurrentPageIndex { get; }
+        public int PreviousPageIndex { get; }
+    }
+    public sealed class Pager : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Navigation.PagerStyle>
+    {
+        public Pager() { }
+        public SharpVision.Navigation.PagerStyle ActualStyle { get; }
+        public override bool CanTabStop { get; }
+        public int MaximumVisiblePages { get; set; }
+        public int PageCount { get; set; }
+        public int PageIndex { get; set; }
+        public SharpVision.Navigation.PagerStyle? Style { get; set; }
+        public event System.EventHandler<SharpVision.Navigation.PageChangedEventArgs>? PageChanged;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public bool ChangePage(int pageIndex) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnAttached() { }
+        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class PagerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.PagerStyle>
+    {
+        public PagerStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlGlyph firstPageGlyph, SharpVision.Styling.ControlGlyph previousPageGlyph, SharpVision.Styling.ControlGlyph nextPageGlyph, SharpVision.Styling.ControlGlyph lastPageGlyph, SharpVision.Styling.ControlGlyph omittedPagesGlyph, SharpVision.Styling.ControlColor currentPageColor) { }
+        public required SharpVision.Styling.ControlColor CurrentPageColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph FirstPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph LastPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph NextPageGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph OmittedPagesGlyph { get; init; }
+        public required SharpVision.Styling.ControlGlyph PreviousPageGlyph { get; init; }
+        public new static SharpVision.Navigation.PagerStyle Default { get; }
+    }
 }
 namespace SharpVision.Notifications
 {
+    public sealed class InfoBar : SharpVision.Controls.ContentControl, SharpVision.Controls.IStyled<SharpVision.Notifications.InfoBarStyle>
+    {
+        public InfoBar() { }
+        public SharpVision.Notifications.InfoBarStyle ActualStyle { get; }
+        public SharpVision.Styling.Affix? Adornment { get; set; }
+        public bool IsDismissible { get; set; }
+        public bool IsOpen { get; set; }
+        public SharpVision.Notifications.InfoBarStyle? Style { get; set; }
+        public string? Title { get; set; }
+        protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
+        public event System.EventHandler<SharpVision.Notifications.InfoBarDismissRequestedEventArgs>? DismissRequested;
+        public event System.EventHandler? Dismissed;
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        public void Dismiss() { }
+        protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+    }
+    public sealed class InfoBarDismissRequestedEventArgs : System.ComponentModel.CancelEventArgs
+    {
+        public InfoBarDismissRequestedEventArgs() { }
+    }
+    public sealed class InfoBarStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Notifications.InfoBarStyle>
+    {
+        public InfoBarStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.Face titleFace, SharpVision.Styling.ControlColor adornmentColor, SharpVision.Styling.ControlGlyph dismissGlyph, SharpVision.Styling.ControlColor dismissColor, SharpVision.Layout.Thickness padding, int contentGap, int adornmentGap) { }
+        public required SharpVision.Styling.ControlColor AdornmentColor { get; init; }
+        public required int AdornmentGap { get; init; }
+        public required int ContentGap { get; init; }
+        public required SharpVision.Styling.ControlColor DismissColor { get; init; }
+        public required SharpVision.Styling.ControlGlyph DismissGlyph { get; init; }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public required SharpVision.Styling.Face TitleFace { get; init; }
+        public new static SharpVision.Notifications.InfoBarStyle Default { get; }
+        public static SharpVision.Notifications.InfoBarStyle Error { get; }
+        public static SharpVision.Notifications.InfoBarStyle Info { get; }
+        public static SharpVision.Notifications.InfoBarStyle Success { get; }
+        public static SharpVision.Notifications.InfoBarStyle Warning { get; }
+    }
     public sealed class Toast : SharpVision.Surfaces.FloatingSurfaceBase, SharpVision.Controls.IStyled<SharpVision.Notifications.ToastStyle>
     {
         public Toast() { }
@@ -4018,6 +4331,7 @@ namespace SharpVision.Styling
         Blue = 35,
         Magenta = 36,
         Cyan = 37,
+        Bar = 38,
     }
     public enum SemanticDecoration
     {
@@ -4179,6 +4493,9 @@ namespace SharpVision.Surfaces
     public abstract class FloatingSurfaceBase : SharpVision.Controls.ContentControl
     {
         protected FloatingSurfaceBase() { }
+        public System.TimeSpan FadeInDuration { get; set; }
+        public System.TimeSpan FadeOutDuration { get; set; }
+        public double FadeProgress { get; }
         protected bool HasActiveSurfaceModal { get; }
         protected bool IsSurfacePresented { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }

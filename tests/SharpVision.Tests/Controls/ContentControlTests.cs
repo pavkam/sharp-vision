@@ -51,6 +51,25 @@ public sealed class ContentControlTests
         owner.GetOwnedOrder().ShouldBe([content, part]);
     }
 
+    /// <summary>Verifies the inherited slot seam tracks replacement and restores each latest authored value.</summary>
+    [Fact]
+    public void ContentOwnershipSlot_WhenRetainedLeaseTracksReplacement_PreservesAuthoredVisibility()
+    {
+        var previous = new ProbeControl { Visibility = Visibility.Hidden };
+        var current = new ProbeControl();
+        var owner = new ProbeContentControl { Content = previous };
+        owner.BeginContentVisibilityOverride(Visibility.Collapsed);
+        previous.Visibility = Visibility.Visible;
+
+        owner.Content = current;
+        current.Visibility = Visibility.Hidden;
+        owner.EndContentVisibilityOverride();
+
+        previous.Visibility.ShouldBe(Visibility.Visible);
+        current.Visibility.ShouldBe(Visibility.Hidden);
+        current.Parent.ShouldBeSameAs(owner);
+    }
+
     /// <summary>Verifies every invalid candidate preserves the complete existing edge.</summary>
     [Fact]
     public void Content_WhenReplacementIsInvalid_PreservesExistingContent()

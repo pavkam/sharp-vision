@@ -32,14 +32,14 @@ one owner and one normative contract.
 
 <!-- markdownlint-disable MD013 -->
 
-| Task signal                                                                       | Read                                                                  | Normative starting point                                                  |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Parent/child ownership, Container, ContentControl, CompositeControl, ItemsControl | [control-tree.md](references/control-tree.md)                         | [Custom components](../../../docs/concepts/custom-components.md#overview) |
-| Measure, arrange, Length, Grid, Dock, Stack, Overlay, scrolling, invalidation     | [layout-and-scrolling.md](references/layout-and-scrolling.md)         | [Layout](../../../docs/concepts/layout.md#overview)                       |
-| Routed events, focus, capture, modality planes, access keys                       | [input-focus-and-modality.md](references/input-focus-and-modality.md) | [Input routing](../../../docs/concepts/input-routing.md#overview)         |
-| Theme, style types, Style, ActualStyle, visual states, Border, Shadow             | [styling-and-themes.md](references/styling-and-themes.md)             | [Styling](../../../docs/concepts/styling.md#overview)                     |
-| Binding, property paths, modes, notification, observable collections, selection   | [data-binding.md](references/data-binding.md)                         | [Data binding](../../../docs/concepts/data-binding.md#overview)           |
-| Any UI-foundation verification                                                    | [testing.md](references/testing.md)                                   | [Control testing](../../../docs/testing/controls-integration.md#overview) |
+| Task signal                                                                           | Read                                                                  | Normative starting point                                                  |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Parent/child ownership, Container, ContentControl, CompositeControlBase, ItemsControl | [control-tree.md](references/control-tree.md)                         | [Custom components](../../../docs/concepts/custom-components.md#overview) |
+| Measure, arrange, Length, Grid, Dock, Stack, Overlay, scrolling, invalidation         | [layout-and-scrolling.md](references/layout-and-scrolling.md)         | [Layout](../../../docs/concepts/layout.md#overview)                       |
+| Routed events, focus, capture, modality planes, access keys                           | [input-focus-and-modality.md](references/input-focus-and-modality.md) | [Input routing](../../../docs/concepts/input-routing.md#overview)         |
+| Theme, style types, Style, ActualStyle, visual states, Border, Shadow                 | [styling-and-themes.md](references/styling-and-themes.md)             | [Styling](../../../docs/concepts/styling.md#overview)                     |
+| Binding, property paths, modes, notification, observable collections, selection       | [data-binding.md](references/data-binding.md)                         | [Data binding](../../../docs/concepts/data-binding.md#overview)           |
+| Any UI-foundation verification                                                        | [testing.md](references/testing.md)                                   | [Control testing](../../../docs/testing/controls-integration.md#overview) |
 
 <!-- markdownlint-enable MD013 -->
 

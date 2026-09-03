@@ -22,6 +22,7 @@ classDiagram
     ControlBase <|-- ItemsControl
     ControlBase <|-- InputBase
     ContentControl <|-- FloatingSurfaceBase
+    ContentControl <|-- InfoBar
     ContentControl <|-- HeaderedContentControl
     FloatingSurfaceBase <|-- Window
     FloatingSurfaceBase <|-- Popup
@@ -38,13 +39,17 @@ classDiagram
     InputBase <|-- DateTimeInput
     InputBase <|-- NumberInput
     InputBase <|-- TimeInput
+    ItemsControl <|-- CommandBar
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
     CompositeControlBase <|-- Screen
+    CompositeControlBase <|-- SuggestionInput
     Container <|-- Stack
+    Container <|-- Wrap
     Container <|-- Grid
     Container <|-- Dock
     Container <|-- Overlay
+    Container <|-- SplitPane
 ```
 
 The diagram shows the authoring roles and representative controls, not every
@@ -64,16 +69,16 @@ use the shared [layout](../concepts/layout.md#overview),
 | `SharpVision.Controls`             | Foundational roles, ownership, and intrinsic chrome.         |
 | `SharpVision.Controls.Display`     | Text, images, indicators, and passive presentation.          |
 | `SharpVision.Controls.Charts`      | Reactive bar, line, area, and compact trend charts.          |
-| `SharpVision.Controls.Input`       | Buttons, editors, pickers, and value controls.               |
+| `SharpVision.Controls.Input`       | Buttons, editors, suggestions, pickers, and value controls.  |
 | `SharpVision.Controls.Layout`      | Panels, overlays, structural chrome, and tables.             |
 | `SharpVision.Controls.Collections` | Lists, tabs, trees, typed collections, and item realization. |
 | `SharpVision.Controls.Documents`   | The Document control and its rich-text content-node tree.    |
 | `SharpVision.Controls.Scrolling`   | The ScrollBar control and its glyph and style values.        |
 | `SharpVision.Menus`                | Menus, menu entries, and context menus.                      |
-| `SharpVision.Navigation`           | Sidebar navigation controls and entries.                     |
+| `SharpVision.Navigation`           | Sidebar and scalar page navigation controls and entries.     |
 | `SharpVision.Surfaces`             | Shared elevated-surface lifecycle and modality seams.        |
 | `SharpVision.Popups`               | Anchored popup, flyout, and tooltip surfaces.                |
-| `SharpVision.Notifications`        | Non-modal Toast notifications, positions, and styles.        |
+| `SharpVision.Notifications`        | In-flow InfoBar and floating Toast notifications and styles. |
 | `SharpVision.Windows`              | Free-standing retained window surfaces.                      |
 
 Complete modal tasks such as `MessageBox` live in
@@ -135,6 +140,9 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [Calendar](input/calendar.md#overview)
 - [CheckBox](input/check-box.md#overview)
 - [ColorPicker](input/color-picker.md#overview)
+- [CommandBar](input/command-bar.md#overview)
+- [CommandBarItem](input/command-bar-item.md#overview)
+- [CommandBarSeparator](input/command-bar-separator.md#overview)
 - [CommandPalette](input/command-palette.md#overview)
 - [ComboBox](input/combo-box.md#overview)
 - [CurrencyInput](input/currency-input.md#overview)
@@ -143,15 +151,18 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 - [NumberInput](input/number-input.md#overview)
 - [RadioButton](input/radio-button.md#overview)
 - [Slider](input/slider.md#overview)
+- [SuggestionInput](input/suggestion-input.md#overview)
 - [TextInput](input/text-input.md#overview)
 - [TimeInput](input/time-input.md#overview)
 
 ### Layout
 
 - [Stack](layout/stack.md#overview)
+- [Wrap](layout/wrap.md#overview)
 - [Grid](layout/grid.md#overview)
 - [Dock](layout/dock.md#overview)
 - [Overlay](layout/overlay.md#overview)
+- [SplitPane](layout/split-pane.md#overview)
 - [Table](layout/table.md#overview)
 - [GroupBox](layout/group-box.md#overview)
 - [Expander](layout/expander.md#overview)
@@ -171,13 +182,17 @@ See the [intrinsic appearance rules](../concepts/styling.md#shared-chrome).
 
 ### Menus and navigation
 
+- [Breadcrumb](navigation/breadcrumb.md#overview)
+- [BreadcrumbItem](navigation/breadcrumb-item.md#overview)
 - [Menu](menus/menu.md#overview)
 - [MenuItem and MenuSeparator](menus/menu-item.md#overview)
 - [ContextMenu](menus/context-menu.md#overview)
 - [NavigationView](navigation/navigation-view.md#overview)
+- [Pager](navigation/pager.md#overview)
 
 ### Popups and windows
 
+- [InfoBar](notifications/info-bar.md#overview)
 - [Toast](notifications/toast.md#overview)
 - [Popup](popups/popup.md#overview)
 - [Tooltip](popups/tooltip.md#overview)

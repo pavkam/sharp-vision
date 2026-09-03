@@ -145,20 +145,25 @@ traversal from its stable tree anchor.
 Built-in action controls specialize that default without inventing a second
 state path:
 
-| Caption owner          | Access-key action                                                 |
-| ---------------------- | ----------------------------------------------------------------- |
-| `Button`               | Focuses and clicks with `ActivationCause.Keyboard`.               |
-| `CheckBox`             | Focuses and toggles with `ActivationCause.Keyboard`.              |
-| `RadioButton`          | Focuses and selects with `ActivationCause.Keyboard`.              |
-| `Expander`             | Focuses and toggles expansion.                                    |
-| `MenuItem`             | Selects/focuses its `Menu`, then opens its submenu or invokes.    |
-| `TabItem` header       | Focuses its `TabControl` and selects the page.                    |
-| `NavigationViewItem`   | Focuses the view, makes the item current, and invokes/selects it. |
-| `NavigationViewGroup`  | Focuses the view, makes the group current, and toggles it.        |
-| `GroupBox` or `Window` | Focuses the first eligible descendant.                            |
+| Caption owner          | Access-key action                                                  |
+| ---------------------- | ------------------------------------------------------------------ |
+| `Button`               | Focuses and clicks with `ActivationCause.Keyboard`.                |
+| `CheckBox`             | Focuses and toggles with `ActivationCause.Keyboard`.               |
+| `RadioButton`          | Focuses and selects with `ActivationCause.Keyboard`.               |
+| `Expander`             | Focuses and toggles expansion.                                     |
+| `MenuItem`             | Selects/focuses its `Menu`, then opens its submenu or invokes.     |
+| `TabItem` header       | Focuses its `TabControl` and selects the page.                     |
+| `BreadcrumbItem`       | Focuses its `Breadcrumb`; activates it only while primary-visible. |
+| `NavigationViewItem`   | Focuses the view, makes the item current, and invokes/selects it.  |
+| `NavigationViewGroup`  | Focuses the view, makes the group current, and toggles it.         |
+| `GroupBox` or `Window` | Focuses the first eligible descendant.                             |
 
 Unavailable controls never activate. Menu, popup, and window actions keep their
 existing modality, focus restoration, selection, and event ordering.
+
+A visible breadcrumb item omitted only by finite width publishes its mnemonic
+through the open overflow menu, not through the primary control tree. Hidden,
+collapsed, and disabled breadcrumb items publish no mnemonic in either surface.
 
 ## Rendering integration
 

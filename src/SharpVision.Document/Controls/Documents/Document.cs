@@ -345,7 +345,7 @@ public sealed class Document:
         catch (Exception exception)
         {
             var failure = ExceptionDispatchInfo.Capture(exception);
-            ExceptionAggregation.Capture(() => RestoreBlocks(oldBlocks), ref failure);
+            CaptureFailure(() => RestoreBlocks(oldBlocks), ref failure);
             failure!.Throw();
             throw;
         }

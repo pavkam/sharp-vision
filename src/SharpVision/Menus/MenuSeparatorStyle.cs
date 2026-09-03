@@ -16,14 +16,21 @@ public sealed record MenuSeparatorStyle: ControlStyle
     /// <summary>Gets the primary menu-separator style definition. Falls back to
     /// <see cref="ControlStyle"/>'s "control" role section; the divider glyph is
     /// code-owned.</summary>
-    internal static StyleDefinition<MenuSeparatorStyle> Definition { get; } = StyleDefinitions.Control(
+    internal static StyleDefinition<MenuSeparatorStyle> Definition { get; } = StyleDefinitions.BarControlWithThemeOwnedStateDefaults(
         static theme => theme.GetStyleSet(ControlStyle.Default),
         Complete,
         static (previous, _, current, _) =>
             previous != current ? InvalidationImpact.Render : InvalidationImpact.None);
 
-    private static MenuSeparatorStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
-        new(control.Face, control.Border, control.Shadow, ControlGlyphs.Separators.Menu.Value);
+    private static MenuSeparatorStyle Complete(ControlStyle control, VisualState state, Theme theme)
+    {
+        var states = theme.GetStyleSet(ControlStyle.Default);
+        return new MenuSeparatorStyle(
+            BarAppearance.CompleteFace(control, state, states),
+            control.Border,
+            control.Shadow,
+            ControlGlyphs.Separators.Menu.Value);
+    }
 
     /// <summary>Initializes a complete menu-divider presentation.</summary>
     /// <param name="face">The complete normal face.</param>

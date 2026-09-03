@@ -7,17 +7,15 @@ using Layout;
 
 using Terminal.Capabilities;
 
-using Text;
-
 using DisplayText = Display.Text;
 using LayoutStack = Layout.Stack;
-/// <summary>Selects one terminal color through capability-adaptive retained controls.</summary>
+/// <summary>Selects one terminal color through capability-adaptive retained graphical and text controls.</summary>
 [PublicAPI]
 public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 {
     private readonly LayoutStack _monochromeRoot;
     private readonly ControlBase _rgbRoot;
-    private readonly DisplayText _status;
+    private bool _isValueTextValid = true;
     private bool _synchronizing;
     private Color _value = Color.Rgb(255, 0, 0);
     private readonly CallbackTransitionStream _valueTransitions = new();
@@ -35,8 +33,14 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         RedSlider = CreateSlider(byte.MaxValue);
         GreenSlider = CreateSlider(byte.MaxValue);
         BlueSlider = CreateSlider(byte.MaxValue);
-        Preview = new ColorSwatch { Width = Length.Cells(10) };
-        _status = new DisplayText { Face = ColorPickerStyle.DefaultStatusFace };
+        Preview = new ColorSwatch { Width = Length.Cells(19) };
+        ValueTextInput = new TextInput
+        {
+            MaxLength = 18,
+            ScrollBars = ScrollBars.None,
+            Width = Length.Cells(19),
+            Height = Length.Cells(1)
+        };
         _rgbRoot = CreateRgbRoot();
         _monochromeRoot = CreateMonochromeRoot();
         var root = new Overlay { Children = { _rgbRoot, _monochromeRoot } };
@@ -74,8 +78,8 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         set => _style.Local = value;
     }
 
-    /// <summary>Gets the resolved presentation currently applied to the owned Sliders, status
-    /// readout, and plane selection marker.</summary>
+    /// <summary>Gets the resolved presentation currently applied to the owned Sliders, value
+    /// editor, and plane selection marker, including the editor's invalid-text error face.</summary>
     public ColorPickerStyle ActualStyle
     {
         get
@@ -85,22 +89,25 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
             var hueSlider = SliderStyle.Definition.Resolve(
                 NormalizeHueSliderStyle(aggregate?.HueSliderStyle ?? aggregate?.SliderStyle),
                 Theme);
-            var status = aggregate?.StatusFace ?? ColorPickerStyle.DefaultStatusFace;
-            var rgb = _value.IsRgb ? _value : Color.Rgb(0, 0, 0);
 
             return new ColorPickerStyle(
                 ControlStyle.DefaultFace,
                 ControlStyle.NoBorder,
                 ControlStyle.NoShadow,
                 slider,
-                status with { Foreground = rgb.Contrast() },
+                ResolveValueTextFace(),
                 aggregate?.SelectedMarker,
                 hueSlider);
         }
     }
 
-    /// <summary>Gets the uppercase RGB readout, or DEFAULT for the terminal default color.</summary>
-    internal string HexText => _status.Content;
+    /// <summary>Gets the uppercase canonical RGB text, invalid raw editor text, or DEFAULT for the
+    /// terminal default color.</summary>
+    internal string HexText => ValueTextInput.Text;
+
+    /// <summary>Gets the retained value editor used to prove text, focus, style, and synchronization
+    /// invariants without exposing a presentation part as public API.</summary>
+    internal TextInput ValueTextInput { get; }
 
     /// <summary>Gets the retained true-color saturation/value surface for interaction tests.</summary>
     internal ColorPlane Plane { get; }
@@ -151,6 +158,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         RedSlider.ValueChanged -= OnRgbChanged;
         GreenSlider.ValueChanged -= OnRgbChanged;
         BlueSlider.ValueChanged -= OnRgbChanged;
+        ValueTextInput.TextChanged -= OnValueTextChanged;
         ValueChanged = null;
         base.OnDisposing();
     }
@@ -203,18 +211,14 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         Grid.SetRow(components, 2);
         root.Children.Add(components);
 
-        _status.Width = Length.Cells(10);
-        _status.HorizontalAlignment = HorizontalAlignment.Stretch;
-        _status.TextAlignment = Alignment.Center;
-        _status.VerticalAlignment = VerticalAlignment.Center;
-        var status = new Overlay
+        var valueRow = new Overlay
         {
-            Width = Length.Cells(10),
+            Width = Length.Cells(19),
             Height = Length.Cells(1),
-            Children = { Preview, _status }
+            Children = { Preview, ValueTextInput }
         };
-        Grid.SetRow(status, 3);
-        root.Children.Add(status);
+        Grid.SetRow(valueRow, 3);
+        root.Children.Add(valueRow);
         return root;
     }
 
@@ -249,6 +253,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         RedSlider.ValueChanged += OnRgbChanged;
         GreenSlider.ValueChanged += OnRgbChanged;
         BlueSlider.ValueChanged += OnRgbChanged;
+        ValueTextInput.TextChanged += OnValueTextChanged;
     }
 
     private void OnStyleChanged(ColorPickerStyle previous, ColorPickerStyle current)
@@ -261,8 +266,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         RedSlider.Style = sliderStyle;
         GreenSlider.Style = sliderStyle;
         BlueSlider.Style = sliderStyle;
-        var face = style?.StatusFace ?? ColorPickerStyle.DefaultStatusFace;
-        _status.Face = new Face(_status.Face.Foreground, face.Background, face.Attributes, face.Underline, face.UnderlineColor);
+        ApplyValueTextStyle();
         Plane.SelectedMarker = style?.SelectedMarker;
     }
 
@@ -330,17 +334,11 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
             GreenSlider.Value = rgb.Green;
             BlueSlider.Value = rgb.Blue;
             Preview.Value = _value;
-            _status.Content = _value.IsDefault
+            SetValueTextValidity(true);
+            ValueTextInput.Text = _value.IsDefault
                 ? "DEFAULT"
                 : $"#{rgb.Red:X2}{rgb.Green:X2}{rgb.Blue:X2}";
-            var statusFace = _status.Face;
-            _status.Face = new Face(
-                rgb.Contrast(),
-                statusFace.Background,
-                statusFace.Attributes,
-                statusFace.Underline,
-                statusFace.UnderlineColor);
-
+            ApplyValueTextStyle();
         }
         finally
         {
@@ -379,6 +377,148 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         {
             _ = Commit(Color.Rgb(RedSlider.Value, GreenSlider.Value, BlueSlider.Value));
         }
+    }
+
+    private void OnValueTextChanged(object? sender, TextChangedEventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        if (_synchronizing)
+        {
+            return;
+        }
+
+        if (TryParseValueText(ValueTextInput.Text, out var color))
+        {
+            SetValueTextValidity(true);
+            _ = Commit(color);
+            return;
+        }
+
+        SetValueTextValidity(false);
+    }
+
+    private void SetValueTextValidity(bool isValid)
+    {
+        if (_isValueTextValid == isValid)
+        {
+            return;
+        }
+
+        _isValueTextValid = isValid;
+        ApplyValueTextStyle();
+        NotifyPropertyChanged(nameof(ActualStyle), InvalidationImpact.None);
+    }
+
+    private void ApplyValueTextStyle() =>
+        ValueTextInput.Style = new TextInputStyle(
+            ResolveValueTextFace(),
+            ControlStyle.NoBorder,
+            ControlStyle.NoShadow);
+
+    private Face ResolveValueTextFace()
+    {
+        var authored = Style?.StatusFace ?? ColorPickerStyle.DefaultStatusFace;
+
+        if (_isValueTextValid)
+        {
+            return _value.IsRgb
+                ? authored with
+                {
+                    Foreground = _value.Contrast(),
+                    Background = _value
+                }
+                : authored;
+        }
+
+        var error = (Theme ?? ThemeCatalog.Dark).Error;
+        return authored with
+        {
+            Foreground = error.Contrast(),
+            Background = SemanticColor.Error
+        };
+    }
+
+    [Pure]
+    private static bool TryParseValueText(string text, out Color color)
+    {
+        color = Color.Default;
+
+        if (string.Equals(text, "DEFAULT", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var hex = text.AsSpan();
+
+        if (hex.Length is 6 or 7 && (hex.Length == 6 || hex[0] == '#') &&
+            Color.TryFromHex(text, out color))
+        {
+            return true;
+        }
+
+        var components = text.AsSpan();
+
+        if (components.Length >= 5 &&
+            components[..4].Equals("rgb(".AsSpan(), StringComparison.OrdinalIgnoreCase) &&
+            components[^1] == ')')
+        {
+            components = components[4..^1];
+        }
+
+        var index = 0;
+
+        if (!TryParseComponent(components, ref index, out var red) ||
+            !TryConsumeComma(components, ref index) ||
+            !TryParseComponent(components, ref index, out var green) ||
+            !TryConsumeComma(components, ref index) ||
+            !TryParseComponent(components, ref index, out var blue) ||
+            index != components.Length)
+        {
+            color = Color.Default;
+            return false;
+        }
+
+        color = Color.Rgb(red, green, blue);
+        return true;
+    }
+
+    [Pure]
+    private static bool TryParseComponent(ReadOnlySpan<char> text, ref int index, out int component)
+    {
+        component = 0;
+        var start = index;
+
+        while (index < text.Length && text[index] is >= '0' and <= '9')
+        {
+            component = (component * 10) + (text[index] - '0');
+
+            if (component > byte.MaxValue)
+            {
+                return false;
+            }
+
+            index++;
+        }
+
+        return index > start;
+    }
+
+    [Pure]
+    private static bool TryConsumeComma(ReadOnlySpan<char> text, ref int index)
+    {
+        if (index >= text.Length || text[index++] != ',')
+        {
+            return false;
+        }
+
+        while (index < text.Length && text[index] == ' ')
+        {
+            index++;
+        }
+
+        return true;
     }
 
     #endregion

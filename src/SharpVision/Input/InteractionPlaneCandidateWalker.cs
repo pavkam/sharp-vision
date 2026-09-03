@@ -3,6 +3,8 @@
 
 namespace SharpVision.Input;
 
+using SharpVision.Surfaces;
+
 /// <summary>Discovers and visits controls in the current interaction plane's focus-relative order.</summary>
 internal sealed class InteractionPlaneCandidateWalker
 {
@@ -91,7 +93,10 @@ internal sealed class InteractionPlaneCandidateWalker
         {
             var candidate = candidates[(anchor + offset) % candidates.Count];
 
-            if (_modality.Allows(candidate) && isValid(candidate) && visitor(candidate))
+            if (!FloatingSurfaceBase.SuppressesInteraction(candidate) &&
+                _modality.Allows(candidate) &&
+                isValid(candidate) &&
+                visitor(candidate))
             {
                 return true;
             }
@@ -107,6 +112,11 @@ internal sealed class InteractionPlaneCandidateWalker
         List<TCandidate> candidates)
         where TCandidate : ControlBase
     {
+        if (FloatingSurfaceBase.SuppressesInteraction(control))
+        {
+            return;
+        }
+
         if (selector(control, boundary) is { } candidate)
         {
             candidates.Add(candidate);

@@ -7,10 +7,20 @@ using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
 /// <summary>The real platform <see cref="IConsoleHost"/>, dispatching to the Unix or Windows
 /// console host for the current operating system.</summary>
+/// <remarks>
+/// <see cref="Open"/> guards against a second concurrent open on this host with an
+/// <see cref="Interlocked"/> gate, mirroring the shape <see cref="Session.RunAsync"/> uses for
+/// its own "reject a second concurrent entry" guard. A second platform mode entered against the
+/// same descriptor while the first is still live would snapshot the first host's already-modified
+/// raw state as its own restore target, silently stranding the terminal in raw mode once both
+/// hosts dispose. Production only ever constructs one instance of this class
+/// (<see cref="ConsoleHost.Default"/>), so an instance-level gate is process-wide in practice.
+/// </remarks>
 internal sealed class SystemConsoleHost: IConsoleHost
 {
     private readonly Func<bool> _isInteractive;
     private readonly Func<ConsoleHostOptions, ConsoleConnection> _openPlatform;
+    private int _open;
 
     /// <summary>Initializes the real host over live process and platform boundaries.</summary>
     public SystemConsoleHost() : this(
@@ -38,16 +48,43 @@ internal sealed class SystemConsoleHost: IConsoleHost
     public bool Interactive => _isInteractive();
 
     /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Standard input or output is redirected, or a connection opened by an earlier call is
+    /// still live.
+    /// </exception>
     [MustDisposeResource]
     public ConsoleConnection Open(ConsoleHostOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        return !Interactive
-            ? throw new InvalidOperationException(
-                "Console hosting requires interactive standard input and output streams.")
-            : _openPlatform(options);
+        if (!Interactive)
+        {
+            throw new InvalidOperationException(
+                "Console hosting requires interactive standard input and output streams.");
+        }
+
+        if (Interlocked.CompareExchange(ref _open, 1, 0) != 0)
+        {
+            throw new InvalidOperationException("A console host is already open.");
+        }
+
+        try
+        {
+            var connection = _openPlatform(options);
+            connection.DisposalCallback = ReleaseGate;
+
+            return connection;
+        }
+        catch
+        {
+            ReleaseGate();
+            throw;
+        }
     }
+
+    // Runs once, from ConsoleConnection.DisposeAsync, so a legitimate sequential
+    // open -> close -> open still works instead of permanently locking this host out.
+    private void ReleaseGate() => Interlocked.Exchange(ref _open, 0);
 
     private static ConsoleConnection OpenPlatform(ConsoleHostOptions options) =>
         OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()
