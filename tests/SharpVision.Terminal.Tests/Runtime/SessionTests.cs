@@ -671,6 +671,56 @@ public sealed class SessionTests
         await running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a described fallback key sequence that is a strict prefix of another
+    /// described sequence is delivered at its own ambiguity deadline without any further input.
+    /// Mirroring the lone-Escape wake-up above: without one, the pending match sat in
+    /// KeySequenceMatcher.Pending forever, and the shorter key only surfaced once an unrelated
+    /// byte arrived next.</summary>
+    [Fact]
+    public async Task RunAsync_WhenFallbackKeyMatchAges_DeliversShorterKeyWithoutFurtherInputAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        var profile = Profile(
+            new Dictionary<string, DescriptionProgram>(),
+            keyMap: new KeyMap(
+            [
+                new KeyBinding([0xff], Code.F62),
+                new KeyBinding([0xff, 0xfe], Code.F63)
+            ]));
+        var options = TerminalOptions.Minimal with { Profile = profile };
+        await using Session session = new(transport, resize, sink, options, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        // Act: only the shorter of two overlapping described sequences, then only the clock
+        // moves. The wake-up is armed when the byte is routed; advancing past the ambiguity
+        // window afterwards fires it. Retry the advance until the stroke lands so the test
+        // cannot race the arming read.
+        transport.Input([0xff]);
+
+        while (!sink.StrokeReceived.Task.IsCompleted)
+        {
+            clock.Advance(InputOptions.Default.KeyMatcherTimeout);
+            _ = await Task.WhenAny(sink.StrokeReceived.Task, Task.Delay(50, TestContext.Current.CancellationToken));
+        }
+
+        await sink.StrokeReceived.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        // Assert: the shorter key arrived with no second byte, then the session still shuts
+        // down cleanly.
+        sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.F62);
+        transport.Close();
+        await running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies negotiation starts from the resolved profile rather than unrelated conservative defaults.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiating_PreservesResolvedProfileCapabilitiesAsync()

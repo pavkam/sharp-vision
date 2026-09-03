@@ -830,16 +830,19 @@ namespace SharpVision.Terminal.Input
     {
         public InputDecoder(SharpVision.Terminal.Abstractions.IInputSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
+        public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
         public void Complete() { }
         public void Decode(System.ReadOnlySpan<byte> input) { }
         public void Dispose() { }
         public bool ExpireEscape() { }
+        public bool ExpireKeyMatcher() { }
     }
     public sealed class InputOptions : System.IEquatable<SharpVision.Terminal.Input.InputOptions>
     {
         public InputOptions() { }
         public SharpVision.Terminal.Geometry.CellMetrics? CellMetrics { get; init; }
         public System.TimeSpan EscapeTimeout { get; init; }
+        public System.TimeSpan KeyMatcherTimeout { get; init; }
         public SharpVision.Terminal.Kitty.KittyMetadataLimits KittyMetadataLimits { get; init; }
         public int MaxPasteBytes { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
@@ -1395,9 +1398,11 @@ namespace SharpVision.Terminal.Protocols
     {
         public ProtocolRouter(SharpVision.Terminal.Abstractions.IProtocolSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
+        public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
         public void Complete() { }
         public void Dispose() { }
         public bool ExpireEscape() { }
+        public bool ExpireKeyMatcher() { }
         public void Route(System.ReadOnlySpan<byte> input) { }
     }
     public sealed class ProtocolSequence

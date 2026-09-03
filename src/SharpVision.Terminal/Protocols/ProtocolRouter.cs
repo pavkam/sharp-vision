@@ -124,9 +124,17 @@ public sealed class ProtocolRouter: IDisposable
     /// <summary>Gets the pending lone-Escape ambiguity deadline, or null when none is pending.</summary>
     public DateTimeOffset? PendingEscapeDeadline => _decoder.PendingEscapeDeadline;
 
+    /// <summary>Gets the pending fallback key-sequence ambiguity deadline, or null when none is
+    /// pending.</summary>
+    public DateTimeOffset? PendingKeyMatcherDeadline => _decoder.PendingKeyMatcherDeadline;
+
     /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     public bool ExpireEscape() => _decoder.ExpireEscape();
+
+    /// <summary>Expires a pending fallback key-sequence match when its deadline elapsed.</summary>
+    /// <returns>Whether a fallback key sequence was resolved.</returns>
+    public bool ExpireKeyMatcher() => _decoder.ExpireKeyMatcher();
 
     /// <summary>Completes pending input and protocol framing once.</summary>
     public void Complete()

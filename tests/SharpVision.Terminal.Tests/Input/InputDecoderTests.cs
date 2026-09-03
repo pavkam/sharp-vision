@@ -2536,6 +2536,93 @@ public sealed class InputDecoderTests
         sink.Text.Select(static value => value.Value).ShouldBe([new Rune('x')]);
     }
 
+    /// <summary>Verifies a described non-signature prefix that is never followed by its
+    /// disambiguating byte exposes a finite ambiguity deadline instead of retaining the shorter
+    /// completed binding forever - the same hazard class the lone-Escape ambiguity guard already
+    /// covers via <see cref="InputDecoder.PendingEscapeDeadline"/>.</summary>
+    [Fact]
+    public void Decode_WhenDescriptionPrefixOverlapsAndOnlyShorterArrives_ExposesPendingKeyMatcherDeadline()
+    {
+        var clock = new ManualTimeProvider();
+        var options = new InputOptions { KeyMatcherTimeout = TimeSpan.FromMilliseconds(25) }
+            .WithKeyMap(
+                new KeyMap(
+                [
+                    new KeyBinding([0xff], Code.F62),
+                    new KeyBinding([0xff, 0xfe], Code.F63)
+                ]),
+                useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, options, clock);
+
+        decoder.PendingKeyMatcherDeadline.ShouldBeNull();
+        decoder.Decode([0xff]);
+        _ = decoder.PendingKeyMatcherDeadline.ShouldNotBeNull();
+
+        decoder.ExpireKeyMatcher().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(24));
+        decoder.ExpireKeyMatcher().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireKeyMatcher().ShouldBeTrue();
+        decoder.ExpireKeyMatcher().ShouldBeFalse();
+
+        sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.F62);
+        decoder.PendingKeyMatcherDeadline.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a byte that merely extends an already-pending fallback match does not
+    /// re-arm the ambiguity deadline - only the byte that first transitions the matcher into
+    /// <see cref="KeySequenceMatchStatus.Pending"/> may stamp it, mirroring how a repeated
+    /// non-Escape byte never re-arms <see cref="InputDecoder.PendingEscapeDeadline"/> either.</summary>
+    [Fact]
+    public void Decode_WhenAdditionalByteExtendsPendingKeyMatch_DoesNotRearmDeadline()
+    {
+        var clock = new ManualTimeProvider();
+        var options = new InputOptions { KeyMatcherTimeout = TimeSpan.FromMilliseconds(25) }
+            .WithKeyMap(
+                new KeyMap(
+                [
+                    new KeyBinding([0xfe], Code.F62),
+                    new KeyBinding([0xfe, 0xfd, 0xfc], Code.F63)
+                ]),
+                useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, options, clock);
+
+        decoder.Decode([0xfe]);
+        var initialDeadline = decoder.PendingKeyMatcherDeadline;
+        _ = initialDeadline.ShouldNotBeNull();
+
+        clock.Advance(TimeSpan.FromMilliseconds(10));
+        decoder.Decode([0xfd]);
+
+        decoder.PendingKeyMatcherDeadline.ShouldBe(initialDeadline);
+    }
+
+    /// <summary>Verifies KeyMatcherTimeout rejects a non-positive value, matching the sibling
+    /// EscapeTimeout validation.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void KeyMatcherTimeout_WhenValueIsNotPositive_ThrowsArgumentOutOfRangeException(int milliseconds)
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new InputOptions { KeyMatcherTimeout = TimeSpan.FromMilliseconds(milliseconds) });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies KeyMatcherTimeout rejects an infinite value, matching the sibling
+    /// EscapeTimeout validation.</summary>
+    [Fact]
+    public void KeyMatcherTimeout_WhenValueIsInfinite_ThrowsArgumentOutOfRangeException()
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new InputOptions { KeyMatcherTimeout = Timeout.InfiniteTimeSpan });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
     /// <summary>Verifies equivalent parser signatures cannot publish conflicting meanings.</summary>
     [Fact]
     public void Constructor_WhenEquivalentSignaturesConflict_Throws()

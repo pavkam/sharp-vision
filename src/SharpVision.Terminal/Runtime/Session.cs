@@ -868,6 +868,7 @@ public sealed class Session: IAsyncDisposable
         Task<int>? read = null;
         Task<Dimensions>? resize = null;
         Task? escapeExpiry = null;
+        Task? keyMatcherExpiry = null;
         var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
@@ -894,16 +895,21 @@ public sealed class Session: IAsyncDisposable
                 // ready, so neither can starve the other for more than one iteration.
                 var deadlineReady = deadline is not null && deadline.IsCompleted;
                 var escapeReady = escapeExpiry is not null && escapeExpiry.IsCompleted;
+                var keyMatcherReady = keyMatcherExpiry is not null && keyMatcherExpiry.IsCompleted;
                 Task completed;
 
-                if (!deadlineReady && !escapeReady && !read.IsCompleted && !resize.IsCompleted)
+                if (!deadlineReady && !escapeReady && !keyMatcherReady && !read.IsCompleted && !resize.IsCompleted)
                 {
-                    completed = (deadline, escapeExpiry) switch
+                    completed = (deadline, escapeExpiry, keyMatcherExpiry) switch
                     {
-                        (null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
-                        ({ } negotiation, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
-                        (null, { } escape) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
-                        var (negotiation, escape) => await Task.WhenAny(read, resize, negotiation!, escape!).ConfigureAwait(false)
+                        (null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
+                        ({ } negotiation, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
+                        (null, { } escape, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
+                        (null, null, { } keyMatcher) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
+                        var (negotiation, escape, keyMatcher) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!).ConfigureAwait(false)
                     };
                 }
                 else
@@ -912,6 +918,7 @@ public sealed class Session: IAsyncDisposable
                     {
                         true => deadline!,
                         false when escapeReady => escapeExpiry!,
+                        false when keyMatcherReady => keyMatcherExpiry!,
                         false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
                         false when read.IsCompleted => read,
                         _ => resize
@@ -981,6 +988,22 @@ public sealed class Session: IAsyncDisposable
                     _ = router.ExpireEscape();
                     escapeExpiry = router.PendingEscapeDeadline is { } pendingEscape
                         ? DelayUntilAsync(pendingEscape, linked.Token)
+                        : null;
+                    continue;
+                }
+
+                if (keyMatcherExpiry is not null && ReferenceEquals(completed, keyMatcherExpiry))
+                {
+                    await keyMatcherExpiry.ConfigureAwait(false);
+
+                    // A timer callback may fire before the provider's wall clock reaches the
+                    // ambiguity deadline - the same slack the Escape deadline tolerates above.
+                    // ExpireKeyMatcher then resolves nothing and the pending deadline is simply
+                    // re-armed; when it does resolve, the pending deadline is gone and the
+                    // wake-up is retired until the next ambiguous fallback byte.
+                    _ = router.ExpireKeyMatcher();
+                    keyMatcherExpiry = router.PendingKeyMatcherDeadline is { } pendingKeyMatcher
+                        ? DelayUntilAsync(pendingKeyMatcher, linked.Token)
                         : null;
                     continue;
                 }
@@ -1062,6 +1085,15 @@ public sealed class Session: IAsyncDisposable
                     ? DelayUntilAsync(escapeDeadline, linked.Token)
                     : null;
 
+                // Routing may have begun, refined, or resolved an ambiguous fallback key match.
+                // Mirror the decoder's pending deadline into a wake-up so the longest completed
+                // binding is emitted even when no further byte ever arrives - a keystroke whose
+                // sequence happens to prefix another described key must not wait for the next
+                // keystroke to be delivered.
+                keyMatcherExpiry = router.PendingKeyMatcherDeadline is { } keyMatcherDeadline
+                    ? DelayUntilAsync(keyMatcherDeadline, linked.Token)
+                    : null;
+
                 Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
 
                 if (!ready && negotiator!.Completed)
@@ -1116,6 +1148,7 @@ public sealed class Session: IAsyncDisposable
             Observe(resize);
             Observe(deadline);
             Observe(escapeExpiry);
+            Observe(keyMatcherExpiry);
 
             if (await DrainAsync(read).ConfigureAwait(false))
             {

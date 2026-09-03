@@ -30,6 +30,7 @@ public sealed class InputDecoder: IDisposable
     private readonly TimeProvider _timeProvider;
     private readonly Utf8TextAccumulator _utf8;
     private DateTimeOffset _escapeDeadline;
+    private DateTimeOffset _keyMatcherDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
@@ -149,7 +150,7 @@ public sealed class InputDecoder: IDisposable
             if (_keyMatcher is not null &&
                 (_keyMatcher.Pending || CanStartMatcher(value)))
             {
-                var status = _keyMatcher.Add(
+                var status = AddToMatcher(
                     value,
                     out var binding,
                     out var replayOffset,
@@ -210,6 +211,11 @@ public sealed class InputDecoder: IDisposable
     /// even when no further byte ever arrives.</summary>
     public DateTimeOffset? PendingEscapeDeadline => _escapePending ? _escapeDeadline : null;
 
+    /// <summary>Gets the pending fallback key-sequence ambiguity deadline, or null when no
+    /// fallback key match is pending. The read loop mirrors this into a wake-up so
+    /// <see cref="ExpireKeyMatcher"/> runs even when no further byte ever arrives.</summary>
+    public DateTimeOffset? PendingKeyMatcherDeadline => _keyMatcher is { Pending: true } ? _keyMatcherDeadline : null;
+
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
@@ -231,6 +237,24 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
+    /// <summary>Commits a pending fallback key match to its longest completed binding after its
+    /// ambiguity deadline.</summary>
+    /// <returns>Whether a fallback key sequence was resolved.</returns>
+    /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
+    public bool ExpireKeyMatcher()
+    {
+        ThrowIfDisposed();
+
+        if (_keyMatcher is not { Pending: true } || _timeProvider.GetUtcNow() < _keyMatcherDeadline)
+        {
+            return false;
+        }
+
+        var adapter = new Adapter(this);
+        CompleteKeyMatcher(ref adapter);
+        return true;
+    }
+
     /// <summary>Completes pending UTF-8, Escape, SS3, and protocol state once.</summary>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
     public void Complete()
@@ -244,24 +268,7 @@ public sealed class InputDecoder: IDisposable
 
         _completed = true;
         var completionAdapter = new Adapter(this);
-
-        while (_keyMatcher is { Pending: true })
-        {
-            var status = _keyMatcher.Complete(
-                out var binding,
-                out var replayOffset,
-                out var replayLength);
-
-            if (status == KeySequenceMatchStatus.Match)
-            {
-                EmitFallbackBinding(in binding);
-                RematchMatcher(replayOffset, replayLength, ref completionAdapter);
-            }
-            else
-            {
-                ReplayMatcherToCore(replayOffset, replayLength, ref completionAdapter);
-            }
-        }
+        CompleteKeyMatcher(ref completionAdapter);
 
         _utf8.Flush();
 
@@ -367,6 +374,54 @@ public sealed class InputDecoder: IDisposable
 
         _escapePending = true;
         _escapeDeadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
+    }
+
+    /// <summary>Routes one byte into the active fallback matcher, arming its ambiguity deadline
+    /// exactly once at the transition into <see cref="KeySequenceMatchStatus.Pending"/> — a byte
+    /// that merely extends an already-pending match never re-arms it, mirroring how
+    /// <see cref="BeginEscape"/> stamps <see cref="_escapeDeadline"/> only when a lone Escape
+    /// first arrives.</summary>
+    private KeySequenceMatchStatus AddToMatcher(
+        byte value,
+        out KeyBinding binding,
+        out int replayOffset,
+        out int replayLength)
+    {
+        Debug.Assert(_keyMatcher is not null, "Only an active matcher can consume a byte.");
+        var matcher = _keyMatcher;
+        var wasPending = matcher.Pending;
+        var status = matcher.Add(value, out binding, out replayOffset, out replayLength);
+
+        if (status == KeySequenceMatchStatus.Pending && !wasPending)
+        {
+            _keyMatcherDeadline = _timeProvider.GetUtcNow().Add(_options.KeyMatcherTimeout);
+        }
+
+        return status;
+    }
+
+    /// <summary>Drains the active fallback matcher's retained prefix as its longest completed
+    /// binding or exact replay, shared by <see cref="Complete"/> at transport EOF and
+    /// <see cref="ExpireKeyMatcher"/> at the ambiguity deadline.</summary>
+    private void CompleteKeyMatcher(ref Adapter adapter)
+    {
+        while (_keyMatcher is { Pending: true })
+        {
+            var status = _keyMatcher.Complete(
+                out var binding,
+                out var replayOffset,
+                out var replayLength);
+
+            if (status == KeySequenceMatchStatus.Match)
+            {
+                EmitFallbackBinding(in binding);
+                RematchMatcher(replayOffset, replayLength, ref adapter);
+            }
+            else
+            {
+                ReplayMatcherToCore(replayOffset, replayLength, ref adapter);
+            }
+        }
     }
 
     private void DecodeCoreByte(byte value, ref Adapter adapter)
@@ -546,7 +601,7 @@ public sealed class InputDecoder: IDisposable
                 continue;
             }
 
-            var status = matcher.Add(
+            var status = AddToMatcher(
                 value,
                 out var binding,
                 out var replayOffset,

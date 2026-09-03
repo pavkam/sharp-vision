@@ -36,6 +36,25 @@ public sealed record InputOptions
         }
     } = TimeSpan.FromMilliseconds(50);
 
+    /// <summary>Gets the fallback key-sequence ambiguity timeout.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    public TimeSpan KeyMatcherTimeout
+    {
+        get;
+        init
+        {
+            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The key-matcher timeout must be positive and finite.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromMilliseconds(50);
+
     /// <summary>Gets the positive maximum retained paste byte count.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
     [ValueRange(1, int.MaxValue)]
