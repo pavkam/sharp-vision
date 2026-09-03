@@ -200,6 +200,46 @@ public sealed class DockTests
         fill.Bounds.Y.ShouldBe(int.MaxValue);
     }
 
+    /// <summary>Verifies a Right-docked child's own slot X stays exact at int.MinValue instead of
+    /// wrapping when it consumes the panel's entire width and the panel's own bounds already sit
+    /// at the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsXIsNearIntMinValueAndRightSideConsumes_SaturatesInsteadOfWrapping()
+    {
+        var panel = new Dock();
+        var right = WidthOnly(8);
+        var fill = new ProbeControl();
+        Dock.SetSide(right, DockSide.Right);
+        panel.Children.Add(right);
+        panel.Children.Add(fill);
+
+        panel.Measure(new Constraint(8, 3));
+        panel.Arrange(new Rect(int.MinValue, 0, 8, 3));
+
+        right.Bounds.X.ShouldBe(int.MinValue);
+        fill.Bounds.X.ShouldBe(int.MinValue);
+    }
+
+    /// <summary>Verifies a Bottom-docked child's own slot Y stays exact at int.MinValue instead of
+    /// wrapping when it consumes the panel's entire height and the panel's own bounds already sit
+    /// at the integer coordinate limit.</summary>
+    [Fact]
+    public void Arrange_WhenBoundsYIsNearIntMinValueAndBottomSideConsumes_SaturatesInsteadOfWrapping()
+    {
+        var panel = new Dock();
+        var bottom = HeightOnly(8);
+        var fill = new ProbeControl();
+        Dock.SetSide(bottom, DockSide.Bottom);
+        panel.Children.Add(bottom);
+        panel.Children.Add(fill);
+
+        panel.Measure(new Constraint(3, 8));
+        panel.Arrange(new Rect(0, int.MinValue, 3, 8));
+
+        bottom.Bounds.Y.ShouldBe(int.MinValue);
+        fill.Bounds.Y.ShouldBe(int.MinValue);
+    }
+
     /// <summary>Verifies the attached side accessors reject a null control.</summary>
     [Fact]
     public void GetSideAndSetSide_WhenControlIsNull_ThrowsArgumentNullException()
