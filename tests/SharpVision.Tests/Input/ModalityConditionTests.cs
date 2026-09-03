@@ -217,10 +217,13 @@ public sealed class ModalityConditionTests
         }, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Verifies a dismissal published on a scope the session has already replaced never
-    /// reaches the session's dismissal policy.</summary>
+    /// <summary>Verifies a scope the session has exited publishes no dismissal at all - the scope's
+    /// own inactive guard returns before any subscriber runs and the session unsubscribed on
+    /// exit - while the replacement scope the session now owns still reaches the policy. There is
+    /// no public route that delivers a dismissal from an active scope the session stopped
+    /// tracking, so this is the whole observable guarantee.</summary>
     [Fact]
-    public async Task DismissRequested_WhenPublishedOnReplacedScope_DoesNotReachPolicyAsync()
+    public async Task PublishDismissRequested_WhenScopeWasExitedBySession_ReachesNoPolicyWhileReplacementDoesAsync()
     {
         await using var dispatcher = Dispatcher.Start();
         await dispatcher.InvokeAsync(() =>
@@ -236,6 +239,8 @@ public sealed class ModalityConditionTests
             var dismissals = new List<ModalScope>();
             var session = new ModalSession(dismissRequested: dismissals.Add);
             var first = session.Enter(() => modality.Enter(plane, OutsideInteraction.Dismiss), static () => true);
+            var firstObserved = 0;
+            first.DismissRequested += (_, _) => firstObserved++;
             session.Exit();
             first.IsActive.ShouldBeFalse();
             var second = session.Enter(() => modality.Enter(plane, OutsideInteraction.Dismiss), static () => true);
@@ -245,8 +250,79 @@ public sealed class ModalityConditionTests
             second.PublishDismissRequested();
 
             // Assert
+            firstObserved.ShouldBe(0);
             dismissals.ShouldBe([second]);
             session.Exit();
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies disposing the middle scope of a three-deep stack unwinds youngest-first
+    /// (C exits, then B), leaves A active as the plane, restores focus into A, and confines Tab to
+    /// A's descendants afterwards.</summary>
+    [Fact]
+    public async Task Dispose_WhenMiddleOfThreeScopesIsDisposed_UnwindsYoungestFirstAndResumesOldestPlaneAsync()
+    {
+        // Arrange - three disjoint planes, each with two tab stops
+        var a1 = new Button { Text = "A1" };
+        var a2 = new Button { Text = "A2" };
+        var b1 = new Button { Text = "B1" };
+        var c1 = new Button { Text = "C1" };
+        var planeA = new Stack { Children = { a1, a2 } };
+        var planeB = new Stack { Children = { b1 } };
+        var planeC = new Stack { Children = { c1 } };
+        Overlay.SetLeft(planeB, Length.Cells(10));
+        Overlay.SetLeft(planeC, Length.Cells(20));
+        var root = new Overlay { Children = { planeA, planeB, planeC } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 6),
+            TestContext.Current.CancellationToken);
+        var order = new List<string>();
+        ModalScope? scopeA = null;
+        ModalScope? scopeB = null;
+        ModalScope? scopeC = null;
+        await surface.UpdateAsync(
+            () =>
+            {
+                scopeA = surface.Application.Modality.Enter(planeA, initialFocus: a2);
+                scopeA.Exited += (_, _) => order.Add("A");
+                scopeB = surface.Application.Modality.Enter(planeB);
+                scopeB.Exited += (_, _) => order.Add("B");
+                scopeC = surface.Application.Modality.Enter(planeC);
+                scopeC.Exited += (_, _) => order.Add("C");
+            },
+            "enter three stacked scopes");
+        surface.ShouldHaveFocus(c1);
+        surface.Application.Modality.Active.ShouldBeSameAs(scopeC);
+
+        // Act
+        await surface.UpdateAsync(() => scopeB.ShouldNotBeNull().Dispose(), "dispose the middle scope");
+
+        // Assert
+        order.ShouldBe(["C", "B"]);
+        scopeC.ShouldNotBeNull().IsActive.ShouldBeFalse();
+        scopeB.ShouldNotBeNull().IsActive.ShouldBeFalse();
+        scopeA.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldBeSameAs(scopeA);
+        surface.ShouldHaveFocus(a2);
+
+        // Act - Tab stays inside A's plane
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(a1);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(a2);
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+
+        // Assert
+        surface.ShouldHaveFocus(a1);
+        b1.IsFocused.ShouldBeFalse();
+        c1.IsFocused.ShouldBeFalse();
+
+        // Act
+        await surface.UpdateAsync(() => scopeA.Dispose(), "dispose the oldest scope");
+
+        // Assert
+        order.ShouldBe(["C", "B", "A"]);
+        surface.Application.Modality.Active.ShouldBeNull();
     }
 }

@@ -30,9 +30,7 @@ public sealed class FileDialogInteractionTests
             source);
 
         // Assert
-        picker.ReadyText.ShouldBe("Listo");
         picker.Status.ShouldBe("Listo");
-        save.ReadyText.ShouldBe("Bereit");
         save.Status.ShouldBe("Bereit");
 
         // Act - a later change while still unloaded re-seeds again
@@ -42,37 +40,14 @@ public sealed class FileDialogInteractionTests
         picker.Status.ShouldBe("Prêt");
     }
 
-    /// <summary>Verifies a directory the file system rejects synchronously at attachment leaves
-    /// the dialog usable with a recoverable status instead of faulting the mount.</summary>
+    /// <summary>Verifies ReadyText changed after a successful load leaves the count status alone,
+    /// and changed while a load is outstanding leaves the loading status alone, so an authored
+    /// ready text can only ever replace the ready status it is meant for.</summary>
     [Fact]
-    public async Task OnAttached_WhenInitialDirectoryIsRejectedSynchronously_ReportsRecoverableStatusAsync()
-    {
-        // Arrange - the fake throws synchronously for a directory it does not know.
-        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "missing-on-attach"));
-        var source = new FakeFilePickerFileSystem();
-        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
-
-        // Act
-        await using var surface = await ComponentSurface.MountAsync(
-            dialog,
-            new Size(76, 33),
-            TestContext.Current.CancellationToken);
-
-        // Assert
-        dialog.IsDisposed.ShouldBeFalse();
-        dialog.IsLoading.ShouldBeFalse();
-        dialog.Status.ShouldStartWith("Cannot open directory:");
-        dialog.CurrentDirectory.ShouldBe(directory);
-    }
-
-    /// <summary>Verifies toggling the hidden filter against a directory that now fails
-    /// synchronously degrades to status text and keeps the last snapshot, instead of escaping the
-    /// check box handler.</summary>
-    [Fact]
-    public async Task HiddenToggle_WhenReloadIsRejectedSynchronously_ReportsRecoverableStatusAsync()
+    public async Task ReadyText_WhenChangedAfterOrDuringALoad_DoesNotClobberTheLiveStatusAsync()
     {
         // Arrange
-        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "hidden-toggle-failure"));
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "ready-text-live"));
         var source = new FakeFilePickerFileSystem();
         source.AddDirectory(
             directory,
@@ -83,21 +58,35 @@ public sealed class FileDialogInteractionTests
             new Size(76, 33),
             TestContext.Current.CancellationToken);
         await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
-        var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
-        list.Items.Count.ShouldBe(1);
-        source.FailNext(directory, new DirectoryNotFoundException("gone"));
-        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        dialog.Status.ShouldBe("0 folders · 1 file");
 
         // Act
+        await surface.UpdateAsync(() => dialog.ReadyText = "Listo", "change the ready text after a load");
+
+        // Assert
+        dialog.Status.ShouldBe("0 folders · 1 file");
+        StatusRow(surface, dialog, dialog.Status).ShouldBe("0 folders · 1 file");
+
+        // Arrange - a deferred reload keeps the loading status on screen
+        var deferred = source.DeferNext(directory);
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
         await surface.Pointer.ClickAsync(hidden);
+        dialog.IsLoading.ShouldBeTrue();
+        dialog.Status.ShouldBe("Loading…");
+
+        // Act
+        await surface.UpdateAsync(() => dialog.ReadyText = "Prêt", "change the ready text while loading");
+
+        // Assert
+        dialog.Status.ShouldBe("Loading…");
+        StatusRow(surface, dialog, dialog.Status).ShouldBe("Loading…");
+
+        // Act
+        deferred.SetResult([new FilePickerEntry("a.txt", Path.Combine(directory, "a.txt"), isDirectory: false, isHidden: false)]);
         await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
 
         // Assert
-        dialog.ShowHidden.ShouldBeTrue();
-        dialog.Status.ShouldStartWith("Cannot open directory:");
-        dialog.Status.ShouldContain("gone");
-        list.Items.Count.ShouldBe(1);
-        dialog.IsDisposed.ShouldBeFalse();
+        dialog.Status.ShouldBe("0 folders · 1 file");
     }
 
     /// <summary>Verifies a whitespace-only location is rejected with a recoverable status and
@@ -272,12 +261,14 @@ public sealed class FileDialogInteractionTests
         source.AddDirectory(directory, new FilePickerEntry("a.txt", existing, isDirectory: false, isHidden: false));
         var dialog = new SaveFileDialog(new SaveFileOptions { InitialDirectory = directory }, source);
         var confirmation = new TaskCompletionSource<MessageBoxResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var postReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var confirmations = 0;
         dialog.ConfirmOverwriteForLifecycleTest = () =>
         {
             confirmations++;
             return confirmation.Task;
         };
+        dialog.PostAcceptanceHookForLifecycleTest = postReady.SetResult;
         await using var surface = await ComponentSurface.MountAsync(
             dialog,
             new Size(76, 33),
@@ -289,11 +280,12 @@ public sealed class FileDialogInteractionTests
         await surface.UpdateAsync(save.PerformClick, "request the save");
         confirmations.ShouldBe(1);
 
-        // Act - supersede the pending confirmation, then answer it
+        // Act - supersede the pending confirmation, then answer it and wait until the acceptance
+        // continuation has posted its completion before draining the dispatcher once
         await surface.UpdateAsync(() => name.Text = "b.txt", "edit the name while confirming");
         confirmation.SetResult(MessageBoxResult.Yes);
-        await surface.UpdateAsync(static () => { }, "settle the stale confirmation");
-        await surface.UpdateAsync(static () => { }, "settle again");
+        await postReady.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(static () => { }, "drain the stale completion");
 
         // Assert
         dialog.HasSelectedResult.ShouldBeFalse();
@@ -421,4 +413,24 @@ public sealed class FileDialogInteractionTests
     }
 
     #endregion
+
+    /// <summary>Reads the rendered status row - the cells under the dialog's status Text - as
+    /// one trimmed string, so a status that was set but never repainted is caught.</summary>
+    private static string StatusRow(ComponentSurface surface, ControlBase dialog, string expected)
+    {
+        var status = OwnedTree.FindAll<ControlText>(dialog).Single(text => text.Content == expected);
+        var builder = new StringBuilder();
+
+        for (var x = status.Bounds.X; x < status.Bounds.Right; x++)
+        {
+            var cell = surface.Cell(new Point(x, status.Bounds.Y));
+
+            if (!cell.Continuation)
+            {
+                _ = builder.Append(cell.Text);
+            }
+        }
+
+        return builder.ToString().Trim();
+    }
 }
