@@ -381,6 +381,136 @@ public sealed class ToastInteractionTests
         toast.IsOpen.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a toast shown while a modal Window is active neither disturbs the scope
+    /// nor focus, and that its close glyph is unreachable while the plane's outside-interaction
+    /// policy is Ignore: the press is swallowed, the toast stays open and the dialog keeps focus,
+    /// while a programmatic dismissal still works.</summary>
+    [Fact]
+    public async Task Show_WhenModalWindowIsActive_KeepsScopeAndSwallowsCloseGlyphPressAsync()
+    {
+        // Arrange
+        var action = new Button { Text = "Act" };
+        var modal = new Window
+        {
+            Header = "Modal",
+            Content = action,
+            Width = Length.Cells(14),
+            Height = Length.Cells(5),
+            Visibility = Visibility.Collapsed,
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var root = new Overlay { Children = { modal } };
+        using var toast = new Toast
+        {
+            Position = ToastPosition.BottomRight,
+            AnimationDuration = TimeSpan.Zero,
+            DisplayDuration = Timeout.InfiniteTimeSpan,
+            Title = "Notice",
+            Style = ToastStyle.Info with { Padding = default, ContentGap = 0, AdornmentGap = 0 },
+            Content = new ControlText("one")
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "show the modal Window");
+        surface.ShouldHaveFocus(action);
+
+        // Act
+        await surface.UpdateAsync(() => toast.Show(root), "show a Toast under the modal");
+
+        // Assert
+        toast.IsOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        surface.ShouldHaveFocus(action);
+        var inner = toast.ActualStyle.Padding.Deflate(toast.ContentBounds);
+        var glyph = new Point(inner.Right - 1, inner.Y);
+        surface.Cell(glyph).Text.ShouldBe("■");
+
+        // Act - the close glyph lies outside the modal plane
+        await surface.Pointer.MoveToAsync(glyph);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        toast.IsOpen.ShouldBeTrue();
+        surface.Cell(glyph).Text.ShouldBe("■");
+        surface.ShouldHaveFocus(action);
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(toast.Dismiss, "dismiss programmatically");
+
+        // Assert
+        toast.IsOpen.ShouldBeFalse();
+        surface.Cell(glyph).Text.ShouldBe(" ");
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+    }
+
+    /// <summary>Verifies Title, Content, and Style changed on an open toast re-slot and repaint it
+    /// in place: the new title and content text appear and the severity preset swaps the fill.</summary>
+    [Fact]
+    public async Task Presentation_WhenTitleContentAndStyleChangeWhileOpen_RepaintsInPlaceAsync()
+    {
+        // Arrange
+        var root = new Overlay();
+        using var toast = new Toast
+        {
+            Position = ToastPosition.TopLeft,
+            AnimationDuration = TimeSpan.Zero,
+            DisplayDuration = Timeout.InfiniteTimeSpan,
+            IsDismissible = false,
+            Title = "Notice",
+            Style = ToastStyle.Info with { Padding = default, ContentGap = 0, AdornmentGap = 0 },
+            Content = new ControlText("one")
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => toast.Show(root), "show Toast");
+        var inner = toast.ActualStyle.Padding.Deflate(toast.ContentBounds);
+        RowText(surface, inner.Y, inner.X, inner.Width).ShouldStartWith("Notice");
+        RowText(surface, inner.Y + 1, inner.X, inner.Width).ShouldStartWith("one");
+        surface.Cell(new Point(toast.Bounds.X, toast.Bounds.Y)).Text.ShouldBe("╭");
+
+        // Act
+        await surface.UpdateAsync(() => toast.Title = "Alert", "retitle the open Toast");
+
+        // Assert
+        inner = toast.ActualStyle.Padding.Deflate(toast.ContentBounds);
+        RowText(surface, inner.Y, inner.X, inner.Width).ShouldStartWith("Alert");
+        RowText(surface, inner.Y, inner.X, inner.Width).ShouldNotContain("Notice");
+
+        // Act
+        await surface.UpdateAsync(() => toast.Content = new ControlText("second"), "replace the content");
+
+        // Assert
+        inner = toast.ActualStyle.Padding.Deflate(toast.ContentBounds);
+        RowText(surface, inner.Y + 1, inner.X, inner.Width).ShouldStartWith("second");
+        toast.Bounds.X.ShouldBe(0);
+        toast.Bounds.Y.ShouldBe(0);
+
+        // Act - a style with another frame family (the severity fills quantize alike at 16 colors)
+        await surface.UpdateAsync(
+            () => toast.Style = ToastStyle.Error with
+            {
+                Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Paired),
+                Padding = default,
+                ContentGap = 0,
+                AdornmentGap = 0
+            },
+            "switch to a paired-frame error style");
+
+        // Assert
+        inner = toast.ActualStyle.Padding.Deflate(toast.ContentBounds);
+        surface.Cell(new Point(toast.Bounds.X, toast.Bounds.Y)).Text.ShouldBe("╔");
+        RowText(surface, inner.Y + 1, inner.X, inner.Width).ShouldStartWith("second");
+        toast.IsOpen.ShouldBeTrue();
+    }
+
     #endregion
 
     #region Owner validation
@@ -430,6 +560,23 @@ public sealed class ToastInteractionTests
         Style = ToastStyle.Info with { Padding = default, ContentGap = 0, AdornmentGap = 0 },
         Content = new ControlText(content)
     };
+
+    private static string RowText(ComponentSurface surface, int y, int x, int width)
+    {
+        var builder = new StringBuilder();
+
+        for (var column = x; column < x + width; column++)
+        {
+            var cell = surface.Cell(new Point(column, y));
+
+            if (!cell.Continuation)
+            {
+                _ = builder.Append(cell.Text);
+            }
+        }
+
+        return builder.ToString();
+    }
 
     private static int CountRevealed(ComponentSurface surface, Rect bounds) => RevealedCells(surface, bounds).Count;
 

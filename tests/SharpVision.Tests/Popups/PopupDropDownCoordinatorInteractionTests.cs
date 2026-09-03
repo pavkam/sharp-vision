@@ -25,6 +25,25 @@ public sealed class PopupDropDownCoordinatorInteractionTests
         _ = Should.Throw<ObjectDisposedException>(coordinator.AcceptAndClose);
     }
 
+    /// <summary>Verifies the disposed-owner contract through the real owners that route their
+    /// drop-down through this coordinator: a disposed DateInput or DateTimeInput rejects opening
+    /// its popup with ObjectDisposedException rather than the detached-coordinator state.</summary>
+    [Fact]
+    public void IsOpen_WhenTemporalOwnerIsDisposed_ThrowsObjectDisposedException()
+    {
+        // Arrange
+        var date = new DateInput();
+        var dateTime = new DateTimeInput();
+        date.Dispose();
+        dateTime.Dispose();
+
+        // Act / Assert
+        _ = Should.Throw<ObjectDisposedException>(() => date.IsOpen = true);
+        _ = Should.Throw<ObjectDisposedException>(() => dateTime.IsOpen = true);
+        date.IsOpen.ShouldBeFalse();
+        dateTime.IsOpen.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a detached coordinator with a live owner keeps reporting
     /// InvalidOperationException for both entry points, and Detach itself is idempotent.</summary>
     [Fact]

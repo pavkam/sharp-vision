@@ -995,6 +995,10 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                     else if (IsSurfacePresented)
                     {
                         ClearAvailabilityAncestor();
+                        // CommitClosedState releases the light-dismiss registration, and with it
+                        // the focus identity captured before opening, so read it ahead of time
+                        // for the restore that follows content collapse.
+                        var focusBeforeOpen = _lightDismissFocusBeforeOpen;
                         // Release the reentrancy guard the moment the closed state actually
                         // commits, rather than waiting for the whole close transaction (through
                         // Closing, content collapse, and the final Closed notification) to
@@ -1006,8 +1010,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
                             {
                                 CommitClosedState();
                                 IsOpenTransitioning = false;
+                                CloseDescendantLightDismissPopups();
                             },
-                            CollapseContent);
+                            () =>
+                            {
+                                CollapseContent();
+                                RestoreFocusAfterClose(focusBeforeOpen);
+                            });
                     }
                     else
                     {
@@ -1228,22 +1237,36 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     internal virtual bool OnContentAvailable()
     {
         SubscribeAnchorReflow();
+
+        // Opened is documented as raised once the surface is presented and its bounds commit.
+        // A foreign-anchored popup is an ordinary tree member whose placement would otherwise
+        // only resolve on the next cascading layout pass, so an Opened observer saw an empty
+        // SurfaceBounds. Resolving placement here, the same root-relative pass an anchor reflow
+        // already runs, commits the bounds before OpenSurface publishes Opened. Composite owners
+        // that re-arrange their own popup child from their own ArrangeOverride (TracksAnchorReflow
+        // false) keep their sequence, and a root that is not laid out yet is simply skipped.
+        if (TracksAnchorReflow && Anchor is not null)
+        {
+            LayoutAgainstRoot();
+        }
+
         return true;
     }
 
-    /// <summary>Responds to the foreign anchor reflowing while this popup is open. The default
-    /// re-resolves placement against the anchor's new position, line-for-line what a Tooltip's
-    /// own layout pass already did before this tracking moved here. A family with different needs
-    /// (a Flyout dismissing instead of following) overrides this instead of subscribing itself.</summary>
+    /// <summary>Resolves this open popup's placement immediately against its root's current
+    /// bounds, bypassing the layout short-circuit for this control alone.</summary>
     /// <remarks>
-    /// InvalidateSelf here is scoped to this control rather than a full-tree Invalidate: only this
-    /// popup's own Measure/Arrange short-circuit needs bypassing (the anchor moved, not any of
-    /// this popup's own content), and the constraint/slot passed to Measure/Arrange below is the
-    /// synchronous follow-up InvalidateSelf's contract requires — leaving it pending, or invoking
-    /// it without immediately completing Measure/Arrange, strands the dirty bit until some
-    /// unrelated pass happens to visit this popup again.
+    /// Forced rather than left to Measure/Arrange's own dirty-phase check: an anchor reflow moves
+    /// the point placement was resolved against without ever changing the root bounds, so the
+    /// constraint and slot passed below can be byte-for-byte the ones already recorded from the
+    /// last layout pass, and both calls would silently no-op. InvalidateSelf is scoped to this
+    /// control rather than a full-tree Invalidate: only this popup's own short-circuit needs
+    /// bypassing, and the two calls immediately after are the synchronous follow-up its contract
+    /// requires; a full Invalidate would force an unrelated full-tree pass for a local reposition.
+    /// A root that has no bounds yet (opening staged before the first layout) is left to that
+    /// first pass.
     /// </remarks>
-    internal virtual void OnAnchorReflow()
+    private protected void LayoutAgainstRoot()
     {
         var root = RootBounds(default);
 
@@ -1256,6 +1279,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         Measure(new Constraint(root.Width, root.Height));
         Arrange(root, widthResolved: true, heightResolved: true);
     }
+
+    /// <summary>Responds to the foreign anchor reflowing while this popup is open. The default
+    /// re-resolves placement against the anchor's new position, line-for-line what a Tooltip's
+    /// own layout pass already did before this tracking moved here. A family with different needs
+    /// (a Flyout dismissing instead of following) overrides this instead of subscribing itself.</summary>
+    internal virtual void OnAnchorReflow() => LayoutAgainstRoot();
 
     /// <summary>Starts reacting to the current Anchor's own reflow while this popup is open, so a
     /// foreign sibling growing, shrinking, or moving elsewhere re-resolves placement instead of
@@ -1324,6 +1353,59 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     private bool IsCurrentClosedState(ulong openStateVersion) =>
         !_isOpen && _openStateVersion == openStateVersion;
+
+    /// <summary>Closes every open light-dismiss popup nested inside this popup's content,
+    /// innermost first, as part of this popup's own ordinary close.</summary>
+    /// <remarks>
+    /// A press outside a chain of nested flyouts reaches the outermost registration first, so
+    /// without this the outer flyout collapsed its content over a still logically open inner
+    /// flyout, which then re-presented the moment the outer one was shown again. Only surfaces
+    /// carrying a light-dismiss policy are closed: owner-managed drop-downs and submenus keep
+    /// the documented behavior of staying logically open under a hidden ancestor.
+    /// </remarks>
+    private void CloseDescendantLightDismissPopups()
+    {
+        var descendants = new List<Popup>();
+        CollectDescendantPopups(this, descendants);
+        ExceptionDispatchInfo? failure = null;
+
+        for (var index = descendants.Count - 1; index >= 0; index--)
+        {
+            var descendant = descendants[index];
+
+            if (descendant._lightDismissPolicy is not null &&
+                descendant is { IsDisposed: false, IsOpen: true, IsOpenTransitioning: false })
+            {
+                ExceptionAggregation.Capture(() => descendant.IsOpen = false, ref failure);
+            }
+        }
+
+        failure?.Throw();
+    }
+
+    /// <summary>Returns keyboard focus to the control that owned it before this popup opened,
+    /// when collapsing the content released focus and that owner is still an eligible target.</summary>
+    /// <remarks>
+    /// A modal presentation restores focus through its scope exit and a light-dismiss press
+    /// through its own registration; this covers the remaining ordinary closes of a modeless
+    /// popup - Escape and programmatic - which otherwise left nothing focused at all.
+    /// </remarks>
+    private void RestoreFocusAfterClose(ControlBase? target)
+    {
+        if (target is null ||
+            FocusOwner is not { Focused: null } owner ||
+            target.IsDisposed ||
+            target.Dispatcher is null ||
+            !ReferenceEquals(target.Dispatcher, Dispatcher) ||
+            !target.EffectiveIsVisible ||
+            !target.EffectiveIsEnabled ||
+            ModalityOwner?.Allows(target) == false)
+        {
+            return;
+        }
+
+        _ = owner.Focus(target);
+    }
 
     private void CollapseContent()
     {

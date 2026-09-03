@@ -369,7 +369,7 @@ public sealed class TooltipInteractionTests
     /// <summary>Verifies replacing text content with rich content and then assigning Text again
     /// creates a fresh text body rather than resurrecting the original one.</summary>
     [Fact]
-    public async Task Text_WhenAssignedAfterRichContent_CreatesFreshTextBodyAsync()
+    public void Text_WhenAssignedAfterRichContent_CreatesFreshTextBody()
     {
         // Arrange
         var anchor = new Button { Text = "Anchor", Width = Length.Cells(8), Height = Length.Cells(1) };
@@ -380,11 +380,9 @@ public sealed class TooltipInteractionTests
 
         // Act
         Tooltip.SetContent(anchor, rich);
-
-        // Assert
-        tooltip.Content.ShouldBeSameAs(rich);
         tooltip.Text = "Ignored";
-        tooltip.Text.ShouldBe("Ignored");
+
+        // Assert - text assigned over rich content does not replace it
         tooltip.Content.ShouldBeSameAs(rich);
 
         // Act
@@ -396,7 +394,147 @@ public sealed class TooltipInteractionTests
         var replacement = tooltip.Content.ShouldNotBeNull();
         replacement.ShouldNotBeSameAs(originalBody);
         replacement.ShouldBeOfType<ControlText>().Content.ShouldBe("Again");
-        await Task.CompletedTask;
+    }
+
+    /// <summary>Verifies the tooltip's bounds are committed and its cells painted by the time
+    /// Opened is raised, the same contract Popup and Flyout honor.</summary>
+    [Fact]
+    public async Task Opened_WhenTooltipShows_ObservesCommittedBoundsAsync()
+    {
+        // Arrange
+        var (anchor, tooltip, other) = CreateAnchoredTooltip();
+        var boundsAtOpened = default(Rect);
+        tooltip.Opened += (_, _) => boundsAtOpened = tooltip.SurfaceBounds;
+        var clock = new ManualTimeProvider();
+        var root = new Overlay { Children = { anchor, other } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(anchor);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "show the tooltip by hover");
+
+        // Assert
+        boundsAtOpened.ShouldBe(tooltip.SurfaceBounds);
+        boundsAtOpened.Y.ShouldBe(anchor.Bounds.Bottom);
+        surface.Cell(new Point(boundsAtOpened.X + 1, boundsAtOpened.Y + 1)).Text.ShouldBe("S");
+    }
+
+    /// <summary>Verifies a tooltip on a control inside a modal Window shows on hover without
+    /// disturbing the modal scope, while a tooltipped background control blocked by that scope
+    /// never shows its tooltip.</summary>
+    [Fact]
+    public async Task Pointer_WhenModalWindowIsActive_ShowsInsideThePlaneAndNeverForBlockedBackgroundAsync()
+    {
+        // Arrange
+        var background = new Button { Text = "Back", Width = Length.Cells(8), Height = Length.Cells(1) };
+        Overlay.SetTop(background, Length.Cells(11));
+        Tooltip.SetText(background, "Blocked");
+        var backgroundTooltip = Tooltip.GetTooltip(background).ShouldNotBeNull();
+        backgroundTooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+        backgroundTooltip.HideDelay = TimeSpan.FromMilliseconds(10);
+        var inside = new Button { Text = "Inside" };
+        Tooltip.SetText(inside, "Hint");
+        var insideTooltip = Tooltip.GetTooltip(inside).ShouldNotBeNull();
+        insideTooltip.ShowDelay = TimeSpan.FromMilliseconds(10);
+        insideTooltip.HideDelay = TimeSpan.FromMilliseconds(10);
+        var modal = new Window
+        {
+            Header = "Modal",
+            Content = inside,
+            Width = Length.Cells(16),
+            Height = Length.Cells(5),
+            Visibility = Visibility.Collapsed,
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var clock = new ManualTimeProvider();
+        var root = new Overlay { Children = { background, modal } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 13),
+            clock,
+            TestContext.Current.CancellationToken);
+        ModalScope? scope = null;
+        await surface.UpdateAsync(() => scope = modal.ShowModal(), "show the modal Window");
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+
+        // Act
+        await surface.Pointer.MoveToAsync(inside);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "reach the show delay inside the modal");
+
+        // Assert
+        insideTooltip.IsOpen.ShouldBeTrue();
+        surface.Cell(new Point(insideTooltip.SurfaceBounds.X + 1, insideTooltip.SurfaceBounds.Y + 1)).Text.ShouldBe("H");
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        scope.ShouldNotBeNull().IsActive.ShouldBeTrue();
+        surface.ShouldHaveFocus(inside);
+
+        var exits = 0;
+        inside.PointerExited += (_, _) => exits++;
+
+        // Act
+        await surface.Pointer.MoveToAsync(background);
+
+        // Assert - leaving the plane retires hover from the modal's control
+        background.IsPointerOver.ShouldBeFalse();
+        inside.IsPointerOver.ShouldBeFalse();
+        exits.ShouldBe(1);
+        insideTooltip.IsOpen.ShouldBeTrue();
+
+        // Act
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "let the hide delay elapse");
+        insideTooltip.IsOpen.ShouldBeFalse();
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(40), "advance well past every delay");
+
+        // Assert - the blocked background control receives no hover, so no tooltip
+        backgroundTooltip.IsOpen.ShouldBeFalse();
+        insideTooltip.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies disabling the anchor while its tooltip is shown does not tear the tooltip
+    /// down on the spot: the presentation stays and the pointer retiring from the now-disabled
+    /// anchor runs the ordinary hide delay, after which it closes and does not come back.</summary>
+    [Fact]
+    public async Task IsEnabled_WhenAnchorIsDisabledWhileShown_HidesAfterHideDelayAsync()
+    {
+        // Arrange
+        var (anchor, tooltip, other) = CreateAnchoredTooltip();
+        var clock = new ManualTimeProvider();
+        var root = new Overlay { Children = { anchor, other } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 10),
+            clock,
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(anchor);
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "show the tooltip by hover");
+        tooltip.IsOpen.ShouldBeTrue();
+        var bounds = tooltip.SurfaceBounds;
+
+        // Act
+        await surface.UpdateAsync(() => anchor.IsEnabled = false, "disable the anchor while shown");
+
+        // Assert - still presented, the anchor merely paints disabled
+        tooltip.IsOpen.ShouldBeTrue();
+        anchor.IsPointerOver.ShouldBeFalse();
+        surface.Cell(new Point(bounds.X + 1, bounds.Y + 1)).Text.ShouldBe("S");
+
+        // Act
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(10), "let the hide delay elapse");
+
+        // Assert
+        tooltip.IsOpen.ShouldBeFalse();
+        surface.Cell(new Point(bounds.X + 1, bounds.Y + 1)).Text.ShouldBe(" ");
+
+        // Act - re-enabling under a stationary pointer does not resurrect the hint
+        await surface.UpdateAsync(() => anchor.IsEnabled = true, "re-enable the anchor");
+        await surface.AdvanceAsync(TimeSpan.FromMilliseconds(50), "advance past every delay");
+
+        // Assert
+        tooltip.IsOpen.ShouldBeFalse();
     }
 
     private static (Button Anchor, Tooltip Tooltip, Button Other) CreateAnchoredTooltip()

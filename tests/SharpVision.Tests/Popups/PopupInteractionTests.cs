@@ -307,19 +307,177 @@ public sealed class PopupInteractionTests
         surface.Cell(new Point(10, 1)).Text.ShouldBe("╭");
     }
 
+    /// <summary>Verifies an anchor that becomes hidden or collapsed while its popup is open leaves
+    /// the popup presented exactly where it was, with its modal scope intact, instead of chasing
+    /// the anchor's now-empty bounds to the host origin; showing the anchor again re-resolves
+    /// the same placement.</summary>
+    [Theory]
+    [InlineData(Visibility.Hidden)]
+    [InlineData(Visibility.Collapsed)]
+    public async Task Anchor_WhenHiddenWhileOpen_KeepsPopupPresentedInPlaceAsync(Visibility hidden)
+    {
+        // Arrange
+        var anchor = CreateAnchor(left: 10, top: 4);
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = new ControlText("Menu"),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var root = new Overlay { Children = { anchor, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+
+        // Act
+        await surface.UpdateAsync(() => anchor.Visibility = hidden, $"make the anchor {hidden}");
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╭");
+        surface.Cell(new Point(0, 0)).Text.ShouldNotBe("╭");
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+        scope.IsActive.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(() => anchor.Visibility = Visibility.Visible, "show the anchor again");
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╭");
+    }
+
+    /// <summary>Verifies disposing the anchor while its popup is open leaves the presentation and
+    /// its modal scope untouched, an ordinary close still completes, and the next open rejects the
+    /// dead anchor until a live one is assigned.</summary>
+    [Fact]
+    public async Task Anchor_WhenDisposedWhileOpen_KeepsPresentationAndRejectsReopenUntilReplacedAsync()
+    {
+        // Arrange
+        var anchor = CreateAnchor(left: 10, top: 4);
+        var replacement = CreateAnchor(left: 2, top: 1);
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = new ControlText("Menu"),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var root = new Overlay { Children = { anchor, replacement, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
+        var scope = surface.Application.Modality.Active.ShouldNotBeNull();
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+
+        // Act
+        await surface.UpdateAsync(anchor.Dispose, "dispose the anchor while open");
+
+        // Assert
+        anchor.IsDisposed.ShouldBeTrue();
+        root.Children.ShouldNotContain(anchor);
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╭");
+        surface.Application.Modality.Active.ShouldBeSameAs(scope);
+
+        // Act
+        await surface.UpdateAsync(() => popup.IsOpen = false, "close Popup");
+
+        // Assert
+        popup.IsOpen.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+        surface.Cell(new Point(10, 7)).Text.ShouldBe(" ");
+
+        // Act - the disposed anchor is rejected transactionally
+        var failure = await surface.Application.Dispatcher.InvokeAsync(
+            () => Record.Exception(() => popup.IsOpen = true),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        _ = failure.ShouldBeOfType<ObjectDisposedException>();
+        popup.IsOpen.ShouldBeFalse();
+        popup.SurfaceBounds.ShouldBe(default);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                popup.Anchor = replacement;
+                popup.IsOpen = true;
+            },
+            "reopen against a live anchor");
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        popup.SurfaceBounds.ShouldBe(new Rect(2, 4, 8, 3));
+        surface.Cell(new Point(2, 4)).Text.ShouldBe("╭");
+    }
+
+    /// <summary>Verifies replacing the local border while the popup is open repaints the frame
+    /// with the new glyph family at the same bounds, and returning it to theme ownership restores
+    /// the themed rounded corners.</summary>
+    [Fact]
+    public async Task Border_WhenChangedWhileOpen_RepaintsFrameGlyphsInPlaceAsync()
+    {
+        // Arrange
+        var anchor = CreateAnchor(left: 10, top: 4);
+        var popup = new Popup
+        {
+            Anchor = anchor,
+            Content = new ControlText("Menu"),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        var root = new Overlay { Children = { anchor, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╭");
+        surface.Cell(new Point(17, 9)).Text.ShouldBe("╯");
+
+        // Act
+        await surface.UpdateAsync(
+            () => popup.Border = AppearanceTestValues.Border(BorderSide.All, BorderGlyphStyle.Paired),
+            "author a paired-line border while open");
+
+        // Assert
+        popup.SurfaceBounds.ShouldBe(new Rect(10, 7, 8, 3));
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╔");
+        surface.Cell(new Point(17, 9)).Text.ShouldBe("╝");
+        surface.Cell(new Point(11, 8)).Text.ShouldBe("M");
+
+        // Act
+        await surface.UpdateAsync(popup.ResetBorder, "return the border to the theme");
+
+        // Assert
+        surface.Cell(new Point(10, 7)).Text.ShouldBe("╭");
+        surface.Cell(new Point(17, 9)).Text.ShouldBe("╯");
+    }
+
     #endregion
 
     #region Lifecycle events
 
-    /// <summary>Verifies Opened fires exactly once per opening, observes the committed open state
-    /// before any surface bounds exist, and is not re-raised by a redundant open.</summary>
+    /// <summary>Verifies Opened fires exactly once per opening, after the open state and the
+    /// placed surface bounds have both committed - the documented contract - and is not re-raised
+    /// by a redundant open. A foreign-anchored popup used to publish Opened with empty bounds
+    /// because its placement only resolved on the next cascading layout pass.</summary>
     [Fact]
-    public async Task Opened_WhenPopupOpens_FiresOnceWithOpenStateBeforeBoundsCommitAsync()
+    public async Task Opened_WhenPopupOpens_FiresOnceAfterOpenStateAndBoundsCommitAsync()
     {
         // Arrange
         var opened = 0;
         var isOpenAtOpened = false;
-        var boundsAtOpened = new Rect(1, 1, 1, 1);
+        var boundsAtOpened = default(Rect);
         var anchor = CreateAnchor(left: 2, top: 1);
         var popup = new Popup
         {
@@ -342,11 +500,12 @@ public sealed class PopupInteractionTests
         // Act
         await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
 
-        // Assert
+        // Assert - the bounds seen inside Opened are the ones the frame is drawn at
         opened.ShouldBe(1);
         isOpenAtOpened.ShouldBeTrue();
-        boundsAtOpened.ShouldBe(default);
-        popup.SurfaceBounds.ShouldNotBe(default);
+        boundsAtOpened.ShouldBe(new Rect(2, 4, 8, 3));
+        popup.SurfaceBounds.ShouldBe(boundsAtOpened);
+        surface.Cell(new Point(2, 4)).Text.ShouldBe("╭");
 
         // Act
         await surface.UpdateAsync(() => popup.IsOpen = true, "redundantly open Popup");
@@ -491,7 +650,9 @@ public sealed class PopupInteractionTests
     #region Keyboard
 
     /// <summary>Verifies Escape closes the popup only for activation-eligible chords: plain and
-    /// Shift-modified Escape close it, while command-modified Escape leaves it open and bubbles.</summary>
+    /// Shift-modified Escape close it, while command-modified Escape leaves it open and bubbles
+    /// past it unhandled. The popup is modeless here on purpose: a modal plane ends the route at
+    /// the popup itself, so only a modeless popup lets a root ancestor witness the bubble.</summary>
     [Theory]
     [InlineData(Modifiers.None, true)]
     [InlineData(Modifiers.Shift, true)]
@@ -507,6 +668,7 @@ public sealed class PopupInteractionTests
         var popup = new Popup
         {
             Anchor = anchor,
+            ModalBehavior = PopupModalBehavior.None,
             Content = new Button { Text = "Action" },
             Shadow = AppearanceTestValues.Shadow(visible: false)
         };
@@ -516,6 +678,8 @@ public sealed class PopupInteractionTests
             new Size(20, 8),
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
+        var corner = new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y);
+        surface.Cell(corner).Text.ShouldBe("╭");
         var probe = await surface.Application.Dispatcher.InvokeAsync(
             () => root.AddHandler(Events.Key, (_, args) =>
             {
@@ -529,24 +693,18 @@ public sealed class PopupInteractionTests
         // Act
         await surface.Keyboard.PressAsync(Code.Escape, modifiers);
 
-        // Assert
+        // Assert - a chord that does not close must reach the root unhandled, not be swallowed
         popup.IsOpen.ShouldBe(!expectClose);
+        escapedUnhandled.ShouldBe(expectClose ? 0 : 1);
+        (surface.Cell(corner).Text == "╭").ShouldBe(!expectClose);
         await surface.Application.Dispatcher.InvokeAsync(probe.Dispose, TestContext.Current.CancellationToken);
-
-        if (expectClose)
-        {
-            surface.Application.Modality.Active.ShouldBeNull();
-        }
-        else
-        {
-            surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(popup);
-        }
     }
 
     /// <summary>Verifies CloseOnEscape false leaves the popup open and passes Escape along the
-    /// route so an ancestor can observe it.</summary>
+    /// route unhandled so a root ancestor observes it (modeless, since a modal plane would end
+    /// the route at the popup).</summary>
     [Fact]
-    public async Task Escape_WhenCloseOnEscapeIsFalse_LeavesPopupOpenAsync()
+    public async Task Escape_WhenCloseOnEscapeIsFalse_LeavesPopupOpenAndBubblesAsync()
     {
         // Arrange
         var anchor = CreateAnchor(left: 2, top: 1);
@@ -554,6 +712,7 @@ public sealed class PopupInteractionTests
         var popup = new Popup
         {
             Anchor = anchor,
+            ModalBehavior = PopupModalBehavior.None,
             Content = action,
             CloseOnEscape = false,
             Shadow = AppearanceTestValues.Shadow(visible: false)
@@ -565,14 +724,25 @@ public sealed class PopupInteractionTests
             TestContext.Current.CancellationToken);
         await surface.UpdateAsync(() => popup.IsOpen = true, "open Popup");
         surface.ShouldHaveFocus(action);
+        var escapedUnhandled = 0;
+        var probe = await surface.Application.Dispatcher.InvokeAsync(
+            () => root.AddHandler(Events.Key, (_, args) =>
+            {
+                if (args.Phase == RoutingPhase.Bubble && args.Stroke.Code == Code.Escape && !args.IsHandled)
+                {
+                    escapedUnhandled++;
+                }
+            }),
+            TestContext.Current.CancellationToken);
 
         // Act
         await surface.Keyboard.PressAsync(Code.Escape);
 
-        // Assert
+        // Assert - the root ancestor observed the key unhandled
         popup.IsOpen.ShouldBeTrue();
         surface.ShouldHaveFocus(action);
-        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(popup);
+        escapedUnhandled.ShouldBe(1);
+        await surface.Application.Dispatcher.InvokeAsync(probe.Dispose, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies Tab and Shift+Tab inside an automatically modal popup cycle only through
