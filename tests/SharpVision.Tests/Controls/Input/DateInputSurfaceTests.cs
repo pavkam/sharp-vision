@@ -520,6 +520,33 @@ public sealed class DateInputSurfaceTests
         input.Value.ShouldBe(new DateOnly(2026, 3, 16));
     }
 
+    /// <summary>Verifies focus transfer caused by a segment click does not reset the segment that
+    /// was just selected.</summary>
+    [Fact]
+    public async Task Pointer_WhenUnfocusedDaySegmentIsClicked_PreservesClickedSegmentAsync()
+    {
+        var sibling = new DateInput { Value = new DateOnly(2026, 1, 1) };
+        var input = new DateInput
+        {
+            Value = new DateOnly(2026, 3, 15),
+            Culture = CultureInfo.InvariantCulture
+        };
+        var root = new Stack { Children = { sibling, input } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(20, 2),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(sibling);
+
+        await surface.Pointer.ClickAsync(input, new Point(3, 0));
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        surface.ShouldHaveFocus(input);
+        input.Value.ShouldBe(new DateOnly(2026, 3, 16));
+    }
+
     /// <summary>Verifies clicking the Month segment column while focus is elsewhere on the Year
     /// segment moves the active segment back to Month, proving the hit-test resolves each column
     /// to its own segment rather than always landing on the same one.</summary>

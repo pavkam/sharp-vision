@@ -22,7 +22,9 @@ using DisplayText = Display.Text;
 /// Every concrete control derived from this type is focusable and participates in Tab traversal
 /// by default. It also resolves its fallback appearance from <see cref="InputStyle"/>, even when
 /// no optional capability is enabled; a concrete typed style still supersedes that fallback
-/// through the ordinary style slot. Beyond that, nothing is assumed: a control calls whichever
+/// through the ordinary style slot. <see cref="StartAffix"/> and <see cref="EndAffix"/> provide the
+/// common optional edge-decoration contract; each concrete input decides how its layout reserves
+/// those cells. Beyond that, nothing is assumed: a control calls whichever
 /// <c>Enable*</c> method
 /// matches the capability it actually composes - press activation, a single owned text caption, an
 /// optional command, segmented temporal editing, a step-key translation, the shared drop-down
@@ -47,6 +49,47 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         IsFocusable = true;
         IsTabStop = true;
     }
+
+    #region Affixes
+
+    /// <summary>Gets or sets the optional leading edge-pinned decoration that a concrete input
+    /// reserves inside its authored content and outside its primary caption or value.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Affix? StartAffix
+    {
+        get;
+        set
+        {
+            if (SetProperty(ref field, value, GetAffixChangeImpact(field, value)))
+            {
+                OnAffixChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the optional trailing edge-pinned decoration that a concrete input
+    /// reserves inside its authored content and outside its primary caption or value.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Affix? EndAffix
+    {
+        get;
+        set
+        {
+            if (SetProperty(ref field, value, GetAffixChangeImpact(field, value)))
+            {
+                OnAffixChanged();
+            }
+        }
+    }
+
+    /// <summary>Lets an in-assembly input reconcile cached viewport geometry after either affix changes.</summary>
+    private protected virtual void OnAffixChanged()
+    {
+    }
+
+    #endregion
 
     #region Press activation
 
@@ -448,40 +491,141 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     #region Segment editing
 
-    private bool _segmentEditingEnabled;
+    private SegmentFieldBehavior? _segmentEditing;
+    private bool _activateFirstSegmentOnFocus;
 
     /// <summary>Opts into the shared active-segment navigation, digit-entry buffering, and
     /// pointer hit-testing state machine used by every segmented temporal field control.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
     /// <param name="applyDigitValue">
-    /// Applies a fully or partially typed numeric value to a segment's kind, clamping as the
+    /// Applies a fully or partially typed numeric value to a segment descriptor, clamping as the
     /// control sees fit, and returns whether the value actually changed.
     /// </param>
-    /// <param name="incrementSegment">Applies a one-step increment (positive or negative delta) to a segment's kind and returns whether the value changed.</param>
-    /// <param name="clearSegment">Resets a segment's kind to its lowest representable value and returns whether the value changed.</param>
-    /// <returns>The newly constructed behavior, owned by the caller.</returns>
+    /// <param name="incrementSegment">Applies a one-step increment (positive or negative delta) to a segment descriptor and returns whether the value changed.</param>
+    /// <param name="clearSegment">Resets a segment descriptor to its lowest representable value and returns whether the value changed.</param>
+    /// <param name="activateFirstSegmentOnFocus">Whether each focus entry returns to the first editable segment.</param>
+    /// <returns>The newly constructed behavior, whose focus lifecycle is owned by this base class.</returns>
     /// <exception cref="InvalidOperationException">Segment editing is already enabled.</exception>
     private protected SegmentFieldBehavior EnableSegmentEditing(
         Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
-        Func<TemporalSegmentKind, int, bool> applyDigitValue,
-        Func<TemporalSegmentKind, int, bool> incrementSegment,
-        Func<TemporalSegmentKind, bool> clearSegment)
+        Func<SegmentDescriptor, int, bool> applyDigitValue,
+        Func<SegmentDescriptor, int, bool> incrementSegment,
+        Func<SegmentDescriptor, bool> clearSegment,
+        bool activateFirstSegmentOnFocus = false)
     {
         VerifyMutable();
 
-        if (_segmentEditingEnabled)
+        if (_segmentEditing is not null)
         {
             throw new InvalidOperationException("Segment editing is already enabled.");
         }
 
-        _segmentEditingEnabled = true;
-        return new SegmentFieldBehavior(
+        _activateFirstSegmentOnFocus = activateFirstSegmentOnFocus;
+        _segmentEditing = new SegmentFieldBehavior(
             segmentsProvider,
             applyDigitValue,
             incrementSegment,
             clearSegment,
             () => Invalidate(InvalidationImpact.Render));
+        return _segmentEditing;
     }
+
+    /// <summary>Routes a primary pointer press to the segmented field's shared hit testing and
+    /// guarded focus transfer.</summary>
+    /// <param name="eventArgs">The routed pointer event.</param>
+    /// <param name="segmentBox">The rendered segment rectangle, excluding affixes and indicators.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    private protected void HandleSegmentPointer(PointerEventArgs eventArgs, Rect segmentBox)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (_segmentEditing is not { } segments)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        var dispatcher = Dispatcher;
+        segments.HandlePointer(
+            eventArgs,
+            segmentBox,
+            CellPolicy.AmbiguousWidth,
+            IsFocused,
+            RequestFocus,
+            () => CanContinueAfterFocus(dispatcher));
+    }
+
+    /// <summary>Renders one segmented value with consistent active-selection and null-placeholder
+    /// styling while preserving every resolved terminal style channel.</summary>
+    /// <param name="canvas">The destination canvas.</param>
+    /// <param name="segmentBox">The clipped rectangle available to segment text.</param>
+    /// <param name="segments">The ordered literal and editable segments.</param>
+    /// <param name="isPlaceholder">Whether the segments represent a null value.</param>
+    /// <param name="canHighlight">Whether the active editable segment should be highlighted.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="segments"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    private protected void RenderSegmentedValue(
+        TerminalCanvas canvas,
+        Rect segmentBox,
+        IReadOnlyList<SegmentDescriptor> segments,
+        bool isPlaceholder,
+        bool canHighlight)
+    {
+        ArgumentNullException.ThrowIfNull(segments);
+
+        if (_segmentEditing is not { } behavior)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        var style = ResolvedStyle;
+        var selectionStyle = WithAttributes(style, style.Attributes | TerminalAttributes.Reverse);
+        var placeholderStyle = WithAttributes(style, style.Attributes | TerminalAttributes.Dim);
+        var clipped = canvas.Clip(segmentBox);
+        var x = segmentBox.X;
+        var editableIndex = -1;
+
+        foreach (var segment in segments)
+        {
+            if (x >= segmentBox.Right)
+            {
+                break;
+            }
+
+            if (segment.IsEditable)
+            {
+                editableIndex++;
+            }
+
+            var segmentStyle = canHighlight && segment.IsEditable && editableIndex == behavior.ActiveSegment
+                ? selectionStyle
+                : isPlaceholder
+                    ? placeholderStyle
+                    : style;
+            _ = clipped.Draw(
+                segment.Text.AsSpan(),
+                new Point(x, segmentBox.Y),
+                segmentStyle,
+                background: BackgroundMode.Transparent);
+            x += MeasureCells(segment.Text);
+        }
+    }
+
+    /// <summary>Translates one eligible Up or Down key into a signed segment step.</summary>
+    /// <param name="eventArgs">The key event to inspect.</param>
+    /// <returns>One, negative one, or null when the key is not an eligible step command.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    private protected static int? ResolveSegmentStepDelta(KeyEventArgs eventArgs) =>
+        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
+
+    [Pure]
+    private static TerminalStyle WithAttributes(TerminalStyle source, TerminalAttributes attributes) => new(
+        source.Foreground,
+        source.Background,
+        attributes,
+        source.Hyperlink,
+        source.Underline,
+        source.UnderlineColor);
 
     #endregion
 
@@ -729,14 +873,20 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     #region Stepping
 
-    /// <summary>Translates an Up/Down arrow key press into a one-step increment delta.</summary>
+    /// <summary>Translates a scalar-eligible Up/Down arrow key press into a one-step increment delta.</summary>
     /// <param name="eventArgs">The key event to inspect.</param>
     /// <param name="delta">Set to <c>1</c> for Up, <c>-1</c> for Down, or <c>0</c> when unmatched.</param>
-    /// <returns>True when the key was Up or Down.</returns>
+    /// <returns>True when the key was Up or Down with no command modifier.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
     protected static bool TryGetStepDelta(KeyEventArgs eventArgs, out int delta)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers))
+        {
+            delta = 0;
+            return false;
+        }
 
         if (eventArgs.Stroke.Code == Code.Up)
         {
@@ -789,6 +939,42 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             new Point(Math.Max(content.X, content.Right - DropDownIndicatorWidth), content.Y),
             style,
             BackgroundMode.Transparent);
+    }
+
+    /// <summary>Handles the conventional Alt+Down and F4 gestures for an enabled owned popup.</summary>
+    /// <param name="eventArgs">The routed key event.</param>
+    /// <returns>True when an exact opening gesture opens the popup, false when a candidate has
+    /// extra modifiers, or null when the key is not an initial opening gesture.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
+    private protected bool? HandleDropDownOpeningCommand(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        var stroke = eventArgs.Stroke;
+
+        if (!eventArgs.IsInitialKeyDown)
+        {
+            return null;
+        }
+
+        var isAltDownGesture = stroke.Code == Code.Down && (stroke.Modifiers & Modifiers.Alt) != 0;
+        var isF4Gesture = stroke.Code == Code.F4;
+
+        if (!isAltDownGesture && !isF4Gesture)
+        {
+            return null;
+        }
+
+        var admitted = isAltDownGesture
+            ? KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt)
+            : KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.None);
+
+        if (admitted)
+        {
+            IsOpen = true;
+        }
+
+        return admitted;
     }
 
     #endregion
@@ -1133,6 +1319,20 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     {
         base.OnFocusChanged(focused);
         _numericEditing?.FocusChanged(focused);
+
+        if (_segmentEditing is { } segments)
+        {
+            if (focused && _activateFirstSegmentOnFocus)
+            {
+                segments.ActivateFirstSegment();
+            }
+            else if (!focused)
+            {
+                segments.ResetDigitBuffer();
+            }
+
+            Invalidate(InvalidationImpact.Render);
+        }
     }
 
     /// <inheritdoc/>

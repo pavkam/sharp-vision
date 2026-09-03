@@ -5,16 +5,16 @@ namespace SharpVision.Controls.Input;
 
 using Popups;
 
-using SharpVision.Terminal.Input;
-
 /// <summary>Combines date and time editing in one bordered field control with an optional calendar popup.</summary>
 /// <remarks>
 /// The control displays a formatted <see cref="DateTime"/> value with date segments (month, day, year)
-/// followed by time segments (hour, minute, optionally second, optionally AM/PM).
-/// Date segments open a <see cref="Calendar"/> popup on activation; time segments edit inline.
+/// followed by time segments (hour, minute, optionally second, fractional second, and AM/PM).
+/// Every segment edits inline; the disclosure indicator opens the <see cref="Calendar"/> popup.
 /// Up/Down arrows increment or decrement the focused segment. Left/Right arrows navigate between segments.
 /// Typing digits replaces the segment value. Delete clears the value to null when <see cref="AllowNull"/> is set.
-/// Alt+Down opens the calendar popup from any segment.
+/// Custom <c>f</c> and <c>F</c> runs expose one to seven fractional digits; uppercase runs reserve
+/// blank editing cells when formatted trailing zeroes are omitted. Alt+Down or F4 opens the calendar
+/// popup from any segment.
 /// </remarks>
 [PublicAPI]
 public sealed class DateTimeInput: InputBase
@@ -34,6 +34,8 @@ public sealed class DateTimeInput: InputBase
             ['h'] = TemporalSegmentKind.Hour,
             ['m'] = TemporalSegmentKind.Minute,
             ['s'] = TemporalSegmentKind.Second,
+            ['f'] = TemporalSegmentKind.FractionalSecond,
+            ['F'] = TemporalSegmentKind.FractionalSecond,
             ['t'] = TemporalSegmentKind.AmPmDesignator
         };
 
@@ -110,10 +112,10 @@ public sealed class DateTimeInput: InputBase
             IncrementSegmentValue,
             ClearSegmentValue);
         _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveStepDelta,
+            ResolveSegmentStepDelta,
             ClearValue,
             HandleCharacterCommand,
-            HandlePopupCommand);
+            HandleDropDownOpeningCommand);
         TabNavigation = TabNavigation.None;
     }
 
@@ -387,26 +389,6 @@ public sealed class DateTimeInput: InputBase
     /// <summary>Gets the retained calendar for proving bound synchronization invariants.</summary>
     internal Calendar OwnedCalendar => _calendarDropDown.Calendar;
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     #endregion
 
     #region Input, layout, and rendering
@@ -433,7 +415,7 @@ public sealed class DateTimeInput: InputBase
 
     /// <summary>Resolves the box editable segment text is drawn into: the content box with the
     /// drop-down indicator's own reserved columns (<see cref="_fieldBorderWidth"/>) subtracted
-    /// first, then deflated for any active <see cref="StartAffix"/>/<see cref="EndAffix"/> -
+    /// first, then deflated for any active <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/> -
     /// keeping both affixes strictly inboard of the indicator, and never overlapping it.</summary>
     private Rect ResolveTextBox()
     {
@@ -459,11 +441,6 @@ public sealed class DateTimeInput: InputBase
 
         EnsureSeeded();
         var style = ResolvedStyle;
-        var highlight = new TerminalStyle(
-            style.Foreground,
-            style.Background,
-            style.Attributes | TerminalAttributes.Reverse);
-        var canHighlight = IsFocused && !IsOpen;
         var fieldBox = new Rect(
             content.X,
             content.Y,
@@ -472,23 +449,12 @@ public sealed class DateTimeInput: InputBase
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
         var textBox = DeflateForAffixes(fieldBox, affixes);
-        var textCanvas = canvas.Clip(textBox);
-        var x = textBox.X;
-        var editableIndex = -1;
-
-        foreach (var segment in BuildSegments())
-        {
-            if (segment.IsEditable)
-            {
-                editableIndex++;
-            }
-
-            var segmentStyle = canHighlight && segment.IsEditable && editableIndex == _segments.ActiveSegment
-                ? highlight
-                : style;
-            _ = textCanvas.Draw(segment.Text.AsSpan(), new Point(x, textBox.Y), segmentStyle, background: BackgroundMode.Transparent);
-            x += MeasureCells(segment.Text);
-        }
+        RenderSegmentedValue(
+            canvas,
+            textBox,
+            BuildSegments(),
+            isPlaceholder: _state.Value is null,
+            canHighlight: IsFocused && !IsOpen);
 
         DrawDropDownIndicator(canvas, content, style);
     }
@@ -521,7 +487,7 @@ public sealed class DateTimeInput: InputBase
 
         if (eventArgs is PointerEventArgs pointer && !IsOpen)
         {
-            HandlePointer(pointer);
+            HandleSegmentPointer(pointer, ResolveTextBox());
 
             if (pointer.IsHandled)
             {
@@ -538,19 +504,6 @@ public sealed class DateTimeInput: InputBase
         {
             base.OnEvent(eventArgs);
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (!focused)
-        {
-            _segments.ResetDigitBuffer();
-        }
-
-        Invalidate(InvalidationImpact.Render);
     }
 
     /// <inheritdoc/>
@@ -571,43 +524,8 @@ public sealed class DateTimeInput: InputBase
 
     #region Keyboard input
 
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var dispatcher = Dispatcher;
-        _segments.HandlePointer(
-            eventArgs,
-            ResolveTextBox(),
-            CellPolicy.AmbiguousWidth,
-            IsFocused,
-            RequestFocus,
-            () => CanContinueAfterFocus(dispatcher));
-    }
-
-    private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
-        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
-
     private bool HandleCharacterCommand(Rune character) =>
         TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
-
-    private bool? HandlePopupCommand(KeyEventArgs eventArgs)
-    {
-        var stroke = eventArgs.Stroke;
-
-        if (!eventArgs.IsInitialKeyDown ||
-            stroke.Code != Code.Down ||
-            (stroke.Modifiers & Modifiers.Alt) == 0)
-        {
-            return null;
-        }
-
-        if (!KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Alt))
-        {
-            return false;
-        }
-
-        IsOpen = true;
-        return true;
-    }
 
     private bool ToggleAmPm() =>
         TemporalSegmentClassification.ToggleAmPm(BuildSegments, () => _state.Value.HasValue, _segments);
@@ -617,8 +535,10 @@ public sealed class DateTimeInput: InputBase
     /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
     private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
 
-    private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
+    private bool ApplyDigitValue(SegmentDescriptor segment, int value)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             _ = _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
@@ -656,6 +576,10 @@ public sealed class DateTimeInput: InputBase
                 TemporalSegmentKind.Second =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
                         dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(value))), dt),
+                TemporalSegmentKind.FractionalSecond => new DateTime(
+                    dt.Ticks - (dt.Ticks % TimeSpan.TicksPerSecond) +
+                    TemporalClockArithmetic.FractionalSecondTicks(value, segment.DigitCapacity),
+                    dt.Kind),
                 _ => dt
             };
 #pragma warning restore IDE0072
@@ -668,8 +592,10 @@ public sealed class DateTimeInput: InputBase
         }
     }
 
-    private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
+    private bool IncrementSegmentValue(SegmentDescriptor segment, int delta)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             return _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
@@ -689,6 +615,9 @@ public sealed class DateTimeInput: InputBase
             TemporalSegmentKind.Hour => SafeAddTicks(dt, TimeSpan.TicksPerHour * delta),
             TemporalSegmentKind.Minute => SafeAddTicks(dt, TimeStep.Ticks * delta),
             TemporalSegmentKind.Second => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.FractionalSecond => SafeAddTicks(
+                dt,
+                TemporalClockArithmetic.FractionalSecondUnitTicks(segment.DigitCapacity) * delta),
             TemporalSegmentKind.AmPmDesignator => dt.AddHours(dt.Hour < 12 ? 12 : -12),
             _ => dt
         };
@@ -697,8 +626,10 @@ public sealed class DateTimeInput: InputBase
         return _state.SetValue(result);
     }
 
-    private bool ClearSegmentValue(TemporalSegmentKind kind)
+    private bool ClearSegmentValue(SegmentDescriptor segment)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             return false;
@@ -717,6 +648,9 @@ public sealed class DateTimeInput: InputBase
                 TemporalSegmentKind.Hour => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(0, dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Minute => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(dt.Hour, 0, dt.Second)), dt),
                 TemporalSegmentKind.Second => WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(dt.Hour, dt.Minute, 0)), dt),
+                TemporalSegmentKind.FractionalSecond => new DateTime(
+                    dt.Ticks - (dt.Ticks % TimeSpan.TicksPerSecond),
+                    dt.Kind),
                 _ => dt
             };
 #pragma warning restore IDE0072
@@ -879,15 +813,7 @@ public sealed class DateTimeInput: InputBase
 
             for (var index = 0; index < tokens.Count; index++)
             {
-                var token = tokens[index];
-#pragma warning disable IDE0072 // Every non-literal kind is intentionally a two-character placeholder except Year.
-                placeholder[index] = token.Kind switch
-                {
-                    null => token.LiteralText,
-                    TemporalSegmentKind.Year when token.RunLength >= 4 => "----",
-                    _ => "--"
-                };
-#pragma warning restore IDE0072
+                placeholder[index] = TemporalSegmentClassification.Placeholder(tokens[index]);
             }
 
             text = placeholder;
@@ -898,6 +824,7 @@ public sealed class DateTimeInput: InputBase
         for (var index = 0; index < tokens.Count; index++)
         {
             var token = tokens[index];
+            var segmentText = TemporalSegmentClassification.ReserveOptionalFractionCells(token, text[index]);
 
             // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
             // zero-padded number: rendering it as an ordinary editable segment would let a typed
@@ -907,14 +834,12 @@ public sealed class DateTimeInput: InputBase
             // on SegmentDescriptor.IsEditable.
             descriptors[index] = token.Kind is not { } kind ||
                 (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
-                ? new SegmentDescriptor(text[index])
+                ? new SegmentDescriptor(segmentText)
                 : new SegmentDescriptor(
-                    text[index],
+                    segmentText,
                     kind,
-                    kind == TemporalSegmentKind.AmPmDesignator ? 0
-                        : kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4
-                        : 2,
-                    MaxValueFor(kind, hasAmPm));
+                    TemporalSegmentClassification.DigitCapacity(token),
+                    MaxValueFor(kind, hasAmPm, token.RunLength));
         }
 
         return descriptors;
@@ -979,7 +904,7 @@ public sealed class DateTimeInput: InputBase
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
     [Pure]
-    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
+    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm, int runLength) =>
         kind switch
         {
             TemporalSegmentKind.Month => 12,
@@ -987,6 +912,7 @@ public sealed class DateTimeInput: InputBase
             TemporalSegmentKind.Year => 9999,
             TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
             TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
+            TemporalSegmentKind.FractionalSecond => TemporalClockArithmetic.FractionalSecondMaxValue(runLength),
             _ => 0
         };
 #pragma warning restore IDE0072

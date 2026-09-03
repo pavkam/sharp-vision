@@ -19,54 +19,75 @@ internal sealed class TimeInputPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         // 24-hour format (default).
-        var status24 = new Text("Value: (pick a time)");
-        var input24 = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
+        var status24 = CreateStatus();
+        var input24 = new TimeInput
+        {
+            TimeStep = TimeSpan.FromMinutes(15),
+            Value = new TimeOnly(14, 30)
+        };
         input24.ValueChanged += (_, eventArgs) =>
             status24.Content = $"Value: {FormatTime(eventArgs.Value)}";
         status24.Content = $"Value: {FormatTime(input24.Value)}";
 
         // 12-hour format with AM/PM.
-        var status12 = new Text("Value: (pick a time)");
-        var input12 = new TimeInput { Use24HourFormat = false };
+        var status12 = CreateStatus();
+        var input12 = new TimeInput
+        {
+            Use24HourFormat = false,
+            Value = new TimeOnly(9, 45)
+        };
         input12.ValueChanged += (_, eventArgs) =>
             status12.Content = $"Value: {FormatTime(eventArgs.Value)}";
         status12.Content = $"Value: {FormatTime(input12.Value)}";
 
         // With seconds visible.
-        var statusSec = new Text("Value: (pick a time)");
-        var inputSec = new TimeInput { ShowSeconds = true };
+        var statusSec = CreateStatus();
+        var inputSec = new TimeInput
+        {
+            ShowSeconds = true,
+            Value = new TimeOnly(14, 30, 5)
+        };
         inputSec.ValueChanged += (_, eventArgs) =>
             statusSec.Content = $"Value: {FormatTime(eventArgs.Value, showSeconds: true)}";
         statusSec.Content = $"Value: {FormatTime(inputSec.Value, showSeconds: true)}";
 
         // Nullable.
-        var statusNull = new Text("Value: (pick a time)");
-        var inputNull = new TimeInput { AllowNull = true };
+        var statusNull = CreateStatus();
+        var inputNull = new TimeInput { AllowNull = true, Value = null };
         inputNull.ValueChanged += (_, eventArgs) =>
             statusNull.Content = $"Value: {FormatTime(eventArgs.Value)}";
         statusNull.Content = $"Value: {FormatTime(inputNull.Value)}";
 
         // Localized culture.
-        var statusCulture = new Text("Value: (pick a time)");
+        var statusCulture = CreateStatus();
         var inputCulture = new TimeInput
         {
             Culture = new CultureInfo("fi-FI"),
-            Use24HourFormat = false
+            Use24HourFormat = false,
+            Value = new TimeOnly(14, 30)
         };
         inputCulture.ValueChanged += (_, eventArgs) =>
             statusCulture.Content = $"Value: {FormatTime(eventArgs.Value)}";
         statusCulture.Content = $"Value: {FormatTime(inputCulture.Value)}";
 
         // Custom format.
-        var statusFormat = new Text("Value: (pick a time)");
-        var inputFormat = new TimeInput { Format = "hh:mm:ss tt" };
+        var statusFormat = CreateStatus();
+        var inputFormat = new TimeInput
+        {
+            Format = "HH:mm:ss.fff",
+            Value = new TimeOnly(14, 30, 5, 123)
+        };
         inputFormat.ValueChanged += (_, eventArgs) =>
-            statusFormat.Content = $"Value: {FormatTime(eventArgs.Value, showSeconds: true)}";
-        statusFormat.Content = $"Value: {FormatTime(inputFormat.Value, showSeconds: true)}";
+            statusFormat.Content = $"Value: {FormatTime(eventArgs.Value, showFraction: true)}";
+        statusFormat.Content = $"Value: {FormatTime(inputFormat.Value, showFraction: true)}";
 
         // StartAffix reserves a fixed cell for an application-owned pinned-reminder marker.
-        var statusPinned = new Text("Value: (pick a time)");
-        var inputPinned = new TimeInput { StartAffix = new Affix("📌", "*", SemanticColor.Accent) };
+        var statusPinned = CreateStatus();
+        var inputPinned = new TimeInput
+        {
+            StartAffix = new Affix("📌", "*", SemanticColor.Accent),
+            Value = new TimeOnly(18, 45)
+        };
         inputPinned.ValueChanged += (_, eventArgs) =>
             statusPinned.Content = $"Value: {FormatTime(eventArgs.Value)}";
         statusPinned.Content = $"Value: {FormatTime(inputPinned.Value)}";
@@ -124,10 +145,10 @@ internal sealed class TimeInputPane: CompositeControlBase
                 "Custom format",
                 "<info>Format</info> overrides the derived segment order entirely with a custom pattern, taking precedence over <info>Use24HourFormat</info> and <info>ShowSeconds</info>.",
                 new DocExample(
-                    "Explicit 12-hour, seconds-visible field",
-                    "The pattern's own hour token selects 12-hour clamping; pair it with a designator token for correct AM/PM behavior.",
+                    "Fractional-second field",
+                    "One to seven <info>f</info> or <info>F</info> tokens create an editable fractional-second segment at that precision.",
                     new DocColumn(inputFormat, statusFormat),
-                    "timeInput.Format = \"hh:mm:ss tt\";")),
+                    "timeInput.Format = \"HH:mm:ss.fff\";")),
             new DocSection(
                 "📌",
                 "Affixes",
@@ -139,8 +160,15 @@ internal sealed class TimeInputPane: CompositeControlBase
                     "var timeInput = new TimeInput\n{\n    StartAffix = new Affix(\"📌\", \"*\", SemanticColor.Accent)\n};")));
     }
 
-    private static string FormatTime(TimeOnly? time, bool showSeconds = false) =>
+    private static string FormatTime(
+        TimeOnly? time,
+        bool showSeconds = false,
+        bool showFraction = false) =>
         time.HasValue
-            ? time.Value.ToString(showSeconds ? "HH:mm:ss" : "HH:mm", CultureInfo.InvariantCulture)
+            ? time.Value.ToString(
+                showFraction ? "HH:mm:ss.fff" : showSeconds ? "HH:mm:ss" : "HH:mm",
+                CultureInfo.InvariantCulture)
             : "(none)";
+
+    private static Text CreateStatus() => new("Value: (none)") { Width = Length.Cells(28) };
 }

@@ -18,9 +18,9 @@ public sealed class SegmentFieldBehaviorTests
 
     private static SegmentFieldBehavior Create(
         Func<IReadOnlyList<SegmentDescriptor>>? segmentsProvider = null,
-        Func<TemporalSegmentKind, int, bool>? applyDigitValue = null,
-        Func<TemporalSegmentKind, int, bool>? incrementSegment = null,
-        Func<TemporalSegmentKind, bool>? clearSegment = null,
+        Func<SegmentDescriptor, int, bool>? applyDigitValue = null,
+        Func<SegmentDescriptor, int, bool>? incrementSegment = null,
+        Func<SegmentDescriptor, bool>? clearSegment = null,
         Action? invalidate = null) =>
         new(
             segmentsProvider ?? (static () => []),
@@ -36,9 +36,9 @@ public sealed class SegmentFieldBehaviorTests
 
         return new SegmentFieldBehavior(
             Segments,
-            (kind, value) =>
+            (segment, value) =>
             {
-                if (kind == TemporalSegmentKind.Hour)
+                if (segment.Kind == TemporalSegmentKind.Hour)
                 {
                     var clamped = Math.Clamp(value, 0, 23);
                     if (clamped == _hour)
@@ -59,9 +59,9 @@ public sealed class SegmentFieldBehaviorTests
                 _minute = clampedMinute;
                 return true;
             },
-            (kind, delta) =>
+            (segment, delta) =>
             {
-                if (kind == TemporalSegmentKind.Hour)
+                if (segment.Kind == TemporalSegmentKind.Hour)
                 {
                     var clamped = Math.Clamp(_hour + delta, 0, 23);
                     if (clamped == _hour)
@@ -82,9 +82,9 @@ public sealed class SegmentFieldBehaviorTests
                 _minute = clampedMinute;
                 return true;
             },
-            kind =>
+            segment =>
             {
-                if (kind == TemporalSegmentKind.Hour)
+                if (segment.Kind == TemporalSegmentKind.Hour)
                 {
                     if (_hour == 0)
                     {
@@ -120,9 +120,9 @@ public sealed class SegmentFieldBehaviorTests
     public void Constructor_WhenRequiredArgumentIsNull_ThrowsArgumentNullException()
     {
         static IReadOnlyList<SegmentDescriptor> Segments() => [];
-        static bool ApplyDigit(TemporalSegmentKind kind, int value) => false;
-        static bool Increment(TemporalSegmentKind kind, int delta) => false;
-        static bool Clear(TemporalSegmentKind kind) => false;
+        static bool ApplyDigit(SegmentDescriptor segment, int value) => false;
+        static bool Increment(SegmentDescriptor segment, int delta) => false;
+        static bool Clear(SegmentDescriptor segment) => false;
         static void Invalidate() { }
 
         _ = Should.Throw<ArgumentNullException>(() =>
@@ -519,6 +519,57 @@ public sealed class SegmentFieldBehaviorTests
 
         behavior.HandleKey(eventArgs, options);
 
+        eventArgs.IsHandled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies scalar editing and navigation commands carrying an application-command
+    /// modifier remain available to ancestor shortcut routing instead of mutating this field.</summary>
+    [Theory]
+    [InlineData(Code.Up)]
+    [InlineData(Code.Left)]
+    [InlineData(Code.Delete)]
+    [InlineData(Code.Backspace)]
+    public void HandleKey_WhenScalarCommandHasControlModifier_LeavesFieldUnchangedAndUnhandled(Code code)
+    {
+        var behavior = CreateHourMinute();
+        _hour = 10;
+        var options = new SegmentFieldKeyOptions(
+            resolveStepDelta: key => key.Stroke.Code == Code.Up ? 1 : null,
+            clearValue: () =>
+            {
+                _hour = 0;
+                return true;
+            },
+            handleRecognizedWithoutChange: true);
+        var eventArgs = new KeyEventArgs(new Stroke(
+            code, character: null, nativeCode: 0, Modifiers.Control, KeyAction.Press));
+
+        behavior.HandleKey(eventArgs, options);
+
+        _hour.ShouldBe(10);
+        behavior.ActiveSegment.ShouldBe(0);
+        eventArgs.IsHandled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies incidental lock state does not suppress ordinary scalar navigation.</summary>
+    [Fact]
+    public void HandleKey_WhenRightCarriesLockModifiers_MovesAndHandles()
+    {
+        var behavior = CreateHourMinute();
+        var options = new SegmentFieldKeyOptions(
+            resolveStepDelta: static _ => null,
+            clearValue: static () => false,
+            handleRecognizedWithoutChange: true);
+        var eventArgs = new KeyEventArgs(new Stroke(
+            Code.Right,
+            character: null,
+            nativeCode: 0,
+            Modifiers.CapsLock | Modifiers.NumLock,
+            KeyAction.Press));
+
+        behavior.HandleKey(eventArgs, options);
+
+        behavior.ActiveSegment.ShouldBe(1);
         eventArgs.IsHandled.ShouldBeTrue();
     }
 

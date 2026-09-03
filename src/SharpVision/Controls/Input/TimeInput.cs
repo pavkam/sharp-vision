@@ -5,10 +5,12 @@ namespace SharpVision.Controls.Input;
 
 /// <summary>Defines a bordered field control for editing <see cref="TimeOnly"/> values using inline segment editing.</summary>
 /// <remarks>
-/// Each time segment (hour, minute, second, AM/PM) is independently editable.
+/// Each time segment (hour, minute, second, fractional second, AM/PM) is independently editable.
 /// Up/Down arrows increment or decrement the focused segment. Left/Right arrows
 /// navigate between segments. Typing digits replaces the segment value.
-/// Delete or Backspace clears the value to null when <see cref="AllowNull"/> is set.
+/// Delete clears the value to null when <see cref="AllowNull"/> is set; Backspace clears only
+/// the active segment. Custom <c>f</c> and <c>F</c> runs expose one to seven fractional digits;
+/// uppercase runs reserve blank editing cells when formatted trailing zeroes are omitted.
 /// <see cref="Culture"/> localizes the rendered time separator, the AM/PM designator text, and
 /// the digit glyphs used for each numeric segment. The segment order itself - hour, minute,
 /// optionally second, optionally an AM/PM designator - defaults to <see cref="Use24HourFormat"/>
@@ -28,6 +30,8 @@ public sealed class TimeInput: InputBase
             ['h'] = TemporalSegmentKind.Hour,
             ['m'] = TemporalSegmentKind.Minute,
             ['s'] = TemporalSegmentKind.Second,
+            ['f'] = TemporalSegmentKind.FractionalSecond,
+            ['F'] = TemporalSegmentKind.FractionalSecond,
             ['t'] = TemporalSegmentKind.AmPmDesignator
         };
 
@@ -61,7 +65,7 @@ public sealed class TimeInput: InputBase
             IncrementSegmentValue,
             ClearSegmentValue);
         _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveStepDelta,
+            ResolveSegmentStepDelta,
             ClearValue,
             HandleCharacterCommand);
         TabNavigation = TabNavigation.None;
@@ -233,26 +237,6 @@ public sealed class TimeInput: InputBase
         set => _ = _state.SetMaximum(value);
     }
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
-    /// content box and outside the editable segment layout - it never overlaps a segment.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
-    /// content box and outside the editable segment layout - it never overlaps a segment.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     #endregion
 
     #region Layout
@@ -274,7 +258,7 @@ public sealed class TimeInput: InputBase
     }
 
     /// <summary>Resolves the box editable segment text is drawn into - the content box deflated
-    /// for any active <see cref="StartAffix"/>/<see cref="EndAffix"/>. There is no drop-down
+    /// for any active <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/>. There is no drop-down
     /// indicator to further deflate around: unlike <see cref="ComboBox"/>, <see
     /// cref="DateInput"/>, and <see cref="DateTimeInput"/>, TimeInput has no popup.</summary>
     private Rect ResolveTextBox()
@@ -305,7 +289,7 @@ public sealed class TimeInput: InputBase
         }
         else if (eventArgs is PointerEventArgs pointer)
         {
-            HandlePointer(pointer);
+            HandleSegmentPointer(pointer, ResolveTextBox());
         }
 
         if (!eventArgs.IsHandled)
@@ -313,21 +297,6 @@ public sealed class TimeInput: InputBase
             base.OnEvent(eventArgs);
         }
     }
-
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var dispatcher = Dispatcher;
-        _segments.HandlePointer(
-            eventArgs,
-            ResolveTextBox(),
-            CellPolicy.AmbiguousWidth,
-            IsFocused,
-            RequestFocus,
-            () => CanContinueAfterFocus(dispatcher));
-    }
-
-    private int? ResolveStepDelta(KeyEventArgs eventArgs) =>
-        TryGetStepDelta(eventArgs, out var delta) ? delta : null;
 
     private bool HandleCharacterCommand(Rune character) =>
         TemporalSegmentClassification.IsAmPmToggle(character) && ToggleAmPm();
@@ -347,8 +316,10 @@ public sealed class TimeInput: InputBase
 
     #region Segment value callbacks
 
-    private bool ApplyDigitValue(TemporalSegmentKind kind, int value)
+    private bool ApplyDigitValue(SegmentDescriptor segment, int value)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             _ = _state.SetValue(_state.Clamp(TimeOnly.MinValue));
@@ -384,15 +355,22 @@ public sealed class TimeInput: InputBase
                 new TimeOnly(time.Hour, clamped, time.Second),
             TemporalSegmentKind.Second =>
                 new TimeOnly(time.Hour, time.Minute, clamped),
+            TemporalSegmentKind.FractionalSecond => new TimeOnly(
+                time.Ticks - (time.Ticks % TimeSpan.TicksPerSecond) +
+                TemporalClockArithmetic.FractionalSecondTicks(value, segment.DigitCapacity)),
             _ => time
         };
 #pragma warning restore IDE0072
 
-        return _state.SetValue(WithSubSecondTicksOf(result, time));
+        return _state.SetValue(kind == TemporalSegmentKind.FractionalSecond
+            ? result
+            : WithSubSecondTicksOf(result, time));
     }
 
-    private bool IncrementSegmentValue(TemporalSegmentKind kind, int delta)
+    private bool IncrementSegmentValue(SegmentDescriptor segment, int delta)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             return _state.SetValue(_state.Clamp(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
@@ -410,6 +388,9 @@ public sealed class TimeInput: InputBase
             TemporalSegmentKind.Minute => AddWithoutWrap(time, TimeStep.Ticks * delta),
             TemporalSegmentKind.AmPmDesignator => time.AddHours(time.Hour < 12 ? 12 : -12),
             TemporalSegmentKind.Second => AddWithoutWrap(time, TimeSpan.TicksPerSecond * delta),
+            TemporalSegmentKind.FractionalSecond => AddWithoutWrap(
+                time,
+                TemporalClockArithmetic.FractionalSecondUnitTicks(segment.DigitCapacity) * delta),
             _ => time
         };
 #pragma warning restore IDE0072
@@ -417,8 +398,10 @@ public sealed class TimeInput: InputBase
         return _state.SetValue(result);
     }
 
-    private bool ClearSegmentValue(TemporalSegmentKind kind)
+    private bool ClearSegmentValue(SegmentDescriptor segment)
     {
+        var kind = segment.Kind!.Value;
+
         if (!_state.Value.HasValue)
         {
             return false;
@@ -431,11 +414,15 @@ public sealed class TimeInput: InputBase
             TemporalSegmentKind.Hour => new TimeOnly(0, time.Minute, time.Second),
             TemporalSegmentKind.Minute => new TimeOnly(time.Hour, 0, time.Second),
             TemporalSegmentKind.Second => new TimeOnly(time.Hour, time.Minute, 0),
+            TemporalSegmentKind.FractionalSecond => new TimeOnly(
+                time.Ticks - (time.Ticks % TimeSpan.TicksPerSecond)),
             _ => time
         };
 #pragma warning restore IDE0072
 
-        return _state.SetValue(WithSubSecondTicksOf(result, time));
+        return _state.SetValue(kind == TemporalSegmentKind.FractionalSecond
+            ? result
+            : WithSubSecondTicksOf(result, time));
     }
 
     private static TimeOnly AddWithoutWrap(TimeOnly value, long ticks)
@@ -480,38 +467,16 @@ public sealed class TimeInput: InputBase
 
         EnsureSeeded();
         var style = ResolvedStyle;
-        var highlight = SegmentHighlightStyle(style);
-        var canHighlight = IsFocused && _state.Value.HasValue;
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
         var textBox = DeflateForAffixes(content, affixes);
-        var textCanvas = canvas.Clip(textBox);
-        var x = textBox.X;
-        var editableIndex = -1;
-
-        foreach (var segment in BuildSegments())
-        {
-            if (segment.IsEditable)
-            {
-                editableIndex++;
-            }
-
-            var segmentStyle = canHighlight && segment.IsEditable && editableIndex == _segments.ActiveSegment
-                ? highlight
-                : style;
-            _ = textCanvas.Draw(segment.Text.AsSpan(), new Point(x, textBox.Y), segmentStyle, background: BackgroundMode.Transparent);
-            x += MeasureCells(segment.Text);
-        }
+        RenderSegmentedValue(
+            canvas,
+            textBox,
+            BuildSegments(),
+            isPlaceholder: _state.Value is null,
+            canHighlight: IsFocused);
     }
-
-    [Pure]
-    private static TerminalStyle SegmentHighlightStyle(TerminalStyle source) => new(
-        source.Foreground,
-        source.Background,
-        source.Attributes | TerminalAttributes.Reverse,
-        source.Hyperlink,
-        source.Underline,
-        source.UnderlineColor);
 
     #endregion
 
@@ -569,7 +534,7 @@ public sealed class TimeInput: InputBase
 
             for (var index = 0; index < tokens.Count; index++)
             {
-                placeholder[index] = tokens[index].Kind is null ? tokens[index].LiteralText : "--";
+                placeholder[index] = TemporalSegmentClassification.Placeholder(tokens[index]);
             }
 
             text = placeholder;
@@ -580,14 +545,15 @@ public sealed class TimeInput: InputBase
         for (var index = 0; index < tokens.Count; index++)
         {
             var token = tokens[index];
+            var segmentText = TemporalSegmentClassification.ReserveOptionalFractionCells(token, text[index]);
 
             descriptors[index] = token.Kind is not { } kind
-                ? new SegmentDescriptor(text[index])
+                ? new SegmentDescriptor(segmentText)
                 : new SegmentDescriptor(
-                    text[index],
+                    segmentText,
                     kind,
-                    kind == TemporalSegmentKind.AmPmDesignator ? 0 : 2,
-                    MaxValueFor(kind, hasAmPm));
+                    TemporalSegmentClassification.DigitCapacity(token),
+                    MaxValueFor(kind, hasAmPm, token.RunLength));
         }
 
         return descriptors;
@@ -625,11 +591,12 @@ public sealed class TimeInput: InputBase
 
 #pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
     [Pure]
-    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm) =>
+    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm, int runLength) =>
         kind switch
         {
             TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
             TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
+            TemporalSegmentKind.FractionalSecond => TemporalClockArithmetic.FractionalSecondMaxValue(runLength),
             _ => 0
         };
 #pragma warning restore IDE0072
@@ -637,19 +604,6 @@ public sealed class TimeInput: InputBase
     #endregion
 
     #region Lifecycle
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (!focused)
-        {
-            _segments.ResetDigitBuffer();
-        }
-
-        Invalidate(InvalidationImpact.Render);
-    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

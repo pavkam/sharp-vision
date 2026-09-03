@@ -31,6 +31,9 @@ internal enum TemporalSegmentKind
     /// <summary>The second component of a time.</summary>
     Second,
 
+    /// <summary>The fractional-second component of a time, at the precision declared by its format run.</summary>
+    FractionalSecond,
+
     /// <summary>The AM/PM designator of a 12-hour time.</summary>
     AmPmDesignator
 }

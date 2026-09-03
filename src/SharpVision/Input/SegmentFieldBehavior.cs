@@ -23,9 +23,9 @@ using SharpVision.Terminal.Input;
 internal sealed class SegmentFieldBehavior
 {
     private readonly Func<IReadOnlyList<SegmentDescriptor>> _segmentsProvider;
-    private readonly Func<TemporalSegmentKind, int, bool> _applyDigitValue;
-    private readonly Func<TemporalSegmentKind, int, bool> _incrementSegment;
-    private readonly Func<TemporalSegmentKind, bool> _clearSegment;
+    private readonly Func<SegmentDescriptor, int, bool> _applyDigitValue;
+    private readonly Func<SegmentDescriptor, int, bool> _incrementSegment;
+    private readonly Func<SegmentDescriptor, bool> _clearSegment;
     private readonly Action _invalidate;
 
     private int? _digitBuffer;
@@ -34,18 +34,18 @@ internal sealed class SegmentFieldBehavior
     /// <summary>Initializes a behavior bound to a specific control's segment layout and value callbacks.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
     /// <param name="applyDigitValue">
-    /// Applies a fully or partially typed numeric value to a segment's kind, clamping as the
+    /// Applies a fully or partially typed numeric value to a segment descriptor, clamping as the
     /// control sees fit, and returns whether the value actually changed.
     /// </param>
-    /// <param name="incrementSegment">Applies a one-step increment (positive or negative delta) to a segment's kind and returns whether the value changed.</param>
-    /// <param name="clearSegment">Resets a segment's kind to its lowest representable value and returns whether the value changed.</param>
+    /// <param name="incrementSegment">Applies a one-step increment (positive or negative delta) to a segment descriptor and returns whether the value changed.</param>
+    /// <param name="clearSegment">Resets a segment descriptor to its lowest representable value and returns whether the value changed.</param>
     /// <param name="invalidate">Requests a render invalidation after a navigation-only change (one that does not itself change the value).</param>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
     public SegmentFieldBehavior(
         Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
-        Func<TemporalSegmentKind, int, bool> applyDigitValue,
-        Func<TemporalSegmentKind, int, bool> incrementSegment,
-        Func<TemporalSegmentKind, bool> clearSegment,
+        Func<SegmentDescriptor, int, bool> applyDigitValue,
+        Func<SegmentDescriptor, int, bool> incrementSegment,
+        Func<SegmentDescriptor, bool> clearSegment,
         Action invalidate)
     {
         ArgumentNullException.ThrowIfNull(segmentsProvider);
@@ -184,7 +184,7 @@ internal sealed class SegmentFieldBehavior
         }
 
         ResetDigitBuffer();
-        return _incrementSegment(editable[ActiveSegment].Kind!.Value, delta);
+        return _incrementSegment(editable[ActiveSegment], delta);
     }
 
     /// <summary>Buffers or commits a typed digit against the active segment.</summary>
@@ -210,8 +210,6 @@ internal sealed class SegmentFieldBehavior
             return false;
         }
 
-        var kind = segment.Kind!.Value;
-
         if (_digitBuffer.HasValue)
         {
             var combined = (_digitBuffer.Value * 10) + digit;
@@ -223,11 +221,11 @@ internal sealed class SegmentFieldBehavior
             if (_digitCount < segment.DigitCapacity)
             {
                 _digitBuffer = combined;
-                return _applyDigitValue(kind, combined);
+                return _applyDigitValue(segment, combined);
             }
 
             ResetDigitBuffer();
-            var committed = _applyDigitValue(kind, combined);
+            var committed = _applyDigitValue(segment, combined);
 
             if (ActiveSegment < editable.Count - 1)
             {
@@ -240,7 +238,7 @@ internal sealed class SegmentFieldBehavior
 
         if (digit > segment.FirstDigitOverflowThreshold)
         {
-            var committed = _applyDigitValue(kind, digit);
+            var committed = _applyDigitValue(segment, digit);
 
             if (ActiveSegment < editable.Count - 1)
             {
@@ -253,7 +251,7 @@ internal sealed class SegmentFieldBehavior
 
         _digitBuffer = digit;
         _digitCount = 1;
-        return _applyDigitValue(kind, digit);
+        return _applyDigitValue(segment, digit);
     }
 
     /// <summary>Resets the active segment's value to its lowest representable value.</summary>
@@ -268,7 +266,7 @@ internal sealed class SegmentFieldBehavior
         }
 
         ResetDigitBuffer();
-        return _clearSegment(editable[ActiveSegment].Kind!.Value);
+        return _clearSegment(editable[ActiveSegment]);
     }
 
     /// <summary>Classifies and applies one routed key through this field's shared navigation and
@@ -294,7 +292,8 @@ internal sealed class SegmentFieldBehavior
             return;
         }
 
-        var stepDelta = options.ResolveStepDelta(eventArgs);
+        var scalarCommandEligible = KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers);
+        var stepDelta = scalarCommandEligible ? options.ResolveStepDelta(eventArgs) : null;
 
         if (stepDelta.HasValue)
         {
@@ -310,27 +309,27 @@ internal sealed class SegmentFieldBehavior
 #pragma warning disable IDE0010, IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
         switch (stroke.Code)
         {
-            case Code.Left:
+            case Code.Left when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && MoveSegment(-1, wrap: false);
                 break;
-            case Code.Right:
+            case Code.Right when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && MoveSegment(1, wrap: false);
                 break;
-            case Code.Home:
+            case Code.Home when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && MoveToEdge(first: true);
                 break;
-            case Code.End:
+            case Code.End when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && MoveToEdge(first: false);
                 break;
-            case Code.Delete:
+            case Code.Delete when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && options.ClearValue();
                 break;
-            case Code.Backspace:
+            case Code.Backspace when scalarCommandEligible:
                 recognized = HasEditableSegments;
                 changed = recognized && ClearActiveSegment();
                 break;

@@ -334,26 +334,6 @@ public sealed class ComboBox: InputBase
         }
     }
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
-    /// field box and strictly inboard of the drop-down indicator.</summary>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     #endregion
 
     #region Input, layout, and rendering

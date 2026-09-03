@@ -134,26 +134,6 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
         ExecuteCommandIfAny(command);
     }
 
-    /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inside the
-    /// content box and outside the caption itself, after the fixed marker and glyph prefix.</summary>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? StartAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
-    /// <summary>Gets or sets the optional trailing edge-pinned decoration, reserved inside the
-    /// content box and outside the caption itself.</summary>
-    /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
-    public Affix? EndAffix
-    {
-        get;
-        set => _ = SetProperty(ref field, value, GetAffixChangeImpact(field, value));
-    }
-
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {

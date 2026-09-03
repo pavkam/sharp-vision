@@ -19,61 +19,83 @@ internal sealed class DateInputPane: CompositeControlBase
     private static DocPage CreateContent()
     {
         // Basic selection with live value tracking.
-        var basicStatus = new Text("Value: (pick a date)");
+        var basicStatus = CreateStatus();
         var basic = new DateInput
         {
             Culture = CultureInfo.InvariantCulture,
-            DropDownHeight = Length.Percent(50)
+            DropDownHeight = Length.Percent(50),
+            Value = new DateOnly(2026, 9, 3),
+            CalendarStyle = CalendarStyle.Default with { SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff) },
+            PopupChrome = new PopupChrome
+            {
+                Border = new Border(
+                    BorderSide.All,
+                    BorderGlyphStyle.Heavy,
+                    Color.Rgb(0x77, 0xaa, 0xff),
+                    Color.Transparent,
+                    TerminalAttributes.None)
+            }
         };
         basic.ValueChanged += (_, eventArgs) =>
             basicStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
         basicStatus.Content = $"Value: {FormatDate(basic.Value)}";
 
         // Bounded range with Minimum and Maximum.
-        var boundsStatus = new Text("Value: (pick a date)");
+        var boundsStatus = CreateStatus();
         var minDate = new DateOnly(2026, 1, 1);
         var maxDate = new DateOnly(2026, 12, 31);
         var bounded = new DateInput
         {
             Culture = CultureInfo.InvariantCulture,
             Minimum = minDate,
-            Maximum = maxDate
+            Maximum = maxDate,
+            Value = new DateOnly(2026, 6, 15)
         };
         bounded.ValueChanged += (_, eventArgs) =>
             boundsStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
         boundsStatus.Content = $"Value: {FormatDate(bounded.Value)} (2026 only)";
 
         // Nullable with AllowNull=true.
-        var nullableStatus = new Text("Value: (pick a date)");
+        var nullableStatus = CreateStatus();
         var nullable = new DateInput
         {
             Culture = CultureInfo.InvariantCulture,
-            AllowNull = true
+            AllowNull = true,
+            Value = null
         };
         nullable.ValueChanged += (_, eventArgs) =>
             nullableStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
         nullableStatus.Content = $"Value: {FormatDate(nullable.Value)}";
 
         // Localized culture.
-        var statusCulture = new Text("Value: (pick a date)");
-        var inputCulture = new DateInput { Culture = new CultureInfo("de-DE") };
+        var statusCulture = CreateStatus();
+        var inputCulture = new DateInput
+        {
+            Culture = new CultureInfo("de-DE"),
+            Value = new DateOnly(2026, 9, 3)
+        };
         inputCulture.ValueChanged += (_, eventArgs) =>
             statusCulture.Content = $"Value: {FormatDate(eventArgs.Value)}";
         statusCulture.Content = $"Value: {FormatDate(inputCulture.Value)}";
 
         // Custom format.
-        var statusFormat = new Text("Value: (pick a date)");
-        var inputFormat = new DateInput { Format = "yyyy/MM/dd" };
+        var statusFormat = CreateStatus();
+        var inputFormat = new DateInput
+        {
+            Format = "yyyy/MM/dd",
+            Value = new DateOnly(2026, 9, 3)
+        };
         inputFormat.ValueChanged += (_, eventArgs) =>
             statusFormat.Content = $"Value: {FormatDate(eventArgs.Value)}";
         statusFormat.Content = $"Value: {FormatDate(inputFormat.Value)}";
 
         // StartAffix reserves a fixed cell for an application-owned deadline marker.
-        var deadlineStatus = new Text("Value: (pick a date)");
+        var deadlineStatus = CreateStatus();
         var deadline = new DateInput
         {
             Culture = CultureInfo.InvariantCulture,
-            StartAffix = new Affix("⏰", "!", SemanticColor.Warning)
+            StartAffix = new Affix("⏰", "!", SemanticColor.Warning),
+            Value = new DateOnly(2026, 9, 3)
         };
         deadline.ValueChanged += (_, eventArgs) =>
             deadlineStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
@@ -88,9 +110,9 @@ internal sealed class DateInputPane: CompositeControlBase
                 "Edit date segments inline with <reverse>Up</reverse>/<reverse>Down</reverse> arrows, or open the Calendar popup with <reverse>Alt+Down</reverse> or <reverse>F4</reverse>.",
                 new DocExample(
                     "Pick a date",
-                    "<reverse>Left</reverse>/<reverse>Right</reverse> move between segments. The Calendar uses half the usable placement-side height and responds to terminal resize. Click or press <reverse>Enter</reverse> in the popup to commit.",
+                    "<reverse>Left</reverse>/<reverse>Right</reverse> move between segments. The Calendar uses half the usable placement-side height, with a custom selected-day color and heavy popup border. Click or press <reverse>Enter</reverse> in the popup to commit.",
                     new DocColumn(basic, basicStatus),
-                    "var dateInput = new DateInput\n{\n    DropDownHeight = Length.Percent(50)\n};\ndateInput.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var dateInput = new DateInput\n{\n    Value = new DateOnly(2026, 9, 3),\n    DropDownHeight = Length.Percent(50),\n    CalendarStyle = CalendarStyle.Default with\n    {\n        SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff)\n    },\n    PopupChrome = new PopupChrome\n    {\n        Border = new Border(\n            BorderSide.All,\n            BorderGlyphStyle.Heavy,\n            Color.Rgb(0x77, 0xaa, 0xff),\n            Color.Transparent,\n            TerminalAttributes.None)\n    }\n};")),
             new DocSection(
                 "📐",
                 "Bounds and validation",
@@ -140,4 +162,6 @@ internal sealed class DateInputPane: CompositeControlBase
 
     private static string FormatDate(DateOnly? date) =>
         date.HasValue ? date.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "(none)";
+
+    private static Text CreateStatus() => new("Value: (none)") { Width = Length.Cells(30) };
 }
