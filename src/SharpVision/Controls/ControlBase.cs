@@ -6262,7 +6262,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
         }
 
-        if (previous.Border != current.Border)
+        if (previous.Border != current.Border || previous.BorderStyles != current.BorderStyles)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualBorder)));
         }

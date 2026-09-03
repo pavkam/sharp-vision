@@ -1431,6 +1431,65 @@ public sealed class ControlBaseTests
         notifications.ShouldNotContain(nameof(ControlBase.ActualFace));
     }
 
+    /// <summary>Verifies a theme swap that only changes the relief-resolved highlight/shade colors
+    /// - never the plain <see cref="Border"/> struct itself - still publishes <c>ActualBorder</c>.
+    /// <see cref="ResolvedBorderStyles.Create"/> substitutes <see cref="SemanticColor.ReliefHighlight"/>/
+    /// <see cref="SemanticColor.ReliefShade"/> for a <see cref="BorderRelief.Raised"/> or
+    /// <see cref="BorderRelief.Sunken"/> border independently of the literal
+    /// <see cref="Border.Foreground"/>, and <c>AppearanceResolver.GetImpact</c> already folds that
+    /// diff into the same Render-impact bucket as <c>Border</c> - this pins the notification path
+    /// to the same rule, per the issue's own precedent.</summary>
+    [Fact]
+    public void SetTheme_WhenOnlyReliefResolvedBorderColorsChange_PublishesActualBorder()
+    {
+        var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithControl(Color.Rgb(4, 5, 6));
+        var control = new ProbeControl
+        {
+            Face = AppearanceTestValues.Face(
+                foreground: Color.Rgb(9, 9, 9),
+                background: Color.Rgb(1, 1, 1)),
+            Border = AppearanceTestValues.Border(BorderSide.All) with { Relief = BorderRelief.Raised }
+        };
+        control.SetTheme(previousTheme);
+        var previousBorder = control.ActualBorder;
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+
+        control.SetTheme(currentTheme);
+
+        control.ActualBorder.ShouldBe(
+            previousBorder,
+            "the plain Border struct itself (literal foreground/background/attributes) must not move - " +
+            "only its relief-resolved per-edge colors do, which is exactly the gap this regression pins");
+        notifications.ShouldBe([nameof(ControlBase.Theme), nameof(ControlBase.ActualBorder)]);
+        notifications.ShouldNotContain(nameof(ControlBase.ActualFace));
+        notifications.ShouldNotContain(nameof(ControlBase.ActualShadow));
+    }
+
+    /// <summary>Verifies a theme swap that changes neither Border nor its relief-resolved colors
+    /// does not spuriously publish <c>ActualBorder</c> - the widened check must not regress the
+    /// common no-op case.</summary>
+    [Fact]
+    public void SetTheme_WhenNeitherBorderNorReliefColorsChange_DoesNotPublishActualBorder()
+    {
+        var previousTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var currentTheme = ThemeWithControl(Color.Rgb(1, 2, 3));
+        var control = new ProbeControl
+        {
+            Border = AppearanceTestValues.Border(BorderSide.All) with { Relief = BorderRelief.Raised }
+        };
+        control.SetTheme(previousTheme);
+        var notifications = new List<string?>();
+        control.PropertyChanged += (_, eventArgs) => notifications.Add(eventArgs.PropertyName);
+        control.Clear(Invalidation.All);
+
+        control.SetTheme(currentTheme);
+
+        notifications.ShouldNotContain(nameof(ControlBase.ActualBorder));
+    }
+
     /// <summary>Verifies direct root Theme changes publish exact ambient descendant appearance only.</summary>
     [Fact]
     public void SetTheme_WhenTransparentDescendantInheritsChangedRootFace_PublishesAppearanceOnly()
