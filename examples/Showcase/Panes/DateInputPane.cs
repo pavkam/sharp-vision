@@ -124,7 +124,7 @@ internal sealed class DateInputPane: CompositeControlBase
                 "<info>Format</info> overrides the derived date pattern entirely, taking precedence over the short date pattern that <info>Culture</info> would otherwise select.",
                 new DocExample(
                     "Year-first date field",
-                    "The pattern's own tokens select the segment order and separators, overriding whatever <info>Culture</info> would otherwise produce.",
+                    "The pattern's own tokens select the segment order, but a literal \"/\" or \":\" in the pattern still resolves to the active culture's date or time separator.",
                     new DocColumn(inputFormat, statusFormat),
                     "dateInput.Format = \"yyyy/MM/dd\";")),
             new DocSection(
