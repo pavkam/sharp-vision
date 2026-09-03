@@ -372,8 +372,8 @@ Register a library style type's fallback definition with
 the primary factory most leaf control styles call, and the only public one left
 now that a leaf resolves no section of its own. A handful of leaf styles whose
 completion must preserve theme-owned per-state defaults instead - `Button` and
-the Bar-surface controls (`CommandBar`, `StatusBar`, menu items) - use the
-internal
+the Bar-surface item styles (`CommandBar`, `CommandBarItem`, menu items,
+`StatusBarItem`) - use the internal
 `ControlWithThemeOwnedStateDefaults`/`BarControlWithThemeOwnedStateDefaults`
 variants; both share `Control`'s one-hop fallback shape. `Part<TStyle>` remains
 for a secondary style forwarded to a control's retained pieces rather than
