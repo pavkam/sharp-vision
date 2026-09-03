@@ -176,7 +176,7 @@ public sealed class JsonViewInteractionTests
         await surface.UpdateAsync(() => view.Json = /*lang=json,strict*/ "{\"a\":{},\"b\":[]}", "nested empties");
 
         // Assert
-        surface.ShouldRender("""
+        surface.ShouldRender(/*lang=json,strict*/ """
                              {
                                "a": {},
                                "b": []
