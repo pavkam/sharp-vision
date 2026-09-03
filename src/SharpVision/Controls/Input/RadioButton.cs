@@ -225,6 +225,14 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
             return;
         }
 
+        // Group walking follows the shared scalar-navigation modifier policy: lock state rides
+        // along, but an arrow carrying Shift or an application-command modifier belongs to whatever
+        // shortcut expects it and must neither re-select a member nor be swallowed here.
+        if (!KeyboardModifierPolicy.IsScalarNavigationEligible(key.Stroke.Modifiers))
+        {
+            return;
+        }
+
         var reverse = key.Stroke.Code is Code.Left or Code.Up;
 
         if (reverse || key.Stroke.Code is Code.Right or Code.Down)

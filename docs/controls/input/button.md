@@ -5,8 +5,11 @@
 `Button` is declared
 `public sealed partial class Button : InputBase, IStyled<ButtonStyle>`. It is a
 focusable command control whose caption is its inherited `Text`. Each completed
-activation raises `Click` and, when a `Command` is bound and allows it, invokes
-that command once, after `Click`.
+activation raises `Click` and then invokes the bound `Command` once. A bound
+command whose `CanExecute` is false suppresses the activation entirely: neither
+`Click` nor `Execute` runs, and the button presents its disabled appearance (no
+hover or pressed feedback) until `CanExecuteChanged` reports otherwise, while it
+stays focusable and hit-testable like any enabled control.
 
 ## Inheritance
 
@@ -89,8 +92,9 @@ Disabling, detaching, losing focus, or having capture cancelled clears the press
 without activating. `PerformClick()` runs the same programmatic activation path.
 It enters through [`InputBase.TryActivate`](../input-base.md#api), so direct or
 ancestor-disabled/hidden state is a no-op while disposal and off-dispatcher
-access retain their documented failures. Button still owns command gating and
-raises `Click` before executing the captured command.
+access retain their documented failures. Button still owns command gating: when
+the captured command can execute it raises `Click` before executing that
+command, and when it cannot, the activation raises nothing at all.
 
 While pressed with a visible whole-cell shadow, the button paints its entire
 face translated by the shadow offset instead of at its untranslated `Bounds`.

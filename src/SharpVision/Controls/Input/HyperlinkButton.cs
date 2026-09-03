@@ -64,6 +64,22 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
     }
 
     /// <inheritdoc/>
+    /// <remarks>A bound command that cannot execute suppresses <see cref="Click"/>, so the link
+    /// must not answer hover or a press as if an activation could follow: it presents its disabled
+    /// appearance instead, and the command's <c>CanExecuteChanged</c> repaints it. Only the
+    /// appearance follows the command; focus, traversal, and hit testing stay those of an enabled
+    /// control.</remarks>
+    internal override VisualState GetAppearanceState()
+    {
+        var state = base.GetAppearanceState();
+        var command = Command;
+
+        return command is null || command.CanExecute(CommandParameter)
+            ? state
+            : (state & ~(VisualState.IsPointerOver | VisualState.Pressed)) | VisualState.Disabled;
+    }
+
+    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);

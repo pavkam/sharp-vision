@@ -5783,7 +5783,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         _resolvedAppearanceCacheCount = 0;
     }
 
-    private void InvalidateVisualStateCore()
+    private protected void InvalidateVisualStateCore()
     {
         if (StateAffectsAmbientAppearance)
         {

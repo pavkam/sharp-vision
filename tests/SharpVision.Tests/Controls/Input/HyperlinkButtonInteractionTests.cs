@@ -328,6 +328,61 @@ public sealed class HyperlinkButtonInteractionTests
         order.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a link whose bound command cannot execute looks exactly like a disabled
+    /// link - the same caption cells while hovered and while held - never raises Click, and still
+    /// takes focus like an enabled control.</summary>
+    [Fact]
+    public async Task Pointer_WhenCommandCannotExecute_PresentsDisabledFaceWithoutClickingAsync()
+    {
+        // Arrange
+        var command = new ProbeCommand { CanExecuteValue = false };
+        var dead = NewLink("Visit site");
+        dead.Command = command;
+        var disabled = NewLink("Visit site");
+        disabled.IsEnabled = false;
+        var alive = NewLink("Visit site");
+        var clicks = 0;
+        dead.Click += (_, _) => clicks++;
+        var stack = new Stack { Orientation = Orientation.Vertical, Children = { dead, disabled, alive } };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+        var deadCaption = new Point(0, 0);
+        var disabledCaption = new Point(0, 1);
+        var aliveCaption = new Point(0, 2);
+        surface.Cell(deadCaption).Text.ShouldBe("V");
+        surface.Cell(deadCaption).Style.ShouldBe(surface.Cell(disabledCaption).Style, "at rest the two faces agree");
+        surface.Cell(deadCaption).Style.ShouldNotBe(surface.Cell(aliveCaption).Style, "and differ from a live link");
+
+        // Act hover and hold
+        await surface.Pointer.MoveToAsync(dead);
+        await surface.Pointer.PressAsync();
+
+        // Assert no hover or pressed feedback
+        dead.IsPointerOver.ShouldBeTrue();
+        dead.IsPressed.ShouldBeTrue();
+        surface.ShouldHaveFocus(dead);
+        surface.Cell(deadCaption).Style.ShouldBe(surface.Cell(disabledCaption).Style, "a held press paints nothing new");
+
+        // Act release
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        clicks.ShouldBe(0);
+        surface.ShouldHaveCapture(null);
+
+        // Act - once the command can execute, the live face and activation return
+        command.CanExecuteValue = true;
+        await surface.UpdateAsync(command.RaiseCanExecuteChanged, "report the command as executable");
+        await surface.Pointer.MoveToAsync(new Point(11, 3));
+
+        // Assert - the disabled face is gone (the link keeps the focus it took on the press)
+        surface.Cell(deadCaption).Style.Foreground.ShouldNotBe(surface.Cell(disabledCaption).Style.Foreground);
+        await surface.Pointer.ClickAsync(dead);
+        clicks.ShouldBe(1);
+    }
+
     /// <summary>Verifies the access key focuses and activates the link from another focus owner, is
     /// skipped while disabled, and follows a live caption change.</summary>
     [Fact]

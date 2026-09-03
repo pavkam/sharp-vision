@@ -550,7 +550,7 @@ public sealed class ButtonInteractionTests
 
     /// <summary>Verifies a pointer click raises Click before executing the bound command with its
     /// parameter, a non-executable command suppresses both, and a CanExecuteChanged notification on
-    /// the dispatcher schedules a repaint.</summary>
+    /// the dispatcher repaints the face to follow the command's executability in both directions.</summary>
     [Fact]
     public async Task Pointer_WhenCommandIsBound_RaisesClickThenExecutesAndTracksExecutabilityAsync()
     {
@@ -565,6 +565,12 @@ public sealed class ButtonInteractionTests
             button,
             new Size(12, 5),
             TestContext.Current.CancellationToken);
+        var caption = new Point(2, 1);
+        surface.Cell(caption).Text.ShouldBe("S");
+        // Every later comparison happens with the button focused (a click focuses it), so the
+        // reference face is captured focused too.
+        await surface.Keyboard.PressAsync(Code.Tab);
+        var aliveFace = surface.Cell(caption).Style;
 
         // Act
         await surface.Pointer.ClickAsync(button);
@@ -576,24 +582,189 @@ public sealed class ButtonInteractionTests
         // Act with a non-executable command
         command.CanExecuteValue = false;
         order.Clear();
+        await surface.UpdateAsync(command.RaiseCanExecuteChanged, "report the command as non-executable");
+        var deadFace = surface.Cell(caption).Style;
         await surface.Pointer.ClickAsync(button);
 
-        // Assert neither Click nor Execute ran
+        // Assert neither Click nor Execute ran, and the face changed to say so
         order.ShouldBeEmpty();
         command.Executions.Count.ShouldBe(1);
+        deadFace.ShouldNotBe(aliveFace, "a non-executable command repaints the face");
 
-        // Act: executability notification on the dispatcher thread
-        var pending = Invalidation.None;
+        // Act: executability returns on the dispatcher thread
+        command.CanExecuteValue = true;
+        await surface.UpdateAsync(command.RaiseCanExecuteChanged, "report the command as executable again");
+        await surface.Pointer.MoveToAsync(new Point(11, 4));
+
+        // Assert the enabled face is back and the button is alive again
+        surface.Cell(caption).Style.ShouldBe(aliveFace);
+        await surface.Pointer.ClickAsync(button);
+        order.ShouldBe(["click:Pointer", "execute"]);
+    }
+
+    /// <summary>Verifies a Button whose bound command cannot execute looks exactly like a disabled
+    /// Button - the same caption cells while hovered and while held - never raises Click, keeps its
+    /// whole-cell face in place while held, yet still takes focus like an enabled control.</summary>
+    [Fact]
+    public async Task Pointer_WhenCommandCannotExecute_PresentsDisabledFaceWithoutClickingAsync()
+    {
+        // Arrange
+        var command = new ProbeCommand { CanExecuteValue = false };
+        var dead = NewButton("Save");
+        dead.Command = command;
+        var disabled = NewButton("Save");
+        disabled.IsEnabled = false;
+        var clicks = 0;
+        dead.Click += (_, _) => clicks++;
+        var stack = new Stack { Orientation = Orientation.Vertical, Children = { dead, disabled } };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(12, 7),
+            TestContext.Current.CancellationToken);
+        var deadCaption = new Point(2, 1);
+        var disabledCaption = new Point(2, 4);
+        surface.Cell(deadCaption).Text.ShouldBe("S");
+        surface.Cell(disabledCaption).Text.ShouldBe("S");
+        surface.Cell(deadCaption).Style.ShouldBe(surface.Cell(disabledCaption).Style, "at rest the two faces agree");
+
+        // Act hover
+        await surface.Pointer.MoveToAsync(dead);
+
+        // Assert no hover feedback
+        dead.IsPointerOver.ShouldBeTrue();
+        surface.Cell(deadCaption).Style.ShouldBe(surface.Cell(disabledCaption).Style, "hover paints nothing new");
+
+        // Act hold
+        await surface.Pointer.PressAsync();
+
+        // Assert no pressed feedback and no face translation
+        dead.IsPressed.ShouldBeTrue();
+        surface.ShouldHaveFocus(dead);
+        surface.Cell(deadCaption).Text.ShouldBe("S", "the face stays where it was");
+        surface.Cell(deadCaption).Style.ShouldBe(surface.Cell(disabledCaption).Style, "a held press paints nothing new");
+
+        // Act release
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        clicks.ShouldBe(0);
+        command.Executions.ShouldBeEmpty();
+        surface.ShouldHaveFocus(dead);
+        surface.ShouldHaveCapture(null);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        clicks.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a terminal focus-out report during a Space hold cancels the press without
+    /// activating, and the orphaned release afterwards activates nothing.</summary>
+    [Fact]
+    public async Task Keyboard_WhenTerminalFocusIsLostDuringSpaceHold_CancelsWithoutActivatingAsync()
+    {
+        // Arrange
+        var button = NewButton("Save");
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
         await surface.UpdateAsync(
-            () =>
-            {
-                command.RaiseCanExecuteChanged();
-                pending = button.Pending;
-            },
-            "raise CanExecuteChanged");
+            () => button.SetCapabilities(TestCapabilities.WithKeyReleases),
+            "declare key-release reporting");
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        surface.ShouldHaveState(button, VisualState.Focused | VisualState.Pressed);
 
-        // Assert a repaint was requested
-        (pending & Invalidation.Render).ShouldBe(Invalidation.Render);
+        // Act
+        await SendAsync(surface, "\u001b[O", "terminal focus out");
+
+        // Assert the hold is gone
+        button.IsPressed.ShouldBeFalse();
+        clicks.ShouldBe(0);
+
+        // Act the orphaned release
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+
+        // Assert
+        clicks.ShouldBe(0);
+        button.IsPressed.ShouldBeFalse();
+
+        // Act a fresh complete gesture still works
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+
+        // Assert
+        clicks.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a terminal focus-out report during a pointer hold releases capture and the
+    /// pressed state, and the pointer release afterwards activates nothing.</summary>
+    [Fact]
+    public async Task Pointer_WhenTerminalFocusIsLostDuringHold_ReleasesCaptureWithoutActivatingAsync()
+    {
+        // Arrange
+        var button = NewButton("Save");
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(button);
+        await surface.Pointer.PressAsync();
+        button.IsPressed.ShouldBeTrue();
+        surface.ShouldHaveCapture(button);
+
+        // Act
+        await SendAsync(surface, "\u001b[O", "terminal focus out");
+
+        // Assert
+        button.IsPressed.ShouldBeFalse();
+        surface.ShouldHaveCapture(null);
+
+        // Act
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        clicks.ShouldBe(0);
+        await surface.Pointer.ClickAsync(button);
+        clicks.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a Space release that carries an application-command modifier after an
+    /// eligible press cancels the hold instead of activating: the chord's release is not the
+    /// paired release the press was waiting for.</summary>
+    [Fact]
+    public async Task Keyboard_WhenSpaceReleaseCarriesCommandModifier_CancelsHoldWithoutActivatingAsync()
+    {
+        // Arrange
+        var button = NewButton("Save");
+        var clicks = 0;
+        button.Click += (_, _) => clicks++;
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(
+            () => button.SetCapabilities(TestCapabilities.WithKeyReleases),
+            "declare key-release reporting");
+        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        surface.ShouldHaveState(button, VisualState.Focused | VisualState.Pressed);
+
+        // Act - Ctrl+Space release
+        await SendAsync(surface, "\u001b[32;5:3u", "release Space with Control held");
+
+        // Assert
+        clicks.ShouldBe(0);
+        surface.ShouldHaveState(button, VisualState.Focused);
+        button.IsPressed.ShouldBeFalse();
+
+        // Act - a plain release now has nothing to pair with
+        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
+
+        // Assert
+        clicks.ShouldBe(0);
     }
 
     /// <summary>Verifies a GotFocus handler that disables the Button during a pointer press stops the

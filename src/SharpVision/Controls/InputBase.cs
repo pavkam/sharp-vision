@@ -432,7 +432,12 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
                 // change notification; propagating InvalidOperationException would fault whatever
                 // third-party code raised the event and could break delivery to its other
                 // subscribers, which is worse than one stale render.
-                PostForCurrentAttachment(attachment, () => Invalidate(Invalidation.Render));
+                //
+                // A bare Render invalidation only clears this control's own cache; a caption-owning
+                // control (Button, HyperlinkButton) presents its bound command's executability
+                // through its caption's ambient-inherited face, so the full visual-state cascade is
+                // required or the caption keeps its old color while the face changes underneath it.
+                PostForCurrentAttachment(attachment, InvalidateVisualStateCore);
             }
             catch (Exception exception) when (exception is ObjectDisposedException or InvalidOperationException)
             {
@@ -441,7 +446,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             return;
         }
 
-        Invalidate(Invalidation.Render);
+        InvalidateVisualStateCore();
     }
 
     #endregion
@@ -702,6 +707,26 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         }
 
         coordinator.AcceptAndClose();
+    }
+
+    /// <summary>Retires the active popup session and begins a fresh one without closing the popup.</summary>
+    /// <remarks>An in-assembly drop-down owner calls this from its acceptance callback when a
+    /// selection callback committed a newer selection than the accepted row: the newer decision
+    /// keeps the popup open over the current state instead of being dismissed by the superseded
+    /// acceptance, and no close or reopen is published. A no-op without an open session.</remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    private protected void RestartPopupNavigationSession()
+    {
+        VerifyMutable();
+
+        if (_popupCoordinator is not { } coordinator)
+        {
+            throw new InvalidOperationException("The popup capability is not enabled.");
+        }
+
+        coordinator.RestartSession();
     }
 
     /// <summary>Gets or sets whether the owned popup is open.</summary>

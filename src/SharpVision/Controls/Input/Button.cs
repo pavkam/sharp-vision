@@ -122,6 +122,26 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     }
 
     /// <inheritdoc/>
+    /// <remarks>A bound command that cannot execute suppresses <see cref="Click"/>, so the face
+    /// must not answer hover or a press as if an activation could follow: the button presents its
+    /// disabled appearance instead, and the command's <c>CanExecuteChanged</c> repaints it. Only
+    /// the appearance follows the command; focus, traversal, and hit testing stay those of an
+    /// enabled control.</remarks>
+    internal override VisualState GetAppearanceState()
+    {
+        var state = base.GetAppearanceState();
+
+        return IsCommandExecutable
+            ? state
+            : (state & ~(VisualState.IsPointerOver | VisualState.Pressed)) | VisualState.Disabled;
+    }
+
+    private bool IsCommandExecutable => Command is not { } command || command.CanExecute(CommandParameter);
+
+    // The shadowed face shifts while pressed; a press that cannot activate shows no shift either.
+    private bool IsFacePressed => IsPressed && IsCommandExecutable;
+
+    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         var content = TextControl;
@@ -160,7 +180,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         get
         {
             var shadow = ActualShadow;
-            return IsPressed && shadow.IsVisible
+            return IsFacePressed && shadow.IsVisible
                 ? FaceBounds
                 : Bounds.ExpandVisualBounds(shadow.IsVisible, shadow.Mode, shadow.Offset);
         }
@@ -185,7 +205,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         ShadowExcludeBounds = FaceBounds,
         PreserveButtonShadowGap = true,
         ClearBodyWhenPressedWithShadow = true,
-        SkipShadow = IsPressed
+        SkipShadow = IsFacePressed
     };
 
     /// <inheritdoc/>
@@ -292,12 +312,12 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     }
 
     private Rect FaceBounds =>
-        IsPressed && UsesWholeCellPressedTranslation
+        IsFacePressed && UsesWholeCellPressedTranslation
             ? Bounds.Shift(PressedTranslation)
             : Bounds;
 
     private Rect FaceContentBounds(Rect bounds) =>
-        IsPressed && UsesWholeCellPressedTranslation
+        IsFacePressed && UsesWholeCellPressedTranslation
             ? bounds.Shift(PressedTranslation)
             : bounds;
 

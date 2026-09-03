@@ -43,11 +43,153 @@ public sealed class RadioButtonInteractionTests
         await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
         surface.ShouldHaveFocus(two);
         await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+        surface.ShouldHaveFocus(next);
         one.IsFocused.ShouldBeFalse();
         three.IsFocused.ShouldBeFalse();
         one.CanTabStop.ShouldBeFalse();
         two.CanTabStop.ShouldBeTrue();
         three.CanTabStop.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies an arrow carrying Shift or an application-command modifier neither moves the
+    /// selection nor is swallowed, matching the shared scalar-navigation policy, while lock state
+    /// still walks the group.</summary>
+    /// <param name="modifiers">The modifiers carried by the Down arrow.</param>
+    /// <param name="moves">Whether the stroke is expected to walk the group.</param>
+    [Theory]
+    [InlineData(Modifiers.Shift, false)]
+    [InlineData(Modifiers.Control, false)]
+    [InlineData(Modifiers.Alt, false)]
+    [InlineData(Modifiers.Super, false)]
+    [InlineData(Modifiers.CapsLock, true)]
+    [InlineData(Modifiers.NumLock, true)]
+    public async Task Keyboard_WhenArrowCarriesModifier_WalksOnlyForLockStateAsync(Modifiers modifiers, bool moves)
+    {
+        // Arrange
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        var events = Record(one, two);
+        var stack = Group(one, two);
+        var observed = new List<bool>();
+        stack.KeyDown += (_, eventArgs) => observed.Add(eventArgs.IsHandled);
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(one);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down, modifiers);
+
+        // Assert
+        surface.ShouldHaveFocus(moves ? two : one);
+        two.IsChecked.ShouldBe(moves);
+        one.IsChecked.ShouldBe(!moves);
+        events.Count.ShouldBe(moves ? 3 : 0);
+        observed.ShouldBe(moves ? [] : [false], "a walk is consumed before the ancestor sees it; a chorded arrow reaches the ancestor unhandled");
+    }
+
+    /// <summary>Verifies the bound command runs on every explicit activation gesture (Enter, Space,
+    /// or a pointer press/release) with its parameter, including re-selecting the already checked
+    /// member, but not on arrow-key group navigation - RadioGroupCoordinator's arrow path calls
+    /// SelectInGroup directly and never routes through Activate. A command that cannot execute
+    /// never suppresses the selection itself.</summary>
+    [Fact]
+    public async Task Command_WhenBoundToMember_RunsAfterEveryActivationWithoutGatingSelectionAsync()
+    {
+        // Arrange
+        List<string> order = [];
+        var command = new ProbeCommand { Executing = parameter => order.Add($"execute:{parameter}") };
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        two.Command = command;
+        two.CommandParameter = "two";
+        two.Checked += (_, _) => order.Add("checked");
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(one, two),
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act - arrow onto Two (selection only, no activation), then re-select it with Enter, then
+        // click it (both explicit activations).
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Enter);
+        await surface.Pointer.MoveToAsync(two, new Point(1, 0));
+        await surface.Pointer.PressAsync();
+        two.IsPressed.ShouldBeTrue("the press on the checked member arms a hold");
+        surface.ShouldHaveCapture(two);
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        two.IsChecked.ShouldBeTrue();
+        order.ShouldBe(["checked", "execute:two", "execute:two"]);
+        command.Executions.ShouldBe(["two", "two"]);
+
+        // Act - a command that cannot execute still lets the selection move.
+        command.CanExecuteValue = false;
+        order.Clear();
+        await surface.Keyboard.PressAsync(Code.Up);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        two.IsChecked.ShouldBeTrue();
+        one.IsChecked.ShouldBeFalse();
+        order.ShouldBe(["checked"]);
+        command.Executions.Count.ShouldBe(2, "arrow navigation only selects; it never activates the command");
+    }
+
+    /// <summary>Verifies swapping the mark style while mounted repaints every member's mark at once
+    /// - the caption shifts with the narrower circle mark - and clearing the local style restores
+    /// the themed parentheses.</summary>
+    [Fact]
+    public async Task Style_WhenMarkStyleSwapsWhileMounted_RepaintsMarksAndRestoresOnClearAsync()
+    {
+        // Arrange
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(one, two),
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        surface.ShouldRender("""
+                             (•) One
+                             ( ) Two
+                             """);
+        var circle = RadioButtonStyle.Default with { MarkStyle = RadioButtonMarkStyle.Circle };
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                one.Style = circle;
+                two.Style = circle;
+            },
+            "swap both members to the circle mark");
+
+        // Assert - a one-cell mark, a gap, then the caption.
+        surface.Cell(new Point(0, 0)).Text.ShouldNotBe("(");
+        surface.Cell(new Point(0, 0)).Text.ShouldNotBe(surface.Cell(new Point(0, 1)).Text, "checked and unchecked marks differ");
+        surface.Cell(new Point(1, 0)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("O");
+        surface.Cell(new Point(2, 1)).Text.ShouldBe("T");
+        one.ActualStyle.MarkWidth.ShouldBe(1);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                one.Style = null;
+                two.Style = null;
+            },
+            "clear the local styles");
+
+        // Assert
+        surface.ShouldRender("""
+                             (•) One
+                             ( ) Two
+                             """);
     }
 
     /// <summary>Verifies each arrow key moves focus and selection to the adjacent eligible member with
@@ -439,11 +581,16 @@ public sealed class RadioButtonInteractionTests
         await surface.UpdateAsync(() => two.IsChecked = false, "clear the group");
         events.Clear();
         await surface.Keyboard.PressCharacterAsync(new Rune(' '));
+        surface.ShouldHaveState(two, VisualState.Focused | VisualState.Pressed);
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
 
-        // Assert
+        // Assert - the hold was cancelled on the member that lost focus, and the orphaned release
+        // armed nothing on the new focus owner.
         surface.ShouldHaveFocus(next);
+        surface.ShouldHaveState(two, VisualState.Normal);
+        two.IsPressed.ShouldBeFalse();
+        next.IsPressed.ShouldBeFalse();
         two.IsChecked.ShouldBeFalse();
         events.ShouldBeEmpty();
     }
