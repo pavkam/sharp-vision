@@ -375,6 +375,66 @@ public sealed class KittyGraphicsBackendTests
             diagnostic => diagnostic.ImageIdentity == imageB.Identity);
     }
 
+    /// <summary>Verifies a still-unconfirmed retiring image's number, transferred directly to a
+    /// replacement image in the same <see cref="KittyGraphicsBackend.Prepare"/> call, is not later
+    /// misattributed once the retiring image's own stale reply finally arrives - even when that
+    /// stale reply is a success (e.g. <c>i=5,I=1;OK</c>) rather than a rejection. Before this fix,
+    /// only the failure branch consulted the ambiguous-number guard, so a stale successful reply
+    /// still matched the new tenant's <c>Number</c> and stamped its assigned id with the retiring
+    /// image's stale id - and once stamped, <c>UsesImageNumber</c> flips to <see langword="false"/>,
+    /// permanently preventing the new tenant's own real reply (matched only while
+    /// <c>UsesImageNumber</c> is still <see langword="true"/>) from ever being applied.</summary>
+    [Fact]
+    public void Accept_WhenTransferredNumbersStaleSuccessReplyArrives_DoesNotCorruptTheNewTenantsAssignedId()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        using var frameBMoved = Frame(imageB, new Rect(1, 0, 1, 1));
+        using var frameBMovedAgain = Frame(imageB, new Rect(2, 1, 1, 1));
+
+        // Image A rents Number 1 and transmits. Its assignment response is deliberately never
+        // accepted here, simulating a still-outstanding terminal round-trip.
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Image B replaces A in the SAME Prepare call, so the identifier-transfer fast path hands
+        // A's still-unconfirmed Number 1 straight to B - this must still happen unchanged.
+        _ = backend.Prepare(frameA, frameB, full: false);
+        var bBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=1;");
+
+        // A's stale transmit response finally arrives as a SUCCESS, claiming Number 1 with A's own
+        // stale assigned id - the exact same number B's own upload now also uses.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=5,I=1;OK"u8));
+
+        // Draining the response (and forcing B's placement to be rewritten by moving it) must not
+        // stamp B's assigned id with A's stale id 5: B never had its own reply, so it must still be
+        // number-addressed.
+        _ = backend.Prepare(frameB, frameBMoved, full: false);
+        var beforeOwnReply = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(beforeOwnReply.Placements).ShouldContain("I=1");
+        Encoding.ASCII.GetString(beforeOwnReply.Placements).ShouldNotContain("i=5");
+
+        // B's own real reply now arrives, matching the number this same B is still using. It must
+        // still be applied - proving the earlier drop did not permanently blind B to its own reply.
+        // A further move exercises the newly-assigned id, mirroring the id-assignment test above.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+        _ = backend.Prepare(frameBMoved, frameBMovedAgain, full: false);
+        var afterOwnReply = WritePrepared(backend);
+
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldContain("a=p,i=42,p=1");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("i=5");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("I=1");
+    }
+
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]
     public void Prepare_WhenImageMoves_ReusesIdsWithoutUploadingAndDeletesOnLastUse()

@@ -1027,6 +1027,20 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     {
         while (_responses.TryDequeue(out var response))
         {
+            // A number that was transferred directly to its current tenant while the retiring image
+            // it came from was still unconfirmed cannot be told apart from that stale retiring image's
+            // own late reply: attributing this response to the current tenant here risks reporting a
+            // healthy, unrelated image as terminal-rejected, or - just as bad - stamping its assigned
+            // id (or a placement's) with an id that was never really meant for it. Dropping the reply
+            // silently for this one number, regardless of whether it succeeded or failed, is the same
+            // conservative outcome every reply had before this diagnostic existed, and is consumed here
+            // (one-shot) rather than left to suppress a genuinely later, unambiguous reply for whichever
+            // image eventually settles on this same number.
+            if (_ambiguousTransferredNumbers.Remove(response.ImageNumber))
+            {
+                continue;
+            }
+
             if (!response.Succeeded)
             {
                 RecordUploadFailureDiagnostics(response);
@@ -1070,18 +1084,6 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     /// </summary>
     private void RecordUploadFailureDiagnostics(KittyGraphicsResponse response)
     {
-        // A number that was transferred directly to its current tenant while the retiring image
-        // it came from was still unconfirmed cannot be told apart from that stale retiring image's
-        // own late reply: attributing this response to the current tenant here risks reporting a
-        // healthy, unrelated image as terminal-rejected. Dropping it silently for this one number
-        // is the same conservative outcome every failure reply had before this diagnostic existed,
-        // and is consumed here (one-shot) rather than left to suppress a genuinely later,
-        // unambiguous failure for whichever image eventually settles on this same number.
-        if (_ambiguousTransferredNumbers.Remove(response.ImageNumber))
-        {
-            return;
-        }
-
         foreach (var identity in _images
             .Where(pair => pair.Value.UsesImageNumber && pair.Value.Number == response.ImageNumber)
             .Select(static pair => pair.Key)
