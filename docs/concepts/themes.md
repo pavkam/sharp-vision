@@ -369,10 +369,16 @@ type's own key would compute to.
 
 Register a library style type's fallback definition with
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)` -
-the one factory every leaf control style calls, and the only one left now that a
-leaf resolves no section of its own. `Part<TStyle>` remains for a secondary
-style forwarded to a control's retained pieces rather than owning that control's
-own appearance. Both are public and require no internal access; see
+the primary factory most leaf control styles call, and the only public one left
+now that a leaf resolves no section of its own. A handful of leaf styles whose
+completion must preserve theme-owned per-state defaults instead - `Button` and
+the Bar-surface controls (`CommandBar`, `StatusBar`, menu items) - use the
+internal
+`ControlWithThemeOwnedStateDefaults`/`BarControlWithThemeOwnedStateDefaults`
+variants; both share `Control`'s one-hop fallback shape. `Part<TStyle>` remains
+for a secondary style forwarded to a control's retained pieces rather than
+owning that control's own appearance. `Control` and `Part` are public and
+require no internal access; see
 [theming-new-controls.md](theming-new-controls.md) for a worked example.
 
 ## Example
