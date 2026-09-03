@@ -309,7 +309,7 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         _ = SetCurrent(item);
-        Select(item);
+        Select(item, ActivationCause.Programmatic);
     }
 
     /// <summary>Verifies the owner before a public collection validates candidate-specific state.</summary>
@@ -577,7 +577,7 @@ public sealed class NavigationView: CompositeControlBase
             _ = SetCurrent(replacement);
         }
 
-        Select(replacement);
+        Select(replacement, ActivationCause.Programmatic);
     }
 
     private void ConfigureEntry(
@@ -657,20 +657,28 @@ public sealed class NavigationView: CompositeControlBase
     {
         ArgumentNullException.ThrowIfNull(item);
         _ = SetCurrent(item);
-        Select(item);
+        Select(item, ActivationCause.Programmatic);
     }
 
     /// <summary>Commits an item activated by a grouped child through the owning view.</summary>
     /// <param name="item">The non-null item owned by this navigation view.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    internal void NotifyItemInvoked(NavigationViewItem item)
+    internal void NotifyItemInvoked(NavigationViewItem item) =>
+        NotifyItemInvoked(item, ActivationCause.Programmatic);
+
+    /// <summary>Commits an item activated by a grouped child through the owning view, threading the
+    /// originating activation cause.</summary>
+    /// <param name="item">The non-null item owned by this navigation view.</param>
+    /// <param name="cause">The defined activation cause that invoked the item.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    internal void NotifyItemInvoked(NavigationViewItem item, ActivationCause cause)
     {
         ArgumentNullException.ThrowIfNull(item);
 
         if (ReferenceEquals(item.FindNavigationView(), this))
         {
             _ = SetCurrent(item);
-            Select(item);
+            Select(item, cause);
         }
     }
 
@@ -762,7 +770,7 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        Select(FindAvailableAdjacentTo(SelectedItem));
+        Select(FindAvailableAdjacentTo(SelectedItem), ActivationCause.Programmatic);
     }
 
     private void OnKeyRouted(object? sender, KeyEventArgs eventArgs)
@@ -961,17 +969,15 @@ public sealed class NavigationView: CompositeControlBase
             SelectionChanged = null;
             ScrollChanged = null;
             _ = SetCurrent(null);
-            Select(null);
+            Select(null, ActivationCause.Programmatic);
         }
     }
 
     private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
     {
-        _ = eventArgs;
-
         if (sender is NavigationViewItem item)
         {
-            NotifyItemInvoked(item);
+            NotifyItemInvoked(item, eventArgs.Cause);
         }
     }
 
@@ -1022,11 +1028,13 @@ public sealed class NavigationView: CompositeControlBase
         return false;
     }
 
+    // Every caller reaches this from OnKeyRouted, so the committed selection always
+    // originates from a keyboard-driven navigation stroke.
     private void CommitCurrent(ControlBase current)
     {
         if (current is NavigationViewItem item)
         {
-            Select(item);
+            Select(item, ActivationCause.Keyboard);
         }
 
         TrackCurrent(current);
@@ -1112,7 +1120,7 @@ public sealed class NavigationView: CompositeControlBase
         }
     }
 
-    private void Select(NavigationViewItem? item)
+    private void Select(NavigationViewItem? item, ActivationCause cause)
     {
         if (ReferenceEquals(SelectedItem, item))
         {
@@ -1152,7 +1160,7 @@ public sealed class NavigationView: CompositeControlBase
             return;
         }
 
-        SelectionChanged?.Invoke(this, new NavigationViewSelectionChangedEventArgs(previous, item));
+        SelectionChanged?.Invoke(this, new NavigationViewSelectionChangedEventArgs(previous, item, cause));
     }
 
     // Reacts only to the selected item's own Visibility setter running - group collapse instead
@@ -1193,7 +1201,7 @@ public sealed class NavigationView: CompositeControlBase
 
         var replacement = FindAvailableAdjacentTo(SelectedItem);
         _ = SetCurrent(replacement);
-        Select(replacement);
+        Select(replacement, ActivationCause.Programmatic);
     }
 
     [Pure]

@@ -98,7 +98,9 @@ public sealed class NavigationViewTests
         first.IsSelected.ShouldBeFalse();
         second.IsSelected.ShouldBeFalse();
         newest.IsSelected.ShouldBeTrue();
-        changes.ShouldHaveSingleItem().CurrentItem.ShouldBeSameAs(newest);
+        changes.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            args => args.CurrentItem.ShouldBeSameAs(newest),
+            args => args.Cause.ShouldBe(ActivationCause.Programmatic));
     }
 
     /// <summary>Verifies a navigation view starts as a quiet borderless sidebar surface without caller styling.</summary>

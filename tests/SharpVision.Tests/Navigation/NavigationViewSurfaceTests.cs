@@ -1056,6 +1056,59 @@ public sealed class NavigationViewSurfaceTests
         view.SelectedItem.ShouldBeSameAs(items[expectedIndex]);
     }
 
+    /// <summary>Verifies a completed pointer click on an item reports the pointer cause on the
+    /// published SelectionChanged transition.</summary>
+    [Fact]
+    public async Task Pointer_WhenItemIsClicked_SelectionChangedReportsPointerCauseAsync()
+    {
+        // Arrange
+        var view = CreateView(header: null, 14);
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
+        view.Items.Add(first);
+        view.Items.Add(second);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        view.SelectionChanged += (_, args) => changes.Add(args);
+
+        // Act
+        await surface.Pointer.ClickAsync(second);
+
+        // Assert
+        view.SelectedItem.ShouldBeSameAs(second);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Pointer);
+    }
+
+    /// <summary>Verifies a directional-navigation key that lands on an item reports the keyboard
+    /// cause on the published SelectionChanged transition.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDownArrowMovesCurrent_SelectionChangedReportsKeyboardCauseAsync()
+    {
+        // Arrange
+        var view = CreateView(header: null, 14);
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
+        view.Items.Add(first);
+        view.Items.Add(second);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        view.SelectionChanged += (_, args) => changes.Add(args);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        view.SelectedItem.ShouldBeSameAs(first);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Keyboard);
+    }
+
     private static NavigationView CreateView(string? header, int width, bool useDefaultChrome = false)
     {
         var view = new NavigationView
