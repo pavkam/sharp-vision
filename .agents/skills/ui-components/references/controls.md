@@ -46,6 +46,10 @@ exactly, with a local Inheritance diagram and the canonical
   `View`, `Build()`, and chrome helpers do not exist.
 - Raw Border and Shadow authoring is protected unless the control deliberately
   republishes complete chrome.
+- A one-focus `ItemsControl` whose private selected face shows Space press state
+  composes `EnableSelectedItemPressActivation`; it does not retain a second
+  control-local Space latch. The shared behavior owns authoritative-release and
+  press-only-terminal completion parity.
 
 ## Focused verification
 

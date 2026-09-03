@@ -182,6 +182,9 @@ export const selectCaptureRegion = (rect, state, baseline, frame) => {
     };
 };
 
+export const cleanupEscapeCount = (states = []) =>
+    Math.max(1, ...states.map((state) => state.cleanupEscapeCount ?? 1));
+
 const expand = (row) => {
     const slots = [];
 
@@ -527,15 +530,26 @@ const main = async () => {
                 }
 
                 if (state.actions !== undefined) {
-                    send("Escape");
-                    await sleep(200);
+                    const escapeCount = state.cleanupEscapeCount ?? 1;
+
+                    for (let count = 0; count < escapeCount; count += 1) {
+                        send("Escape");
+                        await sleep(200);
+                    }
                 }
             }
             } catch (error) {
                 console.error(`failed ${entry.page}: ${error.message}`);
                 failures.push(entry.page);
-                send("Escape");
-                await sleep(200);
+
+                for (
+                    let count = 0;
+                    count < cleanupEscapeCount(entry.states);
+                    count += 1
+                ) {
+                    send("Escape");
+                    await sleep(200);
+                }
             }
         }
 

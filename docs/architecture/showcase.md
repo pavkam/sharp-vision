@@ -168,20 +168,20 @@ basenames, the confirmed save basename, or cancellation only after the temporary
 modal surface has restored focus and removed itself.
 
 The StatusBar page presents the control at application scale inside a bordered
-72-by-11-cell editor workspace. The pretend editor uses the same semantic
+46-by-11-cell editor workspace. The pretend editor uses the same semantic
 `Surface` background as an edit control and leaves two blank document rows above
 its visually distinct, bottom-docked `Background` status surface. The bar
 retains a real playing `Spinner`, branch state, pointer coordinates, caret
-position, encoding, line endings, and an interactive autosave `CheckBox` across
+position, a read-only indicator, and an interactive autosave `CheckBox` across
 leading and trailing item groups. Mixed bar, bullet, chevron, and diamond item
 separators demonstrate the predefined separator palette without wrapping
 retained content. Moving the pointer through the editor updates the coordinate
-item from routed `LocalCells`; clicking the CheckBox updates an eight-cell
-activity slot between `Indexing`, `Saved`, and `Modified` without shifting or
-clipping the adjacent branch. The bar's semantic hovered, focused, and checked
-appearances retain contrast against the status surface without local child
-appearance configuration. The example therefore demonstrates live composition
-and dispatcher-affine mutation, not a static row of labels.
+item from routed `LocalCells`; pointer or keyboard activation of the CheckBox
+updates a five-cell activity slot between `Index`, `Saved`, and `Dirty` without
+shifting or clipping the adjacent branch. The bar's semantic hovered, focused,
+and checked appearances retain contrast against the status surface without local
+child appearance configuration. The example therefore demonstrates live
+composition and dispatcher-affine mutation, not a static row of labels.
 
 The InfoBar page contrasts all four complete semantic presentations, then keeps
 one concise 44-cell warning notification interactive with an aligned checkbox

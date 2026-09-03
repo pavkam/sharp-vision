@@ -17,10 +17,10 @@ internal sealed class StatusBarWorkspace: CompositeControlBase
         Height = Length.Cells(11);
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
-        PointerStatus = new Text("Mouse --,--") { Overflow = Overflow.Clip };
-        ActivityStatus = new Text("Indexing")
+        PointerStatus = new Text("--,--") { Overflow = Overflow.Clip };
+        ActivityStatus = new Text("Index")
         {
-            Width = Length.Cells(8),
+            Width = Length.Cells(5),
             Overflow = Overflow.Clip
         };
         var activity = new Stack
@@ -37,10 +37,10 @@ internal sealed class StatusBarWorkspace: CompositeControlBase
         {
             Height = Length.Cells(1),
             Padding = default,
-            Text = "&Autosave"
+            Text = "&Auto"
         };
         AutoSave.StateChanged += (_, _) =>
-            ActivityStatus.Content = AutoSave.IsChecked == true ? "Saved" : "Modified";
+            ActivityStatus.Content = AutoSave.IsChecked == true ? "Saved" : "Dirty";
 
         Bar = new StatusBar
         {
@@ -147,7 +147,7 @@ internal sealed class StatusBarWorkspace: CompositeControlBase
             return;
         }
 
-        PointerStatus.Content = FormattableString.Invariant($"Mouse {cells.X:D2},{cells.Y:D2}");
+        PointerStatus.Content = FormattableString.Invariant($"{cells.X:D2},{cells.Y:D2}");
     }
 
     private static StatusBarItem Item(

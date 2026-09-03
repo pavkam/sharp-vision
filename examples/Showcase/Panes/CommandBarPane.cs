@@ -173,7 +173,7 @@ internal sealed class CommandBarPane: CompositeControlBase
                 "Resize the bounded bar to watch its longest fitting source prefix stay primary. The ellipsis opens framed private MenuItem projections; disabled Share remains visible but unavailable.",
                 new DocExample(
                     "Resizable command bar",
-                    "Resize or disable the bar, activate a caption, or open overflow. Disabled rows and the overflow trigger keep the shared Bar fill while their ink changes. Separate logs prove the CommandBarItem, owner event, and ICommand retain the original semantic source.",
+                    "Resize or disable the bar, activate a caption, or open overflow. After the bar receives focus, use <reverse>Left</reverse>/<reverse>Right</reverse> or <reverse>Home</reverse>/<reverse>End</reverse> to move its single keyboard cursor and <reverse>Space</reverse> to activate. Disabled rows and the overflow trigger keep the shared Bar fill while their ink changes. Separate logs prove the CommandBarItem, owner event, and ICommand retain the original semantic source.",
                     specimen,
                     "var commands = new CommandBar { Width = Length.Cells(30) };\n" +
                     "commands.Items.Add(new CommandBarItem { Text = \"&Open\" });\n" +
