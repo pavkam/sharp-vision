@@ -93,6 +93,13 @@ For third-party composition, inspect `ActualStyle`, `ActualBorder`, and
 | Right / Down   | Moves focus and selection to the next eligible member, wrapping at the end.       |
 | Alt+access key | Focuses and selects the radio button when `Text` declares that access key.        |
 
+The arrow keys follow the shared
+[keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
+for scalar navigation: Caps Lock and Num Lock ride along, while an arrow
+carrying Shift, Control, Alt, Super, Hyper, or Meta neither moves the selection
+nor is consumed, so a chord bound elsewhere reaches the shortcut that expects
+it.
+
 ## Group and interaction behavior
 
 User activation selects a member and never toggles it back to false. Unnamed
