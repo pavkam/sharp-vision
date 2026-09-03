@@ -28,6 +28,7 @@ classDiagram
 | `SelectedItem`                | `TreeViewItem?`                                    | `null`                                    | The first selected item in stable tree order. Assigning an item selects it through `SelectItem`; assigning `null` clears the selection. |
 | `SelectedItems`               | `IReadOnlyList<TreeViewItem>`                      | Empty                                     | Read-only immutable snapshot in stable tree order.                                                                                      |
 | `SelectionMode`               | `TreeSelectionMode`                                | `Single`                                  | Allows no, one, or multiple selected items; rejects an undefined value.                                                                 |
+| `WrapNavigation`              | `bool`                                             | `false`                                   | Whether Up and Down wrap across the first and last visible items.                                                                       |
 | `CheckMark`                   | `CheckMark?`                                       | `null`                                    | Shared check-mark layout and glyphs for items that do not override it.                                                                  |
 | `ActualCheckMark`             | `CheckMark`                                        | `Brackets`, resolved                      | Read-only; the mark items render when they do not locally override it.                                                                  |
 | `Indent`                      | `int`                                              | `2`                                       | Non-negative cells per visible depth level; rejects a negative value and saturates derived geometry.                                    |
@@ -87,16 +88,16 @@ locally assigned `Style`.
 
 ## Keyboard
 
-| Key                 | Behavior                                                       |
-| ------------------- | -------------------------------------------------------------- |
-| Up / Down           | Moves to the previous or next visible item.                    |
-| Left                | Collapses the current item, or moves to its parent.            |
-| Right               | Expands the current item, or moves to its first visible child. |
-| Home / End          | Moves to the first or last visible item.                       |
-| Page Up / Page Down | Moves by one visible page.                                     |
-| Space               | Toggles check state or applies the current selection gesture.  |
-| Enter               | Activates and selects the current item.                        |
-| Ctrl+A              | Selects every enabled item in `Multiple` mode.                 |
+| Key                 | Behavior                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| Up / Down           | Moves to the previous or next visible item and optionally wraps. |
+| Left                | Collapses the current item, or moves to its parent.              |
+| Right               | Expands the current item, or moves to its first visible child.   |
+| Home / End          | Moves to the first or last visible item.                         |
+| Page Up / Page Down | Moves by one visible page.                                       |
+| Space               | Toggles check state or applies the current selection gesture.    |
+| Enter               | Activates and selects the current item.                          |
+| Ctrl+A              | Selects every enabled item in `Multiple` mode.                   |
 
 ## Selection
 
@@ -144,7 +145,8 @@ refusing it would leave the control in a state its own configuration forbids.
 Movement accepts Control, Shift, and incidental lock state for collection
 selection, but leaves Alt, Super, Hyper, Meta, and larger application chords
 unhandled. The movement keys repeat while held; Space, Enter, and Control+A fire
-once per key hold.
+once per key hold. `WrapNavigation` affects only Up and Down; hierarchy,
+endpoint, and paging commands remain bounded.
 
 Each `TreeViewItem` preserves its inherited routed key and pointer events before
 applying row activation. A handler that consumes the event suppresses the

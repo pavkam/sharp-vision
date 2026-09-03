@@ -2,14 +2,17 @@
 
 ## Load this reference when
 
-Changing ItemsControl, ListView, TreeView, TabControl, ComboBox item semantics,
-selection, current item, incremental collections, templates, or navigation.
+Changing ItemsControl, ScrollableItemsControl, ListView, TreeView, Table,
+TabControl, ComboBox item semantics, selection, current item, incremental
+collections, templates, or navigation.
 
 ## Normative documentation
 
 - [ItemsControl](../../../../docs/controls/items-control.md#overview)
+- [ScrollableItemsControl](../../../../docs/controls/items-control.md#scrollableitemscontrol)
 - [ListView](../../../../docs/controls/collections/list-view.md#overview)
 - [TreeView](../../../../docs/controls/collections/tree-view.md#overview)
+- [Table](../../../../docs/controls/layout/table.md#overview)
 - [TabControl](../../../../docs/controls/collections/tab-control.md#overview)
 - [NavigationView](../../../../docs/controls/navigation/navigation-view.md#overview)
 - [Data-binding proof](../../../../docs/testing/controls-integration.md#data-binding-proof)
@@ -33,8 +36,15 @@ selection, current item, incremental collections, templates, or navigation.
 ## Project-specific traps
 
 - Do not expose the private presentation host through `Children`.
+- A single-host scrolling item owner derives from `ScrollableItemsControl`; keep
+  extent, offsets, scroll policy, scrollbar style, and `ScrollChanged` there
+  instead of repeating forwarding members in each sealed control.
+- A forwarded event identifies the semantic owner as sender, never the retained
+  host that implemented it.
 - Do not rebuild every item for a semantic delta that can preserve identity.
 - Directional navigation and Tab navigation are separate contracts.
+- Range-capable selectors keep Shift keyboard movement aligned with pointer and
+  programmatic range selection. Linear wrapping is explicit and opt-in.
 
 ## Focused verification
 

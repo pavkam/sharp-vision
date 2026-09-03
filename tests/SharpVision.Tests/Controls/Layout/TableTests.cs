@@ -22,12 +22,18 @@ public sealed class TableTests
         table.ActualStyle.HeaderForeground.ShouldBeNull();
         table.ActualStyle.HeaderBackground.ShouldBeNull();
         table.ActualStyle.GridLineColor.ShouldBeNull();
+        table.ActualStyle.SelectedTextColor.ShouldBe((ControlColor) SemanticColor.SelectedText);
+        table.ActualStyle.SelectedBackground.ShouldBe((ControlColor) SemanticColor.SelectedControl);
 
         // Act and assert transparent rejection, now by the style's own init accessors
         _ = Should.Throw<ArgumentException>(
             () => table.Style = TableStyle.Default with { HeaderForeground = Color.Transparent });
         _ = Should.Throw<ArgumentException>(
             () => table.Style = TableStyle.Default with { GridLineColor = Color.Transparent });
+        _ = Should.Throw<ArgumentException>(
+            () => table.Style = TableStyle.Default with { SelectedTextColor = Color.Transparent });
+        _ = Should.Throw<ArgumentException>(
+            () => table.Style = TableStyle.Default with { SelectedBackground = Color.Transparent });
         table.ActualStyle.HeaderForeground.ShouldBeNull();
         table.ActualStyle.GridLineColor.ShouldBeNull();
 
@@ -596,6 +602,30 @@ public sealed class TableTests
         // The row never touched by the move.
         third.Cells[0].GetAppearanceState().HasFlag(VisualState.Current).ShouldBeFalse();
         third.Cells[0].GetAppearanceState().HasFlag(VisualState.Selected).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Shift plus a directional key extends a multiple-row selection through the
+    /// same range transaction exposed to pointer and programmatic selection.</summary>
+    [Fact]
+    public void Navigate_WhenShiftDownMovesActiveRow_ExtendsMultipleRowSelection()
+    {
+        var first = new TableRow([new ControlText("first")]);
+        var second = new TableRow([new ControlText("second")]);
+        var third = new TableRow([new ControlText("third")]);
+        var table = new Table { SelectionMode = TableSelectionMode.MultipleRows };
+        table.Columns.Add(TableColumn.Auto("Value"));
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+        table.Rows.Add(third);
+        table.SelectRow(first);
+
+        var firstMove = Key(table, Code.Down, Modifiers.Shift);
+        var secondMove = Key(table, Code.Down, Modifiers.Shift);
+
+        firstMove.IsHandled.ShouldBeTrue();
+        secondMove.IsHandled.ShouldBeTrue();
+        table.ActiveRow.ShouldBeSameAs(third);
+        table.SelectedRows.ShouldBe([first, second, third]);
     }
 
     /// <summary>Verifies the row-index cache backing arrow-key navigation stays correct across row

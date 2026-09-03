@@ -25,13 +25,6 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     // sort to a new column also resize that column's header, jittering the whole row.
     private const int _sortIndicatorWidth = 1;
 
-    private static readonly ThemeValueDependency<TerminalStyle> _selectedStyleThemeDependency = new(
-        static theme => ResolveSelectedStyle(theme, VisualState.Selected),
-        InvalidationImpact.Render);
-    private static readonly ThemeValueDependency<TerminalStyle> _disabledSelectedStyleThemeDependency = new(
-        static theme => ResolveSelectedStyle(theme, VisualState.Selected | VisualState.Disabled),
-        InvalidationImpact.Render);
-
     // A complete constructor Face outranks every theme state contribution and disables ambient
     // inheritance, permanently opting this presenter out of visual-state feedback. Only the
     // transparent background is presenter-specific; the rest matches the ControlBase role's own
@@ -286,9 +279,20 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         // Table.OnRender draws headers and grid lines on the table canvas first.
-        // The presenter must not clear the body with an opaque fill, which would
-        // overwrite that chrome. Skip the base chrome entirely; scrollbar framework
-        // parts render independently as owned children.
+        // Fill only selected cell rectangles before their children render. The previous
+        // adornment-only pass could restyle text but left every untouched padding and trailing
+        // cell blank in the ordinary background, fragmenting a selected row into colored words.
+        // Column and row gaps remain outside these rectangles, so table chrome is preserved.
+        if (HasSelectedCells())
+        {
+            RenderSelectionLayer(
+                canvas,
+                _owner.ResolveSelectionStyle(Theme ?? ThemeCatalog.Dark, VisualState.Selected),
+                _owner.ResolveSelectionStyle(
+                    Theme ?? ThemeCatalog.Dark,
+                    VisualState.Selected | VisualState.Disabled),
+                applyToExistingCells: false);
+        }
     }
 
     /// <summary>Renders the table header and grid before ordinary cell content is rendered by the shared owner path.</summary>
@@ -414,10 +418,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     {
         if (HasSelectedCells())
         {
-            RenderSelectionAdornment(
+            RenderSelectionLayer(
                 canvas,
-                ResolveThemeValue(_selectedStyleThemeDependency),
-                ResolveThemeValue(_disabledSelectedStyleThemeDependency));
+                _owner.ResolveSelectionStyle(Theme ?? ThemeCatalog.Dark, VisualState.Selected),
+                _owner.ResolveSelectionStyle(
+                    Theme ?? ThemeCatalog.Dark,
+                    VisualState.Selected | VisualState.Disabled),
+                applyToExistingCells: true);
         }
 
         base.OnRenderAdornment(canvas);
@@ -426,10 +433,11 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     // Applies the owner's final selected-row or selected-cell face over realized cell content while
     // preserving each cell's hyperlink. It lives on this private presenter rather than public Table
     // so the final-after-cell rendering seam does not become part of Table's protected API surface.
-    private void RenderSelectionAdornment(
+    private void RenderSelectionLayer(
         TerminalCanvas canvas,
         TerminalStyle selectedStyle,
-        TerminalStyle disabledSelectedStyle)
+        TerminalStyle disabledSelectedStyle,
+        bool applyToExistingCells)
     {
         TerminalStyle ApplySelectedStyle(Point _, TerminalStyle current) => new(
             selectedStyle.Foreground,
@@ -448,7 +456,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
 
         if (_owner.IsProgressive)
         {
-            RenderProgressiveSelectionAdornment(canvas, ApplySelectedStyle, ApplyDisabledSelectedStyle);
+            RenderProgressiveSelectionLayer(
+                canvas,
+                selectedStyle,
+                disabledSelectedStyle,
+                ApplySelectedStyle,
+                ApplyDisabledSelectedStyle,
+                applyToExistingCells);
             return;
         }
 
@@ -472,16 +486,22 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
                 ContentSlot.X,
                 y,
                 RowHeights[rowIndex],
+                selectedStyle,
+                disabledSelectedStyle,
                 ApplySelectedStyle,
-                ApplyDisabledSelectedStyle);
+                ApplyDisabledSelectedStyle,
+                applyToExistingCells);
             y = y.Add(RowHeights[rowIndex].Add(RowGap));
         }
     }
 
-    private void RenderProgressiveSelectionAdornment(
+    private void RenderProgressiveSelectionLayer(
         TerminalCanvas canvas,
+        TerminalStyle selectedStyle,
+        TerminalStyle disabledSelectedStyle,
         Func<Point, TerminalStyle, TerminalStyle> applySelectedStyle,
-        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle)
+        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle,
+        bool applyToExistingCells)
     {
         var controller = _owner.ProgressiveController!;
         var baseX = ProgressiveOrigin.X - HorizontalOffset;
@@ -503,8 +523,11 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
                 baseX,
                 y,
                 controller.RowHeight,
+                selectedStyle,
+                disabledSelectedStyle,
                 applySelectedStyle,
-                applyDisabledSelectedStyle);
+                applyDisabledSelectedStyle,
+                applyToExistingCells);
         }
     }
 
@@ -514,18 +537,29 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         int x,
         int y,
         int height,
+        TerminalStyle selectedStyle,
+        TerminalStyle disabledSelectedStyle,
         Func<Point, TerminalStyle, TerminalStyle> applySelectedStyle,
-        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle)
+        Func<Point, TerminalStyle, TerminalStyle> applyDisabledSelectedStyle,
+        bool applyToExistingCells)
     {
         for (var column = 0; column < row.Cells.Count && column < ColumnWidths.Length; column++)
         {
             if (row.Cells[column].GetAppearanceState().HasFlag(VisualState.Selected))
             {
-                canvas.ApplyCellStyle(
-                    new Rect(x, y, ColumnWidths[column], height),
-                    row.Cells[column].EffectiveIsEnabled
-                        ? applySelectedStyle
-                        : applyDisabledSelectedStyle);
+                var bounds = new Rect(x, y, ColumnWidths[column], height);
+                var isEnabled = row.Cells[column].EffectiveIsEnabled;
+
+                if (applyToExistingCells)
+                {
+                    canvas.ApplyCellStyle(
+                        bounds,
+                        isEnabled ? applySelectedStyle : applyDisabledSelectedStyle);
+                }
+                else
+                {
+                    canvas.Clear(bounds, isEnabled ? selectedStyle : disabledSelectedStyle);
+                }
             }
 
             x = x.Add(ColumnWidths[column].Add(ColumnGap));
@@ -556,17 +590,6 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
 
     private static bool RowHasSelectedCell(TableRow row) =>
         row.Cells.Any(static cell => cell.GetAppearanceState().HasFlag(VisualState.Selected));
-
-    private static TerminalStyle ResolveSelectedStyle(Theme theme, VisualState state)
-    {
-        var selected = theme.GetInteractiveRowStyleSet().ToAppearanceStates().Resolve(state).Face;
-        return new TerminalStyle(
-            ResolveColor(selected.Foreground, theme),
-            ResolveColor(selected.Background, theme),
-            selected.Attributes.Resolve(theme),
-            underline: selected.Underline,
-            underlineColor: ResolveColor(selected.UnderlineColor, theme));
-    }
 
     // Only realized-window separators are drawn - the whole point of progressive windowing is
     // never touching a logical row outside it, and every separator outside the window is

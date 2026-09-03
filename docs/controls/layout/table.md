@@ -2,15 +2,15 @@
 
 ## Overview
 
-`Table` is declared `public sealed class Table : ItemsControl` and implements
-`IStyled<TableStyle>`. It owns typed rows of ordinary controls and aligns them
-against titled columns whose widths can be fixed, automatic, percentage, or
-proportional. Cells measure, arrange, and render through the normal control
-pipeline, so marked text, links, buttons, and input controls can all appear in a
-table without a separate rendering model. `Rows` and `Columns` are the only
-semantic mutation surfaces: a private scrolling table presenter owns the
-realized cell controls, so `Table` intentionally exposes no general `Children`
-collection.
+`Table` is declared `public sealed class Table : ScrollableItemsControl` and
+implements `IStyled<TableStyle>`. It owns typed rows of ordinary controls and
+aligns them against titled columns whose widths can be fixed, automatic,
+percentage, or proportional. Cells measure, arrange, and render through the
+normal control pipeline, so marked text, links, buttons, and input controls can
+all appear in a table without a separate rendering model. `Rows` and `Columns`
+are the only semantic mutation surfaces: a private scrolling table presenter
+owns the realized cell controls, so `Table` intentionally exposes no general
+`Children` collection.
 
 The private cell presenter participates through the shared retained scrolling
 bridge: presenter-originated geometry changes notify the matching Table property
@@ -30,7 +30,8 @@ requests index-addressed rows on demand instead of owning them upfront — see
 ```mermaid
 classDiagram
     ControlBase <|-- ItemsControl
-    ItemsControl <|-- Table
+    ItemsControl <|-- ScrollableItemsControl
+    ScrollableItemsControl <|-- Table
 ```
 
 ## API
@@ -98,7 +99,8 @@ classDiagram
 `TableStyle : ControlStyle` is a complete immutable presentation: it bundles a
 `TableGlyphs` grid/sort-indicator family, a `CellPadding` thickness applied to
 every header and data cell, nullable `HeaderForeground`, `HeaderBackground`, and
-`GridLineColor` overrides, and required `PlaceholderForeground` and
+`GridLineColor` overrides, required `SelectedTextColor` and `SelectedBackground`
+selection colors, and required `PlaceholderForeground` and
 `PlaceholderErrorForeground` colors for the progressive skeleton row (see
 [Progressive loading](#progressive-loading)). Every color member accepts either
 a concrete `Color` or a `SemanticColor` role, so an override can either pin a
@@ -120,8 +122,9 @@ presentation, and `ActualStyle` never returns null. A style difference in
 | Key                 | Behavior                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | Arrow keys          | Moves the active cell by one row or column.                                                  |
-| Home / End          | Moves to the first or last cell.                                                             |
-| Page Up / Page Down | Moves by one visible page of rows.                                                           |
+| Shift+navigation    | Extends a row or rectangular cell range in a multiple-selection mode.                        |
+| Home / End          | Moves to the first or last cell; Shift extends selection.                                    |
+| Page Up / Page Down | Moves by one visible page of rows; Shift extends selection.                                  |
 | Enter               | Invokes the active row and begins editing an editable cell; while editing, commits the edit. |
 | F2                  | Begins editing the active editable cell.                                                     |
 | Escape              | Cancels the current edit and restores its original text.                                     |
@@ -324,8 +327,10 @@ selects the hit row or cell and makes the clicked cell active. `Up`, `Down`,
 `PageOverlap`. The paging keys are handled even when the active cell cannot move
 any further, so the keystroke never escapes to page an enclosing scrollable
 container. Every move — including `Home` and `End` — brings the active cell into
-view. Non-progressive movement accepts incidental lock state but leaves Shift
-and every application-command-modified movement key unhandled.
+view. Movement accepts incidental lock state; Shift with arrows, endpoints, or
+paging extends selection through the same range transaction used by pointer and
+programmatic selection. Other application-command-modified movement keys remain
+unhandled. Progressive selection applies the same modifier policy by stable key.
 
 The initial `Enter` press activates the active row, and begins editing when the
 active cell is an editable `TextInput`; held-key repeats neither invoke nor

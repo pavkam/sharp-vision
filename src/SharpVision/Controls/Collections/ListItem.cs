@@ -45,20 +45,6 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
         Index = index;
         Content = content;
 
-        // No bundled theme authors "input.current" (see themes.md), and the shared
-        // interactive-row style set (GetInteractiveRowStyleSet) therefore resolves Current to
-        // null - Normal, unchanged. That is invisible precisely where it matters most: a
-        // ComboBox's owned list, and any other "browse before commit" consumer, deliberately
-        // keeps real keyboard focus on the owning field and drives Current purely through
-        // ListView.MoveCurrent while the row's own IsFocused never becomes true, so nothing else
-        // marks which row a still-uncommitted arrow-key browse is actually on. A code-owned
-        // Current contribution here - like HyperlinkButtonStyle's own unconditional identity
-        // underline - guarantees that cue independently of both theme authoring and real focus.
-        // Selected (later in the fixed state-precedence order) still wins the same member if a
-        // theme ever authors one, and Underline composes without disturbing Attributes, unlike
-        // Calendar's own IsFocused-gated cursor, which does not apply here since IsFocused is
-        // never true for this exact pattern.
-        SetAppearance(VisualState.Current, new AppearanceOverlay(face: new FaceOverlay(underline: Underline.Straight)));
     }
 
     /// <summary>Raised after eligible Space, Enter, or primary pointer activation.</summary>
@@ -133,8 +119,20 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     internal override bool StateAffectsAmbientAppearance => true;
 
     /// <inheritdoc/>
-    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
-        (theme ?? ThemeCatalog.Dark).GetInteractiveRowStyleSet().ToAppearanceStates();
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme)
+    {
+        var resolvedTheme = theme ?? ThemeCatalog.Dark;
+        var style = FindAncestor<ListView>()?.ActualStyle ??
+            ListViewStyle.Definition.Resolve(null, resolvedTheme);
+        var overlay = new AppearanceStatesOverlay(
+            current: new AppearanceOverlay(
+                face: new FaceOverlay(underline: style.CurrentUnderline)),
+            selected: new AppearanceOverlay(
+                face: new FaceOverlay(
+                    foreground: style.SelectedTextColor,
+                    background: style.SelectedBackground)));
+        return resolvedTheme.GetInteractiveRowStyleSet().ToAppearanceStates().Compose(overlay);
+    }
 
     private void Activate(ActivationCause cause)
     {

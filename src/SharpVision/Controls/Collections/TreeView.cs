@@ -229,6 +229,15 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     /// <summary>Gets the typed root item collection.</summary>
     public TreeViewItemCollection Items { get; }
 
+    /// <summary>Gets or sets whether Up and Down wrap across the first and last visible items.</summary>
+    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
+    public bool WrapNavigation
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+    }
+
     /// <summary>Gets or sets the currently selected item, or null.</summary>
     /// <remarks>
     /// Assigning a non-null item calls <see cref="SelectItem"/>; assigning null calls
@@ -837,14 +846,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         // Left: collapse current or navigate to parent
         if (eventArgs.Stroke.Code == Code.Left)
         {
-            eventArgs.IsHandled = HandleLeft();
+            eventArgs.IsHandled = HandleLeft(eventArgs.Stroke.Modifiers);
             return;
         }
 
         // Right: expand current or navigate to first child
         if (eventArgs.Stroke.Code == Code.Right)
         {
-            eventArgs.IsHandled = HandleRight();
+            eventArgs.IsHandled = HandleRight(eventArgs.Stroke.Modifiers);
             return;
         }
 
@@ -866,13 +875,13 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
         eventArgs.IsHandled = true;
 
-        if (_navigator.Move(direction, wrap: false) && _navigator.Current is { } current)
+        if (_navigator.Move(direction, WrapNavigation) && _navigator.Current is { } current)
         {
             CommitCurrent(current, eventArgs.Stroke.Modifiers);
         }
     }
 
-    private bool HandleLeft()
+    private bool HandleLeft(Modifiers modifiers)
     {
         if (_navigator.Current is not TreeViewItem item)
         {
@@ -891,14 +900,14 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         if (parent is not null)
         {
             _ = _navigator.SetCurrent(parent);
-            CommitCurrent(parent, Modifiers.None);
+            CommitCurrent(parent, modifiers);
             return true;
         }
 
         return false;
     }
 
-    private bool HandleRight()
+    private bool HandleRight(Modifiers modifiers)
     {
         if (_navigator.Current is not TreeViewItem item)
         {
@@ -919,7 +928,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             if (index >= 0 && index + 1 < visibleItems.Count)
             {
                 _ = _navigator.SetCurrent(visibleItems[index + 1]);
-                CommitCurrent(visibleItems[index + 1], Modifiers.None);
+                CommitCurrent(visibleItems[index + 1], modifiers);
                 return true;
             }
         }

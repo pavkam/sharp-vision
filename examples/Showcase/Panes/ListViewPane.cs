@@ -24,6 +24,11 @@ internal sealed class ListViewPane: CompositeControlBase
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.Always,
             ScrollBarStyle = ScrollBarStyle.ThinLine,
+            Style = ListViewStyle.Default with
+            {
+                SelectedBackground = SemanticColor.Magenta,
+                CurrentUnderline = Underline.Straight
+            },
             Items = new object?[] { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta" },
             SelectedIndex = 1
         };
@@ -42,7 +47,8 @@ internal sealed class ListViewPane: CompositeControlBase
             Width = Length.Cells(20),
             Height = Length.Cells(5),
             Items = new object?[] { "Alpha", "Beta", "Gamma", "Delta" },
-            SelectionMode = ListSelectionMode.Multiple
+            SelectionMode = ListSelectionMode.Multiple,
+            WrapNavigation = true
         };
         multiple.SelectionChanged += (_, _) =>
             multipleStatus.Content = multiple.SelectedItems.Count == 0
@@ -153,7 +159,7 @@ internal sealed class ListViewPane: CompositeControlBase
                 "The quiet list background keeps selection prominent. Keyboard navigation moves selection immediately; <reverse>Enter</reverse> invokes it separately.",
                 new DocExample(
                     "Selectable result list",
-                    "Use arrows or paging to select and <reverse>Enter</reverse> to invoke. The status names the <success>committed operation</success>.",
+                    "Use arrows or paging to select and <reverse>Enter</reverse> to invoke. This specimen also gives selection a local magenta fill and the current row a dotted underline.",
                     new DocColumn(active, status),
                     "var results = new ListView\n{\n    Items = files,\n    SelectionMode = ListSelectionMode.Single,\n};")),
             new DocSection(
@@ -162,7 +168,7 @@ internal sealed class ListViewPane: CompositeControlBase
                 "None permits navigation only, Single retains at most one row, and Multiple owns a sorted selected set.",
                 new DocExample(
                     "Multiple selection",
-                    "<reverse>Space</reverse> toggles individual items. Activate the programmatic recipe to select Alpha and Gamma.",
+                    "<reverse>Shift+Up/Down</reverse> extends a range, <reverse>Space</reverse> toggles one item, <reverse>Ctrl+A</reverse> selects all, and Up/Down wraps at the ends in this specimen.",
                     new DocColumn(multiple, new DocRow(selectMultiple, selectAllMultiple, clearMultiple), multipleStatus),
                     "list.SelectionMode = ListSelectionMode.Multiple;\nlist.SetSelected(0, true);")),
             new DocSection(

@@ -12,7 +12,7 @@ internal sealed class TreeViewPane: CompositeControlBase
 
     private static DocPage CreateContent()
     {
-        var status = new Text("Selected: (none)");
+        var status = new Text("Selected: Q1 Report.txt");
 
         var fileTree = new TreeView
         {
@@ -21,7 +21,8 @@ internal sealed class TreeViewPane: CompositeControlBase
         };
         var documents = new TreeViewItem("Documents");
         var reports = new TreeViewItem("Reports");
-        reports.Children.Add(new TreeViewItem("Q1 Report.txt"));
+        var firstReport = new TreeViewItem("Q1 Report.txt");
+        reports.Children.Add(firstReport);
         reports.Children.Add(new TreeViewItem("Q2 Report.txt"));
         reports.Children.Add(new TreeViewItem("Q3 Report.txt"));
         documents.Children.Add(reports);
@@ -35,6 +36,7 @@ internal sealed class TreeViewPane: CompositeControlBase
         fileTree.Items.Add(documents);
         fileTree.Items.Add(images);
         fileTree.Items.Add(config);
+        fileTree.SelectItem(firstReport);
         fileTree.SelectionChanged += (_, _) =>
             status.Content = $"Selected: {fileTree.SelectedItem?.Header ?? "(none)"}";
 
@@ -42,7 +44,8 @@ internal sealed class TreeViewPane: CompositeControlBase
         {
             Width = Length.Cells(34),
             Height = Length.Cells(10),
-            SelectionMode = TreeSelectionMode.Multiple
+            SelectionMode = TreeSelectionMode.Multiple,
+            WrapNavigation = true
         };
         var root = new TreeViewItem("Project") { IsCheckable = true };
         var src = new TreeViewItem("src") { IsCheckable = true };
@@ -133,8 +136,8 @@ internal sealed class TreeViewPane: CompositeControlBase
             new DocSection("\U0001f39b️", "Programmatic control",
                 "Use <info>ExpandAll</info> and <info>CollapseAll</info> to control the entire tree at once.",
                 new DocExample("Project tree with buttons",
-                "Click the buttons to expand or collapse all nodes programmatically. Use Control-click, " +
-                "Shift-click, or Space to exercise multiple selection and checking.",
+                "Click the buttons to expand or collapse all nodes programmatically. Use Shift+Up/Down " +
+                "for ranges, Control-click to toggle, Ctrl+A to select all, or Space to check; Up/Down wraps here.",
                     new DocColumn(controlledTree, controlledStatus, new Stack
                     {
                         Orientation = Orientation.Horizontal,
