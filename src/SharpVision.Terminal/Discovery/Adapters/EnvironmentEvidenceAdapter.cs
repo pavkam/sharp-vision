@@ -64,26 +64,36 @@ internal static class EnvironmentEvidenceAdapter
                     Overline = ApplyHint(capabilities.Overline, hint)
                 };
             }
-            else if (xterm)
+            else
             {
-                var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
-                capabilities = capabilities with
+                // Kitty is the only identity mutually exclusive with the rest of this block: a
+                // genuine iTerm2 session is itself xterm-compatible and reports TERM=xterm-256color
+                // by default, so it must still receive the generic xterm hints below alongside its
+                // own ItermImages hint. Nesting iTerm2 here (rather than chaining it as a sibling
+                // else-if of xterm) keeps that combination working while still preventing a stale
+                // TERM_PROGRAM=iTerm.app from adding an ItermImages hint on a genuine Kitty session
+                // (TERM=xterm-kitty, handled by the branch above).
+                if (xterm)
                 {
-                    FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
-                    BracketedPaste = ApplyHint(capabilities.BracketedPaste, hint),
-                    CellMouse = ApplyHint(capabilities.CellMouse, hint),
-                    XtermKeyboard = ApplyHint(capabilities.XtermKeyboard, hint),
-                    Osc52 = ApplyHint(capabilities.Osc52, hint),
-                    StyledUnderlines = ApplyHint(capabilities.StyledUnderlines, hint),
-                    UnderlineColor = ApplyHint(capabilities.UnderlineColor, hint),
-                    Overline = ApplyHint(capabilities.Overline, hint)
-                };
-            }
+                    var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
+                    capabilities = capabilities with
+                    {
+                        FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
+                        BracketedPaste = ApplyHint(capabilities.BracketedPaste, hint),
+                        CellMouse = ApplyHint(capabilities.CellMouse, hint),
+                        XtermKeyboard = ApplyHint(capabilities.XtermKeyboard, hint),
+                        Osc52 = ApplyHint(capabilities.Osc52, hint),
+                        StyledUnderlines = ApplyHint(capabilities.StyledUnderlines, hint),
+                        UnderlineColor = ApplyHint(capabilities.UnderlineColor, hint),
+                        Overline = ApplyHint(capabilities.Overline, hint)
+                    };
+                }
 
-            else if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
-            {
-                var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
-                capabilities = capabilities with { ItermImages = ApplyHint(capabilities.ItermImages, hint) };
+                if (string.Equals(program, "iTerm.app", StringComparison.OrdinalIgnoreCase))
+                {
+                    var hint = new Feature(CapabilitySupport.Tentative, Origin.Environment);
+                    capabilities = capabilities with { ItermImages = ApplyHint(capabilities.ItermImages, hint) };
+                }
             }
 
             var multiplexer = MultiplexingPolicy.Detect(environment).Kind != MultiplexingKind.None;

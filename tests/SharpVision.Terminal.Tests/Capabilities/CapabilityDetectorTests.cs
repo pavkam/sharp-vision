@@ -84,7 +84,8 @@ public sealed class CapabilityDetectorTests
     /// Verifies a conflicting environment (Kitty TERM alongside a stale iTerm2 TERM_PROGRAM, with
     /// no multiplexer or remote session in play to narrow evidence afterward) still yields
     /// mutually-exclusive graphics-backend hints: only one of KittyGraphics/ItermImages becomes
-    /// Tentative, matching the kitty &gt; xterm &gt; iTerm2 precedence order.
+    /// Tentative, since a genuine TERM=xterm-kitty session takes precedence over any stale
+    /// TERM_PROGRAM left over from an outer terminal.
     /// </summary>
     [Fact]
     public void Detect_WhenEnvironmentConflictsBetweenKittyAndItermWithoutMultiplexer_OnlyOneGraphicsHintIsTentative()
@@ -102,6 +103,30 @@ public sealed class CapabilityDetectorTests
         // Assert
         capabilities.KittyGraphics.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
         capabilities.ItermImages.State.ShouldBe(CapabilitySupport.Unknown);
+    }
+
+    /// <summary>
+    /// Verifies a genuine default iTerm2 session (which reports TERM=xterm-256color, not a Kitty
+    /// TERM) still receives both the generic xterm-family hints and its own ItermImages hint
+    /// together — iTerm2 is not mutually exclusive with the xterm-hint branch, only with Kitty.
+    /// </summary>
+    [Fact]
+    public void Detect_WhenItermReportsDefaultXtermTerm_AppliesBothXtermAndItermHints()
+    {
+        // Arrange
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM"] = "xterm-256color",
+            ["TERM_PROGRAM"] = "iTerm.app"
+        };
+
+        // Act
+        var capabilities = CapabilityDetector.Detect(environment);
+
+        // Assert
+        capabilities.ItermImages.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        capabilities.FocusReporting.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        capabilities.BracketedPaste.ShouldBe(new Feature(CapabilitySupport.Tentative, Origin.Environment));
     }
 
     /// <summary>Verifies the public facade applies the conservative baseline through the discovery pipeline.</summary>
