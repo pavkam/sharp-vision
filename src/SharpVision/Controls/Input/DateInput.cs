@@ -402,6 +402,11 @@ public sealed class DateInput: InputBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>While the popup is closed, every recognized segment key is consumed even when it
+    /// cannot change anything: Up or Down at a bound, Left or Right at the first or last segment,
+    /// Home or End already there, and Delete or Backspace over an empty value. The key is the
+    /// field's own, so a bounded field inside a scrolling or directionally navigating container
+    /// never scrolls or moves focus in that container.</remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         EnsureSeeded();

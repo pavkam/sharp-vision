@@ -115,6 +115,13 @@ every render.
 | Escape              | Cancels the open popup and restores its opening state.                                                             |
 | Tab / Shift+Tab     | Cancels the open popup, then continues focus traversal.                                                            |
 
+While the popup is closed, every segment key in the table is consumed even when
+it cannot change anything: Up or Down at a bound, Left or Right at the first or
+last segment, Home or End when already there, and Delete or Backspace over an
+empty value. The key is the field's own, so a bounded field inside a scrolling
+or directionally navigating container never scrolls or moves focus in that
+container.
+
 ## Popup navigation session
 
 Opening snapshots the committed `Value`, `Calendar.ActiveDate`, and Calendar

@@ -150,11 +150,14 @@ public sealed class DateInputInteractionTests
         key.IsHandled.ShouldBeTrue();
     }
 
-    /// <summary>Verifies stepping Day or Month at <see cref="DateOnly.MaxValue"/> swallows the
-    /// out-of-range arithmetic instead of throwing, leaving the value untouched and the key consumed.</summary>
+    /// <summary>Verifies stepping Month, Day, or Year at <see cref="DateOnly.MaxValue"/> swallows
+    /// the out-of-range arithmetic instead of throwing, leaving the value untouched and the key
+    /// consumed. Year takes its own pre-guard branch rather than the caught-exception arm the
+    /// other two share, so it needs its own case.</summary>
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
+    [InlineData(2)]
     public void Keyboard_WhenStepExceedsDateOnlyRange_LeavesValueAndConsumesKey(int segment)
     {
         // Arrange
@@ -886,13 +889,17 @@ public sealed class DateInputInteractionTests
     }
 
     /// <summary>Verifies the open popup marks the dispatcher clock's current date inside the
-    /// displayed month with the today-marker color.</summary>
+    /// displayed month with the today-marker color. The clock is seeded at noon UTC on March 10,
+    /// 2026, but "today" is the clock's local date, so the expected grid cell is derived from
+    /// that local date rather than hard-coded: on a host far enough east the marker sits on the 11th.</summary>
     [Fact]
     public async Task Popup_WhenOpenedUnderFakeClock_MarksTodayInsideDisplayedMonthAsync()
     {
-        // Arrange - today is Tuesday March 10, 2026: row 1, column 2 of a Sunday-first March grid.
+        // Arrange
         var clock = new ManualTimeProvider();
         clock.Advance(new DateTimeOffset(2026, 3, 10, 12, 0, 0, TimeSpan.Zero) - DateTimeOffset.UnixEpoch);
+        var today = DateOnly.FromDateTime(clock.GetLocalNow().DateTime);
+        today.Month.ShouldBe(3, "noon UTC stays inside March in every time zone");
         var input = Create(_march15);
         var root = new Overlay { Children = { input } };
         await using var surface = await ComponentSurface.MountAsync(root, new Size(34, 16), clock, TestContext.Current.CancellationToken);
@@ -901,12 +908,104 @@ public sealed class DateInputInteractionTests
         // Act
         await surface.UpdateAsync(() => input.IsOpen = true, "open under the fake clock");
 
-        // Assert
-        var today = Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark));
+        // Assert - locate today's cell in the Sunday-first grid from the local date itself.
+        var marker = Project(ThemeColorHelper.HoveredForeground(ThemeCatalog.Dark));
         var origin = calendar.Bounds;
-        surface.Cell(new Point(origin.X + 2 + (2 * 4) + 2, origin.Y + 3 + 1)).Text.ShouldBe("0");
-        surface.Cell(new Point(origin.X + 2 + (2 * 4) + 2, origin.Y + 3 + 1)).Style.Foreground.ShouldBe(today);
-        surface.Cell(new Point(origin.X + 2 + (3 * 4) + 2, origin.Y + 3 + 1)).Style.Foreground.ShouldNotBe(today);
+        var firstOfMonth = new DateOnly(2026, 3, 1);
+        var index = today.DayNumber - (firstOfMonth.DayNumber - (int) firstOfMonth.DayOfWeek);
+        var todayCell = new Point(origin.X + 2 + (index % 7 * 4) + 1, origin.Y + 3 + (index / 7));
+        var neighbourIndex = index + (today.Day < 31 ? 1 : -1);
+        var neighbourCell = new Point(origin.X + 2 + (neighbourIndex % 7 * 4) + 1, origin.Y + 3 + (neighbourIndex / 7));
+        (surface.Cell(todayCell).Text + surface.Cell(new Point(todayCell.X + 1, todayCell.Y)).Text)
+            .Trim().ShouldBe(today.Day.ToString(CultureInfo.InvariantCulture));
+        surface.Cell(new Point(todayCell.X + 1, todayCell.Y)).Style.Foreground.ShouldBe(marker);
+        surface.Cell(new Point(neighbourCell.X + 1, neighbourCell.Y)).Style.Foreground.ShouldNotBe(marker);
+    }
+
+    /// <summary>Verifies keys that edit the closed field - digits and Backspace - are inert while
+    /// the Calendar popup is open: the value and the popup stay as they were and the calendar's
+    /// active date does not move, so a stray digit cannot corrupt the date behind the popup.</summary>
+    [Fact]
+    public async Task Popup_WhenEditingKeysArriveWhileOpen_AreInertAsync()
+    {
+        // Arrange
+        var input = Create(_march15);
+        var root = new Overlay { Children = { input } };
+        var changes = 0;
+        input.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(root, new Size(34, 16), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        input.IsOpen.ShouldBeTrue();
+        var calendar = input.OwnedCalendar;
+        calendar.ActiveDate.ShouldBe(_march15);
+
+        // Act
+        await surface.Keyboard.TypeAsync("7");
+        await surface.Keyboard.TypeAsync("12");
+        await surface.Keyboard.PressAsync(Code.Backspace);
+        await surface.Keyboard.PressAsync(Code.Delete);
+
+        // Assert
+        input.IsOpen.ShouldBeTrue();
+        input.Value.ShouldBe(_march15);
+        calendar.ActiveDate.ShouldBe(_march15);
+        changes.ShouldBe(0);
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(input);
+
+        // Act - the popup still accepts normally afterwards.
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(new DateOnly(2026, 3, 16));
+        changes.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a hidden field routes nothing: keys change neither the value nor open the
+    /// popup, a pointer press on the indicator neither focuses nor opens, and the field resumes
+    /// normally once shown.</summary>
+    [Fact]
+    public async Task Visibility_WhenHidden_IgnoresKeysAndPointerUntilShownAsync()
+    {
+        // Arrange
+        var input = Create(_march15);
+        var root = new Overlay { Children = { input } };
+        var changes = 0;
+        input.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(root, new Size(30, 15), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(input);
+        var indicator = new Point(input.Bounds.Right - 2, input.Bounds.Y + 1);
+        surface.Cell(indicator).Text.ShouldBe("▼");
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Hidden, "hide the focused field");
+        surface.ShouldHaveFocus(null);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Up);
+        await surface.Keyboard.TypeAsync("7");
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Pointer.MoveToAsync(indicator);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(_march15);
+        changes.ShouldBe(0);
+        input.IsFocused.ShouldBeFalse();
+        surface.Cell(indicator).Text.ShouldBe(" ", "a hidden field paints nothing");
+
+        // Act
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Visible, "show the field again");
+        await surface.Pointer.MoveToAsync(indicator);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        input.IsOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(input);
     }
 
     /// <summary>Verifies restyling the owned Calendar while the popup is open repaints its header

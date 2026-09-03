@@ -331,7 +331,8 @@ public sealed class TemporalSegmentTests
     }
 
     /// <summary>Verifies selecting the half of the day the value is already in activates the
-    /// designator segment without incrementing it, while selecting the other half increments once.</summary>
+    /// designator segment without incrementing it, while selecting the other half increments once;
+    /// both count as an applied selection, because the highlight moved either way.</summary>
     [Theory]
     [InlineData(true, true, false)]
     [InlineData(false, false, false)]
@@ -340,10 +341,9 @@ public sealed class TemporalSegmentTests
     public void SelectAmPm_WhenHalfOfDayIsRequested_IncrementsOnlyWhenItDiffers(
         bool isPm,
         bool selectPm,
-        bool expectedChange)
+        bool expectedIncrement)
     {
         var increments = 0;
-        var invalidations = 0;
         SegmentDescriptor[] layout =
         [
             new SegmentDescriptor("09", TemporalSegmentKind.Hour, 2, 12),
@@ -361,20 +361,29 @@ public sealed class TemporalSegmentTests
                 return true;
             },
             static _ => false,
-            () => invalidations++);
+            static () => { });
 
-        var changed = TemporalSegmentClassification.SelectAmPm(
+        var applied = TemporalSegmentClassification.SelectAmPm(
             () => layout,
             static () => true,
             () => isPm,
             segments,
             selectPm);
 
-        changed.ShouldBe(expectedChange);
-        increments.ShouldBe(expectedChange ? 1 : 0);
+        applied.ShouldBeTrue();
+        increments.ShouldBe(expectedIncrement ? 1 : 0);
         segments.ActiveSegment.ShouldBe(2);
-        invalidations.ShouldBe(1);
     }
+
+    /// <summary>Verifies the designator text falls back to the invariant AM/PM only when the
+    /// culture produced nothing, and otherwise keeps the culture's own text unchanged.</summary>
+    [Theory]
+    [InlineData("", false, "AM")]
+    [InlineData("", true, "PM")]
+    [InlineData("午後", true, "午後")]
+    [InlineData("a.m.", false, "a.m.")]
+    public void ResolveDesignatorText_WhenFormattedTextIsEmpty_FallsBackToInvariant(string formatted, bool isPm, string expected) =>
+        TemporalSegmentClassification.ResolveDesignatorText(formatted, isPm).ShouldBe(expected);
 
     /// <summary>Verifies selection is refused without a value or without a designator segment.</summary>
     [Fact]

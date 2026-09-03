@@ -63,7 +63,8 @@ public sealed class TimeInput: InputBase
         _segmentKeyOptions = new SegmentFieldKeyOptions(
             ResolveStepDelta,
             ClearValue,
-            HandleCharacterCommand);
+            HandleCharacterCommand,
+            handleRecognizedWithoutChange: true);
         TabNavigation = TabNavigation.None;
     }
 
@@ -288,6 +289,11 @@ public sealed class TimeInput: InputBase
     #region Input
 
     /// <inheritdoc/>
+    /// <remarks>Every recognized segment key is consumed even when it cannot change anything: Up
+    /// or Down at a bound, Left or Right at the first or last segment, Home or End already there,
+    /// Delete or Backspace over an empty value, and a repeated "a"/"p" that only moves the
+    /// designator highlight. The key is the field's own, so a bounded field inside a scrolling or
+    /// directionally navigating container never scrolls or moves focus in that container.</remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -592,7 +598,9 @@ public sealed class TimeInput: InputBase
             descriptors[index] = token.Kind is not { } kind
                 ? new SegmentDescriptor(text[index])
                 : new SegmentDescriptor(
-                    text[index],
+                    kind == TemporalSegmentKind.AmPmDesignator
+                        ? TemporalSegmentClassification.ResolveDesignatorText(text[index], value is { Hour: >= 12 })
+                        : text[index],
                     kind,
                     kind == TemporalSegmentKind.AmPmDesignator ? 0 : 2,
                     MaxValueFor(kind, hasAmPm));

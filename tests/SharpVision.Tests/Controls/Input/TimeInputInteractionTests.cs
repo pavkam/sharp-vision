@@ -36,6 +36,12 @@ public sealed class TimeInputInteractionTests
 
         // Act - the trailing Up shows whether entry advanced to Minute or stayed on Hour.
         await surface.Keyboard.TypeAsync(digits);
+
+        if (digits == "0")
+        {
+            input.Value.ShouldBe(new TimeOnly(13, 30), "a lone zero clamps to one o'clock in the same half of the day");
+        }
+
         await surface.Keyboard.PressAsync(Code.Up);
 
         // Assert
@@ -43,7 +49,8 @@ public sealed class TimeInputInteractionTests
     }
 
     /// <summary>Verifies "p" selects PM and "a" selects AM rather than toggling: repeating the
-    /// letter of the current half of the day changes nothing and is left for ancestors.</summary>
+    /// letter of the current half of the day changes nothing, yet it still moved the designator
+    /// highlight, so the field consumes it instead of leaking it to an ancestor.</summary>
     [Fact]
     public void Keyboard_WhenAOrPIsTyped_SelectsHalfOfDayWithoutToggling()
     {
@@ -53,11 +60,11 @@ public sealed class TimeInputInteractionTests
         // Act and assert
         Type(control, 'p').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new TimeOnly(14, 30));
-        Type(control, 'P').IsHandled.ShouldBeFalse();
+        Type(control, 'P').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new TimeOnly(14, 30));
         Type(control, 'a').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new TimeOnly(2, 30));
-        Type(control, 'A').IsHandled.ShouldBeFalse();
+        Type(control, 'A').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new TimeOnly(2, 30));
 
         // The designator is now the active segment: Up flips the half of the day.
@@ -126,12 +133,12 @@ public sealed class TimeInputInteractionTests
         input.Value.ShouldBe(new TimeOnly(10, 59));
     }
 
-    /// <summary>Verifies a step that cannot leave the inclusive bounds changes nothing and, unlike
-    /// DateInput, bubbles to ancestors because no observable transition happened.</summary>
+    /// <summary>Verifies a step that cannot leave the inclusive bounds changes nothing and is still
+    /// consumed, exactly as DateInput does, so a bounded field never leaks the arrow to an ancestor.</summary>
     [Theory]
     [InlineData(Code.Up)]
     [InlineData(Code.Down)]
-    public void Keyboard_WhenStepWouldLeaveBounds_LeavesValueAndBubbles(Code code)
+    public void Keyboard_WhenStepWouldLeaveBounds_LeavesValueAndConsumesKey(Code code)
     {
         // Arrange
         var bound = new TimeOnly(12, 0);
@@ -142,7 +149,44 @@ public sealed class TimeInputInteractionTests
 
         // Assert
         control.Value.ShouldBe(bound);
-        key.IsHandled.ShouldBeFalse();
+        key.IsHandled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a bounded field inside a scrolling host owns its arrow keys on a mounted
+    /// surface: Up at the upper bound neither changes the value nor scrolls the host behind it.</summary>
+    [Fact]
+    public async Task Keyboard_WhenBoundedFieldSitsInScrollingHost_UpAtBoundDoesNotScrollHostAsync()
+    {
+        // Arrange
+        var bound = new TimeOnly(12, 0);
+        var input = new TimeInput { Value = bound, Minimum = bound, Maximum = bound };
+        var host = new Stack
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Vertical,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Children = { new ControlText("above") { Height = Length.Cells(1) }, input }
+        };
+
+        for (var index = 0; index < 12; index++)
+        {
+            host.Children.Add(new ControlText($"row {index}") { Height = Length.Cells(1) });
+        }
+
+        await using var surface = await ComponentSurface.MountAsync(host, new Size(20, 8), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(input).ShouldBeTrue(), "focus the bounded field");
+        await surface.UpdateAsync(() => host.VerticalOffset = 1, "scroll the host by one line");
+        surface.Cell(new Point(0, 0)).Text.ShouldNotBe("a", "the 'above' row scrolled out of view");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Up);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        input.Value.ShouldBe(bound);
+        host.VerticalOffset.ShouldBe(1, "the field consumed both arrows instead of scrolling the host");
+        surface.ShouldHaveFocus(input);
     }
 
     /// <summary>Verifies the seconds segment is reachable with End once shown, steps by one second,
@@ -209,20 +253,22 @@ public sealed class TimeInputInteractionTests
 
     #region Traversal and command keys
 
-    /// <summary>Verifies Left at the first segment and Right at the last segment stay put and
-    /// bubble, since the field has no transition to report.</summary>
+    /// <summary>Verifies Left at the first segment and Right at the last segment stay put without
+    /// wrapping, yet are still consumed by the field.</summary>
     [Fact]
-    public void Keyboard_WhenTraversalHitsEitherEnd_StaysAndBubbles()
+    public void Keyboard_WhenTraversalHitsEitherEnd_StaysWithoutWrappingAndConsumesKey()
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(10, 30) };
 
         // Act and assert
-        Press(control, Code.Left).IsHandled.ShouldBeFalse();
+        Press(control, Code.Left).IsHandled.ShouldBeTrue();
+        Press(control, Code.Home).IsHandled.ShouldBeTrue();
         _ = Press(control, Code.Up);
         control.Value.ShouldBe(new TimeOnly(11, 30));
         _ = Press(control, Code.End);
-        Press(control, Code.Right).IsHandled.ShouldBeFalse();
+        Press(control, Code.Right).IsHandled.ShouldBeTrue();
+        Press(control, Code.End).IsHandled.ShouldBeTrue();
         _ = Press(control, Code.Up);
         control.Value.ShouldBe(new TimeOnly(11, 31));
     }
@@ -249,20 +295,100 @@ public sealed class TimeInputInteractionTests
     }
 
     /// <summary>Verifies Delete and Backspace over an empty value, and Delete under AllowNull =
-    /// false, change nothing and bubble.</summary>
+    /// false, change nothing and are still consumed by the field.</summary>
     [Fact]
-    public void Keyboard_WhenClearingCannotChangeValue_Bubbles()
+    public void Keyboard_WhenClearingCannotChangeValue_ConsumesKeyWithoutChange()
     {
         // Arrange
         using var empty = new TimeInput { Value = null };
         using var nonNullable = new TimeInput { Value = new TimeOnly(10, 30), AllowNull = false };
 
         // Act and assert
-        Press(empty, Code.Delete).IsHandled.ShouldBeFalse();
-        Press(empty, Code.Backspace).IsHandled.ShouldBeFalse();
+        Press(empty, Code.Delete).IsHandled.ShouldBeTrue();
+        Press(empty, Code.Backspace).IsHandled.ShouldBeTrue();
         empty.Value.ShouldBeNull();
-        Press(nonNullable, Code.Delete).IsHandled.ShouldBeFalse();
+        Press(nonNullable, Code.Delete).IsHandled.ShouldBeTrue();
         nonNullable.Value.ShouldBe(new TimeOnly(10, 30));
+    }
+
+    /// <summary>Verifies a hidden field routes nothing: keys change neither the value nor the
+    /// active segment, a pointer press neither focuses nor activates a segment, and the field
+    /// resumes editing exactly where it was once shown again.</summary>
+    [Fact]
+    public async Task Visibility_WhenHidden_IgnoresKeysAndPointerUntilShownAsync()
+    {
+        // Arrange
+        var input = new TimeInput { Value = new TimeOnly(10, 30) };
+        var sibling = new Button("Next") { Width = Length.Cells(8), Height = Length.Cells(3) };
+        var root = new Stack { Children = { input, sibling } };
+        var changes = 0;
+        input.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(root, new Size(20, 8), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(input);
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Hidden, "hide the focused field");
+        surface.ShouldHaveFocus(null);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Up);
+        await surface.Keyboard.TypeAsync("5");
+        await surface.Pointer.MoveToAsync(new Point(1, 1));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        input.Value.ShouldBe(new TimeOnly(10, 30));
+        changes.ShouldBe(0);
+        input.IsFocused.ShouldBeFalse();
+        surface.Cell(new Point(1, 1)).Text.ShouldBe(" ", "a hidden field paints nothing");
+
+        // Act - showing it again resumes on the segment that was active before hiding.
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Visible, "show the field again");
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(input).ShouldBeTrue(), "refocus the field");
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert
+        input.Value.ShouldBe(new TimeOnly(10, 31));
+        changes.ShouldBe(1);
+    }
+
+    /// <summary>Verifies a culture whose AM/PM designator formats to nothing still renders an
+    /// editable, visible designator: the invariant "AM"/"PM" stands in, End reaches it, Up flips
+    /// the half of the day, and the flipped text is what the user sees.</summary>
+    [Fact]
+    public async Task Culture_WhenDesignatorIsEmpty_RendersInvariantDesignatorThatStaysEditableAsync()
+    {
+        // Arrange
+        var culture = (CultureInfo) CultureInfo.InvariantCulture.Clone();
+        culture.DateTimeFormat.AMDesignator = string.Empty;
+        culture.DateTimeFormat.PMDesignator = string.Empty;
+        var input = new TimeInput { Value = new TimeOnly(9, 15), Use24HourFormat = false, Culture = culture };
+        await using var surface = await ComponentSurface.MountAsync(input, new Size(16, 3), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        ReadRow(surface, 1, 16).ShouldContain("09:15 AM");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.End);
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert
+        input.Value.ShouldBe(new TimeOnly(21, 15));
+        ReadRow(surface, 1, 16).ShouldContain("09:15 PM");
+        var designator = ReadRow(surface, 1, 16).IndexOf("PM", StringComparison.Ordinal);
+        (surface.Cell(new Point(designator, 1)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse, "the active designator is highlighted");
+
+        // Act - the designator is also hit-testable by pointer.
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Pointer.MoveToAsync(new Point(designator, 1));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        input.Value.ShouldBe(new TimeOnly(9, 15));
+        ReadRow(surface, 1, 16).ShouldContain("09:15 AM");
     }
 
     #endregion

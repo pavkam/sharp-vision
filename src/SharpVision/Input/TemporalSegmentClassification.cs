@@ -67,7 +67,11 @@ internal static class TemporalSegmentClassification
     /// <param name="isPm">Reports whether the owning control's current value falls in the PM half of the day.</param>
     /// <param name="segments">The owning control's own segment navigation engine.</param>
     /// <param name="selectPm">True to select PM; false to select AM.</param>
-    /// <returns>True if the value changed.</returns>
+    /// <returns>True when the designator was selected: the segment became active and, when the
+    /// requested half differed, the value flipped. Moving the active-segment highlight is itself an
+    /// observable change, so a repeated letter reports true and the owning field consumes it rather
+    /// than leaking a key that visibly acted on the field to an ancestor. False when the layout has
+    /// no designator or the field has no value.</returns>
     /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
     public static bool SelectAmPm(
         [InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
@@ -94,7 +98,13 @@ internal static class TemporalSegmentClassification
         }
 
         segments.ActivateSegment(index);
-        return isPm() != selectPm && segments.Increment(1);
+
+        if (isPm() != selectPm)
+        {
+            _ = segments.Increment(1);
+        }
+
+        return true;
     }
 
     /// <summary>Classifies a typed character as the fixed "a"/"p" AM/PM selection shortcut,
@@ -150,6 +160,28 @@ internal static class TemporalSegmentClassification
     [Pure]
     public static bool HasAmPmDesignator([InstantHandle] Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider) =>
         FindEditableIndex(segmentsProvider, TemporalSegmentKind.AmPmDesignator) >= 0;
+
+    /// <summary>Resolves the text an editable AM/PM designator segment renders, substituting the
+    /// invariant designator when the culture formats the half of the day as nothing at all.</summary>
+    /// <param name="formatted">The designator text the culture produced for the value.</param>
+    /// <param name="isPm">Whether the value falls in the PM half of the day.</param>
+    /// <returns><paramref name="formatted"/> when it has any text; otherwise the invariant designator.</returns>
+    /// <remarks>Some cultures declare an empty AM/PM designator. The segment stays editable (Up
+    /// flips the half of the day, "a"/"p" jump to it), so rendering it as an empty run would leave
+    /// the active segment as an invisible zero-width highlight with nothing to show which half the
+    /// field is in. The invariant "AM"/"PM" keeps the editable state visible and hit-testable.</remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="formatted"/> is null.</exception>
+    [Pure]
+    public static string ResolveDesignatorText(string formatted, bool isPm)
+    {
+        ArgumentNullException.ThrowIfNull(formatted);
+
+        return formatted.Length > 0
+            ? formatted
+            : isPm
+                ? CultureInfo.InvariantCulture.DateTimeFormat.PMDesignator
+                : CultureInfo.InvariantCulture.DateTimeFormat.AMDesignator;
+    }
 
     /// <summary>Reports whether a typed character is an ASCII decimal digit.</summary>
     [Pure]

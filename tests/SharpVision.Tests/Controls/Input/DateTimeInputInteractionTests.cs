@@ -43,7 +43,9 @@ public sealed class DateTimeInputInteractionTests
         input.Value.ShouldBe(new DateTime(2026, 3, 15, expectedHour, expectedMinute, 0));
     }
 
-    /// <summary>Verifies "p" selects PM and "a" selects AM without toggling on repeat.</summary>
+    /// <summary>Verifies "p" selects PM and "a" selects AM without toggling on repeat, that a
+    /// repeated letter is still consumed because it moved the designator highlight, and that the
+    /// designator is the active segment afterwards.</summary>
     [Fact]
     public void Keyboard_WhenAOrPIsTyped_SelectsHalfOfDayWithoutToggling()
     {
@@ -54,12 +56,16 @@ public sealed class DateTimeInputInteractionTests
         // Act and assert
         Type(control, 'p').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new DateTime(2026, 3, 15, 14, 30, 0));
-        Type(control, 'p').IsHandled.ShouldBeFalse();
+        Type(control, 'p').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new DateTime(2026, 3, 15, 14, 30, 0));
         Type(control, 'A').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new DateTime(2026, 3, 15, 2, 30, 0));
-        Type(control, 'a').IsHandled.ShouldBeFalse();
+        Type(control, 'a').IsHandled.ShouldBeTrue();
         control.Value.ShouldBe(new DateTime(2026, 3, 15, 2, 30, 0));
+
+        // The designator is now the active segment: Up flips the half of the day.
+        _ = Press(control, Code.Up);
+        control.Value.ShouldBe(new DateTime(2026, 3, 15, 14, 30, 0));
     }
 
     /// <summary>Verifies stepping the designator flips the half of the day within the same date
@@ -118,14 +124,14 @@ public sealed class DateTimeInputInteractionTests
     }
 
     /// <summary>Verifies stepping any component at <see cref="DateTime.MaxValue"/> swallows the
-    /// out-of-range arithmetic, leaving the value untouched and the key for ancestors.</summary>
+    /// out-of-range arithmetic, leaving the value untouched and the key consumed by the field.</summary>
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
-    public void Keyboard_WhenStepExceedsDateTimeRange_LeavesValueAndBubbles(int segment)
+    public void Keyboard_WhenStepExceedsDateTimeRange_LeavesValueAndConsumesKey(int segment)
     {
         // Arrange
         using var control = Create(DateTime.MaxValue);
@@ -136,7 +142,7 @@ public sealed class DateTimeInputInteractionTests
 
         // Assert
         control.Value.ShouldBe(DateTime.MaxValue);
-        key.IsHandled.ShouldBeFalse();
+        key.IsHandled.ShouldBeTrue();
     }
 
     /// <summary>Verifies Backspace resets each segment to its lowest value - day and year to one,
@@ -211,19 +217,20 @@ public sealed class DateTimeInputInteractionTests
 
     #region Traversal and command keys
 
-    /// <summary>Verifies Left at the first segment and Right at the last segment stay put and bubble.</summary>
+    /// <summary>Verifies Left at the first segment and Right at the last segment stay put without
+    /// wrapping and are still consumed by the field.</summary>
     [Fact]
-    public void Keyboard_WhenTraversalHitsEitherEnd_StaysAndBubbles()
+    public void Keyboard_WhenTraversalHitsEitherEnd_StaysWithoutWrappingAndConsumesKey()
     {
         // Arrange
         using var control = Create(_march15);
 
         // Act and assert
-        Press(control, Code.Left).IsHandled.ShouldBeFalse();
+        Press(control, Code.Left).IsHandled.ShouldBeTrue();
         _ = Press(control, Code.Up);
         control.Value.ShouldBe(new DateTime(2026, 4, 15, 14, 30, 0));
         _ = Press(control, Code.End);
-        Press(control, Code.Right).IsHandled.ShouldBeFalse();
+        Press(control, Code.Right).IsHandled.ShouldBeTrue();
         _ = Press(control, Code.Up);
         control.Value.ShouldBe(new DateTime(2026, 4, 15, 14, 31, 0));
     }
@@ -273,9 +280,9 @@ public sealed class DateTimeInputInteractionTests
     }
 
     /// <summary>Verifies Delete and Backspace over an empty value, and Delete under AllowNull =
-    /// false, change nothing and bubble.</summary>
+    /// false, change nothing and are still consumed by the field.</summary>
     [Fact]
-    public void Keyboard_WhenClearingCannotChangeValue_Bubbles()
+    public void Keyboard_WhenClearingCannotChangeValue_ConsumesKeyWithoutChange()
     {
         // Arrange
         using var empty = Create(null);
@@ -283,11 +290,103 @@ public sealed class DateTimeInputInteractionTests
         nonNullable.AllowNull = false;
 
         // Act and assert
-        Press(empty, Code.Delete).IsHandled.ShouldBeFalse();
-        Press(empty, Code.Backspace).IsHandled.ShouldBeFalse();
+        Press(empty, Code.Delete).IsHandled.ShouldBeTrue();
+        Press(empty, Code.Backspace).IsHandled.ShouldBeTrue();
         empty.Value.ShouldBeNull();
-        Press(nonNullable, Code.Delete).IsHandled.ShouldBeFalse();
+        Press(nonNullable, Code.Delete).IsHandled.ShouldBeTrue();
         nonNullable.Value.ShouldBe(_march15);
+    }
+
+    /// <summary>Verifies keys that edit the closed field - digits, Backspace, and the AM/PM letters
+    /// - are inert while the Calendar popup is open: the value, the active segment, and the popup
+    /// all stay as they were, and Space then accepts the browsed day as the keyboard table promises.</summary>
+    [Fact]
+    public async Task Popup_WhenEditingKeysArriveWhileOpen_AreInertAndSpaceAcceptsAsync()
+    {
+        // Arrange
+        var input = Create(_march15);
+        input.Use24HourFormat = false;
+        input.HorizontalAlignment = HorizontalAlignment.Left;
+        var root = new Overlay { Children = { input } };
+        var changes = 0;
+        input.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(root, new Size(36, 16), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        input.IsOpen.ShouldBeTrue();
+        changes.ShouldBe(0);
+
+        // Act
+        await surface.Keyboard.TypeAsync("7");
+        await surface.Keyboard.PressAsync(Code.Backspace);
+        await surface.Keyboard.TypeAsync("a");
+        await surface.Keyboard.TypeAsync("p");
+
+        // Assert
+        input.IsOpen.ShouldBeTrue();
+        input.Value.ShouldBe(_march15);
+        changes.ShouldBe(0);
+
+        // Act - browse one day and accept with Space.
+        await surface.Keyboard.PressAsync(Code.Right);
+        await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(new DateTime(2026, 3, 16, 14, 30, 0));
+        changes.ShouldBe(1);
+        surface.ShouldHaveFocus(input);
+
+        // Act - the first segment is active again after the accept: Up steps the month.
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        // Assert
+        input.Value.ShouldBe(new DateTime(2026, 4, 16, 14, 30, 0));
+    }
+
+    /// <summary>Verifies a hidden field routes nothing: keys change neither the value nor open the
+    /// popup, a pointer press on the indicator neither focuses nor opens, and the field resumes
+    /// normally once shown.</summary>
+    [Fact]
+    public async Task Visibility_WhenHidden_IgnoresKeysAndPointerUntilShownAsync()
+    {
+        // Arrange
+        var input = Create(_march15);
+        input.HorizontalAlignment = HorizontalAlignment.Left;
+        var root = new Overlay { Children = { input } };
+        var changes = 0;
+        input.ValueChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(root, new Size(34, 16), TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(input);
+        var indicator = new Point(input.Bounds.Width - 2, 1);
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Hidden, "hide the focused field");
+        surface.ShouldHaveFocus(null);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Up);
+        await surface.Keyboard.PressAsync(Code.Down, Modifiers.Alt);
+        await surface.Pointer.MoveToAsync(indicator);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        input.IsOpen.ShouldBeFalse();
+        input.Value.ShouldBe(_march15);
+        changes.ShouldBe(0);
+        input.IsFocused.ShouldBeFalse();
+        surface.Cell(indicator).Text.ShouldBe(" ", "a hidden field paints nothing");
+
+        // Act
+        await surface.UpdateAsync(() => input.Visibility = Visibility.Visible, "show the field again");
+        await surface.Pointer.MoveToAsync(indicator);
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        input.IsOpen.ShouldBeTrue();
+        surface.Application.Modality.Active.ShouldNotBeNull().Root.ShouldBeSameAs(input);
     }
 
     #endregion
