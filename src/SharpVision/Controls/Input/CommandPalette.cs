@@ -173,6 +173,12 @@ public sealed class CommandPalette: CompositeControlBase
         set
         {
             VerifyMutable();
+
+            if (ReferenceEquals(_list.ItemTemplate, value))
+            {
+                return;
+            }
+
             _list.ItemTemplate = value;
             NotifyPropertyChanged(nameof(ItemTemplate), InvalidationImpact.None);
         }
@@ -486,6 +492,35 @@ public sealed class CommandPalette: CompositeControlBase
     {
         base.ArrangeOverride(bounds);
         ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        base.OnEvent(eventArgs);
+
+        // While results are open the session's own preview handler owns Escape. With nothing open
+        // and a query still resolving, nothing else would consume it, the open intent would
+        // survive, and the late completion would present results the user had already dismissed.
+        // Escape is documented to cancel: revoke the in-flight lease so its completion is discarded,
+        // clear the resolving state, and drop the open intent - the retained items and text stay.
+        if (eventArgs.IsHandled ||
+            IsOpen ||
+            !IsResolving ||
+            eventArgs is not KeyEventArgs { IsInitialKeyDown: true } key ||
+            key.Stroke.Code != Code.Escape ||
+            !key.Stroke.Modifiers.IsActivationEligible())
+        {
+            return;
+        }
+
+        _wantsOpen = false;
+        _resolutionGeneration++;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(_resolutionOperation.Cancel, ref failure);
+        ExceptionAggregation.Capture(() => SetIsResolving(false), ref failure);
+        eventArgs.IsHandled = true;
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

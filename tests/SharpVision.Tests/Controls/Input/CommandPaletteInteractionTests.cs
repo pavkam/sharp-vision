@@ -319,12 +319,13 @@ public sealed class CommandPaletteInteractionTests
     }
 
     /// <summary>Verifies a superseded asynchronous query is cancelled through its token and its
-    /// cancelled completion is discarded silently: no failure event, the newer results stand.</summary>
+    /// cancelled completion is discarded silently: no failure event, the newer results stand. The
+    /// stale source runs its continuation inline, so the palette's own completion path has run to
+    /// its dispatcher post before the settle that precedes the assertions.</summary>
     [Fact]
     public async Task Resolver_WhenSupersededTaskObservesCancellation_IsDiscardedSilentlyAsync()
     {
-        var first = new TaskCompletionSource<IReadOnlyList<object?>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var first = new TaskCompletionSource<IReadOnlyList<object?>>();
         CancellationToken firstToken = default;
         var palette = new CommandPalette
         {
@@ -396,12 +397,14 @@ public sealed class CommandPaletteInteractionTests
     }
 
     /// <summary>Verifies an older asynchronous completion arriving after a newer one cannot replace
-    /// the newer items, reopen, or raise a second ResultsChanged on a mounted palette.</summary>
+    /// the newer items, reopen, or raise a second ResultsChanged on a mounted palette. The stale
+    /// source is completed only after the newer results are committed and settled, and it runs
+    /// its continuation inline, so the palette's stale completion path (up to its dispatcher post)
+    /// has already run when the single settle drains the dispatcher before the assertions.</summary>
     [Fact]
     public async Task Resolver_WhenOlderCompletionArrivesLast_IsDiscardedAsync()
     {
-        var older = new TaskCompletionSource<IReadOnlyList<object?>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var older = new TaskCompletionSource<IReadOnlyList<object?>>();
         var newer = new TaskCompletionSource<IReadOnlyList<object?>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         var palette = new CommandPalette
@@ -431,9 +434,9 @@ public sealed class CommandPaletteInteractionTests
         newer.SetResult(["newer"]);
         await resultsChanged.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         await surface.UpdateAsync(static () => { }, "settle the newer completion");
+        palette.Items.ShouldBe(["newer"]);
         older.SetResult(["older"]);
         await surface.UpdateAsync(static () => { }, "settle after the stale completion");
-        await surface.UpdateAsync(static () => { }, "settle again");
 
         results.ShouldBe(1);
         palette.Items.ShouldBe(["newer"]);
@@ -509,12 +512,12 @@ public sealed class CommandPaletteInteractionTests
     }
 
     /// <summary>Verifies an asynchronous completion that arrives after the palette was disposed is
-    /// dropped without publishing or faulting the still-running application.</summary>
+    /// dropped without publishing or faulting the still-running application. The source runs its
+    /// continuation inline, so the palette's completion path has run before the single settle.</summary>
     [Fact]
     public async Task Dispose_WhenCompletionArrivesAfterDisposal_IsDroppedWithoutFaultingAsync()
     {
-        var completion = new TaskCompletionSource<IReadOnlyList<object?>>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>();
         var palette = new CommandPalette
         {
             Width = Length.Cells(18),
@@ -525,17 +528,123 @@ public sealed class CommandPaletteInteractionTests
         palette.ResolutionFailed += (_, _) => published++;
         var root = new Overlay { Children = { palette } };
         await using var surface = await MountAsync(root, new Size(24, 8));
+        var unhandled = new List<Exception>();
+        surface.Application.UnhandledException += (_, eventArgs) => unhandled.Add(eventArgs.Exception);
         await surface.UpdateAsync(() => palette.Text = "q", "start the asynchronous query");
         await surface.UpdateAsync(() => Should.NotThrow(palette.Dispose), "dispose mid-resolution");
 
         completion.SetResult(["late"]);
         await surface.UpdateAsync(static () => { }, "settle after the late completion");
-        await surface.UpdateAsync(static () => { }, "settle again");
 
         palette.IsDisposed.ShouldBeTrue();
         published.ShouldBe(0);
+        unhandled.ShouldBeEmpty();
         surface.ShouldRender("");
         surface.Application.Modality.Active.ShouldBeNull();
+    }
+
+    /// <summary>Verifies Escape while a query is still resolving with no results open cancels
+    /// that query, as the keyboard table documents: the resolving state clears at once and the
+    /// late completion neither opens results nor replaces the retained items.</summary>
+    [Fact]
+    public async Task Escape_WhenPressedDuringResolutionWithNothingOpen_CancelsSoLateResultsNeverOpenAsync()
+    {
+        var completion = new TaskCompletionSource<IReadOnlyList<object?>>();
+        CancellationToken token = default;
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(18),
+            Resolver = (terms, cancellation) =>
+            {
+                if (terms == "slow")
+                {
+                    token = cancellation;
+                    return new ValueTask<IReadOnlyList<object?>>(completion.Task);
+                }
+
+                return ValueTask.FromResult<IReadOnlyList<object?>>(terms.Length == 0 ? [] : [terms]);
+            }
+        };
+        var events = new List<string>();
+        Observe(palette, events);
+        await using var surface = await MountAsync(palette, new Size(24, 8));
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(editor).ShouldBeTrue(), "focus the editor");
+        await surface.UpdateAsync(() => palette.Text = "slow", "start the slow query");
+        palette.IsResolving.ShouldBeTrue();
+        palette.IsOpen.ShouldBeFalse();
+        events.Clear();
+
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        palette.IsResolving.ShouldBeFalse();
+        token.IsCancellationRequested.ShouldBeTrue();
+        palette.IsOpen.ShouldBeFalse();
+        palette.Text.ShouldBe("slow");
+        surface.ShouldHaveFocus(editor);
+
+        completion.SetResult(["late"]);
+        await surface.UpdateAsync(static () => { }, "settle after the late completion");
+
+        palette.IsOpen.ShouldBeFalse();
+        palette.Items.ShouldBeEmpty();
+        events.ShouldBeEmpty();
+        surface.Application.Modality.Active.ShouldBeNull();
+
+        await surface.Keyboard.TypeAsync("x");
+
+        palette.Items.ShouldBe(["slowx"]);
+        palette.IsOpen.ShouldBeTrue("a later query still opens normally");
+    }
+
+    /// <summary>Verifies hiding, detaching, or disposing the palette while results are open on a
+    /// mounted surface tears the results down: the popup closes, the modal scope is released, the
+    /// rendered rows disappear, and focus does not linger in the gone editor.</summary>
+    [Theory]
+    [InlineData("hidden")]
+    [InlineData("detached")]
+    [InlineData("disposed")]
+    public async Task Availability_WhenLostWhileResultsAreOpen_ClosesAndReleasesScopeAsync(string state)
+    {
+        var palette = NewPalette(static _ => ["One", "Two"]);
+        var closed = 0;
+        palette.Closed += (_, _) => closed++;
+        var root = new Overlay { Children = { palette } };
+        await using var surface = await MountAsync(root, new Size(24, 9));
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+        var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();
+        await surface.UpdateAsync(() => palette.Open(), "open the palette");
+        surface.ShouldHaveFocus(editor);
+        var firstRow = new Point(list.Bounds.X, list.Bounds.Y);
+        surface.Cell(firstRow).Text.ShouldBe("O");
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                switch (state)
+                {
+                    case "hidden":
+                        palette.Visibility = Visibility.Hidden;
+                        break;
+                    case "detached":
+                        root.Children.Remove(palette).ShouldBeTrue();
+                        break;
+                    default:
+                        palette.Dispose();
+                        break;
+                }
+            },
+            $"make the open palette {state}");
+
+        surface.Application.Modality.Active.ShouldBeNull();
+        surface.ShouldRender("");
+        editor.IsFocused.ShouldBeFalse();
+        closed.ShouldBe(state == "disposed" ? 0 : 1, "a disposed control publishes nothing; the others close once");
+
+        if (state != "disposed")
+        {
+            palette.IsOpen.ShouldBeFalse();
+        }
     }
 
     #endregion
@@ -752,6 +861,7 @@ public sealed class CommandPaletteInteractionTests
         palette.EndAffix = new Affix("<");
         palette.DropDownHeight = Length.Cells(4);
         palette.RowHeight = Length.Cells(2);
+        palette.ItemTemplate = template;
         palette.FieldBorder = palette.FieldBorder;
         palette.FieldShadow = palette.FieldShadow;
 
@@ -759,17 +869,21 @@ public sealed class CommandPaletteInteractionTests
         palette.ItemTemplate.ShouldBeSameAs(template);
         palette.RowHeight.ShouldBe(Length.Cells(2));
 
+        ItemTemplate replacement = static item => new ControlText($"* {item}");
         palette.Placeholder = "Search";
         palette.StartAffix = null;
         palette.EndAffix = null;
         palette.DropDownHeight = Length.Percent(50);
+        palette.ItemTemplate = replacement;
 
         published.ShouldBe([
             nameof(CommandPalette.Placeholder),
             nameof(CommandPalette.StartAffix),
             nameof(CommandPalette.EndAffix),
-            nameof(CommandPalette.DropDownHeight)
+            nameof(CommandPalette.DropDownHeight),
+            nameof(CommandPalette.ItemTemplate)
         ]);
+        palette.ItemTemplate.ShouldBeSameAs(replacement);
     }
 
     /// <summary>Verifies ResetFieldShadow with no local editor style is a silent no-op.</summary>
