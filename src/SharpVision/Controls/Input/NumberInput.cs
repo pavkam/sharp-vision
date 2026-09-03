@@ -21,12 +21,10 @@ public sealed class NumberInput: InputBase
 {
     private readonly NumericEditBuffer _buffer = new();
     private readonly NumericInputCommitCoordinator _coordinator;
-    private readonly NumericEditBehavior _editing;
 
     /// <summary>Initializes a focusable number field with no committed value.</summary>
     public NumberInput()
     {
-        TabNavigation = TabNavigation.None;
         _coordinator = new NumericInputCommitCoordinator(
             _buffer,
             VerifyMutable,
@@ -35,18 +33,12 @@ public sealed class NumberInput: InputBase
             () => IsFocused,
             RefreshBuffer,
             (previous, candidate) => ValueChanged?.Invoke(this, new NumberInputValueChangedEventArgs(previous, candidate)));
-#pragma warning disable IDE0200 // A method group would capture the construction-time ContentBounds value.
-        _editing = new NumericEditBehavior(
+        EnableNumericEditing(
             _buffer,
             _coordinator,
             ConfigureBuffer,
             () => Mode == NumberInputMode.Integer ? 0 : DecimalPlaces,
-            () => IsFocused,
-            point => ContentBounds.Contains(point),
-            RequestEditingFocus,
-            ResolveCaretIndex,
-            () => Invalidate(InvalidationImpact.Render));
-#pragma warning restore IDE0200
+            ResolveCaretIndex);
     }
 
     /// <summary>Raised after a committed value transition.</summary>
@@ -246,6 +238,31 @@ public sealed class NumberInput: InputBase
         }
     } = CultureInfo.InvariantCulture;
 
+    /// <summary>Gets or sets optional hint text shown while the value and transient edit buffer are
+    /// empty.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public string? Placeholder
+    {
+        get;
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render);
+    }
+
+    /// <summary>Gets or sets the protocol-neutral cursor shape requested while this field has
+    /// focus.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public CursorShape CursorShape
+    {
+        get;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The cursor shape is unknown.");
+            _ = SetProperty(ref field, value, InvalidationImpact.Render);
+        }
+    }
+
     #region Layout
 
     /// <summary>Gets or sets the optional leading edge-pinned decoration, reserved inboard of the
@@ -281,27 +298,6 @@ public sealed class NumberInput: InputBase
 
     #endregion
 
-    #region Input
-
-    /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        ArgumentNullException.ThrowIfNull(eventArgs);
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            base.OnEvent(eventArgs);
-            return;
-        }
-
-        if (!_editing.HandleEvent(eventArgs))
-        {
-            base.OnEvent(eventArgs);
-        }
-    }
-
-    #endregion
-
     #region Commit and buffer synchronization
 
     /// <summary>Resolves the decimal places and rounding policy a freshly parsed buffer value
@@ -324,13 +320,6 @@ public sealed class NumberInput: InputBase
 
     private void ConfigureBuffer() =>
         _buffer.Configure(Culture.NumberFormat, Mode == NumberInputMode.Integer);
-
-    private bool RequestEditingFocus()
-    {
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-        return CanContinueAfterFocus(dispatcher);
-    }
 
     private int ResolveCaretIndex(Point cells)
     {
@@ -355,32 +344,16 @@ public sealed class NumberInput: InputBase
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var content = ContentBounds;
-
-        if (content.Width == 0 || content.Height == 0)
-        {
-            return;
-        }
-
-        var style = ResolvedStyle;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-
-        // Affixes render against the undeflated content box - not the value box below - so a
-        // present affix keeps sitting at the true edge even when the value's own box saturates to
-        // zero width.
-        RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
-
-        var valueBox = DeflateForAffixes(content, affixes);
         var displayText = IsFocused ? _buffer.Text : Value is { } value ? FormatValue(value) : string.Empty;
-        var clipped = canvas.Clip(new Rect(valueBox.X, valueBox.Y, valueBox.Width, 1));
-        _ = clipped.Draw(displayText.AsSpan(), new Point(valueBox.X, valueBox.Y), style, background: BackgroundMode.Transparent);
-
-        if (!IsFocused)
-        {
-            return;
-        }
-
-        SetCaretCursor(canvas, valueBox, displayText, _buffer.Selection.Caret);
+        RenderNumericInputContent(
+            canvas,
+            displayText,
+            IsFocused ? _buffer.Selection : default,
+            IsFocused ? _buffer.Selection.Caret : 0,
+            StartAffix,
+            EndAffix,
+            Placeholder,
+            CursorShape);
     }
 
     /// <inheritdoc/>
@@ -394,47 +367,18 @@ public sealed class NumberInput: InputBase
     /// </remarks>
     internal override void OnReuseCleanRender(TerminalCanvas canvas)
     {
-        if (!IsFocused)
-        {
-            return;
-        }
-
-        var content = ContentBounds;
-
-        if (content.Width == 0 || content.Height == 0)
-        {
-            return;
-        }
-
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var valueBox = DeflateForAffixes(content, affixes);
-        var displayText = _buffer.Text;
-
-        SetCaretCursor(canvas, valueBox, displayText, _buffer.Selection.Caret);
-    }
-
-    private void SetCaretCursor(TerminalCanvas canvas, Rect valueBox, string displayText, int caret)
-    {
-        var caretColumn = MeasureCells(displayText.AsSpan(0, Math.Min(caret, displayText.Length)));
-        var position = new Point(valueBox.X + caretColumn, valueBox.Y);
-
-        if (valueBox.Contains(position) && canvas.Bounds.Contains(position))
-        {
-            canvas.SetCursor(position, visible: true, CursorShape.Block);
-        }
+        ReplayNumericInputCursor(
+            canvas,
+            _buffer.Text,
+            _buffer.Selection.Caret,
+            StartAffix,
+            EndAffix,
+            CursorShape);
     }
 
     #endregion
 
     #region Lifecycle
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        _editing.FocusChanged(focused);
-    }
 
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)

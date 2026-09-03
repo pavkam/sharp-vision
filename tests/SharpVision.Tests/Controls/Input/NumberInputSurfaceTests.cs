@@ -6,6 +6,80 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves NumberInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class NumberInputSurfaceTests
 {
+    /// <summary>Verifies an empty number field retains its hint on focus and commits the configured
+    /// semantic cursor shape instead of a hard-coded block.</summary>
+    [Fact]
+    public async Task Focus_WhenEmptyFieldIsCustomized_KeepsPlaceholderAndCursorShapeAsync()
+    {
+        // Arrange
+        var input = new NumberInput
+        {
+            CursorShape = CursorShape.Bar,
+            Placeholder = "Quantity",
+            Width = Length.Cells(12)
+        };
+        var profile = new TerminalProfile(
+            new Description("numeric-cursor-shape", DescriptionOrigin.Explicit, Suitability.Usable),
+            TerminalCapabilities.Conservative,
+            new Programs(new Dictionary<string, DescriptionProgram>
+            {
+                ["cup"] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+                ["sgr0"] = new DescriptionProgram("\u001b[0m"u8),
+                ["clear"] = new DescriptionProgram("\u001b[2J"u8),
+                ["civis"] = new DescriptionProgram("\u001b[?25l"u8),
+                ["cnorm"] = new DescriptionProgram("\u001b[?25h"u8),
+                ["Ss"] = new DescriptionProgram("\u001b[%p1%d q"u8),
+                ["Se"] = new DescriptionProgram("\u001b[0 q"u8)
+            }),
+            KeyMap.Empty);
+        var options = TerminalOptions.Minimal with { Profile = profile };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(12, 3),
+            options,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        surface.ShouldRender("""
+                             ┏━━━━━━━━━━┓
+                             ┃Quantity  ┃
+                             ┗━━━━━━━━━━┛
+                             """);
+        surface.ShouldHaveCursor(new Point(1, 1), visible: true, CursorShape.Bar);
+    }
+
+    /// <summary>Verifies Shift+Left exposes the selected trailing digit through reverse rendition
+    /// before replacement commits.</summary>
+    [Fact]
+    public async Task Keyboard_WhenShiftLeftExtendsSelection_RendersAndReplacesTrailingDigitAsync()
+    {
+        // Arrange
+        var input = new NumberInput { Value = 12m, DecimalPlaces = 0 };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(6, 1),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Left, Modifiers.Shift);
+
+        // Assert
+        (surface.Cell(new Point(1, 0)).Style.Attributes & TerminalAttributes.Reverse)
+            .ShouldBe(TerminalAttributes.Reverse);
+
+        // Act
+        await surface.Keyboard.TypeAsync("9");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        input.Value.ShouldBe(19m);
+    }
+
     /// <summary>Verifies a mounted NumberInput renders a bordered field with a formatted value, and
     /// observes hover and focus.</summary>
     [Fact]

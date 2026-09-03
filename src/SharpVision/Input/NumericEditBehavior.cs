@@ -96,8 +96,22 @@ internal sealed class NumericEditBehavior
         }
 
         var stroke = eventArgs.Stroke;
+        var scalarNavigation = KeyboardModifierPolicy.IsScalarNavigationEligible(stroke.Modifiers);
+        var textEntry = KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers);
+        var extendSelection = KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Shift);
+        var selectAll = KeyboardModifierPolicy.MatchesCommand(stroke.Modifiers, Modifiers.Control) &&
+            stroke is { Code: Code.Character, Character: { } character } &&
+            Rune.ToLowerInvariant(character) == new Rune('a');
 
-        if (stroke.Code is Code.Up or Code.Down)
+        if (selectAll)
+        {
+            _ = _buffer.SelectAll();
+            eventArgs.IsHandled = true;
+            _invalidateRender();
+            return true;
+        }
+
+        if (scalarNavigation && stroke.Code is Code.Up or Code.Down)
         {
             _ = _coordinator.ApplyStep(stroke.Code == Code.Up ? 1 : -1);
             eventArgs.IsHandled = true;
@@ -107,16 +121,16 @@ internal sealed class NumericEditBehavior
 #pragma warning disable IDE0072 // Every unmatched key intentionally remains unhandled.
         var handled = stroke.Code switch
         {
-            Code.Home => _coordinator.JumpToBound(minimum: true, _getDecimalPlaces()),
-            Code.End => _coordinator.JumpToBound(minimum: false, _getDecimalPlaces()),
-            Code.Enter => _coordinator.CommitBuffer(),
-            Code.Escape when stroke.Modifiers.IsActivationEligible() => _coordinator.RevertBuffer(),
-            Code.Backspace => _buffer.Backspace(),
-            Code.Delete => _buffer.Delete(),
-            Code.Left => _buffer.MovePrevious(extend: false),
-            Code.Right => _buffer.MoveNext(extend: false),
+            Code.Home when scalarNavigation => _coordinator.JumpToBound(minimum: true, _getDecimalPlaces()),
+            Code.End when scalarNavigation => _coordinator.JumpToBound(minimum: false, _getDecimalPlaces()),
+            Code.Enter when textEntry => _coordinator.CommitBuffer(),
+            Code.Escape when scalarNavigation => _coordinator.RevertBuffer(),
+            Code.Backspace when textEntry => _buffer.Backspace(),
+            Code.Delete when textEntry => _buffer.Delete(),
+            Code.Left when scalarNavigation || extendSelection => _buffer.MovePrevious(extendSelection),
+            Code.Right when scalarNavigation || extendSelection => _buffer.MoveNext(extendSelection),
             Code.Character when stroke.Character is { } ch &&
-                KeyboardModifierPolicy.IsTextEntryEligible(stroke.Modifiers) => _buffer.Insert(ch.ToString()),
+                textEntry => _buffer.Insert(ch.ToString()),
             _ => false
         };
 #pragma warning restore IDE0072

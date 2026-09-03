@@ -3,17 +3,18 @@
 ## Overview
 
 `TextInput` is declared
-`public sealed class TextInput : ControlBase, IStyled<TextInputStyle>`. Unlike
-its input siblings, it derives directly from `ControlBase` — it is not an
-`InputBase` editor and has no press/activation state machine. It is a focusable
-single- or multiline text editor whose caret and selection indices always fall
-on valid grapheme boundaries.
+`public sealed class TextInput : InputBase, IStyled<TextInputStyle>`. It uses
+the shared input focus, tab-stop, and appearance contract without enabling
+press, popup, caption, command, segmented, or numeric-editing capabilities. It
+is a focusable single- or multiline text editor whose caret and selection
+indices always fall on valid grapheme boundaries.
 
 ## Inheritance
 
 ```mermaid
 classDiagram
-    ControlBase <|-- TextInput
+    ControlBase <|-- InputBase
+    InputBase <|-- TextInput
 ```
 
 ## API
@@ -21,7 +22,7 @@ classDiagram
 | Member                             | Type                                           | Default                         | Description                                                                                                                                         |
 | ---------------------------------- | ---------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Text`                             | `string`                                       | `""` (empty)                    | The committed text; direct assignment validates policy and `MaxLength` before mutating, then moves the caret to the end.                            |
-| `Placeholder`                      | `string?`                                      | `null`                          | Optional hint drawn with dim attributes while `Text` is empty and the control is unfocused.                                                         |
+| `Placeholder`                      | `string?`                                      | `null`                          | Optional hint drawn with dim attributes while `Text` is empty; gaining focus keeps the hint behind the caret until text is entered.                 |
 | `IsReadOnly`                       | `bool`                                         | `false`                         | Blocks user text mutation while enabled.                                                                                                            |
 | `AcceptsReturn`                    | `bool`                                         | `false`                         | Allows inserted CR/LF; when `false`, Enter submits instead.                                                                                         |
 | `AcceptsTab`                       | `bool`                                         | `false`                         | Allows local Tab insertion; when `false`, Tab moves focus.                                                                                          |
@@ -242,6 +243,10 @@ unconditionally validated `Edit.MoveHome`/`Edit.MoveEnd`.
 - The terminal cursor is visible only while the editor is focused, and its
   position and requested shape are committed through the semantic frame — the
   control never emits terminal bytes itself.
+- A non-empty `Placeholder` remains visible after an empty editor gains focus;
+  the focused cursor sits at its first cell, and the hint disappears only after
+  text is entered. Placeholder drawing stops before a partial grapheme or line
+  break.
 - `TextInput` clears its complete committed content box with its resolved style
   before drawing graphemes. A configured background therefore paints the full
   editable rectangle — including empty trailing cells, multiline slack,
@@ -359,12 +364,12 @@ var name = new TextInput
 Mounted cross-layer coverage in
 [`TextInputSurfaceTests`](../../../tests/SharpVision.Tests/Controls/Input/TextInputSurfaceTests.cs)
 drives terminal bytes through the live application and demonstrates placeholder
-rendering, focus, Unicode typing and deletion, atomic paste, wide-cell
-selection, the submit policy, password masking, read-only and disabled refusal,
-automatic offsets, resize repair, and the committed terminal cursor. The
-component harness does not consider input consumed until the terminal session
-requests its next read, so an earlier dispatcher idle cannot expose a partially
-routed action.
+rendering before and after focus, Unicode typing and deletion, atomic paste,
+wide-cell selection, the submit policy, password masking, read-only and disabled
+refusal, automatic offsets, resize repair, and the committed terminal cursor.
+The component harness does not consider input consumed until the terminal
+session requests its next read, so an earlier dispatcher idle cannot expose a
+partially routed action.
 
 The pure model additionally replays 10,000 operations with seed `0x00ED175A`
 over ASCII, CJK, combining sequences, emoji ZWJ sequences, flags, and invalid

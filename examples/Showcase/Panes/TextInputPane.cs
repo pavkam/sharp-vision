@@ -16,7 +16,12 @@ internal sealed class TextInputPane: CompositeControlBase
     /// <inheritdoc/>
     private static DocPage CreateContent()
     {
-        var editable = new TextInput { Width = Length.Cells(28), Text = "Edit me: café 👩‍💻" };
+        var editable = new TextInput
+        {
+            CursorShape = CursorShape.Bar,
+            Width = Length.Cells(28),
+            Text = "Edit me: café 👩‍💻"
+        };
         var editStatus = new Text("Editing: waiting");
         editable.TextChanged += (_, eventArgs) => editStatus.Content = $"Editing: {eventArgs.Text}";
         editable.Submitted += (_, eventArgs) => editStatus.Content = $"Submitted: {eventArgs.Text}";
@@ -108,7 +113,8 @@ internal sealed class TextInputPane: CompositeControlBase
         {
             Width = Length.Cells(28),
             Placeholder = "Search…",
-            StartAffix = new Affix("🔍")
+            StartAffix = new Affix("🔍"),
+            EndAffix = new Affix("⌘")
         };
 
         return new DocPage(
@@ -120,7 +126,7 @@ internal sealed class TextInputPane: CompositeControlBase
                 "A single-line editor commits grapheme-safe changes and treats <reverse>Enter</reverse> as submission.",
                 new DocExample(
                     "Free-form editing",
-                    "Type Unicode text, navigate by complete grapheme, then press <reverse>Enter</reverse>. The status distinguishes mutation from <success>submission</success>.",
+                    "Type Unicode text, navigate by complete grapheme, then press <reverse>Enter</reverse>. The bar cursor demonstrates <info>CursorShape</info>; the status distinguishes mutation from <success>submission</success>.",
                     new DocColumn(editable, editStatus),
                     "var name = new TextInput { Width = Length.Cells(28) };\nname.Submitted += (_, e) => Save(e.Text);")),
             new DocSection(
@@ -185,11 +191,11 @@ internal sealed class TextInputPane: CompositeControlBase
             new DocSection(
                 "📎",
                 "Affixes",
-                "<info>StartAffix</info> and <info>EndAffix</info> reserve a fixed cell beside the editable text for application-owned, data-driven decoration that a theme never authors.",
+                "<info>StartAffix</info> and <info>EndAffix</info> reserve pinned cells beside editable text for application-owned, data-driven decoration that a theme never authors.",
                 new DocExample(
-                    "Search glyph before the text",
-                    "The glyph sits in its own reserved cell and never shares space with the editable text or the placeholder.",
+                    "Search hint with pinned affordances",
+                    "The hint remains visible when the empty field gains focus, while both affixes stay outside the caret and selection viewport.",
                     search,
-                    "var search = new TextInput\n{\n    Placeholder = \"Search…\",\n    StartAffix = new Affix(\"🔍\")\n};")));
+                    "var search = new TextInput\n{\n    Placeholder = \"Search…\",\n    StartAffix = new Affix(\"🔍\"),\n    EndAffix = new Affix(\"⌘\")\n};")));
     }
 }

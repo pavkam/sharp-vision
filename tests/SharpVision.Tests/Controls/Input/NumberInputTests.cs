@@ -119,8 +119,23 @@ public sealed class NumberInputTests
         control.AllowGrouping.ShouldBeTrue();
         control.RoundingMode.ShouldBe(MidpointRounding.AwayFromZero);
         control.Culture.ShouldBeSameAs(CultureInfo.InvariantCulture);
+        control.Placeholder.ShouldBeNull();
+        control.CursorShape.ShouldBe(CursorShape.Block);
         control.IsFocusable.ShouldBeTrue();
         control.IsTabStop.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an undefined cursor shape is rejected before the visible preference
+    /// changes.</summary>
+    [Fact]
+    public void CursorShape_WhenAssignedUndefinedValue_ThrowsBeforeMutation()
+    {
+        using var control = new NumberInput { CursorShape = CursorShape.Bar };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            control.CursorShape = (CursorShape) int.MaxValue);
+
+        control.CursorShape.ShouldBe(CursorShape.Bar);
     }
 
     #endregion
@@ -513,6 +528,52 @@ public sealed class NumberInputTests
         // Assert
         control.Value.ShouldBe(expectedEdit ? 59m : 5m);
         key.IsHandled.ShouldBe(expectedEdit);
+    }
+
+    /// <summary>Verifies command-modified editing and stepping keys remain available to the
+    /// application instead of mutating the numeric buffer or committed value.</summary>
+    [Theory]
+    [InlineData(Code.Left)]
+    [InlineData(Code.Backspace)]
+    [InlineData(Code.Up)]
+    [InlineData(Code.Home)]
+    public void Input_WhenEditingKeyCarriesControlModifier_LeavesBufferAndRouteUnchanged(Code code)
+    {
+        // Arrange
+        using var control = new NumberInput { DecimalPlaces = 0 };
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '2');
+        var command = Key(code, Modifiers.Control);
+
+        // Act
+        _ = Router.Route(control, Events.Key, command);
+        TypeCharacter(control, '3');
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        command.IsHandled.ShouldBeFalse();
+        control.Value.ShouldBe(123m);
+    }
+
+    /// <summary>Verifies the conventional select-all command replaces the complete transient
+    /// value on the next typed digit.</summary>
+    [Fact]
+    public void Input_WhenControlAIsPressed_SelectsTheCompleteTransientValue()
+    {
+        // Arrange
+        using var control = new NumberInput { DecimalPlaces = 0 };
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '2');
+        var selectAll = CharacterKey('a', Modifiers.Control);
+
+        // Act
+        _ = Router.Route(control, Events.Key, selectAll);
+        TypeCharacter(control, '9');
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        selectAll.IsHandled.ShouldBeTrue();
+        control.Value.ShouldBe(9m);
     }
 
     /// <summary>Verifies commit when buffer overflows decimal range rejects and keeps prior value.</summary>

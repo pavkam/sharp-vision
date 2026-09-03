@@ -6,6 +6,32 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Verifies TextInput editing, policy, cursor, and cells through a mounted surface.</summary>
 public sealed class TextInputSurfaceTests
 {
+    /// <summary>Verifies an empty focused editor keeps its placeholder visible while showing the
+    /// caret, so focus does not erase the only hint before the user types.</summary>
+    [Fact]
+    public async Task Focus_WhenEmptyEditorHasPlaceholder_KeepsHintVisibleBehindCaretAsync()
+    {
+        // Arrange
+        var input = new TextInput { Placeholder = "Name", Width = Length.Cells(6) };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(6, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        surface.ShouldRender("""
+                             ┏━━━━┓
+                             ┃Name┃
+                             ┗━━━━┛
+                             """);
+        surface.ShouldHaveCursor(new Point(1, 1), visible: true, CursorShape.Block);
+        (surface.Cell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Dim)
+            .ShouldBe(TerminalAttributes.Dim);
+    }
+
     /// <summary>Verifies TextInput retains its semantic preference while an unsupported terminal keeps its shape.</summary>
     [Fact]
     public async Task Render_WhenCursorShapeIsConfigured_CommitsSemanticCursorShapeAsync()

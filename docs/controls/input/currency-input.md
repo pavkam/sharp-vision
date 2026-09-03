@@ -16,9 +16,13 @@ immediately, bypassing the buffer entirely, matching `NumberInput` and
 [`Slider`](slider.md#overview). Escape reverts any uncommitted edit back to the
 committed value's formatting.
 
-`CurrencyInput` derives from [`InputBase`](../input-base.md#overview) but opts
-into none of its popup or press-activation capabilities - only the base
-focusable, Tab-stopping contract, the same as `NumberInput`.
+`CurrencyInput` derives from [`InputBase`](../input-base.md#overview) and
+enables its in-assembly transient numeric-editing capability. The base owns
+routed key classification, focus entry/exit, selection presentation, placeholder
+drawing, cursor replay, and affix-aware rendering; `CurrencyInput` owns monetary
+policy, currency-pattern composition, parsing, and pointer-to-buffer projection.
+It enables no popup, caption, command, segmented, or press-activation
+capability.
 
 The edited buffer never contains the currency symbol or code: while focused, the
 rendered text composes the resolved currency identity around the buffered
@@ -68,6 +72,8 @@ classDiagram
 | `Culture`          | `CultureInfo`                                      | `CultureInfo.InvariantCulture`  | The culture supplying currency-specific separators, sign, group sizes, and positive/negative pattern for display and parsing.                |
 | `DisplayMode`      | `CurrencyDisplayMode`                              | `CurrencyDisplayMode.Symbol`    | Chooses how the currency identity is resolved and composed around the formatted number.                                                      |
 | `CurrencyOverride` | `string?`                                          | `null`                          | Caller-supplied currency identity text that takes precedence over every `DisplayMode` resolution rule.                                       |
+| `Placeholder`      | `string?`                                          | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                                   |
+| `CursorShape`      | `CursorShape`                                      | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                                       |
 | `StartAffix`       | `Affix?`                                           | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                       |
 | `EndAffix`         | `Affix?`                                           | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                      |
 | `ValueChanged`     | `EventHandler<CurrencyInputValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                                   |
@@ -89,8 +95,9 @@ is re-evaluated against the control's actual bounds on every render.
 | Key                         | Behavior                                                              |
 | --------------------------- | --------------------------------------------------------------------- |
 | Typed digits and separators | Edits the temporary amount at the caret using the configured culture. |
-| Left / Right                | Moves the caret through the temporary buffer.                         |
-| Backspace / Delete          | Removes text before or at the caret.                                  |
+| Left / Right                | Moves the caret; Shift extends the directional selection.             |
+| Ctrl+A                      | Selects the complete temporary buffer.                                |
+| Backspace / Delete          | Removes the selection or text before or at the caret.                 |
 | Up / Down                   | Adds or subtracts `Step` and commits immediately.                     |
 | Home / End                  | Commits `Minimum` or `Maximum`.                                       |
 | Enter                       | Parses and commits the temporary amount.                              |
@@ -140,16 +147,18 @@ currencyInput.ValueChanged += (_, e) => Console.Write(e.Value);
 
 ## Expected behavior
 
-| Scope                 | Observable evidence                                                                                                                                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Defaults, bounds, the null policy, precision derivation, the rounding matrix, overflow guarding, and event order behave as documented.                                                                                                  |
-| Integrated behavior   | Keyboard editing, pasting, and mid-edit Culture changes work end to end without migrating a half-parsed buffer or a stale currency identity.                                                                                            |
-| Complete runtime path | Typed display transitions, culture-aware currency separators, group sizes, and sign patterns, Enter/Escape/focus-loss commit paths, keyboard stepping, pointer caret placement, the disabled state, and tiny clipping render correctly. |
+| Scope                 | Observable evidence                                                                                                                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | Defaults, bounds, the null policy, precision derivation, the rounding matrix, cursor validation, overflow guarding, and event order behave as documented.                                                            |
+| Integrated behavior   | Keyboard editing, selection, pasting, and mid-edit Culture changes work end to end without migrating a half-parsed buffer or a stale currency identity.                                                              |
+| Complete runtime path | Typed display transitions, focused placeholders, selection cells, requested cursor shape, culture-aware currency patterns, commit paths, stepping, pointer placement, disabled state, and clipping render correctly. |
 
 - Direct character edits follow the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy):
   Shift and lock state may produce text, while command-modified characters stay
-  out of the transient buffer and remain unhandled.
+  out of the transient buffer and remain unhandled. Navigation and mutation keys
+  likewise require their exact supported modifier shape; application chords do
+  not move the caret, alter the value, or get swallowed.
 - The buffer accepts both a culture's own negative sign and the ASCII
   hyphen-minus, normalizing whichever was typed at commit.
 - A negative amount under a culture whose `CurrencyNegativePattern` wraps the

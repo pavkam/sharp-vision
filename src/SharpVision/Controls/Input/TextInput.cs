@@ -17,7 +17,7 @@ using UnicodeWidth = Width;
 
 /// <summary>Defines a focusable grapheme-safe single- or multiline text editor.</summary>
 [PublicAPI]
-public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextInputStyle>
+public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInputStyle>
 {
     private readonly List<EditResult> _undo = [];
     private readonly List<EditResult> _redo = [];
@@ -60,8 +60,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         _scroll.HorizontalValueChanged += OnHorizontalChanged;
         _scroll.VerticalValueChanged += OnVerticalChanged;
         _scroll.EnsureBars();
-        IsFocusable = true;
-        IsTabStop = true;
         ContextMenu = new TextInputContextMenu(this);
         IsTextSelectionEnabled = true;
     }
@@ -96,7 +94,7 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
     /// <exception cref="ArgumentException">The value violates policy or maximum length.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public string Text
+    public override string Text
     {
         get => _text;
         set
@@ -786,33 +784,14 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         // remain continuous beyond short text, selection, and the caret.
         canvas.Clear(bounds, ResolvedStyle);
 
-        if (Text.Length == 0 && !IsFocused && Placeholder is { Length: > 0 } placeholder)
+        if (Text.Length == 0 && Placeholder is { Length: > 0 } placeholder)
         {
-            var placeholderStyle = PlaceholderStyle();
-            var px = 0;
+            RenderInputPlaceholder(canvas, bounds, placeholder);
 
-            foreach (var grapheme in Graphemes.Enumerate(placeholder))
+            if (!IsFocused)
             {
-                var cluster = placeholder.AsSpan(grapheme.Offset, grapheme.Length);
-
-                if (IsLineBreak(cluster))
-                {
-                    break;
-                }
-
-                var width = UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
-                var point = new Point(bounds.X.Add(px), bounds.Y);
-
-                if (point.X.Add(width) > bounds.Right)
-                {
-                    break;
-                }
-
-                _ = canvas.Draw(cluster, point, placeholderStyle);
-                px += width;
+                return;
             }
-
-            return;
         }
 
         // Clipped to the deflated editor viewport, not the wider content box RenderContent
@@ -1995,18 +1974,6 @@ public sealed class TextInput: ControlBase, IClipboardCopySource, IStyled<TextIn
         current.Hyperlink,
         current.Underline,
         current.UnderlineColor);
-
-    private TerminalStyle PlaceholderStyle()
-    {
-        var style = ResolvedStyle;
-        return new TerminalStyle(
-            style.Foreground,
-            style.Background,
-            style.Attributes | TerminalAttributes.Dim,
-            style.Hyperlink,
-            style.Underline,
-            style.UnderlineColor);
-    }
 
     private static bool IsLineBreak(ReadOnlySpan<char> cluster) =>
         cluster.IndexOfAny('\r', '\n') >= 0;

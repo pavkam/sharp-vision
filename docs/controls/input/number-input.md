@@ -16,9 +16,12 @@ and Home/End jump directly to `Minimum`/`Maximum` - both commit immediately,
 bypassing the buffer entirely, matching [`Slider`](slider.md#overview). Escape
 reverts any uncommitted edit back to the committed value's formatting.
 
-`NumberInput` derives from [`InputBase`](../input-base.md#overview) but opts
-into none of its popup or press-activation capabilities - only the base
-focusable, Tab-stopping contract, the same as `TimeInput`.
+`NumberInput` derives from [`InputBase`](../input-base.md#overview) and enables
+its in-assembly transient numeric-editing capability. The base owns routed key
+classification, focus entry/exit, selection presentation, placeholder drawing,
+cursor replay, and affix-aware rendering; `NumberInput` owns numeric policy,
+formatting, parsing, and pointer-to-buffer projection. It enables no popup,
+caption, command, segmented, or press-activation capability.
 
 `Mode` chooses between `Integer` and `Decimal` editing. In `Integer` mode the
 decimal-separator keystroke is rejected outright - it never appears in the
@@ -69,6 +72,8 @@ classDiagram
 | `AllowGrouping` | `bool`                                           | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`; parsing always accepts a group separator.            |
 | `RoundingMode`  | `MidpointRounding`                               | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                            |
 | `Culture`       | `CultureInfo`                                    | `CultureInfo.InvariantCulture`  | The culture supplying separators, sign, and grouping for display and parsing; unlike `DateInput.Culture`, defaults to invariant. |
+| `Placeholder`   | `string?`                                        | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                       |
+| `CursorShape`   | `CursorShape`                                    | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                           |
 | `StartAffix`    | `Affix?`                                         | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                    |
 | `EndAffix`      | `Affix?`                                         | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                   |
 | `ValueChanged`  | `EventHandler<NumberInputValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                       |
@@ -89,8 +94,9 @@ re-evaluated against the control's actual bounds on every render.
 | Key                         | Behavior                                                      |
 | --------------------------- | ------------------------------------------------------------- |
 | Typed digits and separators | Edits the temporary text buffer at the caret.                 |
-| Left / Right                | Moves the caret through the temporary buffer.                 |
-| Backspace / Delete          | Removes text before or at the caret.                          |
+| Left / Right                | Moves the caret; Shift extends the directional selection.     |
+| Ctrl+A                      | Selects the complete temporary buffer.                        |
+| Backspace / Delete          | Removes the selection or text before or at the caret.         |
 | Up / Down                   | Adds or subtracts `Step` and commits immediately.             |
 | Home / End                  | Commits `Minimum` or `Maximum`.                               |
 | Enter                       | Parses and commits the temporary buffer.                      |
@@ -107,13 +113,15 @@ numberInput.ValueChanged += (_, e) => Console.Write(e.Value);
 
 ## Expected behavior
 
-| Scope                 | Observable evidence                                                                                                                                                                                         |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public API            | Defaults, bounds, the null policy, integer-mode restrictions, the rounding matrix, overflow guarding, and event order behave as documented.                                                                 |
-| Integrated behavior   | Keyboard editing, pasting, and mid-edit Mode/Culture changes work end to end without migrating a half-parsed buffer.                                                                                        |
-| Complete runtime path | Typed display transitions, culture-aware separators and grouping, Enter/Escape/focus-loss commit paths, keyboard stepping, pointer caret placement, the disabled state, and tiny clipping render correctly. |
+| Scope                 | Observable evidence                                                                                                                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public API            | Defaults, bounds, the null policy, integer-mode restrictions, the rounding matrix, cursor validation, overflow guarding, and event order behave as documented.                                                             |
+| Integrated behavior   | Keyboard editing, selection, pasting, and mid-edit Mode/Culture changes work end to end without migrating a half-parsed buffer.                                                                                            |
+| Complete runtime path | Typed display transitions, focused placeholders, selection cells, requested cursor shape, culture-aware separators and grouping, commit paths, stepping, pointer placement, disabled state, and clipping render correctly. |
 
 - Direct character edits follow the shared
   [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy):
   Shift and lock state may produce text, while command-modified characters stay
-  out of the transient buffer and remain unhandled.
+  out of the transient buffer and remain unhandled. Navigation and mutation keys
+  likewise require their exact supported modifier shape; application chords do
+  not move the caret, alter the value, or get swallowed.

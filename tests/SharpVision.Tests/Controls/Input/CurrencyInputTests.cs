@@ -101,8 +101,23 @@ public sealed class CurrencyInputTests
         control.Culture.ShouldBeSameAs(CultureInfo.InvariantCulture);
         control.DisplayMode.ShouldBe(CurrencyDisplayMode.Symbol);
         control.CurrencyOverride.ShouldBeNull();
+        control.Placeholder.ShouldBeNull();
+        control.CursorShape.ShouldBe(CursorShape.Block);
         control.IsFocusable.ShouldBeTrue();
         control.IsTabStop.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an undefined cursor shape is rejected before the visible preference
+    /// changes.</summary>
+    [Fact]
+    public void CursorShape_WhenAssignedUndefinedValue_ThrowsBeforeMutation()
+    {
+        using var control = new CurrencyInput { CursorShape = CursorShape.Underline };
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() =>
+            control.CursorShape = (CursorShape) int.MaxValue);
+
+        control.CursorShape.ShouldBe(CursorShape.Underline);
     }
 
     #endregion
@@ -569,6 +584,27 @@ public sealed class CurrencyInputTests
         // Assert
         control.Value.ShouldBe(expectedEdit ? 59m : 5m);
         key.IsHandled.ShouldBe(expectedEdit);
+    }
+
+    /// <summary>Verifies Shift+Left extends the transient amount selection so the next typed digit
+    /// replaces the selected digit instead of inserting beside it.</summary>
+    [Fact]
+    public void Input_WhenShiftLeftPrecedesTyping_ReplacesTheTrailingDigit()
+    {
+        // Arrange
+        using var control = new CurrencyInput { DecimalPlaces = 0 };
+        TypeCharacter(control, '1');
+        TypeCharacter(control, '2');
+        var extend = Key(Code.Left, Modifiers.Shift);
+
+        // Act
+        _ = Router.Route(control, Events.Key, extend);
+        TypeCharacter(control, '9');
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        extend.IsHandled.ShouldBeTrue();
+        control.Value.ShouldBe(19m);
     }
 
     /// <summary>Verifies culture when changed after construction re-derives the effective decimal

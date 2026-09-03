@@ -6,6 +6,38 @@ namespace SharpVision.Tests.Controls.Input;
 /// <summary>Proves CurrencyInput appearance and interaction through mounted terminal surfaces.</summary>
 public sealed class CurrencyInputSurfaceTests
 {
+    /// <summary>Verifies an empty currency field retains its hint on focus and commits the
+    /// configured semantic cursor shape.</summary>
+    [Fact]
+    public async Task Focus_WhenEmptyFieldIsCustomized_KeepsPlaceholderAndCursorShapeAsync()
+    {
+        // Arrange
+        var input = new CurrencyInput
+        {
+            CursorShape = CursorShape.Underline,
+            Placeholder = "Amount",
+            Width = Length.Cells(12)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            input,
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        surface.ShouldRender("""
+                             ┏━━━━━━━━━━┓
+                             ┃Amount    ┃
+                             ┗━━━━━━━━━━┛
+                             """);
+        input.CursorShape.ShouldBe(CursorShape.Underline);
+        surface.ShouldHaveCursor(new Point(1, 1), visible: true, CursorShape.Block);
+        (surface.Cell(new Point(1, 1)).Style.Attributes & TerminalAttributes.Dim)
+            .ShouldBe(TerminalAttributes.Dim);
+    }
+
     /// <summary>Verifies a mounted CurrencyInput renders a bordered field with a formatted value,
     /// and observes hover and focus.</summary>
     [Fact]

@@ -485,6 +485,248 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     #endregion
 
+    #region Numeric editing
+
+    private NumericEditBehavior? _numericEditing;
+
+    /// <summary>Opts an in-assembly decimal field into the shared transient-buffer event and focus
+    /// lifecycle.</summary>
+    /// <param name="buffer">The field's retained transient numeric buffer.</param>
+    /// <param name="coordinator">The field's authoritative commit and range coordinator.</param>
+    /// <param name="configureBuffer">Applies the current culture and precision policy.</param>
+    /// <param name="getDecimalPlaces">Returns the precision used by bound jumps.</param>
+    /// <param name="resolveCaretIndex">Maps a pointer cell to an index in <paramref name="buffer"/>.</param>
+    /// <exception cref="ArgumentNullException">Any parameter is null.</exception>
+    /// <exception cref="InvalidOperationException">Numeric editing is already enabled.</exception>
+    private protected void EnableNumericEditing(
+        NumericEditBuffer buffer,
+        NumericInputCommitCoordinator coordinator,
+        Action configureBuffer,
+        Func<int> getDecimalPlaces,
+        Func<Point, int> resolveCaretIndex)
+    {
+        ArgumentNullException.ThrowIfNull(buffer);
+        ArgumentNullException.ThrowIfNull(coordinator);
+        ArgumentNullException.ThrowIfNull(configureBuffer);
+        ArgumentNullException.ThrowIfNull(getDecimalPlaces);
+        ArgumentNullException.ThrowIfNull(resolveCaretIndex);
+        VerifyMutable();
+
+        if (_numericEditing is not null)
+        {
+            throw new InvalidOperationException("Numeric editing is already enabled.");
+        }
+
+        TabNavigation = TabNavigation.None;
+#pragma warning disable IDE0200 // A method group would capture the construction-time ContentBounds value.
+        _numericEditing = new NumericEditBehavior(
+            buffer,
+            coordinator,
+            configureBuffer,
+            getDecimalPlaces,
+            () => IsFocused,
+            point => ContentBounds.Contains(point),
+            RequestNumericEditingFocus,
+            resolveCaretIndex,
+            () => Invalidate(InvalidationImpact.Render));
+#pragma warning restore IDE0200
+    }
+
+    /// <summary>Draws one enabled numeric editor's affixes, formatted text, transient selection,
+    /// placeholder, and focused cursor.</summary>
+    /// <param name="canvas">The semantic cell canvas to draw into.</param>
+    /// <param name="displayText">The control-specific idle or focused formatted text.</param>
+    /// <param name="displaySelection">The focused buffer selection projected into
+    /// <paramref name="displayText"/>.</param>
+    /// <param name="caretIndex">The focused buffer caret projected into
+    /// <paramref name="displayText"/>.</param>
+    /// <param name="startAffix">The optional leading fixed decoration.</param>
+    /// <param name="endAffix">The optional trailing fixed decoration.</param>
+    /// <param name="placeholder">The optional hint shown instead of an empty display.</param>
+    /// <param name="cursorShape">The semantic cursor shape to request while focused.</param>
+    private protected void RenderNumericInputContent(
+        TerminalCanvas canvas,
+        string displayText,
+        Selection displaySelection,
+        int caretIndex,
+        Affix? startAffix,
+        Affix? endAffix,
+        string? placeholder,
+        CursorShape cursorShape)
+    {
+        ArgumentNullException.ThrowIfNull(displayText);
+
+        var content = ContentBounds;
+
+        if (content.Width == 0 || content.Height == 0)
+        {
+            return;
+        }
+
+        var style = ResolvedStyle;
+        var affixes = MeasureAffixes(startAffix, endAffix, ResolveAffixGap());
+        RenderAffixes(canvas, content, affixes, startAffix, endAffix, style);
+
+        var valueBox = DeflateForAffixes(content, affixes);
+        canvas.Clear(valueBox, style);
+
+        if (displayText.Length == 0 && placeholder is { Length: > 0 })
+        {
+            RenderInputPlaceholder(canvas, valueBox, placeholder);
+        }
+        else
+        {
+            var clipped = canvas.Clip(new Rect(valueBox.X, valueBox.Y, valueBox.Width, 1));
+            _ = clipped.Draw(
+                displayText.AsSpan(),
+                new Point(valueBox.X, valueBox.Y),
+                style,
+                background: BackgroundMode.Transparent);
+
+            if (IsFocused && !displaySelection.IsEmpty)
+            {
+                var selectionStart = Math.Clamp(displaySelection.Start, 0, displayText.Length);
+                var selectionEnd = Math.Clamp(displaySelection.End, selectionStart, displayText.Length);
+                var selectionX = valueBox.X + MeasureCells(displayText.AsSpan(0, selectionStart));
+                var selectedStyle = EditableInputSelectionStyle(style);
+                _ = clipped.Draw(
+                    displayText.AsSpan(selectionStart, selectionEnd - selectionStart),
+                    new Point(selectionX, valueBox.Y),
+                    selectedStyle,
+                    background: BackgroundMode.Transparent);
+            }
+        }
+
+        if (IsFocused)
+        {
+            SetNumericInputCursor(canvas, valueBox, displayText, caretIndex, cursorShape);
+        }
+    }
+
+    /// <summary>Reasserts one focused numeric editor's cursor after clean cell reuse.</summary>
+    /// <param name="canvas">The semantic cell canvas receiving the cursor.</param>
+    /// <param name="displayText">The focused formatted text.</param>
+    /// <param name="caretIndex">The projected caret index in <paramref name="displayText"/>.</param>
+    /// <param name="startAffix">The optional leading fixed decoration.</param>
+    /// <param name="endAffix">The optional trailing fixed decoration.</param>
+    /// <param name="cursorShape">The semantic cursor shape to request.</param>
+    private protected void ReplayNumericInputCursor(
+        TerminalCanvas canvas,
+        string displayText,
+        int caretIndex,
+        Affix? startAffix,
+        Affix? endAffix,
+        CursorShape cursorShape)
+    {
+        ArgumentNullException.ThrowIfNull(displayText);
+
+        if (!IsFocused)
+        {
+            return;
+        }
+
+        var content = ContentBounds;
+
+        if (content.Width == 0 || content.Height == 0)
+        {
+            return;
+        }
+
+        var affixes = MeasureAffixes(startAffix, endAffix, ResolveAffixGap());
+        var valueBox = DeflateForAffixes(content, affixes);
+        SetNumericInputCursor(canvas, valueBox, displayText, caretIndex, cursorShape);
+    }
+
+    /// <summary>Draws a single-line placeholder as complete grapheme clusters with a dimmed field
+    /// style.</summary>
+    /// <param name="canvas">The semantic cell canvas to draw into.</param>
+    /// <param name="bounds">The available single-line content bounds.</param>
+    /// <param name="placeholder">The non-empty hint text.</param>
+    private protected void RenderInputPlaceholder(TerminalCanvas canvas, Rect bounds, string placeholder)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(placeholder);
+
+        var style = ResolvedStyle;
+        var placeholderStyle = new TerminalStyle(
+            style.Foreground,
+            style.Background,
+            style.Attributes | TerminalAttributes.Dim,
+            style.Hyperlink,
+            style.Underline,
+            style.UnderlineColor);
+        var x = 0;
+
+        foreach (var grapheme in Graphemes.Enumerate(placeholder))
+        {
+            var cluster = placeholder.AsSpan(grapheme.Offset, grapheme.Length);
+
+            if (cluster.IndexOfAny('\r', '\n') >= 0)
+            {
+                break;
+            }
+
+            var width = Terminal.Unicode.Width.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
+            var point = new Point(bounds.X.Add(x), bounds.Y);
+
+            if (point.X.Add(width) > bounds.Right)
+            {
+                break;
+            }
+
+            _ = canvas.Draw(cluster, point, placeholderStyle);
+            x += width;
+        }
+    }
+
+    private bool RequestNumericEditingFocus()
+    {
+        var dispatcher = Dispatcher;
+        _ = RequestFocus();
+        return CanContinueAfterFocus(dispatcher);
+    }
+
+    private static TerminalStyle EditableInputSelectionStyle(TerminalStyle current) => new(
+        current.Foreground,
+        current.Background,
+        current.Attributes | TerminalAttributes.Reverse,
+        current.Hyperlink,
+        current.Underline,
+        current.UnderlineColor);
+
+    private void SetNumericInputCursor(
+        TerminalCanvas canvas,
+        Rect valueBox,
+        string displayText,
+        int caretIndex,
+        CursorShape cursorShape)
+    {
+        var caretColumn = MeasureCells(displayText.AsSpan(0, Math.Clamp(caretIndex, 0, displayText.Length)));
+        var position = new Point(valueBox.X + caretColumn, valueBox.Y);
+
+        if (valueBox.Contains(position) && canvas.Bounds.Contains(position))
+        {
+            canvas.SetCursor(position, visible: true, cursorShape);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnEvent(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (_numericEditing is not null &&
+            EffectiveIsEnabled &&
+            EffectiveIsVisible &&
+            _numericEditing.HandleEvent(eventArgs))
+        {
+            return;
+        }
+
+        base.OnEvent(eventArgs);
+    }
+
+    #endregion
+
     #region Stepping
 
     /// <summary>Translates an Up/Down arrow key press into a one-step increment delta.</summary>
@@ -884,6 +1126,13 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     {
         base.OnAttached();
         _popupCoordinator?.OnOwnerAttached();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnFocusChanged(bool focused)
+    {
+        base.OnFocusChanged(focused);
+        _numericEditing?.FocusChanged(focused);
     }
 
     /// <inheritdoc/>
