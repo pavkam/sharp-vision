@@ -34,6 +34,48 @@ public sealed class FigletFontTests
         font.Render("☃").ShouldBe("☃");
     }
 
+    /// <summary>Verifies a hex code tag whose value negates to an out-of-range magnitude (such as
+    /// the two's-complement bit pattern for <see cref="int.MinValue"/> written as a negative hex
+    /// literal) fails with the same <see cref="FormatException"/> as any other malformed code tag,
+    /// instead of letting an unhandled <see cref="OverflowException"/> escape from the negation.</summary>
+    [Fact]
+    public void Load_WhenCodeTagOverflowsOnNegation_ThrowsFormatException()
+    {
+        using var stream = Stream($"{CreateFont()}-0x80000000 overflow\nX@@\n");
+
+        _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "overflow"));
+    }
+
+    /// <summary>Verifies the decimal spelling of the same out-of-range magnitude
+    /// (<see cref="int.MinValue"/> itself, rather than its hex bit pattern) fails the same way -
+    /// the overflow occurs in the shared negation step, not in hex-specific parsing.</summary>
+    [Fact]
+    public void Load_WhenDecimalCodeTagOverflowsOnNegation_ThrowsFormatException()
+    {
+        using var stream = Stream($"{CreateFont()}-2147483648 overflow\nX@@\n");
+
+        _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "overflow-decimal"));
+    }
+
+    /// <summary>Verifies an overflowing code tag encountered while speculatively parsing the
+    /// remainder as extension glyphs (ambiguous with a legacy German-umlaut block) fails that
+    /// speculative attempt gracefully and falls back to reading the plain German block, instead of
+    /// letting the normalized <see cref="FormatException"/> escape uncaught and abort the whole
+    /// load - regression for the same negation-overflow defect surfacing through the speculative
+    /// parse's own <see cref="FormatException"/>-only catch.</summary>
+    [Fact]
+    public void Load_WhenExtensionGlyphSpeculationHitsOverflowingCodeTag_FallsBackToGermanBlock()
+    {
+        var builder = new StringBuilder(CreateFontWithoutGermanBlock());
+        _ = builder.Append("-0x80000000 overflow\nb\nc\nd\ne\nf\ng\n");
+
+        using var stream = Stream(builder.ToString());
+
+        var font = Should.NotThrow(() => FigletFont.Load(stream, "overflow-during-speculation"));
+
+        font.Render("A").ShouldBe("A");
+    }
+
     /// <summary>Verifies malformed input fails without publishing a partial font.</summary>
     [Fact]
     public void Load_WhenSignatureIsInvalid_ThrowsFormatException()

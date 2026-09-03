@@ -359,9 +359,16 @@ internal static class FigletParser
             }
         }
 
-        return int.TryParse(token, style, CultureInfo.InvariantCulture, out var result)
-            ? checked(sign * result)
-            : throw new FormatException($"The FIG-font code tag '{value}' is invalid.");
+        try
+        {
+            return int.TryParse(token, style, CultureInfo.InvariantCulture, out var result)
+                ? checked(sign * result)
+                : throw new FormatException($"The FIG-font code tag '{value}' is invalid.");
+        }
+        catch (OverflowException exception)
+        {
+            throw new FormatException($"The FIG-font code tag '{value}' is invalid.", exception);
+        }
     }
 
     [SuppressMessage(
