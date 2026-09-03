@@ -11,8 +11,8 @@ using System.Diagnostics.CodeAnalysis;
 [PublicAPI]
 public record WindowStyle: ControlStyle
 {
-    /// <summary>Compares close-button glyphs and resolved paint shared by every Window-derived style.</summary>
-    internal static InvalidationImpact GetCloseChromeImpact(
+    /// <summary>Compares interaction glyphs and resolved paint shared by every Window-derived style.</summary>
+    internal static InvalidationImpact GetInteractionChromeImpact(
         WindowStyle previous,
         Theme? previousTheme,
         WindowStyle current,
@@ -24,10 +24,19 @@ public record WindowStyle: ControlStyle
         previous.CloseMarkActiveColor != current.CloseMarkActiveColor ||
         previous.CloseMarkPressedColor != current.CloseMarkPressedColor ||
         previous.CloseMarkDisabledColor != current.CloseMarkDisabledColor ||
+        previous.ResizeGripGlyph != current.ResizeGripGlyph ||
+        previous.ResizeGripColor != current.ResizeGripColor ||
+        previous.ResizeGripActiveColor != current.ResizeGripActiveColor ||
+        previous.ResizeGripPressedColor != current.ResizeGripPressedColor ||
+        previous.ResizeGripDisabledColor != current.ResizeGripDisabledColor ||
         previous.CloseMarkColor.Resolve(previousTheme) != current.CloseMarkColor.Resolve(currentTheme) ||
         previous.CloseMarkActiveColor.Resolve(previousTheme) != current.CloseMarkActiveColor.Resolve(currentTheme) ||
         previous.CloseMarkPressedColor.Resolve(previousTheme) != current.CloseMarkPressedColor.Resolve(currentTheme) ||
-        previous.CloseMarkDisabledColor.Resolve(previousTheme) != current.CloseMarkDisabledColor.Resolve(currentTheme)
+        previous.CloseMarkDisabledColor.Resolve(previousTheme) != current.CloseMarkDisabledColor.Resolve(currentTheme) ||
+        previous.ResizeGripColor.Resolve(previousTheme) != current.ResizeGripColor.Resolve(currentTheme) ||
+        previous.ResizeGripActiveColor.Resolve(previousTheme) != current.ResizeGripActiveColor.Resolve(currentTheme) ||
+        previous.ResizeGripPressedColor.Resolve(previousTheme) != current.ResizeGripPressedColor.Resolve(currentTheme) ||
+        previous.ResizeGripDisabledColor.Resolve(previousTheme) != current.ResizeGripDisabledColor.Resolve(currentTheme)
             ? InvalidationImpact.Render
             : InvalidationImpact.None;
 
@@ -170,4 +179,60 @@ public record WindowStyle: ControlStyle
             field = value;
         }
     }
+
+    /// <summary>Gets the bottom-right resize-grip glyph.</summary>
+    /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
+    public Rune ResizeGripGlyph
+    {
+        get;
+        init => field = value.ValidateSingleCell(nameof(value));
+    } = ControlGlyphs.Chrome.WindowResize.Value;
+
+    /// <summary>Gets the resize-grip foreground at rest.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor ResizeGripColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    } = SemanticColor.Accent;
+
+    /// <summary>Gets the resize-grip foreground while the pointer is over it.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor ResizeGripActiveColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    } = SemanticColor.ActiveText;
+
+    /// <summary>Gets the resize-grip foreground while a resize gesture is active.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor ResizeGripPressedColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    } = SemanticColor.PressedText;
+
+    /// <summary>Gets the resize-grip foreground while the Window is disabled.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor ResizeGripDisabledColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    } = SemanticColor.DisabledText;
 }

@@ -1994,6 +1994,101 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(5, 0)).Style.Foreground.ShouldBe(borderForeground);
     }
 
+    /// <summary>Verifies a resizable Window makes its single interactive corner visible instead
+    /// of presenting an undiscoverable ordinary border cell.</summary>
+    [Fact]
+    public async Task Render_WhenWindowCanResize_DrawsGripAtInteractiveCornerAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            CanClose = false,
+            CanResize = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(11, 3)).Text.ShouldBe("◢");
+    }
+
+    /// <summary>Verifies the theme-authored resize glyph and normal color reach the same cell that
+    /// begins the resize gesture.</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsResizeGrip_DrawsAuthoredGlyphAndColorAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(
+            ThemeJson.Create(windowExtra: """, "resizeGripGlyph": "r", "resizeGripColor": "error" """));
+        var window = new Window
+        {
+            CanClose = false,
+            CanResize = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(12, 4),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "author resize grip");
+
+        // Assert
+        var grip = surface.Cell(new Point(11, 3));
+        grip.Text.ShouldBe("r");
+        grip.Style.Foreground.ShouldBe(TerminalPalette.Project(theme.Error, ColorDepth.Basic16));
+    }
+
+    /// <summary>Verifies the resize grip reports its normal, hover, active-gesture, and disabled
+    /// states without changing the interactive corner.</summary>
+    [Fact]
+    public async Task Pointer_WhenResizeGripChangesState_DrawsMatchingForegroundAsync()
+    {
+        // Arrange
+        var window = new Window
+        {
+            CanClose = false,
+            CanResize = true,
+            Width = Length.Cells(12),
+            Height = Length.Cells(4),
+            Shadow = AppearanceTestValues.Shadow(visible: false)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(14, 6),
+            TestContext.Current.CancellationToken);
+        var theme = window.Theme.ShouldNotBeNull();
+        var grip = new Point(11, 3);
+
+        // Assert normal
+        surface.Cell(grip).Style.Foreground.ShouldBe(ThemeColorHelper.Accent(theme));
+
+        // Act / Assert hover
+        await surface.Pointer.MoveToAsync(window, grip);
+        surface.Cell(grip).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.HoveredForeground(theme), ColorDepth.Basic16));
+
+        // Act / Assert active resize gesture
+        await surface.Pointer.PressAsync();
+        surface.Cell(grip).Style.Foreground.ShouldBe(ThemeColorHelper.PressedForeground(theme));
+
+        // Act / Assert disabled
+        await surface.Pointer.ReleaseAsync();
+        await surface.UpdateAsync(() => window.IsEnabled = false, "disable resizable Window");
+        surface.Cell(grip).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.DisabledText), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies mounted close-glyph requests retain modality until the Closing owner hides the Window.</summary>
     [Fact]
     public async Task ShowModal_WhenCloseGlyphIsActivated_ClosesModalWindowByDefaultAsync()

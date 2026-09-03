@@ -64,6 +64,7 @@ internal sealed class WindowPane: CompositeControlBase
             Height = Length.Auto,
             Header = "Draggable settings",
             CanClose = true,
+            CanResize = true,
             FadeInDuration = TimeSpan.FromMilliseconds(160),
             FadeOutDuration = TimeSpan.FromMilliseconds(220),
             Content = CreateSettingsForm()
@@ -81,7 +82,7 @@ internal sealed class WindowPane: CompositeControlBase
         var reopenWindow = new Button { Text = "Reopen &window" };
         var closeWindow = new Button { Text = "C&lose settings" };
         void ReportWindowStatus() => windowStatus.Content = draggable.IsOpen
-            ? "Window: open"
+            ? $"Window: open · {draggable.Bounds.Width} × {draggable.Bounds.Height}"
             : "Window: closed";
 
         draggable.Closing += (_, _) => windowStatus.Content = "Window: fading out";
@@ -107,6 +108,11 @@ internal sealed class WindowPane: CompositeControlBase
                 {
                     ReportActivation();
                 }
+
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Pointer.Action: PointerAction.Release })
+                {
+                    ReportWindowStatus();
+                }
             },
             handledEventsToo: true);
         _ = activityWindow.AddHandler(
@@ -120,11 +126,11 @@ internal sealed class WindowPane: CompositeControlBase
             },
             handledEventsToo: true);
         Place(draggable, 0, 1);
-        Place(activityWindow, 0, 16);
-        Place(reopenWindow, 21, 16);
-        Place(closeWindow, 21, 19);
-        Place(windowStatus, 21, 22);
-        Place(activationStatus, 0, 24);
+        Place(activityWindow, 0, 15);
+        Place(reopenWindow, 21, 15);
+        Place(closeWindow, 21, 18);
+        Place(windowStatus, 21, 21);
+        Place(activationStatus, 0, 23);
 
         var dragSurface = new Text(
             "Dashboard  Activity  Settings\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" +
@@ -133,7 +139,7 @@ internal sealed class WindowPane: CompositeControlBase
         var dragStage = new Overlay
         {
             Width = Length.Cells(44),
-            Height = Length.Cells(30),
+            Height = Length.Cells(26),
             ClipToBounds = true,
             Border = new Border(
                 BorderSide.All,
@@ -143,6 +149,40 @@ internal sealed class WindowPane: CompositeControlBase
                 SemanticDecoration.Border),
             Padding = new Thickness(1, 0),
             Children = { dragSurface, reopenWindow, closeWindow, windowStatus, activationStatus, draggable, activityWindow }
+        };
+
+        // Compact resize specimen keeps the exact one-cell grip and resulting geometry visible.
+        var resizeStatus = new Text("Size: 24 × 7");
+        var resizable = new Window
+        {
+            UseMnemonic = false,
+            Width = Length.Cells(24),
+            Height = Length.Cells(7),
+            Header = "Resizable",
+            CanMove = false,
+            CanClose = false,
+            CanResize = true,
+            Content = RoleDescription("Drag the ◢ corner", "The top-left stays fixed")
+        };
+        _ = resizable.AddHandler(
+            Events.Pointer,
+            (_, eventArgs) =>
+            {
+                if (eventArgs is { Phase: RoutingPhase.Bubble, Pointer.Action: PointerAction.Release })
+                {
+                    resizeStatus.Content = $"Size: {resizable.Bounds.Width} × {resizable.Bounds.Height}";
+                }
+            },
+            handledEventsToo: true);
+        Place(resizable, 2, 1);
+        Place(resizeStatus, 2, 9);
+        var resizeSurface = Workspace("Workspace");
+        var resizeStage = new Overlay
+        {
+            Width = Length.Cells(32),
+            Height = Length.Cells(12),
+            ClipToBounds = true,
+            Children = { resizeSurface, resizeStatus, resizable }
         };
 
         // Modal dialog with Ignore outside interaction and default/cancel role buttons.
@@ -198,7 +238,7 @@ internal sealed class WindowPane: CompositeControlBase
             _ = dialog.ShowModal(OutsideInteraction.Ignore, okButton);
             dialogStatus.Content = "Dialog: modal (Ignore); focus confined";
         };
-        Place(dialog, 3, 2);
+        Place(dialog, 2, 2);
         Place(openButton, 2, 2);
         Place(dialogStatus, 2, 5);
         // The dialog is Height.Auto: its Text plus the bordered DocRow of buttons computes to 7
@@ -270,17 +310,20 @@ internal sealed class WindowPane: CompositeControlBase
             BorderGlyphStyle.Rounded,
             WindowTitlePlacement.Left,
             WindowClosePlacement.Left);
+        composite.CanClose = false;
         var block = FrameVariant(
             "Block",
             BorderGlyphStyle.Heavy,
             WindowTitlePlacement.Center,
             WindowClosePlacement.Right);
+        block.CanClose = false;
         block.Shadow = WindowShadow(ShadowMode.BlockGlyph, new Point(1, 1), new Rune('░'));
         var flat = FrameVariant(
             "Flat",
             BorderGlyphStyle.Ascii,
             WindowTitlePlacement.Right,
             WindowClosePlacement.Left);
+        flat.CanClose = false;
         flat.Shadow = HiddenShadow();
         var shadowRow = new DocColumn(
             new DocRow(
@@ -291,7 +334,7 @@ internal sealed class WindowPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>Window</info> provides routed default and cancel actions, compact bracketed title-bar chrome, movement, and explicit modal presentation.",
+            "<info>Window</info> provides routed default and cancel actions, discoverable move and resize gestures, compact title-bar chrome, and explicit modal presentation.",
             new DocSection(
                 "↵",
                 "Conventional actions",
@@ -305,13 +348,22 @@ internal sealed class WindowPane: CompositeControlBase
                     "window.Content = new Stack { Children = { editor, apply, cancel } };")),
             new DocSection(
                 "↔",
-                "Move, close, and reopen",
-                "Click either modeless Window to switch the Application's active Window. Dragging unoccupied title chrome preserves its resolved size; close and reopen demonstrate shared entrance and dismissal fades.",
+                "Move, resize, close, and reopen",
+                "Click either modeless Window to switch the Application's active Window. Drag unoccupied title chrome to move; drag the ◢ corner grip to resize. Close and reopen demonstrate shared entrance and dismissal fades.",
                 new DocExample(
                     "Active modeless Windows",
-                    "Click either title to switch the active border without stealing focus, then drag, close, and reopen the retained settings Window.",
+                    "Click either title to switch the active border without stealing focus. Move the settings Window by its title, resize it from ◢, then close and reopen it.",
                     dragStage,
-                    "Window? active = application.ActiveWindow;\nbool isThisWindowActive = window.IsActive;\nbool isThisWindowOpen = window.IsOpen;\nwindow.FadeOutDuration = TimeSpan.FromMilliseconds(220);\nwindow.Close();")),
+                    "window.CanMove = true;\nwindow.CanResize = true;\nWindow? active = application.ActiveWindow;\nbool isThisWindowOpen = window.IsOpen;\nwindow.Close();")),
+            new DocSection(
+                "◈",
+                "Resize affordance",
+                "A resizable Window replaces its ordinary bottom-right border cell with a themeable ◢ grip. That visible cell is the exact pointer target.",
+                new DocExample(
+                    "Resizable corner",
+                    "Drag ◢ outward or inward. The status reports the committed border-box size while the top-left corner remains fixed.",
+                    resizeStage,
+                    "window.CanResize = true;\n// Drag the visible bottom-right grip.")),
             new DocSection(
                 "◈",
                 "Modal dialog",

@@ -20,6 +20,7 @@ public sealed class ToastTests
         toast.AnimationDuration.ShouldBe(TimeSpan.FromMilliseconds(200));
         toast.DisplayDuration.ShouldBe(TimeSpan.FromSeconds(5));
         toast.IsDismissible.ShouldBeTrue();
+        toast.CloseOnEscape.ShouldBeTrue();
         toast.IsOpen.ShouldBeFalse();
         toast.AnimationProgress.ShouldBe(0);
         toast.FadeInDuration.ShouldBe(TimeSpan.Zero);

@@ -295,7 +295,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
     private protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
 
-    private protected override WindowStyle ResolveCloseChromeStyle(Theme? theme) =>
+    private protected override WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
         SaveFileDialogStyle.Definition.Resolve(_style.LocalValue, theme);
 
     private static string DefaultOverwriteMessageFormat(string fileName) =>

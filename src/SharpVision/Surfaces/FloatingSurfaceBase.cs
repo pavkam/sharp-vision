@@ -5,6 +5,8 @@ namespace SharpVision.Surfaces;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Terminal.Input;
+
 using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
@@ -21,6 +23,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     private static readonly TimeSpan _fadeRefreshInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly ModalSession _modalSession;
+    private PressBehavior? _surfaceCloseInteraction;
     private Action? _deferredCloseAbandonment;
     private Action? _deferredCloseCompletion;
     private Action? _deferredUnavailableCommit;
@@ -43,6 +46,91 @@ public abstract class FloatingSurfaceBase: ContentControl
         _modalSession = new ModalSession(
             OnSurfaceModalDismissRequested,
             OnSurfaceModalExited);
+
+    /// <summary>Initializes the one capture-aware close affordance owned by a concrete surface.</summary>
+    /// <param name="bounds">Resolves the current close target in absolute cells.</param>
+    /// <param name="isAvailable">Reports whether the affordance can currently activate.</param>
+    /// <param name="canCompleteSpace">Reports whether a held Space release may activate.</param>
+    /// <param name="setPressed">Commits the family-specific pressed appearance.</param>
+    /// <param name="activate">Runs the family-specific close request with its real activation cause.</param>
+    /// <remarks>
+    /// Floating surfaces share focus, pointer capture, key-release capability, and availability
+    /// cleanup. A concrete family supplies only geometry, policy, appearance state, and its close
+    /// action.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">A delegate is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached surface is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
+    private protected void InitializeSurfaceCloseInteraction(
+        Func<Rect> bounds,
+        Func<bool> isAvailable,
+        Func<bool> canCompleteSpace,
+        Action<bool> setPressed,
+        Action<ActivationCause> activate)
+    {
+        Debug.Assert(_surfaceCloseInteraction is null, "A floating surface owns at most one close interaction.");
+        _surfaceCloseInteraction = new PressBehavior(
+            bounds,
+            isAvailable,
+            canCompleteSpace,
+            RequestFocus,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            setPressed,
+            activate,
+            () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_surfaceCloseInteraction);
+    }
+
+    /// <summary>Routes one event through the initialized capture-aware close affordance.</summary>
+    /// <param name="eventArgs">The non-null routed event.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    private protected void HandleSurfaceCloseInteraction(RoutedEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        Debug.Assert(_surfaceCloseInteraction is not null, "The surface close interaction must be initialized.");
+        _surfaceCloseInteraction?.Handle(eventArgs);
+    }
+
+    /// <summary>Cancels any held key or pointer state in the initialized close affordance.</summary>
+    private protected void CancelSurfaceCloseInteraction()
+    {
+        Debug.Assert(_surfaceCloseInteraction is not null, "The surface close interaction must be initialized.");
+        _surfaceCloseInteraction?.Unavailable();
+    }
+
+    /// <summary>Handles one eligible initial Escape stroke through a family-provided close policy.</summary>
+    /// <param name="eventArgs">The non-null routed event.</param>
+    /// <param name="canClose">Whether the concrete surface currently permits Escape dismissal.</param>
+    /// <param name="close">The close request to run after the event becomes handled.</param>
+    /// <returns>Whether this method handled an eligible Escape stroke.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> or <paramref name="close"/> is null.</exception>
+    private protected static bool TryHandleSurfaceEscape(
+        RoutedEventArgs eventArgs,
+        bool canClose,
+        Action close)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentNullException.ThrowIfNull(close);
+
+        if (eventArgs.IsHandled ||
+            !canClose ||
+            eventArgs is not KeyEventArgs
+            {
+                IsInitialKeyDown: true,
+                Stroke.Code: Code.Escape,
+                Stroke.Modifiers: var modifiers
+            } ||
+            !modifiers.IsActivationEligible())
+        {
+            return false;
+        }
+
+        eventArgs.IsHandled = true;
+        close();
+        return true;
+    }
 
     /// <summary>Gets whether an owning selected subtree may project selection into this surface.</summary>
     /// <remarks>

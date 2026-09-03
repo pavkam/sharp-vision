@@ -60,12 +60,12 @@ internal sealed class PopupPane: CompositeControlBase
 
         ShowcasePaneHelpers.Place(trigger, 2, 2);
         ShowcasePaneHelpers.Place(backdropAction, 24, 2);
-        ShowcasePaneHelpers.Place(scopeStatus, 2, 12);
-        ShowcasePaneHelpers.Place(backdropStatus, 2, 11);
-        ShowcasePaneHelpers.Place(status, 2, 13);
+        ShowcasePaneHelpers.Place(backdropStatus, 2, 13);
+        ShowcasePaneHelpers.Place(scopeStatus, 2, 14);
+        ShowcasePaneHelpers.Place(status, 2, 15);
         var menuStage = ShowcasePaneHelpers.ApplicationStage(
             46,
-            15,
+            17,
             "Application workspace",
             popup,
             trigger,
@@ -184,7 +184,7 @@ internal sealed class PopupPane: CompositeControlBase
 
         return new DocPage(
             Title,
-            "<info>Popup</info> displays one owned child on an opaque bordered surface relative to an optional <info>PlacementTarget</info>.",
+            "<info>Popup</info> displays one owned child on an opaque bordered surface relative to an optional <info>Anchor</info>.",
             new DocSection(
                 "💬",
                 "Anchored menu",

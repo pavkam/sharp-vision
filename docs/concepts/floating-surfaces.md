@@ -72,6 +72,13 @@ same presentation release even when only the removed subtree root received the
 unavailable event; reattachment may therefore create one fresh presentation
 without `Closing` or `Closed` being invented for the detach.
 
+The base likewise composes the capture-aware close interaction used by Window
+and Toast chrome: focus requests, pointer capture, key-release capability, and
+availability cancellation live in one place. It also matches eligible initial
+Escape strokes for Window, Popup, Flyout, and Toast. Concrete families retain
+their public policy gates and close action, so sharing input mechanics does not
+conflate Window visibility, Popup open state, or Toast dismissal.
+
 Popup-family infrastructure owns two callback-sensitive lifetimes centrally. An
 optional light-dismiss policy becomes one root registration only after the
 surface presentation commits, and close, hide, detach, or disposal releases it

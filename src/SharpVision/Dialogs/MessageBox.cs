@@ -526,7 +526,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
         return delta is not null && _messageHost.ScrollBy(delta.Value.X, delta.Value.Y, ScrollCause.Keyboard);
     }
 
-    private protected override WindowStyle ResolveCloseChromeStyle(Theme? theme) =>
+    private protected override WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
         MessageBoxStyle.Definition.Resolve(_style.LocalValue, theme);
 
 }

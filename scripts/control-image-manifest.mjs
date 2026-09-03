@@ -362,6 +362,7 @@ export const controls = [
                 example: "Focus command target",
                 actions: [{ click: "Focus command target" }, { key: "Enter" }],
             },
+            { name: "resizable", example: "Size: 24 × 7" },
         ],
     },
     {

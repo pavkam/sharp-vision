@@ -6,7 +6,6 @@ namespace SharpVision.Popups;
 using System.Runtime.ExceptionServices;
 
 using SharpVision.Surfaces;
-using SharpVision.Terminal.Input;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 
@@ -697,16 +696,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
-        if (IsOpen && CloseOnEscape && eventArgs is KeyEventArgs
-            {
-                IsInitialKeyDown: true,
-                Stroke.Code: Code.Escape,
-                Stroke.Modifiers: var modifiers
-            } && modifiers.IsActivationEligible())
-        {
-            IsOpen = false;
-            eventArgs.IsHandled = true;
-        }
+        _ = TryHandleSurfaceEscape(eventArgs, IsOpen && CloseOnEscape, () => IsOpen = false);
     }
 
     /// <inheritdoc/>

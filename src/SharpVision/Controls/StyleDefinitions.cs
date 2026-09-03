@@ -126,7 +126,7 @@ public static class StyleDefinitions
         Theme? currentTheme)
         where TStyle : ControlStyle =>
         previous is WindowStyle previousWindow && current is WindowStyle currentWindow
-            ? WindowStyle.GetCloseChromeImpact(previousWindow, previousTheme, currentWindow, currentTheme)
+            ? WindowStyle.GetInteractionChromeImpact(previousWindow, previousTheme, currentWindow, currentTheme)
             : InvalidationImpact.None;
 
     private static InvalidationImpact MaximumImpact(InvalidationImpact left, InvalidationImpact right) =>

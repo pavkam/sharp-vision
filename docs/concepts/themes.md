@@ -262,14 +262,14 @@ resolved, not a hand-maintained DTO shape) - face colors and decorations; border
 sides, glyph style, colors, and attributes; shadow visibility, mode, offset,
 glyph, colors, and attributes.
 
-A well-known style's own additional structural members (a window's close-chrome
-glyphs, a popup's anchor arrows) sit at the top level of its state object too -
-see `window`'s `closeGlyph` and `popup`'s `anchorGlyphs` below - but only under
-`normal`. Nothing but `face`/`border`/`shadow` is ever read back from another
-state: every per-state resolution completes a style's structural members from
-its resolved `normal` alone, so a theme authoring, say,
-`styles.window.pointerOver.closeGlyph` is rejected rather than parsed,
-validated, and silently ignored.
+A well-known style's own additional structural members (a window's close and
+resize glyphs and interaction colors, a popup's anchor arrows) sit at the top
+level of its state object too - see `window`'s `closeGlyph`/`resizeGripGlyph`
+and `popup`'s `anchorGlyphs` below - but only under `normal`. Nothing but
+`face`/`border`/`shadow` is ever read back from another state: every per-state
+resolution completes a style's structural members from its resolved `normal`
+alone, so a theme authoring, say, `styles.window.pointerOver.closeGlyph` is
+rejected rather than parsed, validated, and silently ignored.
 
 When framework rendering or layout reads one of those structural members
 directly, the control registers a stable typed dependency containing the
@@ -515,7 +515,9 @@ require no internal access; see
           "mode": "composite",
           "offset": { "x": 2, "y": 1 }
         },
-        "closeGlyph": "x"
+        "closeGlyph": "x",
+        "resizeGripGlyph": "+",
+        "resizeGripColor": "accent"
       }
     },
     "popup": {

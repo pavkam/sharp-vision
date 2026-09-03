@@ -11,7 +11,7 @@ internal static class ControlGlyphs
         Glyph('╭', '+'), Glyph('─', '-'), Glyph('╮', '+'), Glyph('│', '|'), Glyph('╯', '+'),
         Glyph('─', '-'), Glyph('╰', '+'), Glyph('│', '|'), Glyph('▓', '#'),
         Glyph('▀', '#'), Glyph('▄', '#'), Glyph('█', '#'),
-        Glyph('[', '['), Glyph('■', 'x'), Glyph(']', ']'));
+        Glyph('[', '['), Glyph('■', 'x'), Glyph(']', ']'), Glyph('◢', '+'));
 
     /// <summary>Gets progress and fractional block glyphs.</summary>
     public static ProgressGlyphs Progress { get; } = new(

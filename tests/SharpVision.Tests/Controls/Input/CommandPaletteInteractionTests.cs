@@ -430,6 +430,7 @@ public sealed class CommandPaletteInteractionTests
         await surface.UpdateAsync(() => palette.Text = "a", "start the older query");
         await surface.UpdateAsync(() => palette.Text = "ab", "start the newer query");
         results = 0;
+        resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         newer.SetResult(["newer"]);
         await resultsChanged.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
