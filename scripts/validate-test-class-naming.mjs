@@ -8,13 +8,13 @@ import { fileURLToPath } from "node:url";
 // older commit. Walking into one makes this validator re-check that snapshot's stale test classes
 // against today's source tree and fail, so a developer with a worktree open cannot run `make lint`.
 const ignoredDirectories = new Set([
-  ".claude",
-  ".git",
-  ".worktrees",
-  "artifacts",
-  "bin",
-  "node_modules",
-  "obj",
+    ".claude",
+    ".git",
+    ".worktrees",
+    "artifacts",
+    "bin",
+    "node_modules",
+    "obj",
 ]);
 
 // Evidence-tier suffixes first, generic "Tests" last. Every evidence-tier suffix itself ends in
@@ -26,72 +26,92 @@ const ignoredDirectories = new Set([
 // picks which candidate stripLongestSuffix() reports as "primary" for display; it does not affect
 // which classes pass, since every suffix that matches is tried.
 const evidenceTierSuffixes = [
-  "SurfaceTests",
-  "PerformanceTests",
-  "ConsumerTests",
-  "CompatibilityTests",
-  "Tests",
+    "SurfaceTests",
+    "PerformanceTests",
+    "ConsumerTests",
+    "CompatibilityTests",
+    "InteractionTests",
+    "ConditionTests",
+    "Tests",
 ];
 
 // Zero-indent (file-scoped namespaces put every test class at column zero), so this intentionally
 // does not match nested/local classes.
 const testClassPattern =
-  /^(?:(?:public|internal|private|protected)\s+)?(?:(?:sealed|abstract|static|partial)\s+)*class\s+(\w+Tests)\b/;
+    /^(?:(?:public|internal|private|protected)\s+)?(?:(?:sealed|abstract|static|partial)\s+)*class\s+(\w+Tests)\b/;
 
 // Not indent-restricted: a test class can legitimately be named after a private nested type.
 // Covers class, record, record class, record struct, struct, interface, and enum declarations.
 const typeDeclarationPattern =
-  /^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|sealed|abstract|partial|readonly|unsafe|new)\s+)*(?:record\s+class|record\s+struct|record|class|struct|interface|enum)\s+(\w+)/;
+    /^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|sealed|abstract|partial|readonly|unsafe|new)\s+)*(?:record\s+class|record\s+struct|record|class|struct|interface|enum)\s+(\w+)/;
 
 const factOrTheoryPattern = /\[(?:Fact|Theory)\b/;
 
 // Each entry proves a repository-wide or cross-cutting property that spans many subject types, so
 // no single "<Type>" name would describe what it exercises. Verified class-by-class.
 export const SUITE_LEVEL_ALLOW_LIST = new Set([
-  "ConformanceTests", // official Unicode conformance corpus sweep
-  "RandomizedInputTests", // whole-input-pipeline fuzz
-  "CodeCompatibilityTests", // shipped numeric-contract freeze
-  "AssemblyTests", // both projects: test-harness self-check; name-based so one entry covers both
-  "PublicApiCompatibilityTests", // three-assembly shape oracle
-  "FirstPartyPackageVersionTests", // cross-package version sanity
-  "LoaderAndChromeContractTests", // explicitly multi-subject styling contracts
-  "PhaseThreePerformanceTests", // multi-stage milestone allocation gate
-  "GraphicsBackendNamesTests", // assembly-wide backend naming invariants
-  "MultiplexerPseudoterminalTests", // drives real tmux/screen binaries over a live pseudoterminal; asserts on raw process output, no single src subject
-  "ChartSurfaceTests", // family fixture for five chart controls
-  "ComponentCompositionSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
-  "ComponentGeometrySurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
-  "IntrinsicBorderSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
-  "BoxModelSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
-  "ComponentSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
-  "ActualScrollBarStyleThemeTests", // ActualScrollBarStyle proxy contract across the Container family plus TreeView/NavigationView re-declarations
-  "AmbiguousWidthControlTests", // one-cell rendering under Ambiguous.Wide across five unrelated control/style types
-  "CodeOwnedGlyphRenderingTests", // code-owned default glyphs survive theme swaps across five controls
-  "GeneratedScrollBarStyleTests", // TreeView/NavigationView scrollbar proxy-forwarding parity, spans two test areas
-  "ComponentRoleTests", // reflection-based architectural contract across the control catalog
-  "SelectionParityTests", // six-control selection parity; no shared selection interface exists
-  "DropDownGlyphThemingTests", // drop-down glyph anti-drift contract across InputStyle and three picker controls
-  "BuiltInControlStyleTests", // theme-to-control style-profile mapping across the built-in control set
-  "CuratedThemesTests", // whole-catalog invariants across every bundled theme
-  "StrandedGlyphThemingTests", // stranded-glyph regression suite spanning a dozen control styles
-  "StyleInvariantEnforcementTests", // one invariant held identically across many style value types and three mutation doors
-  "RandomizedLayoutTests", // whole-infrastructure fuzz spanning ownership, focus, capture, pointer, and render
-  "DisplayPanelTests", // composed multi-control layout, damage, and byte-exact render proof
-  "InteractiveControlTests", // eight-control family fixture for cross-control event ordering
-  "TerminalInputTests", // raw terminal bytes fanned across five event kinds to final output
-  "UnicodeGeometryTests", // ambiguous-width agreement across six text-consuming controls
-  "CapabilityNegotiationTests", // negotiated-profile-before-first-frame ordering across TerminalProfile and Application
-  "CellPolicyTests", // one immutable policy propagated from Application through ControlBase to the whole tree
-  "ControlCapabilitiesTests", // capability cascade from Application resize through ControlBase inheritance
-  "PostRouteAnchorMutationTests", // post-route anchor-staleness contract spanning Router, FocusManager, and Application
-  "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
-  "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning several composed controls
-  "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 160 syntax definitions, no single src subject
-  "CuratedThemeDocumentStyleTests", // every bundled theme x DocumentStyle, no single src subject
-  "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
-  "DocumentSelectionTests", // semantic projection and mutation contract spanning Document, nodes, and embedded selectable sources
-  "DocumentSelectionSurfaceTests", // routed selection, child arbitration, nested viewports, clipboard, styling, and timed autoscroll
-  "ApplicationProcessSignalTests", // Application's cooperative-shutdown-signal integration, split out of ApplicationTests so only this narrow slice - not the whole class - needs the real-signal-safe test collection
+    "ConformanceTests", // official Unicode conformance corpus sweep
+    "RandomizedInputTests", // whole-input-pipeline fuzz
+    "CodeCompatibilityTests", // shipped numeric-contract freeze
+    "AssemblyTests", // both projects: test-harness self-check; name-based so one entry covers both
+    "PublicApiCompatibilityTests", // three-assembly shape oracle
+    "FirstPartyPackageVersionTests", // cross-package version sanity
+    "LoaderAndChromeContractTests", // explicitly multi-subject styling contracts
+    "PhaseThreePerformanceTests", // multi-stage milestone allocation gate
+    "GraphicsBackendNamesTests", // assembly-wide backend naming invariants
+    "MultiplexerPseudoterminalTests", // drives real tmux/screen binaries over a live pseudoterminal; asserts on raw process output, no single src subject
+    "ChartSurfaceTests", // family fixture for five chart controls
+    "ComponentCompositionSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+    "ComponentGeometrySurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+    "IntrinsicBorderSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+    "BoxModelSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+    "ComponentSurfaceTests", // cross-cutting shared surface/box-model/border contract spanning many controls
+    "ActualScrollBarStyleThemeTests", // ActualScrollBarStyle proxy contract across the Container family plus TreeView/NavigationView re-declarations
+    "AmbiguousWidthControlTests", // one-cell rendering under Ambiguous.Wide across five unrelated control/style types
+    "CodeOwnedGlyphRenderingTests", // code-owned default glyphs survive theme swaps across five controls
+    "GeneratedScrollBarStyleTests", // TreeView/NavigationView scrollbar proxy-forwarding parity, spans two test areas
+    "ComponentRoleTests", // reflection-based architectural contract across the control catalog
+    "SelectionParityTests", // six-control selection parity; no shared selection interface exists
+    "DropDownGlyphThemingTests", // drop-down glyph anti-drift contract across InputStyle and three picker controls
+    "BuiltInControlStyleTests", // theme-to-control style-profile mapping across the built-in control set
+    "CuratedThemesTests", // whole-catalog invariants across every bundled theme
+    "StrandedGlyphThemingTests", // stranded-glyph regression suite spanning a dozen control styles
+    "StyleInvariantEnforcementTests", // one invariant held identically across many style value types and three mutation doors
+    "RandomizedLayoutTests", // whole-infrastructure fuzz spanning ownership, focus, capture, pointer, and render
+    "DisplayPanelTests", // composed multi-control layout, damage, and byte-exact render proof
+    "InteractiveControlTests", // eight-control family fixture for cross-control event ordering
+    "TerminalInputTests", // raw terminal bytes fanned across five event kinds to final output
+    "UnicodeGeometryTests", // ambiguous-width agreement across six text-consuming controls
+    "CapabilityNegotiationTests", // negotiated-profile-before-first-frame ordering across TerminalProfile and Application
+    "CellPolicyTests", // one immutable policy propagated from Application through ControlBase to the whole tree
+    "ControlCapabilitiesTests", // capability cascade from Application resize through ControlBase inheritance
+    "PostRouteAnchorMutationTests", // post-route anchor-staleness contract spanning Router, FocusManager, and Application
+    "ProtocolRoutingTests", // protocol responses traversing Session, Application, and Dispatcher
+    "InteractivePerformanceTests", // representative interactive-tree allocation gate spanning several composed controls
+    "SyntaxDefinitionCorpusTests", // whole-embedded-catalog sweep: parses and tokenizes all 160 syntax definitions, no single src subject
+    "CuratedThemeDocumentStyleTests", // every bundled theme x DocumentStyle, no single src subject
+    "ResponseContainerCompatibilityTests", // four core EventArgs types wrapping terminal-declared response types, no single src subject
+    "DocumentSelectionTests", // semantic projection and mutation contract spanning Document, nodes, and embedded selectable sources
+    "DocumentSelectionSurfaceTests", // routed selection, child arbitration, nested viewports, clipboard, styling, and timed autoscroll
+    "ApplicationProcessSignalTests", // Application's cooperative-shutdown-signal integration, split out of ApplicationTests so only this narrow slice - not the whole class - needs the real-signal-safe test collection
+    "ChartConditionTests", // detached condition proof spanning every chart control family
+    "ListViewVirtualizationTests", // ListView's windowed/virtualized realization behavior, split out of ListViewTests
+    "TreeViewSelectionCallbackRevealTests", // TreeView reveal-after-selection-callback regression, split out of TreeViewTests
+    "AnimatedDisplayInteractionTests", // Spinner and ChaseIndicator's shared deterministic-clock animation contract
+    "InputGlyphAndPropertyConditionTests", // detached condition proof spanning several Controls.Input glyph families
+    "SliderNoTravelRailTests", // Slider's no-travel-rail regression, split out of SliderInteractionTests
+    "TextInputEdgeGlyphMultiClickTests", // TextInput's edge-glyph multi-click regression, split out of TextInputInteractionTests
+    "TextInputEditingTests", // TextInput's keyboard editing-command contract, split out of TextInputInteractionTests
+    "StackScrollingInteractionTests", // Stack's shared scrolling-foundation contract, not a single src subject
+    "TableDataInteractionTests", // Table's progressive/async TableDataController contract, split out of TableInteractionTests
+    "FileDialogInteractionTests", // shared FileDialogBase contract spanning FilePickerDialog and SaveFileDialog
+    "FilePickerDialogLoadStateTests", // FilePickerDialog's guarded-load IsLoading contract, split out of FileDialogInteractionTests
+    "FocusTraversalInteractionTests", // FocusManager's tree-wide traversal contract, no single src subject
+    "ModalityConditionTests", // ModalityManager's detached condition proof spanning nested scopes
+    "PointerRoutingInteractionTests", // PointerManager/Router's tree-wide routing contract, no single src subject
+    "TemporalSegmentTests", // the shared temporal-segment classification contract spanning DateInput, TimeInput, and DateTimeInput
+    "LayoutPrimitiveConditionTests", // detached condition proof spanning Dock, Overlay, Expander, and GroupBox
+    "TextSelectionInteractionTests", // the shared text-selection contract spanning Container, TextInput, and Text
 ]);
 
 /**
@@ -103,38 +123,38 @@ export const SUITE_LEVEL_ALLOW_LIST = new Set([
  * @returns {Promise<string[]>} Absolute file paths.
  */
 export async function findFilesWithExtension(directory, extension) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
+    const entries = await readdir(directory, { withFileTypes: true });
+    const files = [];
 
-  for (const entry of entries) {
-    const path = resolve(directory, entry.name);
+    for (const entry of entries) {
+        const path = resolve(directory, entry.name);
 
-    if (entry.isDirectory()) {
-      if (!ignoredDirectories.has(entry.name)) {
-        files.push(...(await findFilesWithExtension(path, extension)));
-      }
+        if (entry.isDirectory()) {
+            if (!ignoredDirectories.has(entry.name)) {
+                files.push(...(await findFilesWithExtension(path, extension)));
+            }
 
-      continue;
+            continue;
+        }
+
+        if (entry.isFile() && entry.name.endsWith(extension)) {
+            files.push(path);
+        }
     }
 
-    if (entry.isFile() && entry.name.endsWith(extension)) {
-      files.push(path);
-    }
-  }
-
-  return files;
+    return files;
 }
 
 async function findFilesWithExtensionIfPresent(directory, extension) {
-  try {
-    return await findFilesWithExtension(directory, extension);
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return [];
-    }
+    try {
+        return await findFilesWithExtension(directory, extension);
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return [];
+        }
 
-    throw error;
-  }
+        throw error;
+    }
 }
 
 /**
@@ -146,32 +166,35 @@ async function findFilesWithExtensionIfPresent(directory, extension) {
  * @returns {Promise<Set<string>>} Every declared bare type name, plus I-stripped interface aliases.
  */
 export async function discoverSubjectTypes(root) {
-  const types = new Set();
+    const types = new Set();
 
-  for (const directoryName of ["src", "examples"]) {
-    const files = await findFilesWithExtensionIfPresent(resolve(root, directoryName), ".cs");
+    for (const directoryName of ["src", "examples"]) {
+        const files = await findFilesWithExtensionIfPresent(
+            resolve(root, directoryName),
+            ".cs",
+        );
 
-    for (const file of files) {
-      const content = await readFile(file, "utf8");
+        for (const file of files) {
+            const content = await readFile(file, "utf8");
 
-      for (const line of content.split("\n")) {
-        const match = typeDeclarationPattern.exec(line);
+            for (const line of content.split("\n")) {
+                const match = typeDeclarationPattern.exec(line);
 
-        if (match === null) {
-          continue;
+                if (match === null) {
+                    continue;
+                }
+
+                const name = match[1];
+                types.add(name);
+
+                if (/^I[A-Z]/u.test(name)) {
+                    types.add(name.slice(1));
+                }
+            }
         }
-
-        const name = match[1];
-        types.add(name);
-
-        if (/^I[A-Z]/u.test(name)) {
-          types.add(name.slice(1));
-        }
-      }
     }
-  }
 
-  return types;
+    return types;
 }
 
 /**
@@ -184,31 +207,38 @@ export async function discoverSubjectTypes(root) {
  * with `file` relative to `root` using forward slashes.
  */
 export async function discoverTestClasses(root) {
-  const files = await findFilesWithExtensionIfPresent(resolve(root, "tests"), ".cs");
-  const discovered = [];
+    const files = await findFilesWithExtensionIfPresent(
+        resolve(root, "tests"),
+        ".cs",
+    );
+    const discovered = [];
 
-  for (const file of files) {
-    const content = await readFile(file, "utf8");
+    for (const file of files) {
+        const content = await readFile(file, "utf8");
 
-    if (!factOrTheoryPattern.test(content)) {
-      continue;
+        if (!factOrTheoryPattern.test(content)) {
+            continue;
+        }
+
+        const relativePath = relative(root, file).split(sep).join("/");
+        const lines = content.split("\n");
+
+        for (const [lineIndex, line] of lines.entries()) {
+            const match = testClassPattern.exec(line);
+
+            if (match === null) {
+                continue;
+            }
+
+            discovered.push({
+                file: relativePath,
+                line: lineIndex + 1,
+                className: match[1],
+            });
+        }
     }
 
-    const relativePath = relative(root, file).split(sep).join("/");
-    const lines = content.split("\n");
-
-    for (const [lineIndex, line] of lines.entries()) {
-      const match = testClassPattern.exec(line);
-
-      if (match === null) {
-        continue;
-      }
-
-      discovered.push({ file: relativePath, line: lineIndex + 1, className: match[1] });
-    }
-  }
-
-  return discovered;
+    return discovered;
 }
 
 /**
@@ -223,15 +253,15 @@ export async function discoverTestClasses(root) {
  * since "Tests" itself is always a matching suffix.
  */
 export function candidateBases(className) {
-  const bases = [];
+    const bases = [];
 
-  for (const suffix of evidenceTierSuffixes) {
-    if (className.endsWith(suffix)) {
-      bases.push(className.slice(0, -suffix.length));
+    for (const suffix of evidenceTierSuffixes) {
+        if (className.endsWith(suffix)) {
+            bases.push(className.slice(0, -suffix.length));
+        }
     }
-  }
 
-  return bases;
+    return bases;
 }
 
 /**
@@ -242,11 +272,11 @@ export function candidateBases(className) {
  * @returns {string} The primary base name to show in a violation message.
  */
 export function stripLongestSuffix(className) {
-  return candidateBases(className)[0];
+    return candidateBases(className)[0];
 }
 
 function baselineKey(entry) {
-  return `${entry.file}#${entry.className}`;
+    return `${entry.file}#${entry.className}`;
 }
 
 /**
@@ -256,16 +286,16 @@ function baselineKey(entry) {
  * @returns {string} The violation message.
  */
 export function formatViolation(entry) {
-  const bases = candidateBases(entry.className);
-  const basesText = bases.join(" or ");
+    const bases = candidateBases(entry.className);
+    const basesText = bases.join(" or ");
 
-  return (
-    `${entry.file}:${entry.line} ${entry.className} does not name a type under src/ or ` +
-    "examples/ as " +
-    `${basesText} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests ` +
-    "suffixes), and is not in the suite-level allow-list or " +
-    "scripts/test-class-naming-baseline.txt."
-  );
+    return (
+        `${entry.file}:${entry.line} ${entry.className} does not name a type under src/ or ` +
+        "examples/ as " +
+        `${basesText} (checked Tests/SurfaceTests/PerformanceTests/ConsumerTests/CompatibilityTests ` +
+        "suffixes), and is not in the suite-level allow-list or " +
+        "scripts/test-class-naming-baseline.txt."
+    );
 }
 
 /**
@@ -277,25 +307,29 @@ export function formatViolation(entry) {
  * @returns {Promise<{file: string, line: number, className: string}[]>} Unbaselined violations.
  */
 export async function computeViolations(root) {
-  const [subjectTypes, testClasses] = await Promise.all([
-    discoverSubjectTypes(root),
-    discoverTestClasses(root),
-  ]);
-  const violations = [];
+    const [subjectTypes, testClasses] = await Promise.all([
+        discoverSubjectTypes(root),
+        discoverTestClasses(root),
+    ]);
+    const violations = [];
 
-  for (const entry of testClasses) {
-    if (candidateBases(entry.className).some((base) => subjectTypes.has(base))) {
-      continue;
+    for (const entry of testClasses) {
+        if (
+            candidateBases(entry.className).some((base) =>
+                subjectTypes.has(base),
+            )
+        ) {
+            continue;
+        }
+
+        if (SUITE_LEVEL_ALLOW_LIST.has(entry.className)) {
+            continue;
+        }
+
+        violations.push(entry);
     }
 
-    if (SUITE_LEVEL_ALLOW_LIST.has(entry.className)) {
-      continue;
-    }
-
-    violations.push(entry);
-  }
-
-  return violations;
+    return violations;
 }
 
 /**
@@ -305,7 +339,7 @@ export async function computeViolations(root) {
  * @returns {string} The absolute baseline path.
  */
 export function baselinePath(root) {
-  return resolve(root, "scripts", "test-class-naming-baseline.txt");
+    return resolve(root, "scripts", "test-class-naming-baseline.txt");
 }
 
 /**
@@ -315,21 +349,21 @@ export function baselinePath(root) {
  * @returns {Promise<Set<string>>} The baseline `path#ClassName` entries.
  */
 export async function loadBaseline(root) {
-  try {
-    const content = await readFile(baselinePath(root), "utf8");
-    return new Set(
-      content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0),
-    );
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return new Set();
-    }
+    try {
+        const content = await readFile(baselinePath(root), "utf8");
+        return new Set(
+            content
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0),
+        );
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return new Set();
+        }
 
-    throw error;
-  }
+        throw error;
+    }
 }
 
 /**
@@ -341,18 +375,18 @@ export async function loadBaseline(root) {
  * entries that no longer reproduce (informational, non-fatal).
  */
 export async function validateRepository(root) {
-  const violations = await computeViolations(root);
-  const violationKeys = new Set(violations.map(baselineKey));
-  const baseline = await loadBaseline(root);
+    const violations = await computeViolations(root);
+    const violationKeys = new Set(violations.map(baselineKey));
+    const baseline = await loadBaseline(root);
 
-  const errors = violations
-    .filter((entry) => !baseline.has(baselineKey(entry)))
-    .map(formatViolation);
-  const staleBaselineEntries = [...baseline]
-    .filter((key) => !violationKeys.has(key))
-    .sort();
+    const errors = violations
+        .filter((entry) => !baseline.has(baselineKey(entry)))
+        .map(formatViolation);
+    const staleBaselineEntries = [...baseline]
+        .filter((key) => !violationKeys.has(key))
+        .sort();
 
-  return { errors, staleBaselineEntries };
+    return { errors, staleBaselineEntries };
 }
 
 /**
@@ -363,68 +397,74 @@ export async function validateRepository(root) {
  * what was added and removed relative to the previous baseline.
  */
 export async function writeBaseline(root) {
-  const [violations, oldBaseline] = await Promise.all([
-    computeViolations(root),
-    loadBaseline(root),
-  ]);
-  const keys = [...new Set(violations.map(baselineKey))].sort();
-  const keySet = new Set(keys);
+    const [violations, oldBaseline] = await Promise.all([
+        computeViolations(root),
+        loadBaseline(root),
+    ]);
+    const keys = [...new Set(violations.map(baselineKey))].sort();
+    const keySet = new Set(keys);
 
-  await writeFile(baselinePath(root), keys.length === 0 ? "" : `${keys.join("\n")}\n`, "utf8");
+    await writeFile(
+        baselinePath(root),
+        keys.length === 0 ? "" : `${keys.join("\n")}\n`,
+        "utf8",
+    );
 
-  const added = keys.filter((key) => !oldBaseline.has(key));
-  const removed = [...oldBaseline].filter((key) => !keySet.has(key)).sort();
+    const added = keys.filter((key) => !oldBaseline.has(key));
+    const removed = [...oldBaseline].filter((key) => !keySet.has(key)).sort();
 
-  return { keys, added, removed };
+    return { keys, added, removed };
 }
 
 async function main() {
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-  if (process.argv.includes("--write-baseline")) {
-    const { keys, added, removed } = await writeBaseline(root);
+    if (process.argv.includes("--write-baseline")) {
+        const { keys, added, removed } = await writeBaseline(root);
 
-    console.log(
-      `Wrote ${keys.length} baseline entr${keys.length === 1 ? "y" : "ies"} to ` +
-        `${relative(root, baselinePath(root))}.`,
-    );
-    console.log(`${added.length} added, ${removed.length} removed.`);
+        console.log(
+            `Wrote ${keys.length} baseline entr${keys.length === 1 ? "y" : "ies"} to ` +
+                `${relative(root, baselinePath(root))}.`,
+        );
+        console.log(`${added.length} added, ${removed.length} removed.`);
 
-    for (const key of added) {
-      console.log(`  + ${key}`);
+        for (const key of added) {
+            console.log(`  + ${key}`);
+        }
+
+        for (const key of removed) {
+            console.log(`  - ${key}`);
+        }
+
+        return;
     }
 
-    for (const key of removed) {
-      console.log(`  - ${key}`);
+    const { errors, staleBaselineEntries } = await validateRepository(root);
+
+    for (const error of errors) {
+        console.error(error);
     }
 
-    return;
-  }
+    if (staleBaselineEntries.length > 0) {
+        console.log(
+            `${staleBaselineEntries.length} baseline entries no longer reproduce; run with ` +
+                "--write-baseline to shrink the ratchet.",
+        );
+    }
 
-  const { errors, staleBaselineEntries } = await validateRepository(root);
+    if (errors.length > 0) {
+        process.exitCode = 1;
+        return;
+    }
 
-  for (const error of errors) {
-    console.error(error);
-  }
-
-  if (staleBaselineEntries.length > 0) {
     console.log(
-      `${staleBaselineEntries.length} baseline entries no longer reproduce; run with ` +
-        "--write-baseline to shrink the ratchet.",
+        "All test classes satisfy the naming convention (or are baselined).",
     );
-  }
-
-  if (errors.length > 0) {
-    process.exitCode = 1;
-    return;
-  }
-
-  console.log("All test classes satisfy the naming convention (or are baselined).");
 }
 
 if (
-  process.argv[1] !== undefined &&
-  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+    process.argv[1] !== undefined &&
+    fileURLToPath(import.meta.url) === resolve(process.argv[1])
 ) {
-  await main();
+    await main();
 }
