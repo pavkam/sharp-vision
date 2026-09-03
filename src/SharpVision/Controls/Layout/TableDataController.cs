@@ -1180,7 +1180,7 @@ internal sealed class TableDataController: IDisposable
         var columnWidths = _presenter.ColumnWidths;
         var cellPadding = _owner.ActualStyle.CellPadding;
         var baseY = origin.Y.Add(-_presenter.VerticalOffset).Add(headerHeight);
-        var baseX = origin.X - _presenter.HorizontalOffset;
+        var baseX = origin.X.Add(-_presenter.HorizontalOffset);
 
         for (var i = 0; i < _window.Length; i++)
         {
@@ -1265,7 +1265,7 @@ internal sealed class TableDataController: IDisposable
 
         var columnWidths = _presenter.ColumnWidths;
         var columnGap = _presenter.ColumnGap;
-        var x = origin.X - _presenter.HorizontalOffset;
+        var x = origin.X.Add(-_presenter.HorizontalOffset);
 
         for (var column = 0; column < columnWidths.Length; column++)
         {

@@ -504,7 +504,16 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         bool applyToExistingCells)
     {
         var controller = _owner.ProgressiveController!;
-        var baseX = ProgressiveOrigin.X - HorizontalOffset;
+
+        // Saturates rather than wraps for the same reason, and over the same ProgressiveOrigin.X
+        // and HorizontalOffset inputs, as ArrangeWindow's own baseX - see
+        // TableDataControllerTests.ArrangeWindow_WhenViewportXIsIntMinValueAndHorizontallyScrolled_SaturatesInsteadOfWrappingAsync.
+        // No independent render-level regression test exists for this call site: the resulting
+        // Rect is only ever consumed by TerminalCanvas.ApplyCellStyle with no observable return
+        // value, and at the extreme coordinates that would distinguish saturating from wrapping,
+        // both outcomes land far outside any realistic viewport - there is no on-screen difference
+        // to assert against.
+        var baseX = ProgressiveOrigin.X.Add(-HorizontalOffset);
         var baseY = ProgressiveOrigin.Y.Add(-VerticalOffset).Add(ProgressiveHeaderHeight);
 
         for (var position = 0; position < controller.WindowCount; position++)

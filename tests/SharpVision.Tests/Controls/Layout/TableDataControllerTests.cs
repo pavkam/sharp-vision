@@ -1270,5 +1270,81 @@ public sealed class TableDataControllerTests
         columnIndex.ShouldBe(1);
     }
 
+    /// <summary>Verifies ArrangeWindow's realized-cell X position saturates instead of wrapping when
+    /// the presenter's ProgressiveOrigin.X (derived from ViewportBounds.X, an ancestor-supplied
+    /// arrange-time coordinate) sits at the integer coordinate limit and the table is also scrolled
+    /// horizontally - regression for baseX subtracting HorizontalOffset with plain arithmetic, unlike
+    /// the adjacent baseY line in the same method, which already saturates via
+    /// Add(-VerticalOffset). Before the fix, int.MinValue minus a positive HorizontalOffset wrapped
+    /// to a huge positive value instead of staying pinned at int.MinValue.</summary>
+    [Fact]
+    public async Task ArrangeWindow_WhenViewportXIsIntMinValueAndHorizontallyScrolled_SaturatesInsteadOfWrappingAsync()
+    {
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            ShowHeader = false,
+            ShowGridLines = false,
+            ScrollBars = ScrollBars.Both
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        var source = new FakeTableDataSource<TwoColumnItem>(
+            [new TwoColumnItem(0, "12345678", "abcdefgh")], static item => item.Id, count: 1);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(10, 4), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, Length.Cells(1)), "bind source");
+        await surface.UpdateAsync(() => table.HorizontalOffset = 3, "scroll horizontally");
+
+        // Mirrors DockTests/ChartSurfaceTests's own boundary-pinning idiom: arrange this
+        // already-mounted table directly at the integer coordinate limit, simulating an ancestor
+        // (e.g. a deeply Right-docked panel) that supplies an extreme ViewportBounds.X.
+        await surface.UpdateAsync(
+            () => table.Arrange(new Rect(int.MinValue, 0, 10, 4)),
+            "arrange at extreme viewport X");
+
+        var controller = table.ProgressiveController!;
+        var row = controller.RowAt(0).ShouldNotBeNull();
+        row.Cells[0].Bounds.X.ShouldBe(int.MinValue);
+    }
+
+    /// <summary>Verifies TryResolvePoint's column search origin saturates the same way ArrangeWindow's
+    /// baseX does, so a hit test against the realized geometry still resolves the correct column
+    /// instead of missing entirely once the presenter's ProgressiveOrigin.X sits at the integer
+    /// coordinate limit. Before the fix, the wrapped search origin sat far from the realized cells,
+    /// and every point failed to resolve.</summary>
+    [Fact]
+    public async Task TryResolvePoint_WhenViewportXIsIntMinValueAndHorizontallyScrolled_SaturatesInsteadOfWrappingAsync()
+    {
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            ShowHeader = false,
+            ShowGridLines = false,
+            ScrollBars = ScrollBars.Both
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        var source = new FakeTableDataSource<TwoColumnItem>(
+            [new TwoColumnItem(0, "12345678", "abcdefgh")], static item => item.Id, count: 1);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(10, 4), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, Length.Cells(1)), "bind source");
+        await surface.UpdateAsync(() => table.HorizontalOffset = 3, "scroll horizontally");
+        await surface.UpdateAsync(
+            () => table.Arrange(new Rect(int.MinValue, 0, 10, 4)),
+            "arrange at extreme viewport X");
+
+        var controller = table.ProgressiveController!;
+
+        // Column 0 now sits at the saturated x range [int.MinValue, int.MinValue + 8).
+        controller.TryResolvePoint(new Point(int.MinValue, 0), out var logicalIndex, out var columnIndex)
+            .ShouldBeTrue();
+        logicalIndex.ShouldBe(0);
+        columnIndex.ShouldBe(0);
+    }
+
     #endregion
 }
