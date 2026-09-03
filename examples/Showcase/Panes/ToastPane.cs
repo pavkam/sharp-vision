@@ -97,7 +97,8 @@ internal sealed class ToastPane: CompositeControlBase
     {
         Width = Length.Cells(20),
         Items = items,
-        SelectedIndex = selectedIndex
+        SelectedIndex = selectedIndex,
+        AllowNull = false
     };
 
     private static ToastStyle ResolveStyle(int index) => index switch
