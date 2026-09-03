@@ -5,23 +5,29 @@ namespace SharpVision.Controls.Input;
 
 using System.Diagnostics.CodeAnalysis;
 
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
+
 /// <summary>Defines one complete immutable checkbox presentation. This style declares no theme
 /// section of its own: it falls back to <see cref="InputStyle"/>'s "input" role section,
 /// chromeless (a checkbox is a selectable control, not a framed one), resolves its own mark style
-/// and glyph family from <see cref="Theme.Glyphs"/>, and is themeable only through that fallback
-/// and a locally assigned <see cref="CheckBox.Style"/>.</summary>
+/// and glyph family from <see cref="Theme.Glyphs"/>, owns validated mark placement and gap, and is
+/// themeable only through that fallback and a locally assigned <see cref="CheckBox.Style"/>.</summary>
 [PublicAPI]
 public sealed record CheckBoxStyle: InputStyle
 {
     /// <summary>Gets the primary checkbox-style definition. Falls back to <see cref="InputStyle"/>'s
-    /// "input" role section, chromeless; MarkStyle and Glyphs are code-owned from
-    /// <see cref="Theme.Glyphs"/>.</summary>
+    /// "input" role section, chromeless; MarkStyle, Glyphs, MarkGap, and MarkPlacement are
+    /// code-owned.</summary>
     internal static StyleDefinition<CheckBoxStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetStyleSet(InputStyle.Default),
         Complete,
         static (previous, _, current, _) =>
-            previous.MarkWidth != current.MarkWidth || previous.AffixGap != current.AffixGap
+            previous.MarkWidth != current.MarkWidth ||
+            previous.MarkGap != current.MarkGap ||
+            previous.AffixGap != current.AffixGap
                 ? InvalidationImpact.Measure
+                : previous.MarkPlacement != current.MarkPlacement
+                    ? InvalidationImpact.Arrange
                 : previous.MarkStyle != current.MarkStyle || previous.Glyphs != current.Glyphs
                     ? InvalidationImpact.Render
                     : InvalidationImpact.None);
@@ -98,6 +104,29 @@ public sealed record CheckBoxStyle: InputStyle
 
     /// <summary>Gets the complete state glyph family.</summary>
     public required CheckBoxGlyphs Glyphs { get; init; }
+
+    /// <summary>Gets the horizontal terminal-cell gap between the mark and a present caption.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is outside 0-4.</exception>
+    [ValueRange(0, 4)]
+    public int MarkGap
+    {
+        get;
+        init => field = value is >= 0 and <= 4
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), value, "The mark gap must be between 0 and 4 cells.");
+    } = 1;
+
+    /// <summary>Gets which horizontal caption edge owns the check mark.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is undefined.</exception>
+    public SelectionMarkPlacement MarkPlacement
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value);
+            field = value;
+        }
+    } = SelectionMarkPlacement.Leading;
 
     /// <summary>Gets the horizontal terminal-cell reservation for the mark.</summary>
     public int MarkWidth => MarkStyle == CheckBoxMarkStyle.Brackets ? 3 : 1;

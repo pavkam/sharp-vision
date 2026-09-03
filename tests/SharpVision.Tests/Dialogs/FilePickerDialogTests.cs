@@ -273,9 +273,11 @@ public sealed class FilePickerDialogTests
         var source = new FakeFilePickerFileSystem();
         source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
         var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        var clock = new ManualTimeProvider();
         await using var surface = await ComponentSurface.MountAsync(
             dialog,
             new Size(80, 24),
+            clock,
             TestContext.Current.CancellationToken);
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         dialog.PropertyChanged += (_, eventArgs) =>
@@ -367,9 +369,11 @@ public sealed class FilePickerDialogTests
         var dialog = new FilePickerDialog(
             new FilePickerOptions { InitialDirectory = directory, SelectionMode = FileSelectionMode.Directories },
             source);
+        var clock = new ManualTimeProvider();
         await using var surface = await ComponentSurface.MountAsync(
             dialog,
             new Size(100, 40),
+            clock,
             TestContext.Current.CancellationToken);
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
         var openButton = OwnedTree.FindAll<Button>(dialog).Single(static button => button.IsDefault);
@@ -630,9 +634,11 @@ public sealed class FilePickerDialogTests
             child,
             new FilePickerEntry("Child.cs", Path.Combine(child, "Child.cs"), isDirectory: false, isHidden: false));
         var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        var clock = new ManualTimeProvider();
         await using var surface = await ComponentSurface.MountAsync(
             dialog,
             new Size(80, 24),
+            clock,
             TestContext.Current.CancellationToken);
         var list = OwnedTree.Find<UiListView>(dialog).ShouldNotBeNull();
 

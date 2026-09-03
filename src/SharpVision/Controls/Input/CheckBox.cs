@@ -129,66 +129,25 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        var content = TextControl;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-        var affixInset = affixes.StartCells + affixes.EndCells;
-
-        if (content is null)
-        {
-            return new Size(MarkWidth.Add(affixInset), 1);
-        }
-
-        var desired = MeasureChild(
-            content,
-            new Constraint(constraint.Width.Subtract(MarkWidth + 1 + affixInset), constraint.Height));
-
-        return content.Visibility == Visibility.Collapsed
-            ? new Size(MarkWidth.Add(affixInset), 1)
-            : new Size(
-                (MarkWidth + 1).Add(affixInset).Add(desired.Width.Add(content.Margin.Horizontal)),
-                Math.Max(1, desired.Height.Add(content.Margin.Vertical)));
-    }
+    protected override Size MeasureOverride(Constraint constraint) => MeasureSelectionMarkCaption(
+        constraint,
+        ActualStyle.MarkWidth,
+        ActualStyle.MarkGap,
+        ActualStyle.AffixGap);
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        if (TextControl is { } content)
-        {
-            var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-            var deflated = DeflateForAffixes(bounds, affixes);
-            var consumed = Math.Min(MarkWidth + 1, deflated.Width);
-            ArrangeChild(
-                content,
-                new Rect(deflated.X.Add(consumed), deflated.Y, deflated.Width - consumed, deflated.Height),
-                ResolvedAxes.Both);
-        }
-    }
+    protected override void ArrangeOverride(Rect bounds) => ArrangeSelectionMarkCaption(
+        bounds,
+        ActualStyle.MarkWidth,
+        ActualStyle.MarkGap,
+        ActualStyle.MarkPlacement,
+        ActualStyle.AffixGap);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0)
-        {
-            return;
-        }
-
-        var style = ResolvedStyle;
-
-        if (this.HasOpaqueFill(GetAppearanceState()))
-        {
-            canvas.Clear(Bounds, style);
-        }
-
-        var content = ContentBounds;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-        _ = canvas.Draw(
-            Mark().AsSpan(),
-            new Point(content.X + affixes.StartCells, content.Y),
-            style,
-            background: BackgroundMode.Transparent);
-        RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
+        var style = ActualStyle;
+        RenderSelectionMark(canvas, Mark().AsSpan(), style.MarkWidth, style.MarkPlacement, style.AffixGap);
     }
 
     /// <inheritdoc/>
@@ -262,8 +221,6 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
         transition.PublishCurrent(StateChanged, this, eventArgs);
         transition.ThrowIfFailed();
     }
-
-    private int MarkWidth => ActualStyle.MarkWidth;
 
     [Pure]
     private string Mark() =>

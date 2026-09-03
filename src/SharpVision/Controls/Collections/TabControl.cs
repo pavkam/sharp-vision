@@ -134,7 +134,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                     "The selected index is outside the tab control.");
             }
 
-            Select(value);
+            Select(value, ActivationCause.Programmatic);
         }
     }
 
@@ -402,6 +402,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                         stagedSelectedIndex,
                         previousSelectedIndex,
                         previousSelectedItem,
+                        ActivationCause.Programmatic,
                         force: true);
                 }
                 else
@@ -516,6 +517,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                         stagedSelectedIndex,
                         previousSelectedIndex,
                         previousSelectedItem,
+                        ActivationCause.Programmatic,
                         force: true);
                 }
                 else
@@ -644,6 +646,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                             stagedSelectedIndex,
                             previousSelectedIndex,
                             previousSelectedItem,
+                            ActivationCause.Programmatic,
                             force: true);
                     }
                     else
@@ -831,7 +834,12 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         if (!disposing)
         {
             CaptureFailure(
-                () => CommitSelection(-1, previousSelectedIndex, previousSelectedItem, force: true),
+                () => CommitSelection(
+                    -1,
+                    previousSelectedIndex,
+                    previousSelectedItem,
+                    ActivationCause.Programmatic,
+                    force: true),
                 ref failure);
         }
 
@@ -937,8 +945,6 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
     private void OnHeaderActivated(object? sender, ActivationEventArgs eventArgs)
     {
-        _ = eventArgs;
-
         if (sender is not TabHeader header)
         {
             return;
@@ -948,22 +954,23 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         if (index >= 0 && IsEligible(index))
         {
-            Select(index);
+            Select(index, eventArgs.Cause);
         }
     }
 
-    private void Select(int index)
+    private void Select(int index, ActivationCause cause)
     {
         VerifyMutable();
 
         var previousItem = _selectedIndex >= 0 ? ItemAt(_selectedIndex) : null;
-        CommitSelection(index, _selectedIndex, previousItem);
+        CommitSelection(index, _selectedIndex, previousItem, cause);
     }
 
     private void CommitSelection(
         int index,
         int previousIndex,
         TabItem? previousItem,
+        ActivationCause cause,
         bool force = false)
     {
         if (index >= 0 && !IsEligible(index))
@@ -1024,7 +1031,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
         SelectionChanged?.Invoke(
             this,
-            new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem));
+            new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem, cause));
     }
 
     [Pure]
@@ -1109,7 +1116,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             return false;
         }
 
-        Select(index);
+        Select(index, ActivationCause.Keyboard);
         return true;
     }
 
@@ -1136,7 +1143,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
 
             if (first >= 0)
             {
-                Select(first);
+                Select(first, ActivationCause.Programmatic);
             }
         }
     }
@@ -1150,7 +1157,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     private void SelectNearest(int index)
     {
         var target = SingleSelectionIndex.FindNearest(index, ItemControlCount, IsEligible);
-        Select(target);
+        Select(target, ActivationCause.Programmatic);
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)

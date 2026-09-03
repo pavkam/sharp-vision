@@ -76,7 +76,7 @@ internal sealed class SelectedItemPressBehavior
             return;
         }
 
-        eventArgs.IsHandled = _heldTarget is not null;
+        eventArgs.IsHandled = _heldTarget is not null || ShouldConsumeWithoutHeldTarget(eventArgs.Stroke);
     }
 
     /// <summary>Clears a held target without activating it.</summary>
@@ -119,9 +119,14 @@ internal sealed class SelectedItemPressBehavior
 
         var target = _getSelectedTarget();
 
-        if (target is null || !_isTargetAvailable(target))
+        if (target is null)
         {
             eventArgs.IsHandled = _consumeWhenNoTarget;
+            return;
+        }
+
+        if (!_isTargetAvailable(target))
+        {
             return;
         }
 
@@ -149,7 +154,7 @@ internal sealed class SelectedItemPressBehavior
 
         if (target is null)
         {
-            eventArgs.IsHandled = eventArgs.Stroke.Modifiers.IsActivationEligible();
+            eventArgs.IsHandled = ShouldConsumeWithoutHeldTarget(eventArgs.Stroke);
             return;
         }
 
@@ -162,5 +167,17 @@ internal sealed class SelectedItemPressBehavior
         {
             _activateTarget(target);
         }
+    }
+
+    [Pure]
+    private bool ShouldConsumeWithoutHeldTarget(Stroke stroke)
+    {
+        if (!stroke.Modifiers.IsActivationEligible())
+        {
+            return false;
+        }
+
+        var selected = _getSelectedTarget();
+        return selected is null ? _consumeWhenNoTarget : _isTargetAvailable(selected);
     }
 }

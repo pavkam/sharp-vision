@@ -396,6 +396,66 @@ public sealed class RadioButtonSurfaceTests
         surface.Cell(new Point(0, 4)).Style.Background.ShouldBe(radioBackground);
     }
 
+    /// <summary>Verifies the selection mark keeps the only available cell when either or both
+    /// affixes cannot fit beside it, at both supported caption edges.</summary>
+    /// <param name="placement">The caption edge that owns the mark.</param>
+    /// <param name="hasStart">Whether a leading affix competes for the cell.</param>
+    /// <param name="hasEnd">Whether a trailing affix competes for the cell.</param>
+    [Theory]
+    [InlineData(SelectionMarkPlacement.Leading, true, false)]
+    [InlineData(SelectionMarkPlacement.Leading, false, true)]
+    [InlineData(SelectionMarkPlacement.Leading, true, true)]
+    [InlineData(SelectionMarkPlacement.Trailing, true, false)]
+    [InlineData(SelectionMarkPlacement.Trailing, false, true)]
+    [InlineData(SelectionMarkPlacement.Trailing, true, true)]
+    public async Task Render_WhenOneCellCannotHoldAffixes_PreservesRadioMarkAsync(
+        SelectionMarkPlacement placement,
+        bool hasStart,
+        bool hasEnd)
+    {
+        // Arrange
+        var radio = new RadioButton
+        {
+            IsChecked = true,
+            StartAffix = hasStart ? new Affix(">") : null,
+            EndAffix = hasEnd ? new Affix("<") : null,
+            Style = RadioButtonStyle.Glyph with { MarkPlacement = placement }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            radio,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("◉");
+    }
+
+    /// <summary>Verifies constrained overflow drops the end affix before the start affix, while
+    /// preserving the one-cell mark and its gap.</summary>
+    [Fact]
+    public async Task Render_WhenOnlyStartAffixAndMarkFit_DropsEndAffixFirstAsync()
+    {
+        // Arrange
+        var radio = new RadioButton
+        {
+            IsChecked = true,
+            StartAffix = new Affix(">"),
+            EndAffix = new Affix("<"),
+            Style = RadioButtonStyle.Glyph
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            radio,
+            new Size(3, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("> ◉");
+    }
+
     /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before
     /// the mark and the end affix drawn after the caption, matching the documented layout.</summary>
     [Fact]
@@ -421,6 +481,39 @@ public sealed class RadioButtonSurfaceTests
 
         // Assert
         surface.ShouldRender("> ( ) Go <");
+    }
+
+    /// <summary>Verifies a trailing compact mark stays inside the affixes and honors the authored
+    /// mark-to-caption gap exactly.</summary>
+    [Fact]
+    public async Task Render_WhenMarkIsTrailingWithCustomGap_PlacesCaptionBeforeMarkAsync()
+    {
+        // Arrange
+        var radio = new RadioButton
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(9),
+            Height = Length.Cells(1),
+            Text = "Go",
+            StartAffix = new Affix(">"),
+            EndAffix = new Affix("<"),
+            Style = RadioButtonStyle.Glyph with
+            {
+                MarkGap = 2,
+                MarkPlacement = SelectionMarkPlacement.Trailing
+            },
+            IsChecked = true
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            radio,
+            new Size(9, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("> Go  ◉ <");
     }
 
     /// <summary>Verifies a same-width content swap invalidates rendering only, and the mounted

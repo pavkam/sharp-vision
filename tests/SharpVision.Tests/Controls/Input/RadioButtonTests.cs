@@ -49,6 +49,32 @@ public sealed class RadioButtonTests
         radio.Pending.ShouldBe(Invalidation.All);
     }
 
+    /// <summary>Verifies a mark-gap style change invalidates measurement because it changes the
+    /// terminal-cell reservation between a present mark and caption.</summary>
+    [Fact]
+    public void Style_WhenMarkGapChanges_InvalidatesMeasure()
+    {
+        var radio = new RadioButton { Style = RadioButtonStyle.Parentheses };
+        radio.Clear(Invalidation.All);
+
+        radio.Style = RadioButtonStyle.Parentheses with { MarkGap = 2 };
+
+        radio.Pending.ShouldBe(Invalidation.All);
+    }
+
+    /// <summary>Verifies moving the mark to the opposite caption edge invalidates arrangement and
+    /// rendering without needlessly remeasuring an unchanged intrinsic width.</summary>
+    [Fact]
+    public void Style_WhenMarkPlacementChanges_InvalidatesArrange()
+    {
+        var radio = new RadioButton { Style = RadioButtonStyle.Parentheses };
+        radio.Clear(Invalidation.All);
+
+        radio.Style = RadioButtonStyle.Parentheses with { MarkPlacement = SelectionMarkPlacement.Trailing };
+
+        radio.Pending.ShouldBe(Invalidation.Arrange | Invalidation.Render);
+    }
+
     /// <summary>Verifies groups start empty and user activation selects without toggling off.</summary>
     [Fact]
     public void PerformClick_WhenGroupStartsEmpty_SelectsOnlyOnce()
@@ -659,6 +685,37 @@ public sealed class RadioButtonTests
         new LayoutEngine().Layout(radio, new Size(20, 3));
 
         radio.DesiredSize.Width.ShouldBe(expectedWidth);
+    }
+
+    /// <summary>Verifies a custom mark gap contributes exact terminal cells only when the
+    /// RadioButton has a caption.</summary>
+    [Fact]
+    public void Measure_WhenMarkGapIsCustomized_ReservesExactCaptionGap()
+    {
+        var captioned = new RadioButton
+        {
+            Text = "Go",
+            Style = RadioButtonStyle.Glyph with { MarkGap = 3 }
+        };
+        var markOnly = new RadioButton
+        {
+            Style = RadioButtonStyle.Glyph with { MarkGap = 3 }
+        };
+        var clearedCaption = new RadioButton
+        {
+            Text = "Go",
+            Style = RadioButtonStyle.Glyph with { MarkGap = 3 }
+        };
+        clearedCaption.Text = string.Empty;
+        var engine = new LayoutEngine();
+
+        engine.Layout(captioned, new Size(20, 3));
+        engine.Layout(markOnly, new Size(20, 3));
+        engine.Layout(clearedCaption, new Size(20, 3));
+
+        captioned.DesiredSize.Width.ShouldBe(6);
+        markOnly.DesiredSize.Width.ShouldBe(1);
+        clearedCaption.DesiredSize.Width.ShouldBe(1);
     }
 
     /// <summary>Verifies null-to-set and set-to-null affix assignment requires Measure.</summary>

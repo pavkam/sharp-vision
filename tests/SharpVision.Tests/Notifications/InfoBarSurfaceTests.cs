@@ -268,7 +268,15 @@ public sealed class InfoBarSurfaceTests
             TestContext.Current.CancellationToken);
         var dismiss = OwnedTree.Find<InfoBarDismissButton>(bar).ShouldNotBeNull();
         var dismissed = 0;
+        var isOpenPublications = 0;
         bar.Dismissed += (_, _) => dismissed++;
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                isOpenPublications++;
+            }
+        };
         await surface.Pointer.MoveToAsync(dismiss);
         await surface.Pointer.PressAsync();
 
@@ -276,7 +284,36 @@ public sealed class InfoBarSurfaceTests
 
         dismiss.IsPressed.ShouldBeFalse();
         surface.ShouldHaveCapture(null);
+        bar.IsOpen.ShouldBeFalse();
         dismissed.ShouldBe(0);
+        isOpenPublications.ShouldBe(1);
+    }
+
+    /// <summary>Verifies disposing an open bar with no pending interaction still reconciles IsOpen.</summary>
+    [Fact]
+    public async Task Dispose_WhenCalledWhileOpen_ReconcilesIsOpenAsync()
+    {
+        var bar = new InfoBar { Title = "Alert", Content = new ControlText("Body") };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        var dismissed = 0;
+        var isOpenPublications = 0;
+        bar.Dismissed += (_, _) => dismissed++;
+        bar.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(InfoBar.IsOpen))
+            {
+                isOpenPublications++;
+            }
+        };
+
+        await surface.UpdateAsync(bar.Dispose, "dispose open InfoBar with no pending interaction");
+
+        bar.IsOpen.ShouldBeFalse();
+        dismissed.ShouldBe(0);
+        isOpenPublications.ShouldBe(1);
     }
 
     /// <summary>Verifies terminal leave cancels a held dismiss press without closing.</summary>

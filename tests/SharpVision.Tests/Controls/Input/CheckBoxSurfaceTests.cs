@@ -373,6 +373,66 @@ public sealed class CheckBoxSurfaceTests
         surface.ShouldRender("[ ] Hidden");
     }
 
+    /// <summary>Verifies the selection mark keeps the only available cell when either or both
+    /// affixes cannot fit beside it, at both supported caption edges.</summary>
+    /// <param name="placement">The caption edge that owns the mark.</param>
+    /// <param name="hasStart">Whether a leading affix competes for the cell.</param>
+    /// <param name="hasEnd">Whether a trailing affix competes for the cell.</param>
+    [Theory]
+    [InlineData(SelectionMarkPlacement.Leading, true, false)]
+    [InlineData(SelectionMarkPlacement.Leading, false, true)]
+    [InlineData(SelectionMarkPlacement.Leading, true, true)]
+    [InlineData(SelectionMarkPlacement.Trailing, true, false)]
+    [InlineData(SelectionMarkPlacement.Trailing, false, true)]
+    [InlineData(SelectionMarkPlacement.Trailing, true, true)]
+    public async Task Render_WhenOneCellCannotHoldAffixes_PreservesCheckMarkAsync(
+        SelectionMarkPlacement placement,
+        bool hasStart,
+        bool hasEnd)
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            IsChecked = true,
+            StartAffix = hasStart ? new Affix(">") : null,
+            EndAffix = hasEnd ? new Affix("<") : null,
+            Style = CheckBoxStyle.Square with { MarkPlacement = placement }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("☑");
+    }
+
+    /// <summary>Verifies constrained overflow drops the end affix before the start affix, while
+    /// preserving the one-cell mark and its gap.</summary>
+    [Fact]
+    public async Task Render_WhenOnlyStartAffixAndMarkFit_DropsEndAffixFirstAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            IsChecked = true,
+            StartAffix = new Affix(">"),
+            EndAffix = new Affix("<"),
+            Style = CheckBoxStyle.Square
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(3, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("> ☑");
+    }
+
     /// <summary>Verifies both affixes reserve their own cell column, the start affix drawn before
     /// the mark and the end affix drawn after the caption, matching the documented layout.</summary>
     [Fact]
@@ -398,6 +458,38 @@ public sealed class CheckBoxSurfaceTests
 
         // Assert
         surface.ShouldRender("> [ ] Go <");
+    }
+
+    /// <summary>Verifies a trailing mark stays inside the affixes and honors the authored
+    /// mark-to-caption gap exactly.</summary>
+    [Fact]
+    public async Task Render_WhenMarkIsTrailingWithCustomGap_PlacesCaptionBeforeMarkAsync()
+    {
+        // Arrange
+        var checkBox = new CheckBox
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Width = Length.Cells(11),
+            Height = Length.Cells(1),
+            Text = "Go",
+            StartAffix = new Affix(">"),
+            EndAffix = new Affix("<"),
+            Style = CheckBoxStyle.Brackets with
+            {
+                MarkGap = 2,
+                MarkPlacement = SelectionMarkPlacement.Trailing
+            }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(11, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("> Go  [ ] <");
     }
 
     /// <summary>Verifies a same-width content swap invalidates rendering only, and the mounted

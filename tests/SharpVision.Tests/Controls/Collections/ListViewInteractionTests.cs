@@ -257,7 +257,9 @@ public sealed class ListViewInteractionTests
     }
 
     /// <summary>Verifies Control- and Alt-modified movement keys are left unhandled so neither the
-    /// active row nor the selection moves. Shift navigation has its own range-selection contract.</summary>
+    /// active row nor the selection moves. Shift is excluded here because it carries its own
+    /// documented meaning - extending the range from the stable anchor - covered by
+    /// <see cref="ListViewTests.HandleSelectionNavigationKey_WhenShiftDownIsPressed_ExtendsMultipleSelection"/>.</summary>
     /// <param name="modifiers">The modifier held with the arrow key.</param>
     [Theory]
     [InlineData(Modifiers.Control)]

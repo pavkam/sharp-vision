@@ -123,4 +123,52 @@ public sealed class ToastTests
 
         toast.IsOpen.ShouldBeFalse();
     }
+
+    /// <summary>Verifies a Right-anchored Toast's constrained X offset stays exact at
+    /// int.MinValue instead of wrapping when the presentation content area's own bounds already
+    /// sit at the integer coordinate limit, mirroring ButtonTests's End-alignment boundary pin
+    /// for the identical Right-edge-minus-width arithmetic shape.</summary>
+    [Fact]
+    public void Constrain_WhenContentBoundsXIsIntMinValueAndPositionIsTopRight_StaysExactInsteadOfWrapping()
+    {
+        var overlay = new Overlay();
+        using var toast = new Toast
+        {
+            Position = ToastPosition.TopRight,
+            Content = new ProbeControl(new Size(5, 3)),
+            Style = ToastStyle.Info with { Padding = default, ContentGap = 0, AdornmentGap = 0 }
+        };
+        new LayoutEngine().Layout(toast, new Size(40, 10));
+        var coordinator = ToastCoordinator.Present(overlay, toast);
+        var contentBounds = new Rect(int.MinValue, 0, toast.DesiredSize.Width, toast.DesiredSize.Height);
+
+        var slot = coordinator.Constrain(toast, contentBounds);
+
+        slot.X.ShouldBe(int.MinValue);
+        slot.Width.ShouldBe(toast.DesiredSize.Width);
+    }
+
+    /// <summary>Verifies a Bottom-anchored Toast's constrained Y offset stays exact at
+    /// int.MinValue instead of wrapping when the presentation content area's own bounds already
+    /// sit at the integer coordinate limit, mirroring ButtonTests's End-alignment boundary pin
+    /// for the analogous Bottom-edge-minus-inward-minus-height arithmetic shape.</summary>
+    [Fact]
+    public void Constrain_WhenContentBoundsYIsIntMinValueAndPositionIsBottomRight_StaysExactInsteadOfWrapping()
+    {
+        var overlay = new Overlay();
+        using var toast = new Toast
+        {
+            Position = ToastPosition.BottomRight,
+            Content = new ProbeControl(new Size(5, 3)),
+            Style = ToastStyle.Info with { Padding = default, ContentGap = 0, AdornmentGap = 0 }
+        };
+        new LayoutEngine().Layout(toast, new Size(40, 10));
+        var coordinator = ToastCoordinator.Present(overlay, toast);
+        var contentBounds = new Rect(0, int.MinValue, toast.DesiredSize.Width, toast.DesiredSize.Height);
+
+        var slot = coordinator.Constrain(toast, contentBounds);
+
+        slot.Y.ShouldBe(int.MinValue);
+        slot.Height.ShouldBe(toast.DesiredSize.Height);
+    }
 }

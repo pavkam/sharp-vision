@@ -417,12 +417,12 @@ public sealed class CommandPaletteInteractionTests
                 _ => ValueTask.FromResult<IReadOnlyList<object?>>([])
             }
         };
-        var resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource? resultsChanged = null;
         var results = 0;
         palette.ResultsChanged += (_, _) =>
         {
             results++;
-            _ = resultsChanged.TrySetResult();
+            _ = resultsChanged?.TrySetResult();
         };
         await using var surface = await MountAsync(palette, new Size(24, 8));
         var list = OwnedTree.Find<UiListView>(palette).ShouldNotBeNull();

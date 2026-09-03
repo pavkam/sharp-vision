@@ -316,6 +316,8 @@ public sealed class TabControlSurfaceTests
             new Size(20, 4),
             TestContext.Current.CancellationToken);
         tabs.SelectedIndex.ShouldBe(0);
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
 
         // Act — click the second header.
         await surface.Pointer.ClickAsync(tabs, new Point(10, 0));
@@ -324,6 +326,7 @@ public sealed class TabControlSurfaceTests
         tabs.SelectedIndex.ShouldBe(1);
         tabs.Items[1].Visibility.ShouldBe(Visibility.Visible);
         tabs.Items[0].Visibility.ShouldBe(Visibility.Collapsed);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Pointer);
     }
 
     /// <summary>Verifies directional keys switch tabs sequentially when focused.</summary>
@@ -345,6 +348,8 @@ public sealed class TabControlSurfaceTests
             TestContext.Current.CancellationToken);
         await surface.Keyboard.PressAsync(Code.Tab);
         surface.ShouldHaveFocus(tabs);
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
 
         // Act and assert — Right moves forward.
         await surface.Keyboard.PressAsync(Code.Right);
@@ -359,6 +364,10 @@ public sealed class TabControlSurfaceTests
 
         await surface.Keyboard.PressAsync(Code.Left);
         tabs.SelectedIndex.ShouldBe(0);
+
+        // Assert — every directional-key transition reports the keyboard cause.
+        changes.ShouldAllBe(args => args.Cause == ActivationCause.Keyboard);
+        changes.Count.ShouldBe(4);
     }
 
     /// <summary>Verifies keyboard and pointer header behavior commit selection only on completed

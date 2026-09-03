@@ -134,66 +134,25 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        var content = TextControl;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-        var affixInset = affixes.StartCells + affixes.EndCells;
-
-        if (content is null)
-        {
-            return new Size(MarkWidth.Add(affixInset), 1);
-        }
-
-        var desired = MeasureChild(
-            content,
-            new Constraint(constraint.Width.Subtract(MarkWidth + 1 + affixInset), constraint.Height));
-
-        return content.Visibility == Visibility.Collapsed
-            ? new Size(MarkWidth.Add(affixInset), 1)
-            : new Size(
-                (MarkWidth + 1).Add(affixInset).Add(desired.Width.Add(content.Margin.Horizontal)),
-                Math.Max(1, desired.Height.Add(content.Margin.Vertical)));
-    }
+    protected override Size MeasureOverride(Constraint constraint) => MeasureSelectionMarkCaption(
+        constraint,
+        ActualStyle.MarkWidth,
+        ActualStyle.MarkGap,
+        ActualStyle.AffixGap);
 
     /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        if (TextControl is { } content)
-        {
-            var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-            var deflated = DeflateForAffixes(bounds, affixes);
-            var consumed = Math.Min(MarkWidth + 1, deflated.Width);
-            ArrangeChild(
-                content,
-                new Rect(deflated.X.Add(consumed), deflated.Y, deflated.Width - consumed, deflated.Height),
-                ResolvedAxes.Both);
-        }
-    }
+    protected override void ArrangeOverride(Rect bounds) => ArrangeSelectionMarkCaption(
+        bounds,
+        ActualStyle.MarkWidth,
+        ActualStyle.MarkGap,
+        ActualStyle.MarkPlacement,
+        ActualStyle.AffixGap);
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0)
-        {
-            return;
-        }
-
-        var style = ResolvedStyle;
-
-        if (this.HasOpaqueFill(GetAppearanceState()))
-        {
-            canvas.Clear(Bounds, style);
-        }
-
-        var content = ContentBounds;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-        _ = canvas.Draw(
-            Mark().AsSpan(),
-            new Point(content.X + affixes.StartCells, content.Y),
-            style,
-            background: BackgroundMode.Transparent);
-        RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
+        var style = ActualStyle;
+        RenderSelectionMark(canvas, Mark().AsSpan(), style.MarkWidth, style.MarkPlacement, style.AffixGap);
     }
 
     /// <inheritdoc/>
@@ -207,17 +166,26 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
             return;
         }
 
-        // Group walking follows the shared scalar-navigation modifier policy: lock state rides
-        // along, but an arrow carrying Shift or an application-command modifier belongs to whatever
-        // shortcut expects it and must neither re-select a member nor be swallowed here.
+        // Group navigation follows the shared scalar-navigation modifier policy: lock state rides
+        // along, but an arrow or endpoint key carrying Shift or an application-command modifier
+        // belongs to whatever shortcut expects it and must neither re-select a member nor be
+        // swallowed here.
         if (!KeyboardModifierPolicy.IsScalarNavigationEligible(key.Stroke.Modifiers))
         {
             return;
         }
 
-        var reverse = key.Stroke.Code is Code.Left or Code.Up;
+        var code = key.Stroke.Code;
 
-        if (reverse || key.Stroke.Code is Code.Right or Code.Down)
+        if (code is Code.Home or Code.End)
+        {
+            eventArgs.IsHandled = this.MoveGroupEndpoint(code == Code.End);
+            return;
+        }
+
+        var reverse = code is Code.Left or Code.Up;
+
+        if (reverse || code is Code.Right or Code.Down)
         {
             eventArgs.IsHandled = this.MoveGroup(reverse);
         }
@@ -308,8 +276,6 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     /// <summary>Raises Unchecked after a complete group commit.</summary>
     internal void RaiseUnchecked(RadioButtonSelectionChangedEventArgs eventArgs) =>
         Unchecked?.Invoke(this, eventArgs);
-
-    private int MarkWidth => ActualStyle.MarkWidth;
 
     [Pure]
     private string Mark()

@@ -25,7 +25,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
         var square = new CheckBox
         {
             Text = "&Square marks",
-            Style = CheckBoxStyle.Square,
+            Style = CheckBoxStyle.Square with { MarkGap = 3 },
             IsChecked = true
         };
         var brackets = new CheckBox
@@ -37,7 +37,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
         var tick = new CheckBox
         {
             Text = "Tic&k marks",
-            Style = CheckBoxStyle.Tick,
+            Style = CheckBoxStyle.Tick with { MarkGap = 3 },
             IsChecked = true
         };
         var custom = new CheckBox
@@ -48,7 +48,18 @@ internal sealed class CheckBoxPane: CompositeControlBase
                 CheckBoxStyle.Default.Border,
                 CheckBoxStyle.Default.Shadow,
                 CheckBoxMarkStyle.Square,
-                new CheckBoxGlyphs(new Rune('·'), new Rune('✓'), new Rune('~'))),
+                new CheckBoxGlyphs(new Rune('·'), new Rune('★'), new Rune('~'))) with
+            { MarkGap = 3 },
+            IsChecked = true
+        };
+        var trailing = new CheckBox
+        {
+            Text = "Mark after captio&n",
+            Style = CheckBoxStyle.Brackets with
+            {
+                MarkGap = 2,
+                MarkPlacement = SelectionMarkPlacement.Trailing
+            },
             IsChecked = true
         };
 
@@ -99,7 +110,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
 
         // State-specific notifications precede the general StateChanged notification.
         var eventStatus = new Text("Events: waiting");
-        var eventProbe = new CheckBox { Text = "Obser&ve event order" };
+        var eventProbe = new CheckBox { Text = "Obser&ve event order", ThreeState = true };
         eventProbe.Checked += (_, _) => eventStatus.Content = "Events: Checked";
         eventProbe.Unchecked += (_, _) => eventStatus.Content = "Events: Unchecked";
         eventProbe.Indeterminate += (_, _) => eventStatus.Content = "Events: Indeterminate";
@@ -107,7 +118,13 @@ internal sealed class CheckBoxPane: CompositeControlBase
 
         // PerformClick reports Programmatic as the activation cause.
         var programmaticStatus = new Text("Programmatic toggle: waiting");
-        var programmaticTarget = new CheckBox { Text = "&Programmatic target" };
+        var programmaticTarget = new CheckBox
+        {
+            Text = "&Programmatic target",
+            Command = new ShowcaseCommand(
+                _ => programmaticStatus.Content += " → Command",
+                _ => true)
+        };
         programmaticTarget.StateChanged += (_, eventArgs) =>
             programmaticStatus.Content = $"Programmatic toggle: {eventArgs.Current} ({eventArgs.Cause})";
         var programmaticTrigger = new Button { Text = "Toggle pro&grammatically" };
@@ -159,11 +176,17 @@ internal sealed class CheckBoxPane: CompositeControlBase
             new DocSection(
                 "☑️",
                 "Styles",
-                "Built-in families and validated caller glyphs retain stable label placement.",
+                "Built-in families, validated caller glyphs, authored gaps, and either caption edge cover compact and aligned forms.",
                 new DocExample(
-                    "Built-in and custom glyphs",
-                    "Square, bracket, tick, and custom marks all use printable one-cell state glyphs.",
-                    new DocColumn(square, brackets, tick, custom))),
+                    "Aligned built-in and custom glyphs",
+                    "One-cell families use a three-cell MarkGap here, so their captions align with the wider bracket family. The custom checked star is visibly distinct from the tick preset.",
+                    new DocColumn(square, brackets, tick, custom),
+                    "option.Style = CheckBoxStyle.Square with { MarkGap = 3 };"),
+                new DocExample(
+                    "Trailing mark",
+                    "MarkPlacement moves the mark after the caption, while MarkGap controls the exact cells between them.",
+                    trailing,
+                    "option.Style = CheckBoxStyle.Brackets with\n{\n    MarkGap = 2,\n    MarkPlacement = SelectionMarkPlacement.Trailing\n};")),
             new DocSection(
                 "☑️",
                 "Events",
@@ -174,7 +197,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
                     new DocColumn(eventProbe, eventStatus)),
                 new DocExample(
                     "Programmatic activation",
-                    "Toggle the target through PerformClick. The same event contract reports Programmatic as the cause.",
+                    "Toggle the target through PerformClick. StateChanged reports Programmatic first, then the bound Command appends its completion marker.",
                     new DocColumn(programmaticTrigger, programmaticTarget, programmaticStatus),
                     "target.PerformClick();")),
             new DocSection(
@@ -188,7 +211,7 @@ internal sealed class CheckBoxPane: CompositeControlBase
             new DocSection(
                 "📌",
                 "Affixes",
-                "<info>StartAffix</info> and <info>EndAffix</info> reserve a fixed cell before the mark or after the caption for application-owned, data-driven decoration that a theme never authors.",
+                "<info>StartAffix</info> and <info>EndAffix</info> reserve the leading and trailing edges outside the combined mark-caption box for application-owned, data-driven decoration that a theme never authors.",
                 new DocExample(
                     "Priority glyph before the mark",
                     "The exclamation mark sits in its own reserved cell before the check mark and never shares space with it.",

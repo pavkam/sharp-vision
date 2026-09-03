@@ -12,10 +12,10 @@ public sealed class TabSelectionChangedEventArgsTests
     {
         var item = new TabItem();
 
-        var previousMissing = () => new TabSelectionChangedEventArgs(0, -1, null, null);
-        var previousUnexpected = () => new TabSelectionChangedEventArgs(-1, -1, item, null);
-        var currentMissing = () => new TabSelectionChangedEventArgs(-1, 0, null, null);
-        var currentUnexpected = () => new TabSelectionChangedEventArgs(-1, -1, null, item);
+        var previousMissing = () => new TabSelectionChangedEventArgs(0, -1, null, null, ActivationCause.Programmatic);
+        var previousUnexpected = () => new TabSelectionChangedEventArgs(-1, -1, item, null, ActivationCause.Programmatic);
+        var currentMissing = () => new TabSelectionChangedEventArgs(-1, 0, null, null, ActivationCause.Programmatic);
+        var currentUnexpected = () => new TabSelectionChangedEventArgs(-1, -1, null, item, ActivationCause.Programmatic);
 
         previousMissing.ShouldThrow<ArgumentException>().ParamName.ShouldBe("previousItem");
         previousUnexpected.ShouldThrow<ArgumentException>().ParamName.ShouldBe("previousItem");
@@ -36,8 +36,29 @@ public sealed class TabSelectionChangedEventArgsTests
             previousIndex,
             currentIndex,
             null,
-            null);
+            null,
+            ActivationCause.Programmatic);
 
         action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe(parameterName);
+    }
+
+    /// <summary>Verifies an undefined cause is rejected the same way every sibling transition type rejects it.</summary>
+    [Fact]
+    public void Constructor_WhenCauseIsUndefined_Throws()
+    {
+        var action = () => new TabSelectionChangedEventArgs(-1, -1, null, null, (ActivationCause) (-1));
+
+        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("cause");
+    }
+
+    /// <summary>Verifies the constructed transition exposes the supplied cause.</summary>
+    [Fact]
+    public void Constructor_ExposesSuppliedCause()
+    {
+        var item = new TabItem();
+
+        var eventArgs = new TabSelectionChangedEventArgs(-1, 0, null, item, ActivationCause.Keyboard);
+
+        eventArgs.Cause.ShouldBe(ActivationCause.Keyboard);
     }
 }

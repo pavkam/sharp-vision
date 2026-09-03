@@ -90,6 +90,167 @@ public sealed class RadioButtonInteractionTests
         observed.ShouldBe(moves ? [] : [false], "a walk is consumed before the ancestor sees it; a chorded arrow reaches the ancestor unhandled");
     }
 
+    /// <summary>Verifies Home and End focus and select the first or last eligible group member,
+    /// skipping unavailable endpoints while allowing terminal lock state to ride along.</summary>
+    /// <param name="code">The endpoint key to press.</param>
+    /// <param name="modifiers">The scalar-navigation-eligible modifiers carried by the key.</param>
+    /// <param name="selectsLast">Whether the last rather than first eligible member is expected.</param>
+    [Theory]
+    [InlineData(Code.Home, Modifiers.None, false)]
+    [InlineData(Code.End, Modifiers.None, true)]
+    [InlineData(Code.Home, Modifiers.CapsLock, false)]
+    [InlineData(Code.End, Modifiers.NumLock, true)]
+    public async Task Keyboard_WhenEndpointIsPressed_SelectsEligibleBoundaryAsync(
+        Code code,
+        Modifiers modifiers,
+        bool selectsLast)
+    {
+        // Arrange
+        var disabledFirst = Radio("Disabled first", enabled: false);
+        var first = Radio("First");
+        var middle = Radio("Middle", isChecked: true);
+        var last = Radio("Last");
+        var disabledLast = Radio("Disabled last", enabled: false);
+        var events = Record(first, middle, last);
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(disabledFirst, first, middle, last, disabledLast),
+            new Size(20, 5),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(middle);
+
+        // Act
+        await surface.Keyboard.PressAsync(code, modifiers);
+
+        // Assert
+        var target = selectsLast ? last : first;
+        surface.ShouldHaveFocus(target);
+        target.IsChecked.ShouldBeTrue();
+        middle.IsChecked.ShouldBeFalse();
+        disabledFirst.IsChecked.ShouldBeFalse();
+        disabledLast.IsChecked.ShouldBeFalse();
+        events.ShouldBe([
+            $"Unchecked:Middle:Middle>{target.Text}:Keyboard",
+            $"Checked:{target.Text}:Middle>{target.Text}:Keyboard",
+            $"SelectionChanged:{target.Text}:Middle>{target.Text}:Keyboard"
+        ]);
+    }
+
+    /// <summary>Verifies endpoint keys carrying a command modifier neither move selection nor are
+    /// swallowed before an ancestor shortcut can observe them.</summary>
+    /// <param name="modifiers">The ineligible modifiers carried by Home.</param>
+    [Theory]
+    [InlineData(Modifiers.Shift)]
+    [InlineData(Modifiers.Control)]
+    [InlineData(Modifiers.Alt)]
+    [InlineData(Modifiers.Super)]
+    public async Task Keyboard_WhenEndpointCarriesCommandModifier_LeavesSelectionAndBubblesAsync(Modifiers modifiers)
+    {
+        // Arrange
+        var one = Radio("One");
+        var two = Radio("Two", isChecked: true);
+        var stack = Group(one, two);
+        var observed = new List<bool>();
+        stack.KeyDown += (_, eventArgs) => observed.Add(eventArgs.IsHandled);
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Home, modifiers);
+
+        // Assert
+        surface.ShouldHaveFocus(two);
+        two.IsChecked.ShouldBeTrue();
+        one.IsChecked.ShouldBeFalse();
+        observed.ShouldBe([false]);
+    }
+
+    /// <summary>Verifies an endpoint whose focus transfer is cancelled leaves both focus and the
+    /// exclusive selection unchanged.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEndpointFocusMoveIsCancelled_LeavesSelectionUnchangedAsync()
+    {
+        // Arrange
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        var events = Record(one, two);
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(one, two),
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.UpdateAsync(
+            () => surface.Application.Focus.Changing += (_, eventArgs) => eventArgs.Cancel = true,
+            "cancel endpoint focus transfer");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert
+        surface.ShouldHaveFocus(one);
+        one.IsChecked.ShouldBeTrue();
+        two.IsChecked.ShouldBeFalse();
+        events.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an endpoint whose GotFocus callback redirects focus does not select the
+    /// superseded endpoint after the nested focus transaction commits.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEndpointFocusIsRedirected_LeavesSelectionUnchangedAsync()
+    {
+        // Arrange
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        var three = Radio("Three");
+        three.GotFocus += (_, _) => _ = two.Focus();
+        var events = Record(one, two, three);
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(one, two, three),
+            new Size(12, 3),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert
+        surface.ShouldHaveFocus(two);
+        one.IsChecked.ShouldBeTrue();
+        two.IsChecked.ShouldBeFalse();
+        three.IsChecked.ShouldBeFalse();
+        events.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an endpoint disabled by its own GotFocus callback does not become the
+    /// selection after focus cleanup makes it ineligible.</summary>
+    [Fact]
+    public async Task Keyboard_WhenEndpointDisablesItselfOnFocus_LeavesSelectionUnchangedAsync()
+    {
+        // Arrange
+        var one = Radio("One", isChecked: true);
+        var two = Radio("Two");
+        two.GotFocus += (_, _) => two.IsEnabled = false;
+        var events = Record(one, two);
+        await using var surface = await ComponentSurface.MountAsync(
+            Group(one, two),
+            new Size(12, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.End);
+
+        // Assert
+        surface.ShouldHaveFocus(null);
+        one.IsChecked.ShouldBeTrue();
+        two.IsChecked.ShouldBeFalse();
+        two.EffectiveIsEnabled.ShouldBeFalse();
+        events.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies the bound command runs on every explicit activation gesture (Enter, Space,
     /// or a pointer press/release) with its parameter, including re-selecting the already checked
     /// member, but not on arrow-key group navigation - RadioGroupCoordinator's arrow path calls

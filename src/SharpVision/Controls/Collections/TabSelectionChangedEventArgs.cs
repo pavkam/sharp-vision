@@ -14,20 +14,24 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
     /// <param name="currentIndex">The committed index, or -1.</param>
     /// <param name="previousItem">The page selected before the transition, or null.</param>
     /// <param name="currentItem">The page selected after the transition, or null.</param>
+    /// <param name="cause">The defined transition cause.</param>
     /// <exception cref="ArgumentException">
     /// An item is null for a selected index or present for the -1 sentinel.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="previousIndex"/> or <paramref name="currentIndex"/> is less than -1.
+    /// <paramref name="previousIndex"/> or <paramref name="currentIndex"/> is less than -1, or
+    /// <paramref name="cause"/> is unknown.
     /// </exception>
     public TabSelectionChangedEventArgs(
         int previousIndex,
         int currentIndex,
         TabItem? previousItem,
-        TabItem? currentItem)
+        TabItem? currentItem,
+        ActivationCause cause)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(previousIndex, -1);
         ArgumentOutOfRangeException.ThrowIfLessThan(currentIndex, -1);
+        ArgumentOutOfRangeException.ThrowIfNotDefined(cause, nameof(cause), "The activation cause is unknown.");
         ValidateItem(previousIndex, previousItem, nameof(previousItem));
         ValidateItem(currentIndex, currentItem, nameof(currentItem));
 
@@ -35,6 +39,7 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
         CurrentIndex = currentIndex;
         PreviousItem = previousItem;
         CurrentItem = currentItem;
+        Cause = cause;
     }
 
     /// <summary>Gets the index before the transition, or -1.</summary>
@@ -50,6 +55,9 @@ public sealed class TabSelectionChangedEventArgs: EventArgs
 
     /// <summary>Gets the page selected after the transition, or null.</summary>
     public TabItem? CurrentItem { get; }
+
+    /// <summary>Gets the transition input path.</summary>
+    public ActivationCause Cause { get; }
 
     private static void ValidateItem(int index, TabItem? item, string parameterName)
     {

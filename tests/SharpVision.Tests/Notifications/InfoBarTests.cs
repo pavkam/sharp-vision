@@ -423,8 +423,9 @@ public sealed class InfoBarTests
         bar.Dismiss();
 
         bar.IsDisposed.ShouldBeTrue();
+        bar.IsOpen.ShouldBeFalse();
         laterRequested.ShouldBe(0);
-        propertyChanges.ShouldBe(0);
+        propertyChanges.ShouldBe(1);
         dismissed.ShouldBe(0);
     }
 

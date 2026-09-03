@@ -8,6 +8,8 @@ using System.Windows.Input;
 
 using Popups;
 
+using SharpVision.Controls.Input;
+
 using SharpVision.Terminal.Input;
 
 using SharpVision.Text;
@@ -324,6 +326,143 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         {
             ArrangeChild(content, bounds, ResolvedAxes.Both);
         }
+    }
+
+    #endregion
+
+    #region Selection mark
+
+    /// <summary>Measures one fixed-width selection mark followed or preceded by the owned caption,
+    /// with the inherited affixes outside that combined content.</summary>
+    /// <param name="constraint">The available layout constraint.</param>
+    /// <param name="markWidth">The positive terminal-cell width of the formatted mark.</param>
+    /// <param name="markGap">The non-negative terminal-cell gap beside a present caption.</param>
+    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
+    /// <returns>The desired marked-caption size, including affixes.</returns>
+    private protected Size MeasureSelectionMarkCaption(
+        Constraint constraint,
+        int markWidth,
+        int markGap,
+        int affixGap)
+    {
+        Debug.Assert(markWidth > 0, "A selection mark reserves at least one terminal cell.");
+        Debug.Assert(markGap >= 0, "A selection mark gap cannot be negative.");
+        Debug.Assert(affixGap >= 0, "An affix gap cannot be negative.");
+
+        var affixes = MeasureAffixes(StartAffix, EndAffix, affixGap);
+        var affixInset = affixes.StartCells.Add(affixes.EndCells);
+        var content = TextControl;
+
+        if (content is null)
+        {
+            return new Size(markWidth.Add(affixInset), 1);
+        }
+
+        var hasCaption = content.Visibility != Visibility.Collapsed && content.Content.Length != 0;
+        var captionGap = hasCaption ? markGap : 0;
+        var markedInset = markWidth.Add(captionGap).Add(affixInset);
+        var desired = MeasureChild(
+            content,
+            new Constraint(constraint.Width.Subtract(markedInset), constraint.Height));
+
+        return !hasCaption
+            ? new Size(markWidth.Add(affixInset), 1)
+            : new Size(
+                markedInset.Add(desired.Width.Add(content.Margin.Horizontal)),
+                Math.Max(1, desired.Height.Add(content.Margin.Vertical)));
+    }
+
+    /// <summary>Arranges the owned caption on the configured side opposite a fixed-width selection
+    /// mark, inside inherited affix reservations.</summary>
+    /// <param name="bounds">The marked-caption bounds.</param>
+    /// <param name="markWidth">The positive terminal-cell width of the formatted mark.</param>
+    /// <param name="markGap">The non-negative terminal-cell gap beside a present caption.</param>
+    /// <param name="placement">The validated edge that owns the mark.</param>
+    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
+    private protected void ArrangeSelectionMarkCaption(
+        Rect bounds,
+        int markWidth,
+        int markGap,
+        SelectionMarkPlacement placement,
+        int affixGap)
+    {
+        Debug.Assert(markWidth > 0, "A selection mark reserves at least one terminal cell.");
+        Debug.Assert(markGap >= 0, "A selection mark gap cannot be negative.");
+        Debug.Assert(Enum.IsDefined(placement), "A selection mark placement must be defined.");
+        Debug.Assert(affixGap >= 0, "An affix gap cannot be negative.");
+
+        if (TextControl is not { } content)
+        {
+            return;
+        }
+
+        var affixes = MeasureAffixes(StartAffix, EndAffix, affixGap);
+        var deflated = DeflateForAffixes(bounds, affixes);
+        var hasCaption = content.Visibility != Visibility.Collapsed && content.Content.Length != 0;
+        var captionGap = hasCaption ? markGap : 0;
+        var consumed = Math.Min(markWidth.Add(captionGap), deflated.Width);
+        var captionBounds = placement == SelectionMarkPlacement.Leading
+            ? new Rect(deflated.X.Add(consumed), deflated.Y, deflated.Width - consumed, deflated.Height)
+            : new Rect(deflated.X, deflated.Y, deflated.Width - consumed, deflated.Height);
+        ArrangeChild(content, captionBounds, ResolvedAxes.Both);
+    }
+
+    /// <summary>Paints one selection mark at the configured caption edge and renders inherited
+    /// affixes after applying the control's resolved opaque fill.</summary>
+    /// <param name="canvas">The frame-owned terminal canvas.</param>
+    /// <param name="mark">The already formatted mark text.</param>
+    /// <param name="markWidth">The positive terminal-cell width reserved for <paramref name="mark"/>.</param>
+    /// <param name="placement">The validated edge that owns the mark.</param>
+    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
+    private protected void RenderSelectionMark(
+        TerminalCanvas canvas,
+        ReadOnlySpan<char> mark,
+        int markWidth,
+        SelectionMarkPlacement placement,
+        int affixGap)
+    {
+        Debug.Assert(markWidth > 0, "A selection mark reserves at least one terminal cell.");
+        Debug.Assert(Enum.IsDefined(placement), "A selection mark placement must be defined.");
+        Debug.Assert(affixGap >= 0, "An affix gap cannot be negative.");
+
+        if (Bounds.Width == 0 || Bounds.Height == 0)
+        {
+            return;
+        }
+
+        var style = ResolvedStyle;
+
+        if (this.HasOpaqueFill(GetAppearanceState()))
+        {
+            canvas.Clear(Bounds, style);
+        }
+
+        var content = ContentBounds;
+        var affixes = MeasureAffixes(StartAffix, EndAffix, affixGap);
+        var drawStart = affixes.StartCells != 0 &&
+            content.Width >= markWidth.Add(affixes.StartCells);
+        var drawEnd = affixes.EndCells != 0 &&
+            content.Width >= markWidth.Add(affixes.StartCells).Add(affixes.EndCells);
+        var renderedAffixes = new AffixMetrics(
+            drawStart ? affixes.StartCells : 0,
+            drawEnd ? affixes.EndCells : 0);
+        var markX = placement == SelectionMarkPlacement.Leading
+            ? content.X.SaturatingAdd(renderedAffixes.StartCells)
+            : Math.Max(
+                content.X,
+                content.Right.SaturatingSubtract(renderedAffixes.EndCells).SaturatingSubtract(markWidth));
+        RenderAffixes(
+            canvas,
+            content,
+            renderedAffixes,
+            drawStart ? StartAffix : null,
+            drawEnd ? EndAffix : null,
+            style);
+        _ = canvas.Draw(
+            mark,
+            new Point(markX, content.Y),
+            style,
+            background: BackgroundMode.Transparent);
     }
 
     #endregion
