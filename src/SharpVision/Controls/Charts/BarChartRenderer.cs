@@ -6,6 +6,64 @@ namespace SharpVision.Controls.Charts;
 /// <summary>Renders grouped horizontal and vertical bar-chart cells.</summary>
 internal static class BarChartRenderer
 {
+    /// <summary>Maps one plot cell to the nearest visible bar lane.</summary>
+    internal static bool TryHitTestSelection(
+        IChartControl chart,
+        Point position,
+        Orientation orientation,
+        out ChartSelection selection)
+    {
+        var plot = ResolvePlot(chart, orientation);
+        var categoryCount = GetCategoryCount(chart.Series);
+
+        if (!plot.Contains(position) || categoryCount == 0)
+        {
+            selection = default;
+            return false;
+        }
+
+        var category = FindCategory(
+            orientation == Orientation.Horizontal ? position.Y : position.X,
+            categoryCount,
+            orientation == Orientation.Horizontal ? plot.Y : plot.X,
+            orientation == Orientation.Horizontal ? plot.Height : plot.Width);
+        var band = CategoryBand(
+            category,
+            categoryCount,
+            orientation == Orientation.Horizontal ? plot.Y : plot.X,
+            orientation == Orientation.Horizontal ? plot.Height : plot.Width);
+        var fractional = chart.ActualStyle.FillMode == ChartFillMode.Fractional;
+        var thickness = LaneThickness(band, chart.Series.Count, fractional);
+        var coordinate = orientation == Orientation.Horizontal ? position.Y : position.X;
+        var bestDistance = int.MaxValue;
+        selection = default;
+        var found = false;
+
+        for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)
+        {
+            if (category >= chart.Series[seriesIndex].Points.Count || seriesIndex >= band.Length)
+            {
+                continue;
+            }
+
+            var lane = fractional
+                ? band.Start + (seriesIndex * thickness) + (thickness / 2)
+                : PlaceInBand(band, seriesIndex, chart.Series.Count);
+            var distance = Math.Abs(coordinate - lane);
+
+            if (found && distance >= bestDistance)
+            {
+                continue;
+            }
+
+            found = true;
+            bestDistance = distance;
+            selection = new ChartSelection(seriesIndex, category);
+        }
+
+        return found;
+    }
+
     /// <summary>Renders one grouped bar chart in the requested orientation.</summary>
     internal static void Render(
         IChartControl chart,
@@ -48,7 +106,7 @@ internal static class BarChartRenderer
         var zero = BoundaryX(range, 0, plot);
         var fractional = context.Chart.ActualStyle.FillMode == ChartFillMode.Fractional;
 
-        if (zero > plot.X && zero < plot.Right)
+        if (context.Chart.ShowZeroAxis && zero > plot.X && zero < plot.Right)
         {
             canvas.DrawLine(
                 new Point(zero, plot.Y),
@@ -72,7 +130,7 @@ internal static class BarChartRenderer
                 }
 
                 var point = series.Points[category];
-                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
+                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex, category);
                 var value = BoundaryX(range, point.Value, plot);
                 var left = Math.Min(zero, value);
                 var right = Math.Max(zero, value);
@@ -104,6 +162,15 @@ internal static class BarChartRenderer
                         right,
                         Math.Min(lane + (thickness / 2), band.Start + band.Length - 1),
                         plot);
+                    RenderSelectionMarker(
+                        context,
+                        canvas,
+                        seriesIndex,
+                        category,
+                        new Point(
+                            HorizontalEndpoint(point.Value, left, right, zero, plot),
+                            Math.Min(lane + (thickness / 2), band.Start + band.Length - 1)),
+                        style);
                     continue;
                 }
 
@@ -119,6 +186,13 @@ internal static class BarChartRenderer
                 }
 
                 RenderHorizontalValueLabel(context, canvas, point, left, right, y, plot);
+                RenderSelectionMarker(
+                    context,
+                    canvas,
+                    seriesIndex,
+                    category,
+                    new Point(HorizontalEndpoint(point.Value, left, right, zero, plot), y),
+                    style);
             }
         }
     }
@@ -132,6 +206,19 @@ internal static class BarChartRenderer
         var range = context.Range;
         var zero = BoundaryY(range, 0, plot);
         var fractional = context.Chart.ActualStyle.FillMode == ChartFillMode.Fractional;
+
+        if (context.Chart.ShowZeroAxis &&
+            range.Minimum < 0 &&
+            range.Maximum > 0 &&
+            zero >= plot.Y &&
+            zero < plot.Bottom)
+        {
+            canvas.DrawLine(
+                new Point(plot.X, zero),
+                new Point(plot.Right - 1, zero),
+                ChartRenderer.ResolveHorizontalAxisGlyph(context),
+                ChartRenderer.ResolveAxisStyle(context));
+        }
 
         for (var category = 0; category < categoryCount; category++)
         {
@@ -148,7 +235,7 @@ internal static class BarChartRenderer
                 }
 
                 var point = series.Points[category];
-                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex);
+                var style = ChartRenderer.ResolveSeriesStyle(context, series, point, seriesIndex, category);
                 var value = BoundaryY(range, point.Value, plot);
                 var top = Math.Min(zero, value);
 
@@ -176,6 +263,15 @@ internal static class BarChartRenderer
                         point,
                         new Point(Math.Min(lane + (thickness / 2), band.Start + band.Length - 1), Math.Max(plot.Y, top - 1)),
                         plot);
+                    RenderSelectionMarker(
+                        context,
+                        canvas,
+                        seriesIndex,
+                        category,
+                        new Point(
+                            Math.Min(lane + (thickness / 2), band.Start + band.Length - 1),
+                            VerticalEndpoint(point.Value, top, zero, (eighths + 7) / 8, plot)),
+                        style);
                     continue;
                 }
 
@@ -192,8 +288,61 @@ internal static class BarChartRenderer
                 }
 
                 RenderValueLabel(context, canvas, point, new Point(x, Math.Max(plot.Y, top - 1)), plot);
+                RenderSelectionMarker(
+                    context,
+                    canvas,
+                    seriesIndex,
+                    category,
+                    new Point(x, VerticalEndpoint(point.Value, top, zero, bottom - top, plot)),
+                    style);
             }
         }
+    }
+
+    [Pure]
+    private static int HorizontalEndpoint(double value, int left, int right, int zero, Rect plot)
+    {
+        var endpoint = value switch
+        {
+            > 0 => right - 1,
+            < 0 => left,
+            _ => zero
+        };
+
+        return Math.Clamp(endpoint, plot.X, plot.Right - 1);
+    }
+
+    [Pure]
+    private static int VerticalEndpoint(double value, int top, int zero, int extent, Rect plot)
+    {
+        var endpoint = value switch
+        {
+            > 0 => top,
+            < 0 => zero + Math.Max(0, extent - 1),
+            _ => zero
+        };
+
+        return Math.Clamp(endpoint, plot.Y, plot.Bottom - 1);
+    }
+
+    private static void RenderSelectionMarker(
+        ChartRenderContext context,
+        TerminalCanvas canvas,
+        int seriesIndex,
+        int pointIndex,
+        Point position,
+        TerminalStyle style)
+    {
+        if (context.Chart.Selection != new ChartSelection(seriesIndex, pointIndex))
+        {
+            return;
+        }
+
+        canvas.DrawRune(
+            context.Chart.ActualStyle.Glyphs.Point,
+            position,
+            style,
+            BackgroundMode.Transparent);
     }
 
     // Fractional bars fill their band instead of occupying one centered cell: the series divide
@@ -208,7 +357,7 @@ internal static class BarChartRenderer
             return 1;
         }
 
-        var usable = band.Length >= 3 ? band.Length - 1 : band.Length;
+        var usable = band.Length > seriesCount ? band.Length - 1 : band.Length;
         return Math.Max(1, usable / Math.Max(1, seriesCount));
     }
 
@@ -249,7 +398,10 @@ internal static class BarChartRenderer
                         continue;
                     }
 
-                    var y = band.Start + (band.Length / 2);
+                    var y = HorizontalCategoryLabelY(
+                        band,
+                        context.Chart.Series.Count,
+                        context.Chart.ActualStyle.FillMode == ChartFillMode.Fractional);
                     _ = canvas.Clip(new Rect(plot.X, y, labelWidth, 1)).Draw(
                         context.Chart.Series[0].Points[index].Label.AsSpan(),
                         new Point(plot.X, y),
@@ -287,7 +439,7 @@ internal static class BarChartRenderer
                     context.Chart.Series[0].Points[index].Label,
                     x,
                     plot.Bottom - 1,
-                    new Rect(plot.X, plot.Bottom - 1, plot.Width, 1));
+                    new Rect(band.Start, plot.Bottom - 1, band.Length, 1));
             }
 
             if (plot.Height >= 3)
@@ -307,6 +459,46 @@ internal static class BarChartRenderer
     }
 
     [Pure]
+    private static Rect ResolvePlot(IChartControl chart, Orientation orientation)
+    {
+        var plot = ChartRenderer.ResolveLayout(chart).Plot;
+
+        if (!chart.ShowCategoryLabels || chart.Series.Count == 0 || chart.Series[0].Points.Count == 0)
+        {
+            return plot;
+        }
+
+        if (orientation == Orientation.Horizontal && plot.Width >= 8)
+        {
+            var labelWidth = 0;
+
+            foreach (var point in chart.Series[0].Points)
+            {
+                labelWidth = Math.Max(labelWidth, chart.Control.MeasureCells(point.Label.AsSpan()));
+            }
+
+            labelWidth = Math.Min(labelWidth, Math.Max(0, plot.Width / 3));
+            return labelWidth > 0
+                ? new Rect(plot.X.Add(labelWidth + 1), plot.Y, Math.Max(0, plot.Width - labelWidth - 1), plot.Height)
+                : plot;
+        }
+
+        return orientation == Orientation.Vertical && plot.Height >= 2
+            ? plot.Height >= 3
+                ? new Rect(plot.X, plot.Y, plot.Width, plot.Height - 2)
+                : new Rect(plot.X, plot.Y, plot.Width, plot.Height - 1)
+            : plot;
+    }
+
+    [Pure]
+    private static int FindCategory(int coordinate, int count, int origin, int extent)
+    {
+        return extent <= 1
+            ? 0
+            : Math.Min(count - 1, (int) ((long) (coordinate - origin) * count / extent));
+    }
+
+    [Pure]
     private static int GetCategoryCount(IReadOnlyList<ChartSeries> series)
     {
         var count = 0;
@@ -317,6 +509,25 @@ internal static class BarChartRenderer
         }
 
         return count;
+    }
+
+    // Fractional bars deliberately leave a trailing gutter in roomy category bands. Centering the
+    // label on the whole band can therefore put it on blank space, so its coordinate follows the
+    // occupied lane span instead. Glyph bars remain centered across the whole category band.
+    [Pure]
+    private static int HorizontalCategoryLabelY(
+        (int Start, int Length) band,
+        int seriesCount,
+        bool fractional)
+    {
+        if (!fractional)
+        {
+            return band.Start + (band.Length / 2);
+        }
+
+        var visibleSeries = Math.Min(seriesCount, band.Length);
+        var occupied = Math.Min(band.Length, LaneThickness(band, seriesCount, fractional) * visibleSeries);
+        return band.Start + Math.Min(band.Length - 1, occupied / 2);
     }
 
     /// <summary>Maps one slot to its centered cell using overflow-safe proportional arithmetic.</summary>
@@ -351,14 +562,14 @@ internal static class BarChartRenderer
             : band.Start + seriesIndex;
 
     [Pure]
-    private static int BoundaryX(ChartScaleRange range, double value, Rect plot)
+    internal static int BoundaryX(ChartScaleRange range, double value, Rect plot)
     {
         var ratio = ChartRenderer.Ratio(range, value);
         return plot.X.Add((int) Math.Round(ratio * plot.Width, MidpointRounding.AwayFromZero));
     }
 
     [Pure]
-    private static int BoundaryY(ChartScaleRange range, double value, Rect plot)
+    internal static int BoundaryY(ChartScaleRange range, double value, Rect plot)
     {
         var ratio = ChartRenderer.Ratio(range, value);
         return plot.Bottom - (int) Math.Round(ratio * plot.Height, MidpointRounding.AwayFromZero);
@@ -376,7 +587,7 @@ internal static class BarChartRenderer
             return;
         }
 
-        var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
+        var value = point.Value.ToString(context.Chart.ValueLabelFormat, CultureInfo.InvariantCulture);
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
 
         // A numeric label that is merely clipped at the plot edge reads as a different number
@@ -409,7 +620,7 @@ internal static class BarChartRenderer
             return;
         }
 
-        var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
+        var value = point.Value.ToString(context.Chart.ValueLabelFormat, CultureInfo.InvariantCulture);
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
 
         if (width == 0 || width > plot.Width)
@@ -417,13 +628,14 @@ internal static class BarChartRenderer
             return;
         }
 
-        // Preferred placement is one blank cell beyond the bar; a bar reaching the plot edge used
-        // to lose its label entirely, which hid exactly the extreme value a reader most wants.
-        // Clamping draws the label over the bar's tail instead.
-        var x = Math.Clamp(
-            point.Value < 0 ? left - width - 1 : right.Add(1),
-            plot.X,
-            plot.Right - width);
+        // Labels never replace data cells: a clipped number can read as another value, while a
+        // number painted over a bar destroys the very extent the chart exists to compare.
+        var x = point.Value < 0 ? left - width - 1 : right.Add(1);
+
+        if (x < plot.X || x.Add(width) > plot.Right)
+        {
+            return;
+        }
 
         _ = canvas.Clip(plot).Draw(
             value.AsSpan(),

@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Controls.Charts;
 
-using System.Reflection;
-
 /// <summary>Verifies chart rendering and live data through mounted terminal surfaces.</summary>
 public sealed class ChartSurfaceTests
 {
@@ -443,6 +441,36 @@ public sealed class ChartSurfaceTests
         }
     }
 
+    /// <summary>Verifies top and side legends have an axis-colored divider instead of touching
+    /// data cells directly.</summary>
+    [Theory]
+    [InlineData(ChartLegendPlacement.Top, 0, 1, "─")]
+    [InlineData(ChartLegendPlacement.Left, 4, 0, "│")]
+    [InlineData(ChartLegendPlacement.Right, 7, 0, "│")]
+    public async Task Render_WhenTopOrSideLegendIsVisible_SeparatesItFromThePlotAsync(
+        ChartLegendPlacement placement,
+        int x,
+        int y,
+        string expected)
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = CreateNamedSeries(),
+            LegendPlacement = placement,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(12, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(x, y)).Text.ShouldBe(expected);
+    }
+
     /// <summary>Verifies horizontal value labels retain one blank cell after the bar.</summary>
     [Fact]
     public async Task Render_WhenHorizontalBarShowsValueLabel_SeparatesItFromTheBarAsync()
@@ -465,6 +493,31 @@ public sealed class ChartSurfaceTests
 
         // Assert
         surface.ShouldRender("█████ 5   ");
+    }
+
+    /// <summary>Verifies a full chart can author an invariant numeric format for visible values.</summary>
+    [Fact]
+    public async Task Render_WhenValueLabelFormatIsAuthored_UsesItForVisibleValuesAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 2)])],
+            Scale = new ChartScale(0, 2, includeZero: false),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false,
+            ShowValueLabels = true,
+            ValueLabelFormat = "0.0"
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("●2.0");
     }
 
     /// <summary>Verifies horizontal categories have a visible boundary and bars begin at the plot origin.</summary>
@@ -524,6 +577,60 @@ public sealed class ChartSurfaceTests
 
         surface.Cell(new Point(5, 0)).Text.ShouldBe("│");
         surface.Cell(new Point(5, 2)).Text.ShouldBe("│");
+    }
+
+    /// <summary>Verifies the shared zero-axis option applies consistently to vertical numeric axes.</summary>
+    [Theory]
+    [InlineData(true, "────")]
+    [InlineData(false, "    ")]
+    public async Task Render_WhenVerticalRangeHasMixedSigns_RespectsZeroAxisAsync(
+        bool showZeroAxis,
+        string expectedMiddleRow)
+    {
+        // Arrange
+        var chart = new VerticalBarChart
+        {
+            Series = [new ChartSeries("CPU", [new ChartDataPoint("Now", 5)])],
+            Scale = new ChartScale(-5, 5, includeZero: true),
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false,
+            ShowZeroAxis = showZeroAxis
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(10, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        string.Concat(Enumerable.Range(0, 4).Select(x => surface.Cell(new Point(x, 2)).Text))
+            .ShouldBe(expectedMiddleRow);
+    }
+
+    /// <summary>Verifies category labels own disjoint bands when the horizontal domain is tight.</summary>
+    [Fact]
+    public async Task Render_WhenLineCategoryLabelsAreCrowded_ClipsEachLabelToItsBandAsync()
+    {
+        // Arrange
+        var chart = new LineChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("Alpha", 1),
+                new ChartDataPoint("Beta", 1),
+                new ChartDataPoint("Gamma", 1)])],
+            LegendPlacement = ChartLegendPlacement.Hidden
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(9, 2),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        string.Concat(Enumerable.Range(0, 9).Select(x => surface.Cell(new Point(x, 1)).Text))
+            .ShouldBe("AlpBetGam");
     }
 
     /// <summary>Verifies multi-cell line labels are centered without truncating their text.</summary>
@@ -794,11 +901,10 @@ public sealed class ChartSurfaceTests
         surface.Cell(new Point(0, 3)).Text.ShouldBe("▀");
     }
 
-    /// <summary>Verifies a bar reaching the plot edge keeps its value label by drawing it over
-    /// the bar's tail. It used to vanish entirely, hiding exactly the extreme value a reader
-    /// most wants to know.</summary>
+    /// <summary>Verifies a bar reaching the plot edge suppresses a label that cannot fit without
+    /// overwriting data. A number painted over the bar tail destroys the bar's comparative shape.</summary>
     [Fact]
-    public async Task Render_WhenTheBarReachesThePlotEdge_ClampsTheValueLabelInsideAsync()
+    public async Task Render_WhenTheBarReachesThePlotEdge_SuppressesTheValueLabelAsync()
     {
         // Arrange
         var chart = new HorizontalBarChart
@@ -816,7 +922,69 @@ public sealed class ChartSurfaceTests
             TestContext.Current.CancellationToken);
 
         // Assert
-        surface.ShouldRender("█████8");
+        surface.ShouldRender("██████");
+    }
+
+    /// <summary>Verifies adjacent horizontal categories retain a blank gutter whenever their
+    /// bands have one cell beyond the visible series lanes.</summary>
+    [Fact]
+    public async Task Render_WhenHorizontalCategoryBandCanAffordAGutter_LeavesItBlankAsync()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 1),
+                new ChartDataPoint("B", 1),
+                new ChartDataPoint("C", 1)])],
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = false
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(2, 5),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.ShouldRender("""
+                             ██
+                             ██
+
+                             ██
+
+                             """);
+    }
+
+    /// <summary>Verifies horizontal category labels stay centered on the occupied bar lanes when
+    /// a roomy band reserves its final row as a gutter.</summary>
+    [Fact]
+    public async Task Render_WhenHorizontalCategoryBandHasAGutter_AlignsLabelWithBarAsync()
+    {
+        // Arrange
+        var chart = new HorizontalBarChart
+        {
+            Series = [new ChartSeries("CPU", [
+                new ChartDataPoint("A", 1),
+                new ChartDataPoint("B", 1)])],
+            LegendPlacement = ChartLegendPlacement.Hidden,
+            ShowCategoryLabels = true
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(10, 4),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("A");
+        surface.Cell(new Point(2, 0)).Text.ShouldBe("█");
+        surface.Cell(new Point(0, 1)).Text.ShouldBe(" ");
+        surface.Cell(new Point(2, 1)).Text.ShouldBe(" ");
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("B");
+        surface.Cell(new Point(2, 2)).Text.ShouldBe("█");
     }
 
     /// <summary>Verifies line segments rasterize through half-cell quadrants, so a slope descends
@@ -1209,7 +1377,7 @@ public sealed class ChartSurfaceTests
 
         // Assert
         context.Layout.Plot.Y.ShouldBe(int.MaxValue);
-        context.Layout.Plot.Height.ShouldBe(9);
+        context.Layout.Plot.Height.ShouldBe(8);
     }
 
     /// <summary>The horizontal twin of the above: a Left legend divides the bounds' X origin with
@@ -1232,7 +1400,7 @@ public sealed class ChartSurfaceTests
 
         // Assert
         context.Layout.Plot.X.ShouldBe(int.MaxValue);
-        context.Layout.Plot.Width.ShouldBe(14);
+        context.Layout.Plot.Width.ShouldBe(13);
     }
 
     /// <summary>Verifies the horizontal zero/value boundary saturates instead of wrapping when the
@@ -1243,12 +1411,8 @@ public sealed class ChartSurfaceTests
         // Arrange
         var range = new ChartScaleRange(0, 10);
         var plot = new Rect(int.MaxValue - 5, 0, 20, 5);
-        var boundaryX = typeof(BarChartRenderer).GetMethod(
-            "BoundaryX",
-            BindingFlags.NonPublic | BindingFlags.Static)!;
-
         // Act
-        var result = (int) boundaryX.Invoke(null, [range, 10.0, plot])!;
+        var result = BarChartRenderer.BoundaryX(range, 10, plot);
 
         // Assert
         result.ShouldBe(int.MaxValue);

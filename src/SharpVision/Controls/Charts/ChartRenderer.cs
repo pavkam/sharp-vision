@@ -142,11 +142,27 @@ internal static class ChartRenderer
         ChartRenderContext context,
         ChartSeries series,
         ChartDataPoint point,
-        int seriesIndex)
+        int seriesIndex,
+        int pointIndex = -1)
     {
         var value = ResolveColor(context.Chart.ActualStyle, series, point, seriesIndex);
         var color = context.Chart.ResolveSeriesColor(value);
-        return context.InheritedStyle.WithForeground(color);
+        var style = context.InheritedStyle.WithForeground(color);
+
+        if (pointIndex < 0 || context.Chart.Selection != new ChartSelection(seriesIndex, pointIndex))
+        {
+            return style;
+        }
+
+        var attributes = context.Chart.ActualStyle.SelectionDecoration.Resolve(context.Chart.Control.Theme);
+        var (resolvedAttributes, underline, underlineColor) = DecorationResolver.Resolve(style, attributes);
+        return new TerminalStyle(
+            style.Foreground,
+            style.Background,
+            resolvedAttributes,
+            style.Hyperlink,
+            underline,
+            underlineColor);
     }
 
     /// <summary>Creates a terminal style using the chart's resolved label color.</summary>
@@ -212,13 +228,14 @@ internal static class ChartRenderer
         for (var index = 0; index < points.Count; index++)
         {
             var x = MapX(index, points.Count, plot);
+            var band = BarChartRenderer.CategoryBand(index, points.Count, plot.X, plot.Width);
             RenderCenteredLabel(
                 context,
                 canvas,
                 points[index].Label,
                 x,
                 plot.Bottom - 1,
-                new Rect(plot.X, plot.Bottom - 1, plot.Width, 1));
+                new Rect(band.Start, plot.Bottom - 1, band.Length, 1));
         }
 
         return new Rect(plot.X, plot.Y, plot.Width, plot.Height - 1);
@@ -237,7 +254,7 @@ internal static class ChartRenderer
             return;
         }
 
-        var value = point.Value.ToString("G", CultureInfo.InvariantCulture);
+        var value = point.Value.ToString(context.Chart.ValueLabelFormat, CultureInfo.InvariantCulture);
         var width = context.Chart.Control.MeasureCells(value.AsSpan());
         var x = marker.X.Add(1);
 
@@ -275,10 +292,33 @@ internal static class ChartRenderer
             canvas.DrawRune(
                 context.Chart.ActualStyle.Glyphs.Point,
                 current,
-                ResolveSeriesStyle(context, series, point, seriesIndex),
+                ResolveSeriesStyle(context, series, point, seriesIndex, pointIndex),
                 BackgroundMode.Transparent);
             RenderValueLabel(context, canvas, point, current, plot);
         }
+    }
+
+    /// <summary>Draws the horizontal zero rule for a vertical numeric axis when zero is interior.</summary>
+    internal static void RenderHorizontalZeroAxis(
+        ChartRenderContext context,
+        TerminalCanvas canvas,
+        Rect plot)
+    {
+        if (!context.Chart.ShowZeroAxis ||
+            context.Range.Minimum >= 0 ||
+            context.Range.Maximum <= 0 ||
+            plot.Width == 0 ||
+            plot.Height == 0)
+        {
+            return;
+        }
+
+        var y = MapY(context.Range, 0, plot);
+        canvas.DrawLine(
+            new Point(plot.X, y),
+            new Point(plot.Right - 1, y),
+            ResolveHorizontalAxisGlyph(context),
+            ResolveAxisStyle(context));
     }
 
     // A fractional bar's extent from the whole-cell zero boundary every bar in the plot shares.
@@ -319,7 +359,7 @@ internal static class ChartRenderer
         (int) Math.Clamp(value, int.MinValue, int.MaxValue);
 
     [Pure]
-    private static ChartPlotLayout ResolveLayout(IChartControl chart)
+    internal static ChartPlotLayout ResolveLayout(IChartControl chart)
     {
         var bounds = chart.Control.Bounds;
         var placement = ResolveLegendPlacement(chart);
@@ -328,14 +368,18 @@ internal static class ChartRenderer
             ? new ChartPlotLayout(bounds, default)
             : placement switch
             {
-                ChartLegendPlacement.Top => new ChartPlotLayout(
-                    new Rect(bounds.X, bounds.Y.Add(1), bounds.Width, bounds.Height - 1),
-                    new Rect(bounds.X, bounds.Y, bounds.Width, 1)),
+                ChartLegendPlacement.Top => bounds.Height >= 3
+                    ? new ChartPlotLayout(
+                        new Rect(bounds.X, bounds.Y.Add(2), bounds.Width, bounds.Height - 2),
+                        new Rect(bounds.X, bounds.Y, bounds.Width, 1))
+                    : new ChartPlotLayout(
+                        new Rect(bounds.X, bounds.Y.Add(1), bounds.Width, bounds.Height - 1),
+                        new Rect(bounds.X, bounds.Y, bounds.Width, 1)),
                 ChartLegendPlacement.Left when bounds.Width >= 8 => new ChartPlotLayout(
-                    new Rect(bounds.X.Add(Math.Min(12, bounds.Width / 3)), bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3), bounds.Height),
+                    new Rect(bounds.X.Add(Math.Min(12, bounds.Width / 3) + 1), bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3) - 1, bounds.Height),
                     new Rect(bounds.X, bounds.Y, Math.Min(12, bounds.Width / 3), bounds.Height)),
                 ChartLegendPlacement.Right when bounds.Width >= 8 => new ChartPlotLayout(
-                    new Rect(bounds.X, bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3), bounds.Height),
+                    new Rect(bounds.X, bounds.Y, bounds.Width - Math.Min(12, bounds.Width / 3) - 1, bounds.Height),
                     new Rect(bounds.Right - Math.Min(12, bounds.Width / 3), bounds.Y, Math.Min(12, bounds.Width / 3), bounds.Height)),
                 ChartLegendPlacement.Automatic or ChartLegendPlacement.Bottom or
                     ChartLegendPlacement.Left or ChartLegendPlacement.Right => bounds.Height >= 3
@@ -348,6 +392,69 @@ internal static class ChartRenderer
                 ChartLegendPlacement.Hidden => new ChartPlotLayout(bounds, default),
                 _ => throw new UnreachableException()
             };
+    }
+
+    /// <summary>Finds the plotted point nearest one cell inside a line or area plot.</summary>
+    internal static bool TryHitTestSelection(
+        IChartControl chart,
+        Point position,
+        out ChartSelection selection)
+    {
+        var context = new ChartRenderContext(
+            chart,
+            ResolveLayout(chart),
+            ChartScaleResolver.Resolve(chart.Scale, chart.Series),
+            default);
+        var plot = ResolveHorizontalCategoryPlot(context);
+
+        if (!plot.Contains(position))
+        {
+            selection = default;
+            return false;
+        }
+
+        var found = false;
+        var shortest = long.MaxValue;
+        selection = default;
+
+        for (var seriesIndex = 0; seriesIndex < chart.Series.Count; seriesIndex++)
+        {
+            var series = chart.Series[seriesIndex];
+
+            for (var pointIndex = 0; pointIndex < series.Points.Count; pointIndex++)
+            {
+                var point = series.Points[pointIndex];
+                var x = MapX(pointIndex, series.Points.Count, plot);
+                var y = MapY(context.Range, point.Value, plot);
+                var deltaX = (long) x - position.X;
+                var deltaY = (long) y - position.Y;
+                var distance = (deltaX * deltaX) + (deltaY * deltaY);
+
+                if (found && distance >= shortest)
+                {
+                    continue;
+                }
+
+                found = true;
+                shortest = distance;
+                selection = new ChartSelection(seriesIndex, pointIndex);
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>Reserves the horizontal category-label row without painting it.</summary>
+    [Pure]
+    internal static Rect ResolveHorizontalCategoryPlot(ChartRenderContext context)
+    {
+        var plot = context.Layout.Plot;
+        return context.Chart.ShowCategoryLabels &&
+               plot.Height >= 2 &&
+               context.Chart.Series.Count > 0 &&
+               context.Chart.Series[0].Points.Count > 0
+            ? new Rect(plot.X, plot.Y, plot.Width, plot.Height - 1)
+            : plot;
     }
 
     [Pure]
@@ -386,6 +493,30 @@ internal static class ChartRenderer
                 new Point(bounds.X, bounds.Y - 1),
                 new Point(bounds.Right - 1, bounds.Y - 1),
                 ResolveHorizontalAxisGlyph(context),
+                ResolveAxisStyle(context));
+        }
+        else if (bounds.Bottom < context.Layout.Plot.Y)
+        {
+            canvas.DrawLine(
+                new Point(bounds.X, bounds.Bottom),
+                new Point(bounds.Right - 1, bounds.Bottom),
+                ResolveHorizontalAxisGlyph(context),
+                ResolveAxisStyle(context));
+        }
+        else if (bounds.Right < context.Layout.Plot.X)
+        {
+            canvas.DrawLine(
+                new Point(bounds.Right, bounds.Y),
+                new Point(bounds.Right, bounds.Bottom - 1),
+                ResolveVerticalAxisGlyph(context),
+                ResolveAxisStyle(context));
+        }
+        else if (bounds.X > context.Layout.Plot.Right)
+        {
+            canvas.DrawLine(
+                new Point(bounds.X - 1, bounds.Y),
+                new Point(bounds.X - 1, bounds.Bottom - 1),
+                ResolveVerticalAxisGlyph(context),
                 ResolveAxisStyle(context));
         }
 

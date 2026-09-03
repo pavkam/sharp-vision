@@ -126,6 +126,7 @@ Complete modal tasks such as `MessageBox` live in
 
 ### Charts
 
+- [CartesianChartControlBase](charts/cartesian-chart-control-base.md#overview)
 - [HorizontalBarChart](charts/horizontal-bar-chart.md#overview)
 - [VerticalBarChart](charts/vertical-bar-chart.md#overview)
 - [LineChart](charts/line-chart.md#overview)

@@ -8,13 +8,13 @@ using System.Collections.ObjectModel;
 /// <summary>Verifies the shared public contract of concrete chart controls.</summary>
 public sealed class ChartControlTests
 {
-    /// <summary>Verifies full charts share documented passive presentation defaults.</summary>
+    /// <summary>Verifies Cartesian charts share the same inherited presentation and input defaults.</summary>
     [Theory]
     [MemberData(nameof(FullCharts))]
     public void Constructor_WhenFullChartIsCreated_UsesSharedDefaults(ControlBase control)
     {
         // Arrange and act
-        var chart = control.ShouldBeAssignableTo<IChartControl>();
+        var chart = control.ShouldBeAssignableTo<CartesianChartControlBase>();
 
         // Assert
         chart.Series.ShouldBeEmpty();
@@ -24,8 +24,11 @@ public sealed class ChartControlTests
         chart.LegendPlacement.ShouldBe(ChartLegendPlacement.Automatic);
         chart.ShowCategoryLabels.ShouldBeTrue();
         chart.ShowValueLabels.ShouldBeFalse();
-        control.CanFocus.ShouldBeFalse();
-        control.IsHitTestVisible.ShouldBeFalse();
+        chart.ShowZeroAxis.ShouldBeTrue();
+        chart.ValueLabelFormat.ShouldBe("G");
+        control.CanFocus.ShouldBeTrue();
+        control.CanTabStop.ShouldBeTrue();
+        control.IsHitTestVisible.ShouldBeTrue();
     }
 
     /// <summary>Verifies a sparkline uses compact one-series trend defaults.</summary>
@@ -38,8 +41,9 @@ public sealed class ChartControlTests
         // Assert
         chart.Series.ShouldBeEmpty();
         chart.Scale.IncludeZero.ShouldBeFalse();
-        chart.CanFocus.ShouldBeFalse();
-        chart.IsHitTestVisible.ShouldBeFalse();
+        chart.CanFocus.ShouldBeTrue();
+        chart.CanTabStop.ShouldBeTrue();
+        chart.IsHitTestVisible.ShouldBeTrue();
     }
 
     /// <summary>Verifies a sparkline's own fixed-policy overrides - unlike every full chart, which
@@ -264,6 +268,53 @@ public sealed class ChartControlTests
         // Assert
         GetShowValueLabels(control).ShouldBeTrue();
         control.Pending.ShouldBe(Invalidation.Measure | Invalidation.Arrange | Invalidation.Render);
+    }
+
+    /// <summary>Verifies the shared value-label format validates before state changes and repaints
+    /// without forcing a new layout when a valid invariant numeric format is assigned.</summary>
+    [Fact]
+    public void ValueLabelFormat_WhenChangedOrInvalid_ValidatesAndInvalidatesRender()
+    {
+        // Arrange
+        var chart = new LineChart();
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+
+        // Act
+        chart.ValueLabelFormat = "0.0";
+
+        // Assert
+        chart.ValueLabelFormat.ShouldBe("0.0");
+        chart.Pending.ShouldBe(Invalidation.Render);
+
+        // Act and assert invalid replacements before mutation.
+        _ = Should.Throw<ArgumentNullException>(() => chart.ValueLabelFormat = null!);
+        _ = Should.Throw<ArgumentException>(() => chart.ValueLabelFormat = "Q");
+        chart.ValueLabelFormat.ShouldBe("0.0");
+    }
+
+    /// <summary>Verifies the Cartesian base owns the shared zero-axis toggle and repaints without
+    /// changing desired geometry.</summary>
+    [Fact]
+    public void ShowZeroAxis_WhenChanged_RoundTripsAndInvalidatesRender()
+    {
+        // Arrange
+        var chart = new AreaChart();
+        new LayoutEngine().Layout(chart, new Size(30, 10));
+        using (var frame = new Frame(new Size(30, 10)))
+        {
+            chart.Render(frame.Canvas);
+        }
+
+        // Act
+        chart.ShowZeroAxis = false;
+
+        // Assert
+        chart.ShowZeroAxis.ShouldBeFalse();
+        chart.Pending.ShouldBe(Invalidation.Render);
     }
 
     /// <summary>Verifies a null series assignment fails before replacing visible data.</summary>

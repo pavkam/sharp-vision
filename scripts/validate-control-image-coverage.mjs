@@ -10,6 +10,7 @@ import { pathToFileURL } from "node:url";
 // wraps it with its own dedicated Gallery pane.
 export const excludedAbstractDocSlugs = new Set([
   "animated-indicator-base",
+  "cartesian-chart-control-base",
   "composite-control",
   "container",
   "content-control",

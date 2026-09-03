@@ -26,19 +26,21 @@ internal sealed class LineChartPane: CompositeControlBase
             LegendPlacement = ChartLegendPlacement.Bottom
         };
         _ = bound.Bind(model, source => source.Series);
-        var status = new Text("1 bound series");
+        bound.Selection = new ChartSelection(0, 0);
+        var status = new Text();
+        ChartSelectionPresenter.Connect(bound, status);
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             if (model.Series?.Count == 1)
             {
                 model.Add(new ChartSeries("Memory", Wave(amplitude: 9, phase: 1.9, drift: 0.7, offset: 38)));
-                status.Content = "2 bound series · legend added";
+                ChartSelectionPresenter.Refresh(bound, status);
             }
             else
             {
                 cpu.Points[^1].Value += 2;
-                status.Content = FormattableString.Invariant($"CPU latest: {cpu.Points[^1].Value:G}");
+                ChartSelectionPresenter.Refresh(bound, status);
             }
         };
 
@@ -82,9 +84,9 @@ internal sealed class LineChartPane: CompositeControlBase
                 "Complete labels and spaced legends remain readable while bound collections and points update in place.",
                 new DocExample(
                     "CPU and memory trend",
-                    "Add Memory through the bound collection; later activations append CPU data in place.",
+                    "Click the nearest point or Tab to the chart; Left/Right moves points, Up/Down switches series, and Esc clears. Add Memory updates the bound collection.",
                     new DocColumn(bound, new ChartActionRow(add, status)),
-                    "_ = chart.Bind(model, source => source.Series);\nmodel.Add(memory);"),
+                    "_ = chart.Bind(model, source => source.Series);\nchart.SelectionChanged += ShowSelection;\nmodel.Add(memory);"),
                 new DocExample(
                     "Narrow explicit range",
                     "An 18..20 range preserves small temperature variation and labels each marker.",

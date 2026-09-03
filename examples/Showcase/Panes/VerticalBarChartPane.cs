@@ -27,14 +27,16 @@ internal sealed class VerticalBarChartPane: CompositeControlBase
             Width = Length.Cells(46),
             Height = Length.Cells(10),
             Series = [current, previous],
-            LegendPlacement = ChartLegendPlacement.Bottom
+            LegendPlacement = ChartLegendPlacement.Bottom,
+            Selection = new ChartSelection(0, 1)
         };
-        var status = new Text("Tuesday: 7");
+        var status = new Text();
+        ChartSelectionPresenter.Connect(grouped, status);
         var add = new Button { Text = "&Add data" };
         add.Click += (_, _) =>
         {
             current.Points[1].Value = current.Points[1].Value >= 10 ? 4 : current.Points[1].Value + 1;
-            status.Content = FormattableString.Invariant($"Tuesday: {current.Points[1].Value:G}");
+            ChartSelectionPresenter.Refresh(grouped, status);
         };
 
         var bounded = new VerticalBarChart
@@ -47,6 +49,7 @@ internal sealed class VerticalBarChartPane: CompositeControlBase
                 new ChartDataPoint("Wed", 9)])],
             Scale = new ChartScale(0, 10, includeZero: true),
             ShowValueLabels = true,
+            ValueLabelFormat = "0.0",
             LegendPlacement = ChartLegendPlacement.Hidden
         };
 
@@ -59,13 +62,13 @@ internal sealed class VerticalBarChartPane: CompositeControlBase
                 "Centered bars, complete category labels, and a visible category axis keep the plot readable.",
                 new DocExample(
                     "Current and previous week",
-                    "Theme colors and the spaced legend distinguish both series; Add data updates Tuesday.",
+                    "Click a bar or Tab to the chart; Left/Right moves categories, Up/Down switches series, and Esc clears. Add data updates Tuesday.",
                     new DocColumn(grouped, new ChartActionRow(add, status)),
-                    "var chart = new VerticalBarChart\n{\n    Series = [current, previous],\n    LegendPlacement = ChartLegendPlacement.Bottom,\n};"),
+                    "var chart = new VerticalBarChart\n{\n    Series = [current, previous],\n    LegendPlacement = ChartLegendPlacement.Bottom,\n};\nchart.SelectionChanged += ShowSelection;"),
                 new DocExample(
                     "Explicit score range",
-                    "A fixed 0..10 range and value labels make values directly comparable.",
+                    "A fixed 0..10 range and one-decimal value labels make values directly comparable.",
                     bounded,
-                    "chart.Scale = new ChartScale(0, 10, includeZero: true);\nchart.ShowValueLabels = true;"))));
+                    "chart.Scale = new ChartScale(0, 10, includeZero: true);\nchart.ShowValueLabels = true;\nchart.ValueLabelFormat = \"0.0\";"))));
     }
 }
