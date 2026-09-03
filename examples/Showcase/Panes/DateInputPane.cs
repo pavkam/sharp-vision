@@ -54,6 +54,20 @@ internal sealed class DateInputPane: CompositeControlBase
             nullableStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
         nullableStatus.Content = $"Value: {FormatDate(nullable.Value)}";
 
+        // Localized culture.
+        var statusCulture = new Text("Value: (pick a date)");
+        var inputCulture = new DateInput { Culture = new CultureInfo("de-DE") };
+        inputCulture.ValueChanged += (_, eventArgs) =>
+            statusCulture.Content = $"Value: {FormatDate(eventArgs.Value)}";
+        statusCulture.Content = $"Value: {FormatDate(inputCulture.Value)}";
+
+        // Custom format.
+        var statusFormat = new Text("Value: (pick a date)");
+        var inputFormat = new DateInput { Format = "yyyy/MM/dd" };
+        inputFormat.ValueChanged += (_, eventArgs) =>
+            statusFormat.Content = $"Value: {FormatDate(eventArgs.Value)}";
+        statusFormat.Content = $"Value: {FormatDate(inputFormat.Value)}";
+
         // StartAffix reserves a fixed cell for an application-owned deadline marker.
         var deadlineStatus = new Text("Value: (pick a date)");
         var deadline = new DateInput
@@ -95,6 +109,24 @@ internal sealed class DateInputPane: CompositeControlBase
                     "Press <reverse>Delete</reverse> to clear. The Calendar popup and inline editing restore a value on the next selection.",
                     new DocColumn(nullable, nullableStatus),
                     "dateInput.AllowNull = true;\n// Value is null when cleared")),
+            new DocSection(
+                "🌍",
+                "Localized culture",
+                "<info>Culture</info> localizes the Calendar popup and the typed field's date segment order, separators, and digits. The setter accepts only cultures whose calendar is Gregorian, throwing <info>ArgumentException</info> otherwise.",
+                new DocExample(
+                    "German date field",
+                    "German renders day before month with a period separator (\"dd.MM.yyyy\") instead of the invariant month-day-year slash order.",
+                    new DocColumn(inputCulture, statusCulture),
+                    "dateInput.Culture = new CultureInfo(\"de-DE\");")),
+            new DocSection(
+                "🧩",
+                "Custom format",
+                "<info>Format</info> overrides the derived date pattern entirely, taking precedence over the short date pattern that <info>Culture</info> would otherwise select.",
+                new DocExample(
+                    "Year-first date field",
+                    "The pattern's own tokens select the segment order and separators, overriding whatever <info>Culture</info> would otherwise produce.",
+                    new DocColumn(inputFormat, statusFormat),
+                    "dateInput.Format = \"yyyy/MM/dd\";")),
             new DocSection(
                 "⏰",
                 "Affixes",
