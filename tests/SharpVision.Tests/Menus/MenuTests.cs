@@ -1102,8 +1102,8 @@ public sealed class MenuTests
     /// disabled, so a shortcut bound to plain Space still sees it. Insertion no longer auto-selects a
     /// disabled item, but <see cref="Menu.SelectedIndex"/>'s own setter only validates range and
     /// separator shape - not availability - so a disabled item can still become selected explicitly.
-    /// The unmatched release still consumes its own stroke as a no-op, the same as any other unarmed
-    /// eligible release.</summary>
+    /// The paired release must bubble too - a consumed release with no matching consumed press would
+    /// leave an ancestor's own press-driven state (e.g. a hold-to-preview shortcut) stuck armed.</summary>
     [Fact]
     public async Task Dispatch_WhenSpacePressedWithSelectedItemDisabled_LeavesUnhandledAsync()
     {
@@ -1128,7 +1128,7 @@ public sealed class MenuTests
 
             var release = Router.Route(menu, Events.Key, Space(KeyAction.Release));
 
-            release.IsHandled.ShouldBeTrue();
+            release.IsHandled.ShouldBeFalse();
             invocations.ShouldBeEmpty();
         }, TestContext.Current.CancellationToken);
     }

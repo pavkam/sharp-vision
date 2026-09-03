@@ -1587,12 +1587,18 @@ public sealed class Menu: ItemsControl
         {
             if (_spacePressedItem is not { } held)
             {
-                // The paired press never armed an item here - either it was gated by an
-                // incidental modifier, or it was never observed at all. A modifier-carrying
-                // release must bubble to match its gated press instead of being silently
-                // swallowed here; an eligible unmatched release keeps the consumed no-op
-                // behavior it has always had.
-                eventArgs.IsHandled = stroke.Modifiers.IsActivationEligible();
+                // The paired press never armed an item here - it was gated by an incidental
+                // modifier, the selection was unavailable, or it was never observed at all. A
+                // modifier-carrying release must bubble to match its gated press instead of
+                // being silently swallowed here, and a release paired with an unavailable
+                // selection must bubble for the same reason its press did; an eligible release
+                // with nothing selected keeps the consumed no-op behavior it has always had.
+                eventArgs.IsHandled = stroke.Modifiers.IsActivationEligible() &&
+                    (_selectedIndex < 0 || ItemAt(_selectedIndex) is MenuItem
+                    {
+                        EffectiveIsEnabled: true, EffectiveIsVisible: true
+                    });
+
                 return;
             }
 
