@@ -566,4 +566,41 @@ public sealed class ExpanderTests
         // Assert
         expander.Pending.ShouldBe(Invalidation.None);
     }
+
+    /// <summary>Verifies the header's arranged slot - and, separately, rendering the header
+    /// caption itself - both stay well-ordered and crash-free when an ancestor drives Bounds.X to
+    /// the integer coordinate limit, mirroring GroupBox's own
+    /// Arrange_WhenBoundsSaturateAtIntegerMaximum_KeepsHeaderOrdered coverage for the identical
+    /// bug class: OnRenderContent computed the caption's draw origin with plain addition four
+    /// lines away from ArrangeOverride's saturating <c>bounds.X.Add(headerChromeWidth)</c>, so an
+    /// overflowing sum there would have wrapped to a large negative value instead of
+    /// saturating.</summary>
+    [Fact]
+    public void Render_WhenBoundsSaturateAtIntegerMaximum_KeepsHeaderCaptionOrderedAndCrashFree()
+    {
+        // Arrange
+        var expander = new Expander
+        {
+            HeaderText = "Header",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        expander.Measure(new Constraint(10, 3));
+
+        // Act
+        expander.Arrange(new Rect(int.MaxValue - 1, 0, 10, 3));
+
+        // Assert the arranged header slot - set independently by ArrangeOverride's own already
+        // saturating math - stays ordered inside the expander's own bounds.
+        var header = expander.Header.ShouldNotBeNull();
+        header.Bounds.X.ShouldBeGreaterThanOrEqualTo(expander.Bounds.X);
+        header.Bounds.Right.ShouldBeLessThanOrEqualTo(expander.Bounds.Right);
+
+        // Assert rendering the DisplayText caption itself - the direct-paint path OnRenderContent
+        // owns - never throws and never leaves stray cells behind, regardless of how its draw
+        // origin saturates at this extreme coordinate.
+        using var frame = new Frame(new Size(10, 3));
+        Should.NotThrow(() => expander.Render(frame.Canvas));
+        FrameOracle.Get(frame, default).ShouldBeEmpty();
+    }
 }

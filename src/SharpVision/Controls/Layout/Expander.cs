@@ -230,7 +230,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             var caption = canvas.Clip(HeaderBounds);
             _ = text.Content.Draw(
                 caption,
-                new Point(content.X + HeaderChromeWidth, content.Y),
+                new Point(content.X.Add(HeaderChromeWidth), content.Y),
                 s,
                 BackgroundMode.Transparent,
                 CellPolicy.AmbiguousWidth,
