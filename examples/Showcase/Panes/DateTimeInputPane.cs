@@ -137,7 +137,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                 "<info>Format</info> overrides the derived combined pattern entirely, taking precedence over <info>Culture</info>'s date pattern and <info>Use24HourFormat</info>/<info>ShowSeconds</info>.",
                 new DocExample(
                     "Year-first fractional field",
-                    "The pattern's own tokens select the date segment order and expose an editable millisecond segment.",
+                    "The pattern's own tokens select the date segment order and expose an editable millisecond segment, but a literal \"/\" or \":\" in the pattern still resolves to the active culture's date or time separator.",
                     new DocColumn(inputFormat, statusFormat),
                     "dateTime.Format = \"yyyy/MM/dd HH:mm:ss.fff\";")),
             new DocSection(
