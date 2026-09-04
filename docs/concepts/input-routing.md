@@ -59,11 +59,14 @@ is not proven, these additions degrade to the legacy values above.
 
 A raw Escape byte is ambiguous until another byte arrives. `ExpireEscape` emits
 it only after `Options.EscapeTimeout` elapses on the injected `TimeProvider`,
-and `Complete` resolves it immediately at end-of-stream. The decoder accounts
-for bytes handled outside the protocol parser, so later diagnostic offsets stay
-absolute. Bracketed paste, focus, and mouse decoding build on these values in
-the [paste/focus](../protocols/paste-focus.md#overview) and
-[mouse](../protocols/mouse.md#overview) contracts.
+and `Complete` resolves it immediately at end-of-stream. A pending fallback
+key-sequence match — a bound sequence that is a strict prefix of another — is
+ambiguous the same way; `ExpireKeyMatcher` resolves it to its longest completed
+binding after `Options.KeyMatcherTimeout` elapses on the same `TimeProvider`.
+The decoder accounts for bytes handled outside the protocol parser, so later
+diagnostic offsets stay absolute. Bracketed paste, focus, and mouse decoding
+build on these values in the [paste/focus](../protocols/paste-focus.md#overview)
+and [mouse](../protocols/mouse.md#overview) contracts.
 
 ## Route construction
 
