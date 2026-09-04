@@ -1834,6 +1834,50 @@ public sealed class ApplicationTests
         thrown.Message.ShouldBe("diagnostic-boom");
     }
 
+    /// <summary>Verifies a Diagnostic subscriber that throws does not prevent a later subscriber
+    /// from running. Diagnostic is raised through <c>RaiseIsolated</c>, which used to invoke the
+    /// whole multicast delegate as one bare call - protecting the surrounding Dispatch step from
+    /// the throw, but not a later sibling subscriber of the same event from an earlier one. This
+    /// proves the centralized fix inside <c>RaiseIsolated</c> itself actually isolates siblings,
+    /// not just that the call sites still compile.</summary>
+    [Fact]
+    public async Task Input_WhenFirstDiagnosticHandlerThrows_StillNotifiesLaterSubscriberAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        List<Exception> reported = [];
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            reported.Add(eventArgs.Exception);
+            eventArgs.IsHandled = true;
+        };
+        var failure = new InvalidOperationException("diagnostic-boom");
+        var secondRan = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Diagnostic += (_, _) => throw failure;
+        application.Diagnostic += (_, _) => secondRan.TrySetResult();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+        await application.StartAsync(timeout.Token);
+        var diagnostic = new Diagnostic(
+            DiagnosticCode.Malformed,
+            SequenceKind.Csi,
+            offset: 4,
+            discardedBytes: 2);
+
+        application.Input(in diagnostic);
+
+        // Bounded explicitly rather than trusting only TestContext's own cancellation: without
+        // the fix, the second subscriber never runs and this hangs instead of failing fast.
+        await secondRan.Task.WaitAsync(timeout.Token);
+
+        reported.OfType<InvalidOperationException>().ShouldContain(
+            exception => exception.Message == "diagnostic-boom");
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+        thrown.Message.ShouldBe("diagnostic-boom");
+    }
+
     /// <summary>Verifies a throwing ResponseReceived subscriber does not force the dispatch loop
     /// to unwind. The raise site used to be a bare <c>?.Invoke</c>, so a throwing handler
     /// propagated straight out of Dispatch instead of surfacing through
@@ -5128,6 +5172,61 @@ public sealed class ApplicationTests
 
         rethrown.Message.ShouldBe("starting-boom");
         order.ShouldBe(["stopped"]);
+    }
+
+    /// <summary>Verifies a Starting subscriber that throws does not prevent a later subscriber
+    /// from running. Before the fix, StartAsync raised Starting via a bare multicast Invoke,
+    /// which aborts every remaining subscriber the moment an earlier one throws - so a later
+    /// subscriber silently never ran for that startup.</summary>
+    [Fact]
+    public async Task StartAsync_WhenFirstStartingHandlerThrows_StillNotifiesLaterSubscriberAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var failure = new InvalidOperationException("starting-boom");
+        var secondRan = false;
+        application.Starting += (_, _) => throw failure;
+        application.Starting += (_, _) => secondRan = true;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StartAsync(TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(failure);
+        secondRan.ShouldBeTrue();
+        application.Failure.ShouldBeSameAs(failure);
+    }
+
+    /// <summary>Verifies a Stopped subscriber that throws does not prevent a later subscriber
+    /// from running. Before the fix, BeginStopping raised Stopped via a bare multicast Invoke
+    /// inside <c>CaptureCleanup</c>, which aborts every remaining subscriber the moment an
+    /// earlier one throws - so a later subscriber silently never ran for that shutdown.</summary>
+    [Fact]
+    public async Task StopAsync_WhenFirstStoppedHandlerThrows_StillNotifiesLaterSubscriberAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        var failure = new InvalidOperationException("stopped-boom");
+        var secondRan = false;
+        application.Stopped += (_, _) => throw failure;
+        application.Stopped += (_, _) => secondRan = true;
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await application.StopAsync(TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(failure);
+        secondRan.ShouldBeTrue();
+        application.Failure.ShouldBeSameAs(failure);
     }
 
     /// <summary>Verifies the second, permanent form of the same divergent state: disposing an

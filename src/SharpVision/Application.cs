@@ -532,7 +532,10 @@ public sealed class Application:
         try
         {
             await Dispatcher.InvokeAsync(
-                () => Starting?.Invoke(this, EventArgs.Empty),
+                () => EventPublication.Publish<EventHandler>(
+                    Starting,
+                    () => true,
+                    h => h(this, EventArgs.Empty)),
                 cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -2233,7 +2236,9 @@ public sealed class Application:
             _renderer?.LastCleanupException ??
             (priorFailure is not null ? capturedCleanup : null);
         _stopped = true;
-        CaptureCleanup(() => Stopped?.Invoke(this, EventArgs.Empty), ref cleanupFailure);
+        CaptureCleanup(
+            () => EventPublication.Publish<EventHandler>(Stopped, () => true, h => h(this, EventArgs.Empty)),
+            ref cleanupFailure);
         Failure ??= cleanupFailure?.SourceException;
 
         _ = Failure is { } failure
@@ -2277,7 +2282,12 @@ public sealed class Application:
 
         try
         {
-            handler(this, eventArgs);
+            // A bare handler(this, eventArgs) call invokes the whole multicast delegate as one
+            // step - if an earlier subscriber throws, every later subscriber in the same
+            // invocation list is silently skipped. Publish runs each subscriber unconditionally
+            // and rethrows only the first captured exception, which the catch below still treats
+            // identically to a single throwing handler.
+            EventPublication.Publish<EventHandler>(handler, () => true, h => h(this, eventArgs));
             return null;
         }
         catch (Exception exception)
@@ -2297,7 +2307,10 @@ public sealed class Application:
 
         try
         {
-            handler(this, eventArgs);
+            // See the non-generic overload above: Publish keeps every sibling subscriber
+            // isolated from an earlier one's exception, instead of a bare invoke that would
+            // abort the remaining invocation list.
+            EventPublication.Publish<EventHandler<TArgs>>(handler, () => true, h => h(this, eventArgs));
             return null;
         }
         catch (Exception exception)
