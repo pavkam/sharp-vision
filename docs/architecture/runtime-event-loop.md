@@ -193,6 +193,20 @@ dispatcher hold, byte ordering between UI frames and protocol bytes is
 deterministic, and a bell or title change requested mid-frame is guaranteed to
 land only after that frame's bytes are on the wire.
 
+```mermaid
+flowchart TD
+    Post["PostOutOfBand appends bytes; wakes DrainOutOfBand"] --> Rendering{"IsRendering already true?"}
+    Rendering -->|Yes| Buffered["Bytes stay buffered; the frame render owns the writer"]
+    Buffered --> CompleteRender["CompleteRender drains the buffer once that frame's write completes"]
+    Rendering -->|No| Stopping{"Stopping?"}
+    Stopping -->|Yes| FlushOnStop["FlushOutOfBandOnStop: last bounded write during shutdown"]
+    Stopping -->|No| Suspended{"Suspended layout?"}
+    Suspended -->|Yes| Wait["Return; bytes stay buffered until resumed"]
+    Suspended -->|No| Flush["FlushOutOfBand: set IsRendering, write and flush under a dispatcher hold"]
+    Flush --> Complete["CompleteOutOfBand: clear IsRendering, resume any pending render or queued out-of-band write"]
+    CompleteRender --> Complete
+```
+
 An authorized tmux clipboard route preserves the same ordering while wrapping
 each OSC 52 or Kitty OSC 5522 string independently. Opt-in Kitty paste events
 lease mode 5522 through that route and restore it with the other session modes;
