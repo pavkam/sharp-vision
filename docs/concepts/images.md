@@ -109,16 +109,37 @@ switching views cannot retain pixels from a detached image control.
 borrowed transport; Kitty deletes and flushes remote state first, and a cleanup
 failure cannot skip transport or host-lease disposal.
 
-Once a backend family is selected, it is fixed for that `Application` lifetime.
+Once a backend family is selected, it is fixed for that `Application` lifetime,
+with one exception: a selected non-retained backend (sixel or iTerm2) may still
+be upgraded to Kitty if a later profile republish first proves Kitty
+authoritative; once Kitty itself is selected, nothing can change it further.
 Every selected backend still revalidates the current profile on each frame:
 revocation removes retained Kitty state or requests complete non-retained cell
-repair, and emits no new graphics. A later profile cannot switch the selected
-backend family; constructing a new `Application` performs fresh selection. If
-authoritative evidence for the already-selected family returns, that family may
-resume through its ordinary full-repair path. A renderer that has no backend yet
-is not held to cell-only fallback forever: the first later profile that proves
-authoritative graphics support promotes it to that backend family, the same as
-if the evidence had been available when the renderer was constructed.
+repair, and emits no new graphics. Other than that one Kitty upgrade, a later
+profile cannot switch the selected backend family; constructing a new
+`Application` performs fresh selection. If authoritative evidence for the
+already-selected family returns, that family may resume through its ordinary
+full-repair path. A renderer that has no backend yet is not held to cell-only
+fallback forever: the first later profile that proves authoritative graphics
+support promotes it to that backend family, the same as if the evidence had been
+available when the renderer was constructed.
+
+```mermaid
+flowchart TD
+    None["No backend selected (renderer just constructed, or prior evidence proved nothing)"]
+    NonRetained["Sixel or iTerm2 backend selected (non-retained)"]
+    Kitty["Kitty backend selected (retained)"]
+
+    None -->|"First render or republish proves Kitty"| Kitty
+    None -->|"First render or republish proves sixel/iTerm2 only"| NonRetained
+    NonRetained -->|"Republish first proves Kitty authoritative"| Kitty
+    NonRetained -->|"Per-frame Prepare: still authoritative"| NonRetained
+    NonRetained -->|"Per-frame Prepare: revoked"| NonRetainedRepair["Request complete non-retained cell repair; emit no new graphics"]
+    NonRetainedRepair --> NonRetained
+    Kitty -->|"Per-frame Prepare: still authoritative"| Kitty
+    Kitty -->|"Per-frame Prepare: revoked"| KittyRepair["Remove retained Kitty state; emit no new graphics"]
+    KittyRepair --> Kitty
+```
 
 ## Expected behavior
 
