@@ -391,6 +391,23 @@ complete `setaf`/`setab` pair; an incomplete directional pair lowers output to
 the next complete tier. A capability change forces the existing full-redraw
 path, so one frame cannot mix color tiers.
 
+```mermaid
+flowchart TD
+    Start["EffectiveColorDepth(declared)"] --> IndexedGate{"setaf & setab present?"}
+    IndexedGate -->|No| Mono["Monochrome"]
+    IndexedGate -->|Yes| DefaultsGate{"op, or setdf & setdb, or sgr0 present?"}
+    DefaultsGate -->|No| Mono
+    DefaultsGate -->|Yes| TrueColorCheck{"declared = TrueColor and setrgbf & setrgbb present?"}
+    TrueColorCheck -->|Yes| TrueColor["TrueColor"]
+    TrueColorCheck -->|No| Declared{"declared tier"}
+    Declared -->|"TrueColor or Indexed256"| Indexed256["Indexed256"]
+    Declared -->|Basic16| Basic16["Basic16"]
+```
+
+Basic16 and Indexed256 share this one completeness gate — the `setaf`/`setab`
+pair plus the defaults check — so failing it drops straight to Monochrome rather
+than passing through an intermediate Basic16 attempt.
+
 The reference palette is a deterministic degradation policy, not a claim about
 physical terminal colors — terminals may configure their first sixteen entries.
 Equal-distance projection selects the lower palette index, and projected style
