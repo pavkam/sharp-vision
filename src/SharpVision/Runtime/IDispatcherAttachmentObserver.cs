@@ -6,7 +6,7 @@ namespace SharpVision.Runtime;
 /// <summary>Observes committed dispatcher attachment changes on a control.</summary>
 /// <remarks>
 /// Controls that must defer work until a dispatcher is available, or cancel that work on detach,
-/// implement this contract so <see cref="Controls.ControlBase"/> can notify them without
+/// implement this contract so <see cref="ControlBase"/> can notify them without
 /// expanding the public attachment API.
 /// </remarks>
 [PublicAPI]
