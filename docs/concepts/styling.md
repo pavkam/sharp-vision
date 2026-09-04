@@ -178,7 +178,11 @@ remains observable. `Window` maps the application-owned `IsActive` flag onto the
 fact. The button and input style types opt into a filled hover face. Borderless
 interactive controls such as Expander, Slider, and ScrollBar rebase Input's
 state colors onto Control's passive geometry, so they gain interaction cues
-without inventing a frame. A control that is a direct Tab-stop and focus target
+without inventing a frame. CheckBox, RadioButton, and CommandBarItem instead
+fall back to Input directly rather than rebasing onto Control geometry; they
+opt in only to the same reverse-video safety net for Focused/FocusWithin,
+since a checkbox or radio button has no border to signal focus on its own.
+A control that is a direct Tab-stop and focus target
 in its own right - a Table, TreeView, or JsonView, none of which read their own
 resolved appearance for hover, press, selection, or current-item cues that their
 own content already owns more specifically - instead rebases only
