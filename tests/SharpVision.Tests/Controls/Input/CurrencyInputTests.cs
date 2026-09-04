@@ -813,6 +813,31 @@ public sealed class CurrencyInputTests
         control.Value.ShouldBe(-5m);
     }
 
+    /// <summary>Verifies commit when the typed text is a sign-negative zero literal (e.g. "-0" or
+    /// "-0.00") stores a Value that is not <see cref="decimal.IsNegative"/> - equal-but-not-sign-
+    /// identical <c>-0m</c> and <c>0m</c> compare equal, so the regression must inspect
+    /// <see cref="decimal.IsNegative"/> directly rather than <c>ShouldBe</c> alone.</summary>
+    [Theory]
+    [InlineData("-0")]
+    [InlineData("-0.00")]
+    public void Commit_WhenTypedTextIsNegativeZero_StoresNormalizedPositiveZero(string typed)
+    {
+        // Arrange
+        using var control = new CurrencyInput { DecimalPlaces = 2 };
+
+        foreach (var ch in typed)
+        {
+            TypeCharacter(control, ch);
+        }
+
+        // Act
+        _ = Router.Route(control, Events.Key, Key(Code.Enter));
+
+        // Assert
+        control.Value.ShouldBe(0m);
+        decimal.IsNegative(control.Value!.Value).ShouldBeFalse();
+    }
+
     #endregion
 
     #region Paste

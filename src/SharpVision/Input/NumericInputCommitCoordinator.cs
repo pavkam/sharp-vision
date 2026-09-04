@@ -242,9 +242,18 @@ internal sealed class NumericInputCommitCoordinator
         }
     }
 
-    /// <summary>Clamps a value into the caller's current Minimum/Maximum.</summary>
+    /// <summary>Clamps a value into the caller's current Minimum/Maximum, normalizing a
+    /// sign-negative zero result (<c>-0m</c>) to ordinary <c>+0m</c> so every decimal commit
+    /// path - <see cref="SetValue"/>, <see cref="CommitBuffer"/>, <see cref="ApplyStep"/>,
+    /// <see cref="JumpToBound"/>, and <see cref="RepairValue"/> - stores and displays a
+    /// sign-consistent zero regardless of whether the value arrived as a negative literal or was
+    /// clamped/rounded down to zero.</summary>
     [Pure]
-    public decimal ClampToRange(decimal value) => value.Clamp(_minimum, _maximum);
+    public decimal ClampToRange(decimal value)
+    {
+        var clamped = value.Clamp(_minimum, _maximum);
+        return clamped == 0m ? 0m : clamped;
+    }
 
     /// <summary>Applies one step increment or decrement from the currently committed value (or zero
     /// when unset), rounds and clamps the result through the caller's own commit-rounding formula

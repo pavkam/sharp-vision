@@ -710,4 +710,70 @@ public sealed class CurrencyInputSurfaceTests
     }
 
     #endregion
+
+    #region Negative-zero normalization
+
+    /// <summary>Verifies typing a sign-negative zero literal ("-0") and committing produces a
+    /// stored Value that is not <see cref="decimal.IsNegative"/>, and that the idle (unfocused)
+    /// rendering of that value never flip-flops across repeated focus/blur cycles - the end-to-end
+    /// regression for a stored <c>-0m</c> that would otherwise render differently between
+    /// CurrencyInput's Abs-guarded focused-buffer format and its un-guarded idle "C"-format, with
+    /// no user action able to self-heal it because <c>-0m == 0m</c> swallows a later plain-zero
+    /// commit as a no-op.</summary>
+    [Fact]
+    public async Task Render_WhenTypedValueIsNegativeZero_RendersIdenticallyAcrossRepeatedFocusCyclesAsync()
+    {
+        // Arrange - AllowNull defaults to true and no Value is assigned, so the buffer starts
+        // empty on focus; a sibling lets Tab genuinely move focus away instead of cycling back.
+        var input = new CurrencyInput { DecimalPlaces = 2 };
+        var sibling = new CurrencyInput { Value = 0m, DecimalPlaces = 2 };
+        var root = new Stack { Children = { input, sibling } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 2),
+            TestThemes.BorderlessInput,
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(input);
+
+        // Act - type "-0" and commit with Enter while staying focused
+        await surface.Keyboard.TypeAsync("-0");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert - the committed Value is a normalized, sign-consistent zero
+        input.Value.ShouldBe(0m);
+        decimal.IsNegative(input.Value!.Value).ShouldBeFalse();
+
+        // Act - blur to the sibling, capturing the idle render
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(sibling);
+        var idleFirst = RowText(surface, 0, 12);
+
+        // Act - Shift+Tab back to refocus, then Tab away again to reblur
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+        surface.ShouldHaveFocus(input);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(sibling);
+        var idleSecond = RowText(surface, 0, 12);
+
+        // Assert - the idle display is identical across both blur cycles (no flip-flop), and
+        // neither rendering carries a spurious negative sign on what is, and always has been,
+        // zero.
+        idleSecond.ShouldBe(idleFirst);
+        idleFirst.ShouldNotContain(CultureInfo.InvariantCulture.NumberFormat.NegativeSign);
+    }
+
+    #endregion
+
+    private static string RowText(ComponentSurface surface, int y, int width)
+    {
+        var text = new StringBuilder();
+
+        for (var x = 0; x < width; x++)
+        {
+            _ = text.Append(surface.Cell(new Point(x, y)).Text);
+        }
+
+        return text.ToString();
+    }
 }

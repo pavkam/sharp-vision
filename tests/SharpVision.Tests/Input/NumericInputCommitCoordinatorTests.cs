@@ -284,6 +284,54 @@ public sealed class NumericInputCommitCoordinatorTests
         fake.RefreshCount.ShouldBe(1);
     }
 
+    /// <summary>Verifies commit buffer when the typed text is a sign-negative zero literal (e.g.
+    /// "-0" or "-0.00") stores a Value that is not <see cref="decimal.IsNegative"/> - the parsed
+    /// <c>-0m</c> must be normalized at commit rather than stored with its sign bit intact.</summary>
+    [Theory]
+    [InlineData("-0")]
+    [InlineData("-0.00")]
+    public void CommitBuffer_WhenTypedTextIsNegativeZero_StoresNormalizedPositiveZero(string text)
+    {
+        // Arrange
+        var fake = new Fake { DecimalPlaces = 2 };
+        var coordinator = fake.CreateCoordinator();
+        fake.Buffer.Load(text);
+
+        // Act
+        _ = coordinator.CommitBuffer();
+
+        // Assert
+        fake.Value.ShouldBe(0m);
+        decimal.IsNegative(fake.Value!.Value).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies commit buffer when a small negative value rounds to zero at the accepted
+    /// precision (mirroring <see cref="NumericInputCommitCoordinator.RoundAtAcceptedPrecision"/>,
+    /// which every caller's own <c>resolveCommitRounding</c> formula funnels through) still stores
+    /// a normalized positive zero rather than the sign-preserved <c>-0m</c> that
+    /// <see cref="Math.Round(decimal, int, MidpointRounding)"/> itself produces for such an
+    /// input.</summary>
+    [Fact]
+    public void CommitBuffer_WhenSmallNegativeValueRoundsToZeroAtAcceptedPrecision_StoresNormalizedPositiveZero()
+    {
+        // Arrange
+        var fake = new Fake { DecimalPlaces = 0 };
+        var coordinator = fake.CreateCoordinator();
+        fake.Buffer.Load("-0.001");
+
+        // Precondition: Math.Round itself preserves the sign bit for this input, so the
+        // regression only exists because the coordinator's own rounding formula reaches it -
+        // confirming this keeps the scenario honest rather than accidentally vacuous.
+        decimal.IsNegative(Math.Round(-0.001m, 0, MidpointRounding.AwayFromZero)).ShouldBeTrue();
+
+        // Act
+        _ = coordinator.CommitBuffer();
+
+        // Assert
+        fake.Value.ShouldBe(0m);
+        decimal.IsNegative(fake.Value!.Value).ShouldBeFalse();
+    }
+
     #endregion
 
     #region RevertBuffer
@@ -443,6 +491,40 @@ public sealed class NumericInputCommitCoordinatorTests
         // Act and assert
         coordinator.ClampToRange(-5m).ShouldBe(0m);
         coordinator.ClampToRange(15m).ShouldBe(10m);
+    }
+
+    /// <summary>Verifies clamp to range when the input is a sign-negative zero normalizes the
+    /// result to ordinary positive zero rather than preserving the sign bit - <c>-0m</c> and
+    /// <c>0m</c> compare equal, so the regression must inspect <see cref="decimal.IsNegative"/>
+    /// directly rather than <c>ShouldBe</c>.</summary>
+    [Fact]
+    public void ClampToRange_WhenValueIsNegativeZero_NormalizesToPositiveZero()
+    {
+        // Arrange
+        var fake = new Fake { Minimum = decimal.MinValue, Maximum = decimal.MaxValue };
+        var coordinator = fake.CreateCoordinator();
+
+        // Act
+        var result = coordinator.ClampToRange(-0.0m);
+
+        // Assert
+        decimal.IsNegative(result).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies clamp to range when an ordinary negative value clamps exactly to the
+    /// Minimum bound of zero produces a positive, not negative, zero.</summary>
+    [Fact]
+    public void ClampToRange_WhenNegativeValueClampsToZeroMinimum_ProducesPositiveZero()
+    {
+        // Arrange
+        var fake = new Fake { Minimum = 0m, Maximum = 10m };
+        var coordinator = fake.CreateCoordinator();
+
+        // Act
+        var result = coordinator.ClampToRange(-5m);
+
+        // Assert
+        decimal.IsNegative(result).ShouldBeFalse();
     }
 
     #endregion
