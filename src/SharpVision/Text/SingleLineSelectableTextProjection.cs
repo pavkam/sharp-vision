@@ -40,8 +40,8 @@ internal static class SingleLineSelectableTextProjection
                 glyphs.Add(new SelectableTextGlyph(
                     new Selection(grapheme.Offset, grapheme.Offset + grapheme.Length),
                     new Rect(
-                        absolute.X - source.Bounds.X,
-                        absolute.Y - source.Bounds.Y,
+                        absolute.X.SaturatingSubtract(source.Bounds.X),
+                        absolute.Y.SaturatingSubtract(source.Bounds.Y),
                         absolute.Width,
                         absolute.Height)));
             }

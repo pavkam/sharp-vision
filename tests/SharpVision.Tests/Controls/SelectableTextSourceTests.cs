@@ -822,4 +822,36 @@ public sealed class SelectableTextSourceTests
         clippedSnapshot.Text.ShouldBe("\u754c");
         clippedSnapshot.Glyphs.ShouldBeEmpty();
     }
+
+    /// <summary>Verifies <see cref="SingleLineSelectableTextProjection.Create"/> saturates the
+    /// projected glyph rectangle instead of overflowing when the owning source's <c>Bounds</c> sits
+    /// at an extreme, ancestor-arrange-supplied coordinate that is independent of the absolute glyph
+    /// position it is translated against.</summary>
+    [Fact]
+    public async Task Create_WhenSourceBoundsIsExtreme_SaturatesInsteadOfWrappingAsync()
+    {
+        var text = new ControlText("A");
+        var stack = new Stack { Children = { text } };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(4, 1),
+            TestContext.Current.CancellationToken);
+
+        SelectableTextSnapshot? snapshot = null;
+        await surface.UpdateAsync(
+            () =>
+            {
+                text.Bounds = new Rect(int.MinValue, int.MinValue, text.Bounds.Width, text.Bounds.Height);
+                snapshot = SingleLineSelectableTextProjection.Create(
+                    text,
+                    "A",
+                    new Point(0, 0),
+                    new Rect(0, 0, 4, 1),
+                    useMnemonic: false);
+            },
+            "project text with an extreme owner bounds coordinate");
+        snapshot = snapshot.ShouldNotBeNull();
+
+        snapshot.Glyphs.Single().Bounds.ShouldBe(new Rect(int.MaxValue, int.MaxValue, 1, 1));
+    }
 }
