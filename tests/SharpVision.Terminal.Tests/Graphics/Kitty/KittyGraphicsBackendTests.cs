@@ -435,6 +435,85 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("I=1");
     }
 
+    /// <summary>Verifies a wire number transferred TWICE while unconfirmed - once from A to B, then
+    /// again from B to C before B's own reply ever arrived - owes two dropped stale replies, not
+    /// one, before a reply for that number can be trusted as C's own. A guard that only remembers
+    /// "one reply is owed" would treat B's stale reply as C's real reply once A's stale reply was
+    /// already consumed, corrupting C's assigned id exactly the way a single-transfer stale reply
+    /// could corrupt B before the original fix.</summary>
+    [Fact]
+    public void Accept_WhenNumberIsTransferredTwiceWhileUnconfirmed_DropsBothStaleRepliesBeforeTrustingTheCurrentTenant()
+    {
+        using var backend = new KittyGraphicsBackend();
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        var imageC = GraphicsImage.FromRgba(new Size(1, 1), [7, 8, 9, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        using var frameC = Frame(imageC, new Rect(0, 0, 1, 1));
+        using var frameCMoved = Frame(imageC, new Rect(1, 0, 1, 1));
+        using var frameCMovedAgain = Frame(imageC, new Rect(2, 1, 1, 1));
+        using var frameCFinal = Frame(imageC, new Rect(3, 1, 1, 1));
+
+        // Image A rents Number 1 and transmits; its response is never accepted, simulating a still
+        // outstanding round-trip.
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Image B replaces A, taking Number 1 via the transfer fast path while A is still
+        // unconfirmed - one stale reply (A's) is now owed for Number 1. B's own response is also
+        // never accepted here, simulating a second still-outstanding round-trip on the same number.
+        _ = backend.Prepare(frameA, frameB, full: false);
+        var bBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=1;");
+
+        // Image C replaces B, taking Number 1 via the SAME transfer fast path while B is itself
+        // still unconfirmed - a second stale reply (B's) is now also owed for Number 1, on top of
+        // A's still-unconsumed one.
+        _ = backend.Prepare(frameB, frameC, full: false);
+        var cBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(cBytes.Uploads).ShouldContain(",I=1;");
+
+        // A's stale reply finally arrives. This must consume only ONE of the two owed drops -
+        // C must remain number-addressed, not stamped with A's stale id 5.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=5,I=1;OK"u8));
+        _ = backend.Prepare(frameC, frameCMoved, full: false);
+        var afterFirstStaleReply = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(afterFirstStaleReply.Placements).ShouldContain("I=1");
+        Encoding.ASCII.GetString(afterFirstStaleReply.Placements).ShouldNotContain("i=5");
+
+        // B's stale reply now arrives, claiming the same Number 1. A guard that only remembers a
+        // single owed drop would treat this as C's own real reply and corrupt C with B's stale id
+        // 7; the second owed drop must still absorb it instead.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=7,I=1;OK"u8));
+        _ = backend.Prepare(frameCMoved, frameCMovedAgain, full: false);
+        var afterSecondStaleReply = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(afterSecondStaleReply.Placements).ShouldContain("I=1");
+        Encoding.ASCII.GetString(afterSecondStaleReply.Placements).ShouldNotContain("i=5");
+        Encoding.ASCII.GetString(afterSecondStaleReply.Placements).ShouldNotContain("i=7");
+
+        // C's own real reply finally arrives, matching the number C is still using with no further
+        // drops owed - it must now be applied, proving the two earlier drops did not also blind C
+        // to its own reply.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=99,I=1;OK"u8));
+        _ = backend.Prepare(frameCMovedAgain, frameCFinal, full: false);
+        var afterOwnReply = WritePrepared(backend);
+
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldContain("i=99");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("i=5");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("i=7");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("I=1");
+    }
+
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]
     public void Prepare_WhenImageMoves_ReusesIdsWithoutUploadingAndDeletesOnLastUse()

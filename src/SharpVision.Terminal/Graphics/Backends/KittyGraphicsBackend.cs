@@ -44,7 +44,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
     private Dictionary<uint, uint> _priorUncertainImages;
     private readonly ConcurrentQueue<KittyGraphicsResponse> _responses = new();
     private List<GraphicsPlacementDiagnostic>? _pendingUploadFailureDiagnostics;
-    private readonly HashSet<uint> _ambiguousTransferredNumbers = [];
+    // Counts outstanding stale replies owed for a wire number, not just whether one is owed: a
+    // number transferred while its retiring image was unconfirmed can be transferred AGAIN, to a
+    // second replacement, before the first retiring image's own stale reply ever arrives - each
+    // such transfer owes one more stale reply that must be dropped before a reply for that number
+    // can safely be trusted as the current tenant's own. A plain set can only ever forgive one.
+    private readonly Dictionary<uint, int> _ambiguousTransferredNumbers = [];
     private List<KittyGraphicsUncertainPlacementState> _uncertainPlacements;
     private List<KittyGraphicsUncertainPlacementState> _priorUncertainPlacements;
     private Dictionary<ulong, KittyGraphicsImageState>? _preparedImages;
@@ -306,7 +311,8 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                             // instead of misattribute once ApplyAssignedImageIds sees it.
                             if (transferred.WasUnconfirmed)
                             {
-                                _ = _ambiguousTransferredNumbers.Add(id);
+                                _ambiguousTransferredNumbers[id] =
+                                    _ambiguousTransferredNumbers.GetValueOrDefault(id) + 1;
                             }
                         }
                         else
@@ -1033,10 +1039,11 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             // healthy, unrelated image as terminal-rejected, or - just as bad - stamping its assigned
             // id (or a placement's) with an id that was never really meant for it. Dropping the reply
             // silently for this one number, regardless of whether it succeeded or failed, is the same
-            // conservative outcome every reply had before this diagnostic existed, and is consumed here
-            // (one-shot) rather than left to suppress a genuinely later, unambiguous reply for whichever
-            // image eventually settles on this same number.
-            if (_ambiguousTransferredNumbers.Remove(response.ImageNumber))
+            // conservative outcome every reply had before this diagnostic existed. The number can have
+            // been transferred more than once while still unconfirmed (a chain of replacements before
+            // any of their replies arrive), so one stale reply is consumed per outstanding transfer
+            // rather than forgiving the whole number after the first.
+            if (TryConsumeAmbiguousTransfer(response.ImageNumber))
             {
                 continue;
             }
@@ -1070,6 +1077,31 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             ApplyAssignedUncertainPlacementId(_uncertainPlacements, response);
             ApplyAssignedUncertainPlacementId(_priorUncertainPlacements, response);
         }
+    }
+
+    /// <summary>
+    /// Consumes one outstanding stale reply owed for <paramref name="number"/>, if any are owed.
+    /// Returns <see langword="true"/> (and decrements or clears the owed count) when the reply
+    /// should be dropped as ambiguous; returns <see langword="false"/> when no transfer is
+    /// outstanding for this number and the reply can be trusted as the current tenant's own.
+    /// </summary>
+    private bool TryConsumeAmbiguousTransfer(uint number)
+    {
+        if (!_ambiguousTransferredNumbers.TryGetValue(number, out var owed))
+        {
+            return false;
+        }
+
+        if (owed <= 1)
+        {
+            _ = _ambiguousTransferredNumbers.Remove(number);
+        }
+        else
+        {
+            _ambiguousTransferredNumbers[number] = owed - 1;
+        }
+
+        return true;
     }
 
     /// <summary>
