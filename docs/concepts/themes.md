@@ -241,10 +241,10 @@ text decoration, and uses `activeBorder` for chrome; focus therefore remains
 visible without introducing an alarm-like fill or text color. Borderless
 interactive styles rebase those `input` state colors onto `control` geometry.
 `CheckBox`, `RadioButton`, and `CommandBarItem` instead fall back to `input`
-directly rather than rebasing onto `control` geometry; they opt in only to
-the same reverse-video fallback for Focused/FocusWithin, since neither has a
-border of its own to carry a focus cue. A custom theme may author an explicit
-hover contribution on any of the six sections that wants one.
+directly rather than rebasing onto `control` geometry; they opt in only to the
+same reverse-video fallback for Focused/FocusWithin, since neither has a border
+of its own to carry a focus cue. A custom theme may author an explicit hover
+contribution on any of the six sections that wants one.
 
 Every bundled `window` style uses `windowSurface` for its normal background and
 `windowText` for its foreground. `windowSurface` contrasts with the application

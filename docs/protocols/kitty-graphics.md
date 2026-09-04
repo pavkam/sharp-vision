@@ -99,9 +99,9 @@ because both began allocating at one.
 
 A retiring image's still-outstanding client number can be reused immediately by
 a new image rather than waiting for the terminal's own confirmation of the old
-upload. Because later replies are correlated only by that shared number, a
-stale reply belonging to the retiring image is indistinguishable from one meant
-for its replacement; the backend tracks each such handoff and drops exactly one
+upload. Because later replies are correlated only by that shared number, a stale
+reply belonging to the retiring image is indistinguishable from one meant for
+its replacement; the backend tracks each such handoff and drops exactly one
 stale reply per outstanding transfer - success or failure - rather than risk
 corrupting the replacement's assigned id or wrongly diagnosing a healthy upload
 as terminal-rejected. A number can be handed off more than once before any of
@@ -305,10 +305,10 @@ framing run at every possible transport split; numeric overflow, canonical IDs,
 bounds, duplicate correlation, and redaction are also covered. Real
 backend-to-renderer tests prove image caching, byte-quiet commit, stable ID
 reuse, last-use deletion, cursor restoration, uncertain tombstone recovery,
-ambiguous stale-reply correlation after number reuse, exact placeholder
-identity colors and diacritics, placeholder scrolling, allocation-free cleanup
-commit, per-delete tmux routing, Screen rejection, and explicit shutdown after
-success or partial failure.
+ambiguous stale-reply correlation after number reuse, exact placeholder identity
+colors and diacritics, placeholder scrolling, allocation-free cleanup commit,
+per-delete tmux routing, Screen rejection, and explicit shutdown after success
+or partial failure.
 
 Local emulator evidence on 2026-07-20 found Kitty 0.46.2 installed, but the test
 process had no `KITTY_PID` and standard input was not a TTY. A live frontend
