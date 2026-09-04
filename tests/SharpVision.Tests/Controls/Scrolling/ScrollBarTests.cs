@@ -540,6 +540,41 @@ public sealed class ScrollBarTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a drag survives an ancestor re-arranging the bar at an extreme coordinate
+    /// mid-gesture: the pointer's small, terminal-bounded cell position and the bar's now-extreme
+    /// <see cref="ControlBase.Bounds"/> origin must combine with saturating arithmetic, not plain
+    /// subtraction/addition, or the computed track position wraps around and the committed value
+    /// becomes garbage unrelated to the pointer's actual motion instead of clamping toward the
+    /// range endpoint that position implies.</summary>
+    [Fact]
+    public async Task Dispatch_WhenBoundsMovesToExtremeCoordinateDuringThumbDrag_SaturatesInsteadOfWrappingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var control = new ScrollBar
+            {
+                Bounds = new Rect(0, 0, 12, 1),
+                Orientation = Orientation.Horizontal,
+                Maximum = 100
+            };
+            control.Attach(dispatcher);
+            using PointerManager capture = new(control);
+
+            _ = capture.Dispatch(Pointer(new Point(1, 0), PointerAction.Press));
+
+            // Mirrors an ancestor (e.g. a deeply Right-docked panel) re-arranging this already-
+            // dragging bar at the integer coordinate limit mid-gesture: ContentBounds' origin now
+            // sits far from the pointer's real, terminal-bounded cell position.
+            control.Bounds = new Rect(int.MinValue, 0, 12, 1);
+            _ = capture.Dispatch(Pointer(new Point(6, 0), PointerAction.Move));
+
+            control.Value.ShouldBe(100);
+            _ = capture.Dispatch(Pointer(new Point(6, 0), PointerAction.Release));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies inferred pixel input drags and disable cancels without a second commit.</summary>
     [Fact]
     public async Task Dispatch_WhenPixelThumbDragIsCancelled_ReleasesCaptureWithoutSpuriousChangeAsync()

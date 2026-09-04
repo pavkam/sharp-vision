@@ -479,7 +479,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         var bounds = ContentBounds;
         var length = AxisLength(bounds);
         var buttons = ButtonCount(length);
-        var position = Axis(cells) - AxisOrigin(bounds) - buttons;
+        var position = Axis(cells).SaturatingSubtract(AxisOrigin(bounds)).SaturatingSubtract(buttons);
         var delta = position.SaturatingSubtract(_dragPointerStart);
 
         if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
@@ -519,7 +519,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         // value on the first held move; leave the value alone until the track can travel again.
         if (anchorThumb.Length < trackLength)
         {
-            var start = anchorThumb.Start + delta;
+            var start = anchorThumb.Start.SaturatingAdd(delta);
             var value = ScrollThumb.ValueAt(range, trackLength, start);
             _ = Commit(value, ScrollCause.Pointer);
         }
