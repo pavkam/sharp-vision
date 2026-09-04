@@ -49,8 +49,11 @@ gap callouts, protocol sources, coverage claims, links, diagrams, or validators.
   acceptance plans, or agent instructions — reviewer-confirmed only; not
   enforced by `lint:doc-content` or `test:docs`.
 - Examples demonstrate a stated rule; they never define a hidden default.
-- Coverage uses only the states defined by the protocol coverage matrix.
-- `docs/superpowers` is an internal artifact location and is forbidden.
+- Coverage uses only the states defined by the protocol coverage matrix —
+  reviewer-confirmed only; not enforced by `lint:doc-content` or `test:docs`.
+- `docs/superpowers` is an internal artifact location and is forbidden —
+  reviewer-confirmed only; `lint:links` merely exempts it from link-checking and
+  does not enforce this rule.
 
 ## Focused verification
 
