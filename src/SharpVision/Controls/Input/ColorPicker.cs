@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.ComponentModel;
+
 using Layout;
 
 using Terminal.Capabilities;
@@ -13,6 +15,10 @@ using LayoutStack = Layout.Stack;
 [PublicAPI]
 public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 {
+    private static readonly ThemeValueDependency<Color> _errorFaceThemeDependency = new(
+        static theme => theme.Error,
+        InvalidationImpact.Render);
+
     private readonly LayoutStack _monochromeRoot;
     private readonly ControlBase _rgbRoot;
     private bool _isValueTextValid = true;
@@ -159,6 +165,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         GreenSlider.ValueChanged -= OnRgbChanged;
         BlueSlider.ValueChanged -= OnRgbChanged;
         ValueTextInput.TextChanged -= OnValueTextChanged;
+        PropertyChanged -= OnColorPickerPropertyChanged;
         ValueChanged = null;
         base.OnDisposing();
     }
@@ -254,6 +261,26 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         GreenSlider.ValueChanged += OnRgbChanged;
         BlueSlider.ValueChanged += OnRgbChanged;
         ValueTextInput.TextChanged += OnValueTextChanged;
+        PropertyChanged += OnColorPickerPropertyChanged;
+    }
+
+    // ApplyValueTextStyle bakes the invalid-text error face's contrast foreground into a concrete
+    // Color on ValueTextInput.Style (unlike Face.Background there, which stays the symbolic
+    // SemanticColor.Error reference and is re-resolved against the active Theme at every paint).
+    // OnStyleChanged only fires when a field ColorPickerStyle.Definition itself resolves - e.g.
+    // ControlText - differs between the previous and current Theme, so a swap that changes only
+    // Theme.Error never reaches it and the baked foreground goes stale. Theme identity changes for
+    // every reason (tracked or not) still raise this PropertyChanged(nameof(Theme)) unconditionally,
+    // so reacting to it here guarantees the error contrast is recomputed whenever the active Theme
+    // actually changes.
+    private void OnColorPickerPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (string.Equals(eventArgs.PropertyName, nameof(Theme), StringComparison.Ordinal))
+        {
+            ApplyValueTextStyle();
+        }
     }
 
     private void OnStyleChanged(ColorPickerStyle previous, ColorPickerStyle current)
@@ -432,7 +459,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
                 : authored;
         }
 
-        var error = (Theme ?? ThemeCatalog.Dark).Error;
+        var error = ResolveThemeValue(_errorFaceThemeDependency);
         return authored with
         {
             Foreground = error.Contrast(),

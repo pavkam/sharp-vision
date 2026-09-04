@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Controls.Input;
 
+using System.Text.Json;
+
 /// <summary>Proves ColorPicker behavior through retained mounted composition and terminal input.</summary>
 public sealed class ColorPickerSurfaceTests
 {
@@ -100,6 +102,96 @@ public sealed class ColorPickerSurfaceTests
         cell.Text.ShouldBe("r");
         cell.Style.Background.ShouldBe(ThemeCatalog.White.Error);
         cell.Style.Foreground.ShouldBe(ThemeCatalog.White.Error.Contrast());
+    }
+
+    /// <summary>Verifies the invalid-text error foreground refreshes from a Theme swap that changes
+    /// only "error" - leaving every other well-known color (including "controlText", the source of
+    /// ColorPickerStyle's own resolved StatusFace default) byte-for-byte identical - so a repaint
+    /// driven by some unrelated resolved-style difference could not coincidentally produce the
+    /// correct result the way the dark/default-light swap above does.</summary>
+    [Fact]
+    public async Task Render_WhenThemeChangesOnlyError_RefreshesInvalidTextForegroundAsync()
+    {
+        // Arrange
+        var initialError = Color.Rgb(12, 12, 12);
+        var swappedError = Color.Rgb(240, 240, 240);
+        var initialTheme = WithColor(SemanticColor.Error, initialError);
+        var picker = new ColorPicker
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            picker,
+            new Size(40, 18),
+            initialTheme,
+            TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 6; index++)
+        {
+            await surface.Keyboard.PressAsync(Code.Tab);
+        }
+
+        await surface.Keyboard.PressAsync(Code.Home);
+        await surface.Keyboard.PressAsync(Code.End, Modifiers.Shift);
+        await surface.Keyboard.TypeAsync("rgb(1, 2,");
+
+        // Sanity: the initial Theme's error contrast is already painted before any swap.
+        picker.ValueTextInput.ActualStyle.Face.Foreground.ShouldBe((ControlColor) initialError.Contrast());
+        var initialCell = surface.Cell(new Point(picker.ValueTextInput.Bounds.X, picker.ValueTextInput.Bounds.Y));
+        initialCell.Style.Foreground.ShouldBe(initialError.Contrast());
+
+        // Act: swap to a Theme differing from the mounted one only in "error" - "controlText" and
+        // every other ColorPickerStyle-resolved field stay identical, so ChangedStyleSlots alone
+        // (the mechanism the dark/default-light swap above happens to also exercise) cannot explain
+        // a refresh here.
+        var swappedTheme = WithColor(SemanticColor.Error, swappedError);
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = swappedTheme,
+            "change Theme (error only) while ColorPicker value text is invalid");
+
+        // Assert
+        surface.ShouldHaveFocus(picker.ValueTextInput);
+        picker.ValueTextInput.Text.ShouldBe("rgb(1, 2,");
+        picker.ValueTextInput.ActualStyle.Face.Background.ShouldBe((ControlColor) SemanticColor.Error);
+        picker.ValueTextInput.ActualStyle.Face.Foreground.ShouldBe((ControlColor) swappedError.Contrast());
+
+        var cell = surface.Cell(new Point(picker.ValueTextInput.Bounds.X, picker.ValueTextInput.Bounds.Y));
+        cell.Text.ShouldBe("r");
+        cell.Style.Background.ShouldBe(swappedError);
+        cell.Style.Foreground.ShouldBe(swappedError.Contrast());
+    }
+
+    // Copies every well-known Theme value unchanged from ThemeCatalog.Dark except one - so two
+    // themes built from this differ in exactly the requested role and nothing else (not even
+    // reference identity of unrelated JSON style sections), unlike loading two distinct bundled
+    // themes (e.g. Dark vs default-light), which differ in dozens of fields at once and so cannot
+    // isolate whether a repaint tracks one specific semantic color role.
+    private static Theme WithColor(SemanticColor role, Color value)
+    {
+        var source = ThemeCatalog.Dark;
+        var theme = new Theme(
+            source.Palette,
+            source.Name,
+            source.Slug,
+            source.ColorScheme,
+            source.Author,
+            source.License,
+            source.Source);
+
+        foreach (var color in Enum.GetValues<SemanticColor>())
+        {
+            theme.SetColor(color, color == role ? value : source.ResolveColor(color));
+        }
+
+        foreach (var decoration in Enum.GetValues<SemanticDecoration>())
+        {
+            theme.SetAttributes(decoration, source.ResolveAttributes(decoration));
+        }
+
+        theme.SetStyleSections(new Dictionary<string, JsonElement>(source.StyleSections));
+        theme.Freeze();
+        return theme;
     }
 
     /// <summary>Verifies direct value changes replace invalid text while focused and canonical text
