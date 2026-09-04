@@ -104,13 +104,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         {
             var candidate = _owner.Rows[rowIndex];
 
-            if (point.Y >= y && point.Y < y + RowHeights[rowIndex])
+            if (point.Y >= y && point.Y < y.Add(RowHeights[rowIndex]))
             {
                 var x = ContentSlot.X;
 
                 for (var column = 0; column < candidate.Cells.Count; column++)
                 {
-                    if (point.X >= x && point.X < x + ColumnWidths[column])
+                    if (point.X >= x && point.X < x.Add(ColumnWidths[column]))
                     {
                         row = candidate;
                         columnIndex = column;
@@ -159,7 +159,7 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
 
         var headerHeight = _owner.ActualStyle.CellPadding.Vertical.Add(_headerTextHeight);
 
-        if (point.Y < ContentSlot.Y || point.Y >= ContentSlot.Y + headerHeight)
+        if (point.Y < ContentSlot.Y || point.Y >= ContentSlot.Y.Add(headerHeight))
         {
             return false;
         }
@@ -168,7 +168,7 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
 
         for (var index = 0; index < _owner.Columns.Count; index++)
         {
-            if (point.X >= x && point.X < x + ColumnWidths[index])
+            if (point.X >= x && point.X < x.Add(ColumnWidths[index]))
             {
                 columnIndex = index;
                 return true;

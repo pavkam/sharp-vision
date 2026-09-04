@@ -2031,6 +2031,73 @@ public sealed class TableTests
         observedPointers.ShouldBe(3);
     }
 
+    /// <summary>Verifies TryGetCell resolves a point inside a second column's own left padding
+    /// once ContentSlot.X sits near the int.MaxValue coordinate limit - regression for TryGetCell's
+    /// per-column boundary comparison of `point.X` against `x + ColumnWidths[column]` using plain,
+    /// non-saturating arithmetic, unlike the accumulator advance one line away, which is already
+    /// saturating and therefore always matches the real per-cell arrangement exactly. That exact
+    /// match is what makes this case unrescuable by TryGetCell's own exhaustive Bounds.Contains
+    /// fallback below the fast walk: the fallback only covers each cell's deflated,
+    /// padding-excluded area, so a point that legitimately lands in column 1's left padding - inside
+    /// the fast path's intended hit area, outside the fallback's - depends entirely on this
+    /// comparison saturating correctly. Before the fix, the raw `+` overflowed and wrapped column
+    /// 1's upper boundary far negative, so this point failed to resolve through either loop.</summary>
+    [Fact]
+    public void Dispatch_WhenContentSlotXIsNearIntMaxValueAndPaddingOfSecondColumnIsClicked_ResolvesInsteadOfWrapping()
+    {
+        // Arrange
+        var row = new TableRow([new ControlText("Alpha"), new ControlText("Beta")]);
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            Style = TableStyle.Default with { CellPadding = new Thickness(1, 0) }
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        table.Rows.Add(row);
+        table.Measure(new Constraint(20, 4));
+        table.Arrange(new Rect(int.MaxValue - 10, 0, 20, 4));
+
+        // Column 1's un-deflated slot spans [int.MaxValue-2, int.MaxValue) once the (already
+        // correct) accumulator advance from column 0 lands there; its left-padded, clickable
+        // content Bounds only start one cell later, at int.MaxValue-1. The point below sits in that
+        // one-cell padding sliver: inside the fast path's slot, but outside the fallback's exact
+        // per-cell Bounds.
+        var point = new Point(int.MaxValue - 2, 0);
+
+        // Act
+        _ = Router.Route(table, Events.Pointer, PointerPress(point, clickCount: 1));
+
+        // Assert
+        table.ActiveRow.ShouldBe(row);
+        table.ActiveColumnIndex.ShouldBe(1);
+    }
+
+    /// <summary>Verifies TryGetHeaderColumn resolves the second header column instead of failing
+    /// once ContentSlot.X sits near the int.MaxValue coordinate limit - regression for the same
+    /// per-column walk pattern as TryGetCell, applied to the header row.</summary>
+    [Fact]
+    public void Dispatch_WhenContentSlotXIsNearIntMaxValueAndSecondHeaderIsClicked_SortsInsteadOfWrapping()
+    {
+        // Arrange
+        var table = new Table { ShowGridLines = false };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        table.Rows.Add(new TableRow([new ControlText("Alpha"), new ControlText("Beta")]));
+        table.Measure(new Constraint(20, 4));
+        table.Arrange(new Rect(int.MaxValue - 10, 0, 20, 4));
+
+        // Same saturated [int.MaxValue-2, int.MaxValue) window as the TryGetCell regression above,
+        // but walked by TryGetHeaderColumn against the header row instead of the data grid.
+
+        // Act
+        _ = Router.Route(table, Events.Pointer, PointerPress(new Point(int.MaxValue - 1, 0), clickCount: 1));
+
+        // Assert
+        table.SortColumnIndex.ShouldBe(1);
+    }
+
     /// <summary>Verifies select-all normalizes character case and lock state but rejects larger
     /// application-command chords.</summary>
     [Theory]

@@ -1200,7 +1200,7 @@ internal sealed class TableDataController: IDisposable
                 var cell = row.Cells[column];
                 cell.Measure(new Constraint(Math.Max(0, padded.Width), Math.Max(0, padded.Height)));
                 cell.Arrange(padded, widthResolved: true, heightResolved: true);
-                x += columnWidths[column] + columnGap;
+                x = x.Add(columnWidths[column].Add(columnGap));
             }
         }
     }
@@ -1269,14 +1269,14 @@ internal sealed class TableDataController: IDisposable
 
         for (var column = 0; column < columnWidths.Length; column++)
         {
-            if (point.X >= x && point.X < x + columnWidths[column])
+            if (point.X >= x && point.X < x.Add(columnWidths[column]))
             {
                 logicalIndex = (int) candidate;
                 columnIndex = column;
                 return true;
             }
 
-            x += columnWidths[column] + columnGap;
+            x = x.Add(columnWidths[column].Add(columnGap));
         }
 
         return false;

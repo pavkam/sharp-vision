@@ -1346,5 +1346,86 @@ public sealed class TableDataControllerTests
         columnIndex.ShouldBe(0);
     }
 
+    /// <summary>Verifies ArrangeWindow's per-column accumulator saturates instead of wrapping for
+    /// the symmetric int.MaxValue direction, and specifically for a SECOND column - regression for
+    /// the walk's own `x += columnWidths[column] + columnGap;` advance using plain, non-saturating
+    /// arithmetic. Column 0 alone never exercises this because it has no prior accumulation and
+    /// int.MinValue plus a positive width only moves away from the boundary; only a second column,
+    /// reached by advancing from a base near int.MaxValue, drives the accumulator past the limit.
+    /// Before the fix, the raw `+=` wrapped column 1's X to a large negative value instead of
+    /// staying pinned at int.MaxValue.</summary>
+    [Fact]
+    public async Task ArrangeWindow_WhenViewportXIsNearIntMaxValueAndSecondColumnIsArranged_SaturatesInsteadOfWrappingAsync()
+    {
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            ShowHeader = false,
+            ShowGridLines = false,
+            ScrollBars = ScrollBars.Both
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        var source = new FakeTableDataSource<TwoColumnItem>(
+            [new TwoColumnItem(0, "12345678", "abcdefgh")], static item => item.Id, count: 1);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(10, 4), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, Length.Cells(1)), "bind source");
+
+        // Arrange this already-mounted table directly near the integer coordinate limit, so the
+        // saturated baseX (int.MaxValue - 5) plus column 0's width of 8 overflows the moment the
+        // walk advances to column 1.
+        await surface.UpdateAsync(
+            () => table.Arrange(new Rect(int.MaxValue - 5, 0, 10, 4)),
+            "arrange at extreme viewport X");
+
+        var controller = table.ProgressiveController!;
+        var row = controller.RowAt(0).ShouldNotBeNull();
+        row.Cells[0].Bounds.X.ShouldBe(int.MaxValue - 5);
+        row.Cells[1].Bounds.X.ShouldBe(int.MaxValue);
+    }
+
+    /// <summary>Verifies TryResolvePoint's per-column boundary comparison saturates instead of
+    /// wrapping for the symmetric int.MaxValue direction, and specifically for a SECOND column -
+    /// regression for the `point.X` upper-boundary comparison against `x + columnWidths[column]`
+    /// using plain, non-saturating arithmetic. Before the fix, the raw addition overflowed column
+    /// 1's upper boundary and wrapped it to a large negative value, so a point that squarely sits
+    /// inside the saturated column 1 range failed to resolve at all.</summary>
+    [Fact]
+    public async Task TryResolvePoint_WhenViewportXIsNearIntMaxValueAndSecondColumnIsHit_SaturatesInsteadOfWrappingAsync()
+    {
+        var table = new Table
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            ShowHeader = false,
+            ShowGridLines = false,
+            ScrollBars = ScrollBars.Both
+        };
+        table.Columns.Add(TableColumn.Fixed("First", 8));
+        table.Columns.Add(TableColumn.Fixed("Second", 8));
+        var source = new FakeTableDataSource<TwoColumnItem>(
+            [new TwoColumnItem(0, "12345678", "abcdefgh")], static item => item.Id, count: 1);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(10, 4), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildTwoColumnRow, Length.Cells(1)), "bind source");
+
+        // Unlike the ArrangeWindow regression above, this base sits 10 (not 5) cells below the
+        // limit: the accumulator advance to column 1 (baseX + 8) stays just short of overflowing,
+        // so column 1 keeps a genuine two-cell-wide window - [int.MaxValue-2, int.MaxValue) - rather
+        // than collapsing to empty, isolating the boundary *comparison* line's own overflow.
+        await surface.UpdateAsync(
+            () => table.Arrange(new Rect(int.MaxValue - 10, 0, 10, 4)),
+            "arrange at extreme viewport X");
+
+        var controller = table.ProgressiveController!;
+
+        controller.TryResolvePoint(new Point(int.MaxValue - 1, 0), out var logicalIndex, out var columnIndex)
+            .ShouldBeTrue();
+        logicalIndex.ShouldBe(0);
+        columnIndex.ShouldBe(1);
+    }
+
     #endregion
 }
