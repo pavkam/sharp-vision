@@ -660,12 +660,6 @@ public sealed class NavigationView: CompositeControlBase
         Select(item, ActivationCause.Programmatic);
     }
 
-    /// <summary>Commits an item activated by a grouped child through the owning view.</summary>
-    /// <param name="item">The non-null item owned by this navigation view.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    internal void NotifyItemInvoked(NavigationViewItem item) =>
-        NotifyItemInvoked(item, ActivationCause.Programmatic);
-
     /// <summary>Commits an item activated by a grouped child through the owning view, threading the
     /// originating activation cause.</summary>
     /// <param name="item">The non-null item owned by this navigation view.</param>

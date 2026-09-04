@@ -819,7 +819,8 @@ public sealed class NavigationViewSurfaceTests
         first.IsExpanded.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a pointer click on a grouped item commits selection through the owning view.</summary>
+    /// <summary>Verifies a pointer click on a grouped item commits selection through the owning view
+    /// and reports the pointer cause on the published SelectionChanged transition.</summary>
     [Fact]
     public async Task Pointer_WhenGroupedItemIsClicked_SelectsItemThroughOwnerAsync()
     {
@@ -835,6 +836,8 @@ public sealed class NavigationViewSurfaceTests
             view,
             new Size(18, 5),
             TestContext.Current.CancellationToken);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        view.SelectionChanged += (_, args) => changes.Add(args);
 
         // Act
         await surface.Pointer.ClickAsync(models);
@@ -843,6 +846,7 @@ public sealed class NavigationViewSurfaceTests
         view.SelectedItem.ShouldBeSameAs(models);
         models.IsSelected.ShouldBeTrue();
         surface.ShouldHaveFocus(view);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Pointer);
     }
 
     /// <summary>Verifies a group release without an armed primary press is an inert routed event.</summary>
@@ -1106,6 +1110,63 @@ public sealed class NavigationViewSurfaceTests
 
         // Assert
         view.SelectedItem.ShouldBeSameAs(first);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Keyboard);
+    }
+
+    /// <summary>Verifies a directional-navigation key that lands on a grouped item reports the
+    /// keyboard cause on the published SelectionChanged transition.</summary>
+    [Fact]
+    public async Task Keyboard_WhenDownArrowMovesCurrentToGroupedItem_SelectionChangedReportsKeyboardCauseAsync()
+    {
+        // Arrange
+        var group = new NavigationViewGroup { Header = "Core" };
+        var first = new NavigationViewItem { Text = "First" };
+        var second = new NavigationViewItem { Text = "Second" };
+        group.Items.Add(first);
+        group.Items.Add(second);
+        var view = CreateView(header: null, 14);
+        view.Items.Add(group);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        view.SelectionChanged += (_, args) => changes.Add(args);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Down);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        view.SelectedItem.ShouldBeSameAs(first);
+        changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Keyboard);
+    }
+
+    /// <summary>Verifies a mnemonic invocation of a grouped item reports the keyboard cause on the
+    /// published SelectionChanged transition, exercising the group's own Invoked-forwarding path
+    /// rather than the navigator's direct current-commit path.</summary>
+    [Fact]
+    public async Task AccessKey_WhenGroupedItemMnemonicMatches_SelectionChangedReportsKeyboardCauseAsync()
+    {
+        // Arrange
+        var group = new NavigationViewGroup { Header = "Core" };
+        var target = new NavigationViewItem { Text = "&Zoom" };
+        group.Items.Add(target);
+        var view = CreateView(header: null, 14);
+        view.Items.Add(group);
+        await using var surface = await ComponentSurface.MountAsync(
+            view,
+            new Size(14, 4),
+            TestContext.Current.CancellationToken);
+        var changes = new List<NavigationViewSelectionChangedEventArgs>();
+        view.SelectionChanged += (_, args) => changes.Add(args);
+
+        // Act
+        await surface.SendAsync("\x1b[122;3:1u"u8.ToArray(), "Alt+Z");
+
+        // Assert
+        view.SelectedItem.ShouldBeSameAs(target);
         changes.ShouldHaveSingleItem().Cause.ShouldBe(ActivationCause.Keyboard);
     }
 

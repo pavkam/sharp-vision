@@ -395,11 +395,9 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
     private void OnItemInvoked(object? sender, ActivationEventArgs eventArgs)
     {
-        _ = eventArgs;
-
         if (sender is NavigationViewItem item)
         {
-            FindNavigationView()?.NotifyItemInvoked(item);
+            FindNavigationView()?.NotifyItemInvoked(item, eventArgs.Cause);
         }
     }
 
