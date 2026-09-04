@@ -22,11 +22,11 @@ public sealed class FrameEncoderTests
     {
         {
             ColorDepth.TrueColor,
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;2;95;135;175m\u001b[48;2;255;0;0mx\u001b[0m\u001b[1;1H\u001b[?25l"
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;2;95;135;175m\u001b[48;2;255;0;0mx\u001b[1;1H\u001b[0m\u001b[1;1H\u001b[?25l"
         },
-        { ColorDepth.Indexed256, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;5;67m\u001b[48;5;9mx\u001b[0m\u001b[1;1H\u001b[?25l" },
-        { ColorDepth.Basic16, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[90m\u001b[101mx\u001b[0m\u001b[1;1H\u001b[?25l" },
-        { ColorDepth.Monochrome, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hx\u001b[1;1H\u001b[?25l" }
+        { ColorDepth.Indexed256, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[38;5;67m\u001b[48;5;9mx\u001b[1;1H\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Basic16, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[90m\u001b[101mx\u001b[1;1H\u001b[0m\u001b[1;1H\u001b[?25l" },
+        { ColorDepth.Monochrome, "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hx\u001b[1;1H\u001b[1;1H\u001b[?25l" }
     };
 
     /// <summary>Verifies semantic colors project to exact bytes at every capability tier.</summary>
@@ -66,7 +66,7 @@ public sealed class FrameEncoderTests
             TerminalCapabilities.Conservative);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[91mab\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[91mab\u001b[1;2H\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
     }
 
     /// <summary>Verifies a missing capability snapshot fails before destination mutation.</summary>
@@ -101,7 +101,7 @@ public sealed class FrameEncoderTests
             TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[4mx\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[4mx\u001b[1;1H\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray());
     }
 
     /// <summary>Verifies proven optional decoration support emits exact modern SGR.</summary>
@@ -126,7 +126,7 @@ public sealed class FrameEncoderTests
         _ = FrameEncoder.Encode(null, back, destination, capabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx"u8.ToArray()
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1H\u001b[6m\u001b[53m\u001b[4:3m\u001b[58;2;1;2;3mx\u001b[1;1H"u8.ToArray()
                 .Concat("\u001b[0m\u001b[1;1H\u001b[?25l"u8.ToArray())
                 .ToArray());
     }
@@ -146,7 +146,7 @@ public sealed class FrameEncoderTests
 
         // Assert
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Ha�\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Ha�\u001b[1;2H\u001b[1;1H\u001b[?25l"u8.ToArray());
         destination.WrittenSpan.IndexOf("\u0301"u8).ShouldBe(-1);
     }
 
@@ -162,7 +162,7 @@ public sealed class FrameEncoderTests
         var result = FrameEncoder.Encode(null, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hab\u001b[1;1H\u001b[?25l"u8.ToArray());
+            "\u001b]8;;\u001b\\\u001b[0m\u001b[1;1H\u001b[2J\u001b[1;1Hab\u001b[1;2H\u001b[1;1H\u001b[?25l"u8.ToArray());
         result.ShouldBe(new EncodeResult(1, true));
     }
 
@@ -179,7 +179,7 @@ public sealed class FrameEncoderTests
         var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[1;2Hc\u001b[1;1H"u8.ToArray());
+            "\u001b[1;2Hc\u001b[1;2H\u001b[1;1H"u8.ToArray());
         result.Full.ShouldBeFalse();
         result.Spans.ShouldBe(1);
     }
@@ -195,7 +195,7 @@ public sealed class FrameEncoderTests
         var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
 
         destination.WrittenSpan.ToArray().ShouldBe(
-            "\u001b[2;5r\u001b[1S\u001b[r\u001b[5;1H5555\u001b[1;1H"u8.ToArray());
+            "\u001b[2;5r\u001b[1S\u001b[r\u001b[5;1H5555\u001b[5;4H\u001b[1;1H"u8.ToArray());
         result.ShouldBe(new EncodeResult(1, false));
     }
 
@@ -251,6 +251,7 @@ public sealed class FrameEncoderTests
                 "\u001b]8;;https://example.test\u001b\\" +
                 "\u001b[1m" +
                 "x" +
+                "\u001b[1;1H" +
                 "\u001b]8;;\u001b\\" +
                 "\u001b[0m" +
                 "\u001b[1;1H" +
@@ -640,6 +641,25 @@ public sealed class FrameEncoderTests
 
         (destination.WrittenSpan.IndexOf("界\u001b[1;3H"u8) >= 0).ShouldBe(automaticMargins);
         var screen = new VirtualScreen(frame.Size, automaticMargins, eatNewlineGlitch);
+        screen.Apply(destination.WrittenSpan);
+        screen.ShouldMatch(frame);
+    }
+
+    /// <summary>Verifies a wide owner ending in the final column gets the absolute wrap-state
+    /// repair through the built-in ANSI compatibility profile too, not only through a
+    /// terminfo-style described profile - the built-in ANSI description also declares
+    /// automatic margins.</summary>
+    [Fact]
+    public void Encode_WhenWideOwnerEndsAtMarginOnAnsiCompatibleProfile_PreservesScreenWithoutWrap()
+    {
+        using Frame frame = new(new Size(3, 1));
+        _ = frame.Canvas.Draw("a界", default);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, TerminalCapabilities.Conservative);
+
+        destination.WrittenSpan.IndexOf("界\u001b[1;3H"u8).ShouldBeGreaterThanOrEqualTo(0);
+        var screen = new VirtualScreen(frame.Size, automaticMargins: true, eatNewlineGlitch: false);
         screen.Apply(destination.WrittenSpan);
         screen.ShouldMatch(frame);
     }

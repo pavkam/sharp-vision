@@ -278,8 +278,7 @@ public static class FrameEncoder
             // Writing the final column can leave an automatic-margin terminal in
             // delayed-wrap state. An immediate absolute position clears that state
             // before another byte can wrap or scroll, including xenl terminals.
-            if (!profile.AnsiCompatible &&
-                profile.Description.AutomaticMargins &&
+            if (profile.Description.AutomaticMargins &&
                 end == back.Size.Width &&
                 end > 0)
             {
