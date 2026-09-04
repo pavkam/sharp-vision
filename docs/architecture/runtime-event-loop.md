@@ -354,12 +354,43 @@ Each attempted enable becomes a lease that owns its exact enable and disable
 bytes before transport I/O, so even an uncertain partial write receives its
 exact conservative cleanup attempt.
 
-One event loop awaits one transport read and one resize read, then invokes
-exactly one sink callback at a time. Input and resize handlers therefore cannot
-race each other, and no callback runs while `StreamTransport` holds its write
-gate. Input closure completes the decoder before `ISink.Closed`; read, decoder,
-resize, and handler faults are reported through `ISink.Fault` and remain the
-primary exception.
+One event loop awaits up to five wake sources — one transport read, one resize
+read, and, only while pending, a negotiation deadline, an ambiguous-Escape
+expiry, and an ambiguous-key-match expiry — and invokes exactly one sink
+callback per iteration. Because `Task.WhenAny` is biased toward whichever task
+is listed first when several are already complete, the loop re-checks readiness
+explicitly each iteration and applies a fixed priority (negotiation deadline,
+then Escape expiry, then key-matcher expiry, then read/resize alternating) so a
+synchronous read burst cannot starve resize or an elapsed deadline. Input and
+resize handlers therefore cannot race each other, and no callback runs while
+`StreamTransport` holds its write gate. Input closure completes the decoder
+before `ISink.Closed`; read, decoder, resize, and handler faults are reported
+through `ISink.Fault` and remain the primary exception.
+
+```mermaid
+flowchart TD
+    Pending["Five wake sources pending: read, resize, negotiation deadline, Escape expiry, key-matcher expiry"] --> Ready{"Any already complete?"}
+    Ready -->|No| WhenAny["await Task.WhenAny over read, resize, and whichever deadline tasks are non-null"]
+    WhenAny --> Pending
+    Ready -->|Yes| Deadline{"Negotiation deadline ready?"}
+    Deadline -->|Yes| DeadlineAction["Publish capabilities, enable modes, forward buffered resize; re-arm or clear the deadline"]
+    Deadline -->|No| Escape{"Escape expiry ready?"}
+    Escape -->|Yes| EscapeAction["Expire the ambiguous Escape; re-arm or clear escapeExpiry"]
+    Escape -->|No| KeyMatcher{"Key-matcher expiry ready?"}
+    KeyMatcher -->|Yes| KeyMatcherAction["Expire the ambiguous key match; re-arm or clear keyMatcherExpiry"]
+    KeyMatcher -->|No| Both{"Both read and resize ready?"}
+    Both -->|Yes| Alternate["Alternate via the preferResize toggle"]
+    Both -->|No| Single["Take whichever of read or resize is ready"]
+    Alternate --> Selected{"Selected task"}
+    Single --> Selected
+    Selected -->|Resize| ResizeAction["Forward resize to the sink; re-issue the resize read"]
+    Selected -->|Read| ReadAction["Route bytes through decoder and router; re-derive Escape and key-matcher deadlines"]
+    DeadlineAction --> Pending
+    EscapeAction --> Pending
+    KeyMatcherAction --> Pending
+    ResizeAction --> Pending
+    ReadAction --> Pending
+```
 
 `ConsoleResizeSource` returns cell-only changes after a finite injected-clock
 delay. On Linux and macOS, `UnixResizeSource` uses a capacity-one channel to
