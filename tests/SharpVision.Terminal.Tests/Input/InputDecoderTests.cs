@@ -3453,6 +3453,46 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies a pending SS3 continuation (<c>ESC O</c> with no final byte yet) is resolved on
+    /// its own ambiguity deadline when nothing further ever arrives, mirroring
+    /// <see cref="ExpireEscape_WhenDeadlineIsReached_EmitsEscape"/> for the sibling lone-Escape
+    /// ambiguity. Without <see cref="InputDecoder.ExpireSs3"/> being wired up, this state would
+    /// wait forever with nothing scheduled to resolve it.
+    /// </summary>
+    [Fact]
+    public void ExpireSs3_WhenDeadlineIsReachedWithNoFurtherByte_EndsSs3()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC O arms a pending SS3 continuation and its ambiguity deadline; no final byte ever
+        // follows.
+        decoder.Decode([0x1b, (byte) 'O']);
+
+        _ = decoder.PendingSs3Deadline.ShouldNotBeNull();
+        decoder.ExpireSs3().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(24));
+        decoder.ExpireSs3().ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireSs3().ShouldBeTrue();
+        decoder.PendingSs3Deadline.ShouldBeNull();
+
+        // A second call at (or after) the same deadline is a no-op: the ambiguity is already
+        // resolved.
+        decoder.ExpireSs3().ShouldBeFalse();
+
+        // The abandoned continuation reports as malformed, exactly like every other reactive
+        // resolution path (a second Escape, an unrelated control byte, or stream Complete()).
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Strokes.ShouldBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies escape-timeout expiry ends a pending X10 mouse continuation along with the lone
     /// Escape, so the following bytes decode as ordinary input instead of being consumed as a
     /// synthetic pointer report.

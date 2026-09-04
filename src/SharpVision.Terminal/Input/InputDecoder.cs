@@ -31,6 +31,7 @@ public sealed class InputDecoder: IDisposable
     private readonly Utf8TextAccumulator _utf8;
     private DateTimeOffset _escapeDeadline;
     private DateTimeOffset _keyMatcherDeadline;
+    private DateTimeOffset _ss3Deadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
@@ -216,6 +217,11 @@ public sealed class InputDecoder: IDisposable
     /// <see cref="ExpireKeyMatcher"/> runs even when no further byte ever arrives.</summary>
     public DateTimeOffset? PendingKeyMatcherDeadline => _keyMatcher is { Pending: true } ? _keyMatcherDeadline : null;
 
+    /// <summary>Gets the pending SS3 ambiguity deadline, or null when no SS3 continuation is
+    /// pending. The read loop mirrors this into a wake-up so <see cref="ExpireSs3"/> runs even
+    /// when no further byte ever arrives.</summary>
+    public DateTimeOffset? PendingSs3Deadline => _ss3Pending ? _ss3Deadline : null;
+
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
@@ -252,6 +258,22 @@ public sealed class InputDecoder: IDisposable
 
         var adapter = new Adapter(this);
         CompleteKeyMatcher(ref adapter);
+        return true;
+    }
+
+    /// <summary>Resolves a pending SS3 continuation after its ambiguity deadline.</summary>
+    /// <returns>Whether a pending SS3 continuation was resolved.</returns>
+    /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
+    public bool ExpireSs3()
+    {
+        ThrowIfDisposed();
+
+        if (!_ss3Pending || _timeProvider.GetUtcNow() < _ss3Deadline)
+        {
+            return false;
+        }
+
+        EndSs3IfPending();
         return true;
     }
 
@@ -443,6 +465,7 @@ public sealed class InputDecoder: IDisposable
             {
                 _skippedBytes = checked(_skippedBytes + 1);
                 _ss3Pending = true;
+                _ss3Deadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
                 return;
             }
 
@@ -662,6 +685,7 @@ public sealed class InputDecoder: IDisposable
         if (value == 0x8f && _options.KeyMap.RequiresEightBitSs3)
         {
             _ss3Pending = true;
+            _ss3Deadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
             return;
         }
 
@@ -727,6 +751,7 @@ public sealed class InputDecoder: IDisposable
         if (intermediates.IsEmpty && final == (byte) 'O')
         {
             _ss3Pending = true;
+            _ss3Deadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
             return;
         }
 

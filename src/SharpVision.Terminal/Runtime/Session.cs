@@ -869,6 +869,7 @@ public sealed class Session: IAsyncDisposable
         Task<Dimensions>? resize = null;
         Task? escapeExpiry = null;
         Task? keyMatcherExpiry = null;
+        Task? ss3Expiry = null;
         var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
@@ -896,20 +897,29 @@ public sealed class Session: IAsyncDisposable
                 var deadlineReady = deadline is not null && deadline.IsCompleted;
                 var escapeReady = escapeExpiry is not null && escapeExpiry.IsCompleted;
                 var keyMatcherReady = keyMatcherExpiry is not null && keyMatcherExpiry.IsCompleted;
+                var ss3Ready = ss3Expiry is not null && ss3Expiry.IsCompleted;
                 Task completed;
 
-                if (!deadlineReady && !escapeReady && !keyMatcherReady && !read.IsCompleted && !resize.IsCompleted)
+                if (!deadlineReady && !escapeReady && !keyMatcherReady && !ss3Ready && !read.IsCompleted && !resize.IsCompleted)
                 {
-                    completed = (deadline, escapeExpiry, keyMatcherExpiry) switch
+                    completed = (deadline, escapeExpiry, keyMatcherExpiry, ss3Expiry) switch
                     {
-                        (null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
-                        ({ } negotiation, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
-                        (null, { } escape, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
-                        (null, null, { } keyMatcher) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
-                        var (negotiation, escape, keyMatcher) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!).ConfigureAwait(false)
+                        (null, null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
+                        ({ } negotiation, null, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
+                        (null, { } escape, null, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, null) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
+                        (null, null, null, { } ss3) => await Task.WhenAny(read, resize, ss3).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
+                        ({ } negotiation, null, null, { } ss3) => await Task.WhenAny(read, resize, negotiation, ss3).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, null) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
+                        (null, { } escape, null, { } ss3) => await Task.WhenAny(read, resize, escape, ss3).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, keyMatcher, ss3).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, { } keyMatcher, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, { } ss3) => await Task.WhenAny(read, resize, negotiation, escape, ss3).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3).ConfigureAwait(false),
+                        var (negotiation, escape, keyMatcher, ss3) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!, ss3!).ConfigureAwait(false)
                     };
                 }
                 else
@@ -919,6 +929,7 @@ public sealed class Session: IAsyncDisposable
                         true => deadline!,
                         false when escapeReady => escapeExpiry!,
                         false when keyMatcherReady => keyMatcherExpiry!,
+                        false when ss3Ready => ss3Expiry!,
                         false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
                         false when read.IsCompleted => read,
                         _ => resize
@@ -1004,6 +1015,22 @@ public sealed class Session: IAsyncDisposable
                     _ = router.ExpireKeyMatcher();
                     keyMatcherExpiry = router.PendingKeyMatcherDeadline is { } pendingKeyMatcher
                         ? DelayUntilAsync(pendingKeyMatcher, linked.Token)
+                        : null;
+                    continue;
+                }
+
+                if (ss3Expiry is not null && ReferenceEquals(completed, ss3Expiry))
+                {
+                    await ss3Expiry.ConfigureAwait(false);
+
+                    // A timer callback may fire before the provider's wall clock reaches the
+                    // ambiguity deadline - the same slack the Escape and key-matcher deadlines
+                    // tolerate above. ExpireSs3 then resolves nothing and the pending deadline is
+                    // simply re-armed; when it does resolve, the pending deadline is gone and the
+                    // wake-up is retired until the next ambiguous SS3 continuation.
+                    _ = router.ExpireSs3();
+                    ss3Expiry = router.PendingSs3Deadline is { } pendingSs3
+                        ? DelayUntilAsync(pendingSs3, linked.Token)
                         : null;
                     continue;
                 }
@@ -1094,6 +1121,15 @@ public sealed class Session: IAsyncDisposable
                     ? DelayUntilAsync(keyMatcherDeadline, linked.Token)
                     : null;
 
+                // Routing may have begun, refined, or resolved an ambiguous SS3 continuation.
+                // Mirror the decoder's pending deadline into a wake-up so the underlying key is
+                // emitted even when no further byte ever arrives - an F1-F4 press or a cursor key
+                // in application-cursor-keys mode must not wait for the next keystroke to be
+                // delivered.
+                ss3Expiry = router.PendingSs3Deadline is { } ss3Deadline
+                    ? DelayUntilAsync(ss3Deadline, linked.Token)
+                    : null;
+
                 Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
 
                 if (!ready && negotiator!.Completed)
@@ -1149,6 +1185,7 @@ public sealed class Session: IAsyncDisposable
             Observe(deadline);
             Observe(escapeExpiry);
             Observe(keyMatcherExpiry);
+            Observe(ss3Expiry);
 
             if (await DrainAsync(read).ConfigureAwait(false))
             {

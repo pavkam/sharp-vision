@@ -128,6 +128,9 @@ public sealed class ProtocolRouter: IDisposable
     /// pending.</summary>
     public DateTimeOffset? PendingKeyMatcherDeadline => _decoder.PendingKeyMatcherDeadline;
 
+    /// <summary>Gets the pending SS3 ambiguity deadline, or null when none is pending.</summary>
+    public DateTimeOffset? PendingSs3Deadline => _decoder.PendingSs3Deadline;
+
     /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     public bool ExpireEscape() => _decoder.ExpireEscape();
@@ -135,6 +138,10 @@ public sealed class ProtocolRouter: IDisposable
     /// <summary>Expires a pending fallback key-sequence match when its deadline elapsed.</summary>
     /// <returns>Whether a fallback key sequence was resolved.</returns>
     public bool ExpireKeyMatcher() => _decoder.ExpireKeyMatcher();
+
+    /// <summary>Expires a pending SS3 continuation when its deadline elapsed.</summary>
+    /// <returns>Whether a pending SS3 continuation was resolved.</returns>
+    public bool ExpireSs3() => _decoder.ExpireSs3();
 
     /// <summary>Completes pending input and protocol framing once.</summary>
     public void Complete()
