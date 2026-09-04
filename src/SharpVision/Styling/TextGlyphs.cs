@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines glyphs used for framework-authored text presentation.</summary>
-internal readonly record struct TextGlyphs
+[PublicAPI]
+public readonly record struct TextGlyphs
 {
     /// <summary>Initializes framework text glyphs.</summary>
     /// <param name="ellipsis">The truncation ellipsis.</param>

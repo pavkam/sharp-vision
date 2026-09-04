@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines navigation-item, group-disclosure, and separator glyphs.</summary>
-internal readonly record struct NavigationGlyphs
+[PublicAPI]
+public readonly record struct NavigationGlyphs
 {
     /// <summary>Initializes the complete navigation glyph family.</summary>
     /// <param name="itemIdle">The idle item marker.</param>

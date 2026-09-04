@@ -7,7 +7,7 @@ namespace SharpVision.Documents;
 [PublicAPI]
 public interface IDocumentFormatReader
 {
-    /// <summary>Reads a non-null source string without mutating a <see cref="Controls.Documents.Document"/>.</summary>
+    /// <summary>Reads a non-null source string without mutating a <see cref="Controls.Document.Document"/>.</summary>
     /// <param name="source">The non-null serialized source.</param>
     /// <param name="options">Optional general read limits.</param>
     /// <returns>The detached tree and deterministic diagnostics.</returns>

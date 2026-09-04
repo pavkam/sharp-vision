@@ -87,7 +87,7 @@ const harnessUsings = [
   "SharpVision.Controls.Charts",
   "SharpVision.Controls.Collections",
   "SharpVision.Controls.Display",
-  "SharpVision.Controls.Documents",
+  "SharpVision.Controls.Document",
   "SharpVision.Controls.Input",
   "SharpVision.Controls.Layout",
   "SharpVision.Controls.Scrolling",

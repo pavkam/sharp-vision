@@ -52,7 +52,7 @@ public sealed class PublicApiCompatibilityTests
     [Fact]
     public Task SharpVisionDocument_WhenComparedWithApprovedBaseline_MatchesApprovedPublicApi()
     {
-        var assembly = typeof(Controls.Documents.Document).Assembly;
+        var assembly = typeof(Controls.Document.Document).Assembly;
 
         return VerifyPublicApiAsync(assembly, "SharpVision.Document");
     }

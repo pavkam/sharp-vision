@@ -3,7 +3,7 @@
 
 namespace SharpVision.Documents.Markdown;
 
-using SharpVision.Controls.Documents;
+using SharpVision.Controls.Document;
 using SharpVision.Controls.Input;
 using SharpVision.Text;
 

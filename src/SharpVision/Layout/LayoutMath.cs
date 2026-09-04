@@ -3,7 +3,13 @@
 
 namespace SharpVision.Layout;
 
-internal static class LayoutMath
+/// <summary>Provides saturating integer arithmetic for terminal cell layout.</summary>
+[PublicAPI]
+[SuppressMessage(
+    "Naming",
+    "CA1708:IdentifiersShouldDifferByMoreThanCase",
+    Justification = "C# extension-block metadata names are compiler-generated.")]
+public static class LayoutMath
 {
     extension(int left)
     {

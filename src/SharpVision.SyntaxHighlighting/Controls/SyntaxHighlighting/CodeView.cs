@@ -679,7 +679,7 @@ public sealed class CodeView:
     }
 
     /// <inheritdoc/>
-    internal override TextSelectionMap GetTextSelectionMap()
+    protected override TextSelectionMap GetTextSelectionMap()
     {
         var viewport = SelectableTextViewportAbsolute();
         var localViewport = new Rect(

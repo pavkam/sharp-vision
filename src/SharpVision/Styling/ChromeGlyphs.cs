@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines code-owned glyphs for borders, block shadows, and window chrome.</summary>
-internal readonly record struct ChromeGlyphs
+[PublicAPI]
+public readonly record struct ChromeGlyphs
 {
     /// <summary>Initializes one complete border family plus shadow and window-interaction glyphs.</summary>
     /// <param name="topLeft">The top-left border corner.</param>

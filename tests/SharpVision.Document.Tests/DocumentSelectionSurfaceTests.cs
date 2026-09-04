@@ -5,7 +5,7 @@ namespace SharpVision.Document.Tests;
 
 using SharpVision.Text;
 
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies Document selection as a final subtree adornment over semantic glyph cells.</summary>
 public sealed class DocumentSelectionSurfaceTests

@@ -7,7 +7,7 @@ namespace SharpVision.Document.Tests;
 // segment, so an unqualified "Document" would otherwise resolve to that segment (as a namespace)
 // rather than the Document control - this in-namespace alias, unlike a global one, takes priority
 // over that enclosing-segment lookup in every position, including local-variable and return types.
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies <see cref="DocumentStyle"/> and <see cref="DocumentGlyphs"/> as values, and the
 /// paint-time face and glyph resolution that keeps a live style or theme swap from leaving any part

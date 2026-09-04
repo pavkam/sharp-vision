@@ -235,8 +235,8 @@ export async function scanRepository(root) {
     }
 
     if (
-      relativePath !== "src/SharpVision.Document/Controls/Documents/Document.cs" &&
-      /^src\/SharpVision\.Document\/Controls\/Documents\/Document.*\.cs$/u.test(relativePath)
+      relativePath !== "src/SharpVision.Document/Controls/Document/Document.cs" &&
+      /^src\/SharpVision\.Document\/Controls\/Document\/Document.*\.cs$/u.test(relativePath)
     ) {
       for (const error of findUndocumentedDocumentMutationLifecycle(text)) {
         errors.push(`${relativePath}: ${error}`);

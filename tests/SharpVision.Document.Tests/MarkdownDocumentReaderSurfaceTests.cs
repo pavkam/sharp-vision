@@ -9,7 +9,7 @@ using SharpVision.Documents.Markdown;
 // segment, so an unqualified "Document" would otherwise resolve to that segment (as a namespace)
 // rather than the Document control - this in-namespace alias, unlike a global one, takes priority
 // over that enclosing-segment lookup in every position, including local-variable and return types.
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies Markdown-created form controls retain ordinary mounted behavior.</summary>
 public sealed class MarkdownDocumentReaderSurfaceTests

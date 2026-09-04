@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines immutable progress-track, fill, and ordered fractional glyphs.</summary>
-internal sealed class ProgressGlyphs
+[PublicAPI]
+public sealed class ProgressGlyphs
 {
     private const int _levelCount = 9;
     private readonly ControlGlyph[] _horizontalFractions;

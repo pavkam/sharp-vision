@@ -3,7 +3,7 @@
 
 namespace SharpVision.SyntaxHighlighting.Tests;
 
-using SharpVision.Controls.Documents;
+using SharpVision.Controls.Document;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
 using SharpVision.Layout;

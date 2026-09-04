@@ -11,10 +11,11 @@ using SharpVision.Scrolling;
 /// coordinator owns the bounded layout loop, exact measure constraint, event coalescing, and
 /// exception-safe transaction lifetime. The optional active predicate keeps width-independent
 /// projections out of the reconciliation path.</remarks>
-internal sealed class WidthDependentViewportCoordinator
+[PublicAPI]
+public sealed class WidthDependentViewportCoordinator
 {
     /// <summary>Gets the maximum projection rebuilds allowed in one layout transaction.</summary>
-    internal const int MaximumReconciliationAttempts = 4;
+    public const int MaximumReconciliationAttempts = 4;
 
     private readonly ControlBase _eventSender;
     private readonly Container _viewport;

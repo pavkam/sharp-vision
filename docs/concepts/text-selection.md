@@ -37,6 +37,12 @@ The indexed selection map retains:
 - grapheme boundaries, row-local hit indexes, line boundaries, sticky-column
   navigation, and a semantic fingerprint.
 
+Authoritative controls build a `TextSelectionMap` through
+`ControlBase.GetTextSelectionMap()` using the public `TextSelectionGlyph` and
+`TextSelectionSource` types. Optional leaf packages such as
+`SharpVision.Document` and `SharpVision.SyntaxHighlighting` consume that seam
+without friend access to the core assembly.
+
 Replacing a source with an equal string is still an identity change and clears a
 stale range once. Reflow, clipping, or scrolling that preserves ordered source
 identity and text preserves the range.

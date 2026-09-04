@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines the ColorPlane currently-selected-coordinate marker glyph.</summary>
-internal readonly record struct ColorPlaneGlyphs
+[PublicAPI]
+public readonly record struct ColorPlaneGlyphs
 {
     /// <summary>Initializes the ColorPlane glyph family.</summary>
     /// <param name="selectedMarker">The currently-selected-coordinate marker.</param>

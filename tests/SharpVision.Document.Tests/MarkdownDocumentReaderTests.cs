@@ -5,7 +5,7 @@ namespace SharpVision.Document.Tests;
 
 using SharpVision.Text;
 
-using DocumentControl = Controls.Documents.Document;
+using DocumentControl = Controls.Document.Document;
 
 /// <summary>Verifies native Markdown parsing and independently selectable extensions.</summary>
 public sealed class MarkdownDocumentReaderTests

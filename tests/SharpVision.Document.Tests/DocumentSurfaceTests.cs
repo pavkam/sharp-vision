@@ -5,7 +5,7 @@ namespace SharpVision.Document.Tests;
 
 using SharpVision.Text;
 
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies a nested document exports its semantic projection rather than its private
 /// presentation tree to an enclosing document selection.</summary>

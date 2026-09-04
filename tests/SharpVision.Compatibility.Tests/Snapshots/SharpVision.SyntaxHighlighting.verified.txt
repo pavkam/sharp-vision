@@ -1,6 +1,6 @@
 ﻿namespace SharpVision.Controls.SyntaxHighlighting
 {
-    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextViewport
+    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Runtime.IDispatcherAttachmentObserver, SharpVision.Text.ISelectableTextViewport
     {
         public CodeView() { }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
@@ -37,6 +37,7 @@
         public void ExpandAll() { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Text.TextSelectionMap GetTextSelectionMap() { }
         protected override SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
         protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         public bool IsFoldStart(int line) { }
@@ -54,7 +55,7 @@
         protected override int TextSelectionPageDistance() { }
         public bool ToggleFold(int line) { }
     }
-    public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu
+    public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu, SharpVision.Runtime.IClipboardWriterContextMenu
     {
         public CodeViewContextMenu(SharpVision.Controls.SyntaxHighlighting.CodeView owner) { }
     }

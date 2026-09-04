@@ -1,12 +1,12 @@
-﻿namespace SharpVision.Controls.Documents
+﻿namespace SharpVision.Controls.Document
 {
-    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Documents.DocumentStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextViewport
+    public sealed class Document : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Document.DocumentStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Text.ISelectableTextViewport
     {
         public Document() { }
-        public SharpVision.Controls.Documents.DocumentLink? ActiveLink { get; set; }
+        public SharpVision.Controls.Document.DocumentLink? ActiveLink { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
-        public SharpVision.Controls.Documents.DocumentStyle ActualStyle { get; }
-        public SharpVision.Controls.Documents.DocumentBlockCollection Blocks { get; }
+        public SharpVision.Controls.Document.DocumentStyle ActualStyle { get; }
+        public SharpVision.Controls.Document.DocumentBlockCollection Blocks { get; }
         public SharpVision.Terminal.Geometry.Size Extent { get; }
         protected override bool HasAuthoritativeTextSelectionProjection { get; }
         public int LineSize { get; set; }
@@ -15,10 +15,10 @@
         public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
         public SharpVision.Text.Selection Selection { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
-        public SharpVision.Controls.Documents.DocumentStyle? Style { get; set; }
+        public SharpVision.Controls.Document.DocumentStyle? Style { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
-        public event System.EventHandler<SharpVision.Controls.Documents.DocumentLinkEventArgs>? LinkClicked;
+        public event System.EventHandler<SharpVision.Controls.Document.DocumentLinkEventArgs>? LinkClicked;
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler? SelectionChanged;
         protected override SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
@@ -26,6 +26,8 @@
         public string CopySelection() { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Text.TextSelectionMap GetTextSelectionMap() { }
+        protected override SharpVision.Text.TextSelectionSource? GetTextSelectionSource(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected override bool IsTextSelectionPointerTarget(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         public SharpVision.Documents.DocumentReadResult Load(string source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null) { }
@@ -46,45 +48,45 @@
         public override void SetTextSelection(SharpVision.Text.Selection selection) { }
         protected override int TextSelectionPageDistance() { }
     }
-    public abstract class DocumentBlock : SharpVision.Controls.Documents.DocumentNode { }
-    public sealed class DocumentBlockCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentBlock> { }
-    public sealed class DocumentBlockControl : SharpVision.Controls.Documents.DocumentBlock
+    public abstract class DocumentBlock : SharpVision.Controls.Document.DocumentNode { }
+    public sealed class DocumentBlockCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentBlock> { }
+    public sealed class DocumentBlockControl : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentBlockControl(SharpVision.Controls.ControlBase control) { }
         public SharpVision.Controls.ControlBase Control { get; }
     }
-    public sealed class DocumentBlockQuote : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentBlockQuote : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentBlockQuote() { }
-        public DocumentBlockQuote(SharpVision.Controls.Documents.DocumentBlock block) { }
+        public DocumentBlockQuote(SharpVision.Controls.Document.DocumentBlock block) { }
         public DocumentBlockQuote(string text) { }
-        public SharpVision.Controls.Documents.DocumentBlockCollection Blocks { get; }
+        public SharpVision.Controls.Document.DocumentBlockCollection Blocks { get; }
     }
-    public sealed class DocumentCallout : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentCallout : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentCallout() { }
-        public SharpVision.Controls.Documents.DocumentBlockCollection Blocks { get; }
+        public SharpVision.Controls.Document.DocumentBlockCollection Blocks { get; }
         public string Kind { get; set; }
         public string Title { get; set; }
     }
-    public sealed class DocumentCodeBlock : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentCodeBlock : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentCodeBlock() { }
         public DocumentCodeBlock(string text) { }
         public string Language { get; set; }
         public string Text { get; set; }
     }
-    public sealed class DocumentCodeSpan : SharpVision.Controls.Documents.DocumentInline
+    public sealed class DocumentCodeSpan : SharpVision.Controls.Document.DocumentInline
     {
         public DocumentCodeSpan() { }
         public DocumentCodeSpan(string text) { }
         public string Text { get; set; }
     }
-    public sealed class DocumentEmphasis : SharpVision.Controls.Documents.DocumentInlineContainer
+    public sealed class DocumentEmphasis : SharpVision.Controls.Document.DocumentInlineContainer
     {
         public DocumentEmphasis() { }
     }
-    public readonly struct DocumentGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Documents.DocumentGlyphs>
+    public readonly struct DocumentGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Controls.Document.DocumentGlyphs>
     {
         public DocumentGlyphs(System.Text.Rune firstBullet, System.Text.Rune secondBullet, System.Text.Rune thirdBullet, System.Text.Rune quoteBar, System.Text.Rune rule) { }
         public System.Text.Rune FirstBullet { get; init; }
@@ -92,39 +94,39 @@
         public System.Text.Rune Rule { get; init; }
         public System.Text.Rune SecondBullet { get; init; }
         public System.Text.Rune ThirdBullet { get; init; }
-        public static SharpVision.Controls.Documents.DocumentGlyphs Default { get; }
+        public static SharpVision.Controls.Document.DocumentGlyphs Default { get; }
     }
-    public sealed class DocumentHeading : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentHeading : SharpVision.Controls.Document.DocumentBlock
     {
         public const int MaximumLevel = 6;
         public const int MinimumLevel = 1;
         public DocumentHeading(int level) { }
         public DocumentHeading(int level, string text) { }
-        public SharpVision.Controls.Documents.DocumentInlineCollection Inlines { get; }
+        public SharpVision.Controls.Document.DocumentInlineCollection Inlines { get; }
         public int Level { get; set; }
     }
-    public abstract class DocumentInline : SharpVision.Controls.Documents.DocumentNode { }
-    public sealed class DocumentInlineCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentInline> { }
-    public abstract class DocumentInlineContainer : SharpVision.Controls.Documents.DocumentInline
+    public abstract class DocumentInline : SharpVision.Controls.Document.DocumentNode { }
+    public sealed class DocumentInlineCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentInline> { }
+    public abstract class DocumentInlineContainer : SharpVision.Controls.Document.DocumentInline
     {
         protected DocumentInlineContainer() { }
-        public SharpVision.Controls.Documents.DocumentInlineCollection Inlines { get; }
+        public SharpVision.Controls.Document.DocumentInlineCollection Inlines { get; }
     }
-    public sealed class DocumentInlineControl : SharpVision.Controls.Documents.DocumentInline
+    public sealed class DocumentInlineControl : SharpVision.Controls.Document.DocumentInline
     {
         public DocumentInlineControl(SharpVision.Controls.ControlBase control) { }
         public SharpVision.Controls.ControlBase Control { get; }
     }
-    public sealed class DocumentLineBreak : SharpVision.Controls.Documents.DocumentInline
+    public sealed class DocumentLineBreak : SharpVision.Controls.Document.DocumentInline
     {
         public DocumentLineBreak() { }
     }
-    public sealed class DocumentLink : SharpVision.Controls.Documents.DocumentInlineContainer
+    public sealed class DocumentLink : SharpVision.Controls.Document.DocumentInlineContainer
     {
         public DocumentLink() { }
         public DocumentLink(string text) { }
         public DocumentLink(string text, string target) { }
-        public SharpVision.Controls.Documents.DocumentLinkEmphasis Emphasis { get; set; }
+        public SharpVision.Controls.Document.DocumentLinkEmphasis Emphasis { get; set; }
         public bool IsEnabled { get; set; }
         public string? Target { get; set; }
         public string Text { get; set; }
@@ -137,27 +139,27 @@
     }
     public sealed class DocumentLinkEventArgs : System.EventArgs
     {
-        public DocumentLinkEventArgs(SharpVision.Controls.Documents.DocumentLink link) { }
-        public SharpVision.Controls.Documents.DocumentLink Link { get; }
+        public DocumentLinkEventArgs(SharpVision.Controls.Document.DocumentLink link) { }
+        public SharpVision.Controls.Document.DocumentLink Link { get; }
     }
-    public sealed class DocumentList : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentList : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentList() { }
-        public DocumentList(SharpVision.Controls.Documents.DocumentListKind kind) { }
+        public DocumentList(SharpVision.Controls.Document.DocumentListKind kind) { }
         public bool IsLoose { get; set; }
-        public SharpVision.Controls.Documents.DocumentListItemCollection Items { get; }
-        public SharpVision.Controls.Documents.DocumentListKind Kind { get; set; }
+        public SharpVision.Controls.Document.DocumentListItemCollection Items { get; }
+        public SharpVision.Controls.Document.DocumentListKind Kind { get; set; }
         public int Start { get; set; }
     }
-    public sealed class DocumentListItem : SharpVision.Controls.Documents.DocumentNode
+    public sealed class DocumentListItem : SharpVision.Controls.Document.DocumentNode
     {
         public DocumentListItem() { }
-        public DocumentListItem(SharpVision.Controls.Documents.DocumentBlock block) { }
+        public DocumentListItem(SharpVision.Controls.Document.DocumentBlock block) { }
         public DocumentListItem(string text) { }
-        public DocumentListItem(string text, SharpVision.Controls.Documents.DocumentList nested) { }
-        public SharpVision.Controls.Documents.DocumentBlockCollection Blocks { get; }
+        public DocumentListItem(string text, SharpVision.Controls.Document.DocumentList nested) { }
+        public SharpVision.Controls.Document.DocumentBlockCollection Blocks { get; }
     }
-    public sealed class DocumentListItemCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentListItem> { }
+    public sealed class DocumentListItemCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentListItem> { }
     public enum DocumentListKind
     {
         Bulleted = 0,
@@ -165,7 +167,7 @@
     }
     public abstract class DocumentNode { }
     public abstract class DocumentNodeCollection<TNode> : System.Collections.Generic.IEnumerable<TNode>, System.Collections.Generic.IReadOnlyCollection<TNode>, System.Collections.Generic.IReadOnlyList<TNode>, System.Collections.IEnumerable
-        where TNode : SharpVision.Controls.Documents.DocumentNode
+        where TNode : SharpVision.Controls.Document.DocumentNode
     {
         public int Count { get; }
         public TNode this[int index] { get; }
@@ -176,29 +178,29 @@
         public bool Remove(TNode node) { }
         public void RemoveAt(int index) { }
     }
-    public sealed class DocumentParagraph : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentParagraph : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentParagraph() { }
         public DocumentParagraph(string text) { }
-        public SharpVision.Controls.Documents.DocumentInlineCollection Inlines { get; }
+        public SharpVision.Controls.Document.DocumentInlineCollection Inlines { get; }
     }
-    public sealed class DocumentSeparator : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentSeparator : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentSeparator() { }
     }
-    public sealed class DocumentSoftBreak : SharpVision.Controls.Documents.DocumentInline
+    public sealed class DocumentSoftBreak : SharpVision.Controls.Document.DocumentInline
     {
         public DocumentSoftBreak() { }
     }
-    public sealed class DocumentStrikethrough : SharpVision.Controls.Documents.DocumentInlineContainer
+    public sealed class DocumentStrikethrough : SharpVision.Controls.Document.DocumentInlineContainer
     {
         public DocumentStrikethrough() { }
     }
-    public sealed class DocumentStrong : SharpVision.Controls.Documents.DocumentInlineContainer
+    public sealed class DocumentStrong : SharpVision.Controls.Document.DocumentInlineContainer
     {
         public DocumentStrong() { }
     }
-    public sealed class DocumentStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Documents.DocumentStyle>
+    public sealed class DocumentStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Document.DocumentStyle>
     {
         public DocumentStyle(
                     SharpVision.Styling.Face face,
@@ -218,7 +220,7 @@
                     SharpVision.Styling.Face disabledLinkFace,
                     SharpVision.Styling.Face actionLinkFace,
                     SharpVision.Styling.Face activeActionLinkFace,
-                    SharpVision.Controls.Documents.DocumentGlyphs glyphs,
+                    SharpVision.Controls.Document.DocumentGlyphs glyphs,
                     SharpVision.Styling.Face? selectionFace = default) { }
         public required SharpVision.Styling.Face ActionLinkFace { get; init; }
         public required SharpVision.Styling.Face ActiveActionLinkFace { get; init; }
@@ -227,7 +229,7 @@
         public required SharpVision.Styling.Face CalloutTitleFace { get; init; }
         public required SharpVision.Styling.Face CodeFace { get; init; }
         public required SharpVision.Styling.Face DisabledLinkFace { get; init; }
-        public required SharpVision.Controls.Documents.DocumentGlyphs Glyphs { get; init; }
+        public required SharpVision.Controls.Document.DocumentGlyphs Glyphs { get; init; }
         public required SharpVision.Styling.Face HeadingFace { get; init; }
         public required SharpVision.Styling.Face LinkFace { get; init; }
         public required SharpVision.Styling.Face MarkerFace { get; init; }
@@ -236,19 +238,19 @@
         public required SharpVision.Styling.Face SelectionFace { get; init; }
         public required SharpVision.Styling.Face TableFace { get; init; }
         public required SharpVision.Styling.Face TableHeaderFace { get; init; }
-        public new static SharpVision.Controls.Documents.DocumentStyle Default { get; }
+        public new static SharpVision.Controls.Document.DocumentStyle Default { get; }
     }
-    public sealed class DocumentTable : SharpVision.Controls.Documents.DocumentBlock
+    public sealed class DocumentTable : SharpVision.Controls.Document.DocumentBlock
     {
         public DocumentTable() { }
-        public SharpVision.Controls.Documents.DocumentTableRowCollection Rows { get; }
+        public SharpVision.Controls.Document.DocumentTableRowCollection Rows { get; }
     }
-    public sealed class DocumentTableCell : SharpVision.Controls.Documents.DocumentNode
+    public sealed class DocumentTableCell : SharpVision.Controls.Document.DocumentNode
     {
         public DocumentTableCell() { }
         public DocumentTableCell(string text) { }
-        public SharpVision.Controls.Documents.DocumentTableCellAlignment Alignment { get; set; }
-        public SharpVision.Controls.Documents.DocumentInlineCollection Inlines { get; }
+        public SharpVision.Controls.Document.DocumentTableCellAlignment Alignment { get; set; }
+        public SharpVision.Controls.Document.DocumentInlineCollection Inlines { get; }
     }
     public enum DocumentTableCellAlignment
     {
@@ -256,15 +258,15 @@
         Center = 1,
         Right = 2,
     }
-    public sealed class DocumentTableCellCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentTableCell> { }
-    public sealed class DocumentTableRow : SharpVision.Controls.Documents.DocumentNode
+    public sealed class DocumentTableCellCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentTableCell> { }
+    public sealed class DocumentTableRow : SharpVision.Controls.Document.DocumentNode
     {
         public DocumentTableRow() { }
-        public SharpVision.Controls.Documents.DocumentTableCellCollection Cells { get; }
+        public SharpVision.Controls.Document.DocumentTableCellCollection Cells { get; }
         public bool IsHeader { get; set; }
     }
-    public sealed class DocumentTableRowCollection : SharpVision.Controls.Documents.DocumentNodeCollection<SharpVision.Controls.Documents.DocumentTableRow> { }
-    public sealed class DocumentTextRun : SharpVision.Controls.Documents.DocumentInline
+    public sealed class DocumentTableRowCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentTableRow> { }
+    public sealed class DocumentTextRun : SharpVision.Controls.Document.DocumentInline
     {
         public DocumentTextRun() { }
         public DocumentTextRun(string text) { }
@@ -286,8 +288,8 @@ namespace SharpVision.Documents
     }
     public sealed class DocumentReadResult
     {
-        public DocumentReadResult(System.Collections.Generic.IEnumerable<SharpVision.Controls.Documents.DocumentBlock> blocks, System.Collections.Generic.IEnumerable<SharpVision.Documents.DocumentDiagnostic>? diagnostics = null) { }
-        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Documents.DocumentBlock> Blocks { get; }
+        public DocumentReadResult(System.Collections.Generic.IEnumerable<SharpVision.Controls.Document.DocumentBlock> blocks, System.Collections.Generic.IEnumerable<SharpVision.Documents.DocumentDiagnostic>? diagnostics = null) { }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Document.DocumentBlock> Blocks { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Documents.DocumentDiagnostic> Diagnostics { get; }
     }
     public readonly struct DocumentSourceSpan : System.IEquatable<SharpVision.Documents.DocumentSourceSpan>

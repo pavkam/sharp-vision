@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Provides stable code-owned glyph defaults shared by built-in controls.</summary>
-internal static class ControlGlyphs
+[PublicAPI]
+public static class ControlGlyphs
 {
     /// <summary>Gets border, shadow, and window chrome glyphs.</summary>
     public static ChromeGlyphs Chrome { get; } = new(

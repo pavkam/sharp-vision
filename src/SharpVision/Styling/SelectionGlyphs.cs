@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines checkbox, radio, and menu selection marks.</summary>
-internal readonly record struct SelectionGlyphs
+[PublicAPI]
+public readonly record struct SelectionGlyphs
 {
     /// <summary>Initializes every selection-mark state used by built-in controls.</summary>
     /// <param name="checkBoxBracketUnchecked">The unchecked bracket mark.</param>

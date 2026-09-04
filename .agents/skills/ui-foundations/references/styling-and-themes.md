@@ -104,14 +104,11 @@ API surface, including `ActualStyle` and `ResolveAppearance`; see
 - **Static initializer order.** A `static` member that reads other statics of
   the same class must be declared _after_ them; initializers run in textual
   order and a too-early declaration silently captures zeroed structs.
-- **`Theme.Unthemed` is internal.** `SharpVision.Document` and
-  `SharpVision.SyntaxHighlighting` do hold an `InternalsVisibleTo` grant onto
-  `SharpVision`, but their style types stay independent of that assembly-
-  boundary detail: `DocumentStyle.Default` and `CodeViewStyle.Default` complete
-  their static presets against a bare `new Theme()` rather than
-  `Theme.Unthemed`. `Complete` never actually reads the theme it is given for
-  these styles, so any valid instance resolves identically; do not "fix" this by
-  switching either style to `Theme.Unthemed`.
+- **`Theme.Unthemed` is internal.** `DocumentStyle.Default` and
+  `CodeViewStyle.Default` complete their static presets against a bare
+  `new Theme()` rather than `Theme.Unthemed`. `Complete` never actually reads
+  the theme it is given for these styles, so any valid instance resolves
+  identically; do not "fix" this by switching either style to `Theme.Unthemed`.
 - **Passive styles ignore interactive states.** Only `"input"` inherits
   `"control"`'s per-state deltas. Containers, windows, popups, and tooltips
   deliberately do not answer hover or focus — cascading into them tints every

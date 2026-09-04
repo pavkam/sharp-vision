@@ -5,7 +5,7 @@ namespace SharpVision.Document.Tests;
 
 using SharpVision.Text;
 
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies the internal semantic stream and cell index that protect document selection
 /// from visual wrapping, decorative chrome, and retained-control presentation details.</summary>

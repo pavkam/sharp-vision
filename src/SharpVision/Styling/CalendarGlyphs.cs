@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines previous- and next-month navigation arrow glyphs.</summary>
-internal readonly record struct CalendarGlyphs
+[PublicAPI]
+public readonly record struct CalendarGlyphs
 {
     /// <summary>Initializes the complete month-navigation glyph family.</summary>
     /// <param name="previousMonth">The previous-month arrow.</param>

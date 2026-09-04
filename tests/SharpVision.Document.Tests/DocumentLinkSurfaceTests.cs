@@ -9,7 +9,7 @@ using SharpVision.Text;
 // segment, so an unqualified "Document" would otherwise resolve to that segment (as a namespace)
 // rather than the Document control - this in-namespace alias, unlike a global one, takes priority
 // over that enclosing-segment lookup in every position, including local-variable and return types.
-using Document = Controls.Documents.Document;
+using Document = Controls.Document.Document;
 
 /// <summary>Verifies a mounted <see cref="Document"/>'s interaction contract: link navigation and
 /// release, keyboard and pointer activation, disabled links, keyboard scrolling, hover, and the

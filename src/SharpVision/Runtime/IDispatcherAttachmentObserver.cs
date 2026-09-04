@@ -3,12 +3,18 @@
 
 namespace SharpVision.Runtime;
 
-/// <summary>Observes committed dispatcher attachment changes without expanding public control API.</summary>
-internal interface IDispatcherAttachmentObserver
+/// <summary>Observes committed dispatcher attachment changes on a control.</summary>
+/// <remarks>
+/// Controls that must defer work until a dispatcher is available, or cancel that work on detach,
+/// implement this contract so <see cref="Controls.ControlBase"/> can notify them without
+/// expanding the public attachment API.
+/// </remarks>
+[PublicAPI]
+public interface IDispatcherAttachmentObserver
 {
     /// <summary>Responds after attachment commits and the current dispatcher becomes available.</summary>
-    internal void OnDispatcherAttached();
+    public void OnDispatcherAttached();
 
     /// <summary>Responds after detachment commits and the prior dispatcher becomes unavailable.</summary>
-    internal void OnDispatcherDetached();
+    public void OnDispatcherDetached();
 }

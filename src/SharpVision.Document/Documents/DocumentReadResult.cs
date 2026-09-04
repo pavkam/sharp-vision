@@ -3,7 +3,7 @@
 
 namespace SharpVision.Documents;
 
-using SharpVision.Controls.Documents;
+using SharpVision.Controls.Document;
 
 /// <summary>Contains one parsed tree and its diagnostics.</summary>
 /// <remarks>

@@ -2099,6 +2099,21 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         return FocusOwner?.Focus(this) ?? false;
     }
 
+    /// <summary>Requests keyboard focus for one descendant through the inherited focus manager.</summary>
+    /// <param name="control">The non-null descendant to focus.</param>
+    /// <param name="reason">The transactional reason recorded with the focus change.</param>
+    /// <param name="cancellable">Whether preview routing may reject the change.</param>
+    /// <returns>True when focus committed to <paramref name="control"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool FocusDescendant(ControlBase control, FocusReason reason, bool cancellable)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        VerifyMutable();
+        return FocusOwner?.Focus(control, reason, cancellable) == true;
+    }
+
     /// <summary>Handles one matched application access key.</summary>
     /// <param name="key">The invariant-matched Unicode scalar declared by this control's caption.</param>
     /// <returns>True when the control accepted the access-key action.</returns>
@@ -4138,7 +4153,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// Concrete controls use this inherited seam when later invariant work must still run after an
     /// earlier callback fails. Non-control collaborators use their own explicit aggregation policy.
     /// </remarks>
-    private protected static void CaptureFailure(
+    protected static void CaptureFailure(
         Action action,
         ref ExceptionDispatchInfo? failure) =>
         ExceptionAggregation.Capture(action, ref failure);
@@ -4307,7 +4322,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NotifyPropertyChangedInvocator]
-    private protected bool SetPropertyAndSynchronize<T>(
+    protected bool SetPropertyAndSynchronize<T>(
         ref T field,
         T value,
         InvalidationImpact impact,
@@ -6583,7 +6598,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private ulong _textSelectionCapabilityVersion;
 
     /// <summary>Gets the common pointer-selection phase for behavioral invariant tests.</summary>
-    internal TextSelectionGesturePhase TextSelectionPhase =>
+    protected internal TextSelectionGesturePhase TextSelectionPhase =>
         _textSelectionGesture?.Phase ?? TextSelectionGesturePhase.Idle;
 
     /// <summary>Gets the base-owned range for editor mutation transactions.</summary>
@@ -6963,7 +6978,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Builds the indexed semantic map used by common text-selection behavior.</summary>
     /// <returns>An immutable current map in this control's local cell coordinates.</returns>
-    internal virtual TextSelectionMap GetTextSelectionMap()
+    protected virtual TextSelectionMap GetTextSelectionMap()
     {
         var children = new List<ControlBase>();
 
@@ -7283,7 +7298,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Associates a press with the nearest authoritative embedded selectable source.</summary>
-    internal virtual TextSelectionSource? GetTextSelectionSource(ControlBase? originalSource, Point cells)
+    protected internal virtual TextSelectionSource? GetTextSelectionSource(ControlBase? originalSource, Point cells)
     {
         _ = originalSource;
         return TextSelectionSourceAt(cells);

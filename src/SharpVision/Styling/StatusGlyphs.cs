@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines loading and failed one-cell status indicators.</summary>
-internal readonly record struct StatusGlyphs
+[PublicAPI]
+public readonly record struct StatusGlyphs
 {
     /// <summary>Initializes the complete status indicator family.</summary>
     /// <param name="loading">The in-flight-request indicator.</param>

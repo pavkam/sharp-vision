@@ -395,6 +395,7 @@ namespace SharpVision.Controls
         public SharpVision.Input.TabNavigation TabNavigation { get; set; }
         public object? Tag { get; set; }
         public virtual SharpVision.Text.Selection TextSelection { get; }
+        protected SharpVision.Text.TextSelectionGesturePhase TextSelectionPhase { get; }
         protected ulong TextSelectionTransitionVersion { get; }
         public SharpVision.Styling.Theme? Theme { get; }
         public bool UseMnemonic { get; set; }
@@ -442,6 +443,7 @@ namespace SharpVision.Controls
             where T : SharpVision.Controls.ControlBase { }
         public bool Focus() { }
         protected bool FocusAccessKeyTarget() { }
+        protected bool FocusDescendant(SharpVision.Controls.ControlBase control, SharpVision.Input.FocusReason reason, bool cancellable) { }
         protected SharpVision.Controls.InvalidationImpact GetAffixChangeImpact(SharpVision.Styling.Affix? previous, SharpVision.Styling.Affix? current) { }
         protected virtual SharpVision.Styling.AppearanceStates GetAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected virtual SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
@@ -451,7 +453,9 @@ namespace SharpVision.Controls
         public virtual SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected virtual SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected virtual string GetTextSelectionCopyText() { }
+        protected virtual SharpVision.Text.TextSelectionMap GetTextSelectionMap() { }
         protected virtual SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
+        protected virtual SharpVision.Text.TextSelectionSource? GetTextSelectionSource(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected virtual int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected virtual int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
@@ -511,11 +515,13 @@ namespace SharpVision.Controls
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceOverlay? appearance) { }
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected bool SetPropertyAndSynchronize<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Action synchronize, System.Collections.Generic.IEqualityComparer<T>? comparer = null, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         public virtual void SetTextSelection(SharpVision.Text.Selection selection) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected virtual int TextSelectionPageDistance() { }
         protected void VerifyMutable() { }
         protected void VerifyTextSelectionEnabled() { }
+        protected static void CaptureFailure(System.Action action, ref System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure) { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
@@ -1094,7 +1100,7 @@ namespace SharpVision.Controls.Collections
         public SharpVision.Controls.Collections.TreeViewChildState Current { get; }
         public SharpVision.Controls.Collections.TreeViewChildState Previous { get; }
     }
-    public sealed class TreeViewItem : SharpVision.Controls.ControlBase
+    public sealed class TreeViewItem : SharpVision.Controls.ControlBase, SharpVision.Runtime.IDispatcherAttachmentObserver
     {
         public TreeViewItem() { }
         public TreeViewItem(string header) { }
@@ -2093,6 +2099,7 @@ namespace SharpVision.Controls.Input
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override string GetTextSelectionCopyText() { }
+        protected override SharpVision.Text.TextSelectionMap GetTextSelectionMap() { }
         protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected override int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
@@ -2109,7 +2116,7 @@ namespace SharpVision.Controls.Input
         public void Select(int start, int length) { }
         public bool Undo() { }
     }
-    public sealed class TextInputContextMenu : SharpVision.Menus.ContextMenu
+    public sealed class TextInputContextMenu : SharpVision.Menus.ContextMenu, SharpVision.Runtime.IClipboardWriterContextMenu
     {
         protected override void Dispose(bool disposing) { }
     }
@@ -2538,6 +2545,14 @@ namespace SharpVision.Controls.Scrolling
         public static SharpVision.Controls.Scrolling.ScrollBarStyle FullLine { get; }
         public static SharpVision.Controls.Scrolling.ScrollBarStyle ThinBlock { get; }
         public static SharpVision.Controls.Scrolling.ScrollBarStyle ThinLine { get; }
+    }
+    public sealed class WidthDependentViewportCoordinator
+    {
+        public const int MaximumReconciliationAttempts = 4;
+        public WidthDependentViewportCoordinator(SharpVision.Controls.ControlBase eventSender, SharpVision.Controls.Container viewport, SharpVision.Controls.ControlBase projection, System.Func<bool> isActive, System.Func<int?> projectionWidth, System.Action<int> reproject) { }
+        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
+        public void Arrange(SharpVision.Terminal.Geometry.Rect bounds, System.Action arrange) { }
+        public void CaptureMeasureConstraint(SharpVision.Layout.Constraint constraint) { }
     }
 }
 namespace SharpVision.DataBinding
@@ -3326,6 +3341,30 @@ namespace SharpVision.Layout
         public LayoutEngine() { }
         public void Layout(SharpVision.Controls.ControlBase root, SharpVision.Terminal.Geometry.Size size) { }
     }
+    public static class LayoutMath
+    {
+        public static int GapExtent(int spacing, int count, int? limit) { }
+        extension(int left)
+        {
+            public int Add(int right) { }
+            public int SaturatingAdd(int right) { }
+            public int SaturatingSubtract(int right) { }
+            public int Negate() { }
+            public int Multiply(int right) { }
+        }
+        extension(int? value)
+        {
+            public int? Subtract(int extent) { }
+        }
+        extension(System.ReadOnlySpan<int> values)
+        {
+            public int SaturatingSum() { }
+        }
+        extension(System.Collections.Generic.IEnumerable<int> values)
+        {
+            public int SaturatingSum() { }
+        }
+    }
     public readonly struct Length : System.IEquatable<SharpVision.Layout.Length>
     {
         public Length(SharpVision.Layout.LengthKind kind, double value) { }
@@ -3959,6 +3998,15 @@ namespace SharpVision.Runtime
     {
         string CopySelection();
     }
+    public interface IClipboardWriterContextMenu
+    {
+        System.Action<string>? ClipboardWriter { get; set; }
+    }
+    public interface IDispatcherAttachmentObserver
+    {
+        void OnDispatcherAttached();
+        void OnDispatcherDetached();
+    }
 }
 namespace SharpVision.Scrolling
 {
@@ -4154,6 +4202,12 @@ namespace SharpVision.Styling
         Bottom = 8,
         All = 15,
     }
+    public readonly struct CalendarGlyphs : System.IEquatable<SharpVision.Styling.CalendarGlyphs>
+    {
+        public CalendarGlyphs(SharpVision.Styling.ControlGlyph previousMonth, SharpVision.Styling.ControlGlyph nextMonth) { }
+        public SharpVision.Styling.ControlGlyph NextMonth { get; }
+        public SharpVision.Styling.ControlGlyph PreviousMonth { get; }
+    }
     public static class CellGlyphResolver
     {
         extension(System.Text.Rune value)
@@ -4169,6 +4223,42 @@ namespace SharpVision.Styling
         public SharpVision.Controls.Input.CheckBoxGlyphs Glyphs { get; init; }
         public SharpVision.Controls.Input.CheckBoxMarkStyle MarkStyle { get; init; }
     }
+    public readonly struct ChromeGlyphs : System.IEquatable<SharpVision.Styling.ChromeGlyphs>
+    {
+        public ChromeGlyphs(
+                    SharpVision.Styling.ControlGlyph topLeft,
+                    SharpVision.Styling.ControlGlyph top,
+                    SharpVision.Styling.ControlGlyph topRight,
+                    SharpVision.Styling.ControlGlyph right,
+                    SharpVision.Styling.ControlGlyph bottomRight,
+                    SharpVision.Styling.ControlGlyph bottom,
+                    SharpVision.Styling.ControlGlyph bottomLeft,
+                    SharpVision.Styling.ControlGlyph left,
+                    SharpVision.Styling.ControlGlyph shadow,
+                    SharpVision.Styling.ControlGlyph fractionalUpper,
+                    SharpVision.Styling.ControlGlyph fractionalLower,
+                    SharpVision.Styling.ControlGlyph fractionalFull,
+                    SharpVision.Styling.ControlGlyph windowCloseLeft,
+                    SharpVision.Styling.ControlGlyph windowClose,
+                    SharpVision.Styling.ControlGlyph windowCloseRight,
+                    SharpVision.Styling.ControlGlyph windowResize) { }
+        public SharpVision.Styling.ControlGlyph Bottom { get; }
+        public SharpVision.Styling.ControlGlyph BottomLeft { get; }
+        public SharpVision.Styling.ControlGlyph BottomRight { get; }
+        public SharpVision.Styling.ControlGlyph FractionalFull { get; }
+        public SharpVision.Styling.ControlGlyph FractionalLower { get; }
+        public SharpVision.Styling.ControlGlyph FractionalUpper { get; }
+        public SharpVision.Styling.ControlGlyph Left { get; }
+        public SharpVision.Styling.ControlGlyph Right { get; }
+        public SharpVision.Styling.ControlGlyph Shadow { get; }
+        public SharpVision.Styling.ControlGlyph Top { get; }
+        public SharpVision.Styling.ControlGlyph TopLeft { get; }
+        public SharpVision.Styling.ControlGlyph TopRight { get; }
+        public SharpVision.Styling.ControlGlyph WindowClose { get; }
+        public SharpVision.Styling.ControlGlyph WindowCloseLeft { get; }
+        public SharpVision.Styling.ControlGlyph WindowCloseRight { get; }
+        public SharpVision.Styling.ControlGlyph WindowResize { get; }
+    }
     public readonly struct ChromeRenderOptions
     {
         public SharpVision.Terminal.Geometry.Rect? BodyBounds { get; init; }
@@ -4179,6 +4269,11 @@ namespace SharpVision.Styling
         public bool SkipBodyFill { get; init; }
         public bool SkipBorder { get; init; }
         public bool SkipShadow { get; init; }
+    }
+    public readonly struct ColorPlaneGlyphs : System.IEquatable<SharpVision.Styling.ColorPlaneGlyphs>
+    {
+        public ColorPlaneGlyphs(SharpVision.Styling.ControlGlyph selectedMarker) { }
+        public SharpVision.Styling.ControlGlyph SelectedMarker { get; }
     }
     public enum ColorScheme
     {
@@ -4230,6 +4325,19 @@ namespace SharpVision.Styling
         public System.Text.Rune Fallback { get; }
         public System.Text.Rune Value { get; }
     }
+    public static class ControlGlyphs
+    {
+        public static SharpVision.Styling.CalendarGlyphs Calendar { get; }
+        public static SharpVision.Styling.ChromeGlyphs Chrome { get; }
+        public static SharpVision.Styling.ColorPlaneGlyphs ColorPlane { get; }
+        public static SharpVision.Styling.DisclosureGlyphs Disclosure { get; }
+        public static SharpVision.Styling.NavigationGlyphs Navigation { get; }
+        public static SharpVision.Styling.ProgressGlyphs Progress { get; }
+        public static SharpVision.Styling.SelectionGlyphs Selection { get; }
+        public static SharpVision.Styling.SeparatorGlyphs Separators { get; }
+        public static SharpVision.Styling.StatusGlyphs Status { get; }
+        public static SharpVision.Styling.TextGlyphs Text { get; }
+    }
     public class ControlStyle : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.ControlStyle>
     {
         public ControlStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
@@ -4249,6 +4357,13 @@ namespace SharpVision.Styling
         {
             public void Validate(SharpVision.Terminal.Protocols.Underline? underline, SharpVision.Terminal.Protocols.Color? underlineColor) { }
         }
+    }
+    public readonly struct DisclosureGlyphs : System.IEquatable<SharpVision.Styling.DisclosureGlyphs>
+    {
+        public DisclosureGlyphs(SharpVision.Styling.ControlGlyph collapsed, SharpVision.Styling.ControlGlyph expanded, SharpVision.Styling.ControlGlyph dropDown) { }
+        public SharpVision.Styling.ControlGlyph Collapsed { get; }
+        public SharpVision.Styling.ControlGlyph DropDown { get; }
+        public SharpVision.Styling.ControlGlyph Expanded { get; }
     }
     public readonly struct Face : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Face>
     {
@@ -4300,6 +4415,15 @@ namespace SharpVision.Styling
         public required System.Text.Rune DropDownGlyph { get; init; }
         public new static SharpVision.Styling.InputStyle Default { get; }
     }
+    public readonly struct NavigationGlyphs : System.IEquatable<SharpVision.Styling.NavigationGlyphs>
+    {
+        public NavigationGlyphs(SharpVision.Styling.ControlGlyph itemIdle, SharpVision.Styling.ControlGlyph itemCurrent, SharpVision.Styling.ControlGlyph groupCollapsed, SharpVision.Styling.ControlGlyph groupExpanded, SharpVision.Styling.ControlGlyph separator) { }
+        public SharpVision.Styling.ControlGlyph GroupCollapsed { get; }
+        public SharpVision.Styling.ControlGlyph GroupExpanded { get; }
+        public SharpVision.Styling.ControlGlyph ItemCurrent { get; }
+        public SharpVision.Styling.ControlGlyph ItemIdle { get; }
+        public SharpVision.Styling.ControlGlyph Separator { get; }
+    }
     public readonly struct PopupAnchorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.PopupAnchorGlyphs>
     {
         public PopupAnchorGlyphs(System.Text.Rune pointingUp, System.Text.Rune pointingDown, System.Text.Rune pointingLeft, System.Text.Rune pointingRight) { }
@@ -4315,6 +4439,15 @@ namespace SharpVision.Styling
         public SharpVision.Styling.PopupAnchorGlyphs AnchorGlyphs { get; init; }
         public new static SharpVision.Styling.PopupStyle Default { get; }
     }
+    public sealed class ProgressGlyphs
+    {
+        public ProgressGlyphs(SharpVision.Styling.ControlGlyph empty, SharpVision.Styling.ControlGlyph full, SharpVision.Styling.ControlGlyph indeterminate, System.ReadOnlySpan<SharpVision.Styling.ControlGlyph> horizontalFractions, System.ReadOnlySpan<SharpVision.Styling.ControlGlyph> verticalFractions) { }
+        public SharpVision.Styling.ControlGlyph Empty { get; }
+        public SharpVision.Styling.ControlGlyph Full { get; }
+        public System.ReadOnlyMemory<SharpVision.Styling.ControlGlyph> HorizontalFractions { get; }
+        public SharpVision.Styling.ControlGlyph Indeterminate { get; }
+        public System.ReadOnlyMemory<SharpVision.Styling.ControlGlyph> VerticalFractions { get; }
+    }
     public readonly struct RadioButtonGlyphFamily : System.IEquatable<SharpVision.Styling.RadioButtonGlyphFamily>
     {
         public RadioButtonGlyphFamily(SharpVision.Controls.Input.RadioButtonMarkStyle markStyle, SharpVision.Controls.Input.RadioButtonGlyphs glyphs) { }
@@ -4327,6 +4460,44 @@ namespace SharpVision.Styling
         public SharpVision.Scrolling.ScrollBarChrome Chrome { get; init; }
         public SharpVision.Scrolling.ScrollBarFill Fill { get; init; }
         public SharpVision.Controls.Scrolling.ScrollBarGlyphs Glyphs { get; init; }
+    }
+    public readonly struct SelectionGlyphs : System.IEquatable<SharpVision.Styling.SelectionGlyphs>
+    {
+        public SelectionGlyphs(
+                    SharpVision.Styling.ControlGlyph checkBoxBracketUnchecked,
+                    SharpVision.Styling.ControlGlyph checkBoxBracketChecked,
+                    SharpVision.Styling.ControlGlyph checkBoxBracketIndeterminate,
+                    SharpVision.Styling.ControlGlyph checkBoxTickUnchecked,
+                    SharpVision.Styling.ControlGlyph checkBoxTickChecked,
+                    SharpVision.Styling.ControlGlyph checkBoxTickIndeterminate,
+                    SharpVision.Styling.ControlGlyph checkBoxSquareUnchecked,
+                    SharpVision.Styling.ControlGlyph checkBoxSquareChecked,
+                    SharpVision.Styling.ControlGlyph checkBoxSquareIndeterminate,
+                    SharpVision.Styling.ControlGlyph radioUnchecked,
+                    SharpVision.Styling.ControlGlyph radioChecked,
+                    SharpVision.Styling.ControlGlyph radioParenthesesUnchecked,
+                    SharpVision.Styling.ControlGlyph radioParenthesesChecked,
+                    SharpVision.Styling.ControlGlyph menuCheckUnchecked,
+                    SharpVision.Styling.ControlGlyph menuCheckChecked,
+                    SharpVision.Styling.ControlGlyph menuRadioUnchecked,
+                    SharpVision.Styling.ControlGlyph menuRadioChecked) { }
+        public SharpVision.Styling.ControlGlyph CheckBoxBracketChecked { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxBracketIndeterminate { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxBracketUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxSquareChecked { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxSquareIndeterminate { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxSquareUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxTickChecked { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxTickIndeterminate { get; }
+        public SharpVision.Styling.ControlGlyph CheckBoxTickUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph MenuCheckChecked { get; }
+        public SharpVision.Styling.ControlGlyph MenuCheckUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph MenuRadioChecked { get; }
+        public SharpVision.Styling.ControlGlyph MenuRadioUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph RadioChecked { get; }
+        public SharpVision.Styling.ControlGlyph RadioParenthesesChecked { get; }
+        public SharpVision.Styling.ControlGlyph RadioParenthesesUnchecked { get; }
+        public SharpVision.Styling.ControlGlyph RadioUnchecked { get; }
     }
     public enum SemanticColor
     {
@@ -4382,6 +4553,22 @@ namespace SharpVision.Styling
         Shadow = 7,
         Hotkey = 8,
     }
+    public readonly struct SeparatorGlyphs : System.IEquatable<SharpVision.Styling.SeparatorGlyphs>
+    {
+        public SeparatorGlyphs(SharpVision.Styling.ControlGlyph horizontal, SharpVision.Styling.ControlGlyph vertical, SharpVision.Styling.ControlGlyph menu, SharpVision.Styling.ControlGlyph tableHorizontal, SharpVision.Styling.ControlGlyph tableVertical, SharpVision.Styling.ControlGlyph tableCross, SharpVision.Styling.ControlGlyph tableSortAscending, SharpVision.Styling.ControlGlyph tableSortDescending, SharpVision.Styling.ControlGlyph tablePlaceholder, SharpVision.Styling.ControlGlyph tablePlaceholderError, SharpVision.Styling.ControlGlyph tabDivider, SharpVision.Styling.ControlGlyph tabUnderline) { }
+        public SharpVision.Styling.ControlGlyph Horizontal { get; }
+        public SharpVision.Styling.ControlGlyph Menu { get; }
+        public SharpVision.Styling.ControlGlyph TabDivider { get; }
+        public SharpVision.Styling.ControlGlyph TabUnderline { get; }
+        public SharpVision.Styling.ControlGlyph TableCross { get; }
+        public SharpVision.Styling.ControlGlyph TableHorizontal { get; }
+        public SharpVision.Styling.ControlGlyph TablePlaceholder { get; }
+        public SharpVision.Styling.ControlGlyph TablePlaceholderError { get; }
+        public SharpVision.Styling.ControlGlyph TableSortAscending { get; }
+        public SharpVision.Styling.ControlGlyph TableSortDescending { get; }
+        public SharpVision.Styling.ControlGlyph TableVertical { get; }
+        public SharpVision.Styling.ControlGlyph Vertical { get; }
+    }
     public readonly struct Shadow : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Shadow>
     {
         public Shadow(bool isVisible, SharpVision.Styling.ShadowMode mode, SharpVision.Terminal.Geometry.Point offset, System.Text.Rune glyph, SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes) { }
@@ -4412,6 +4599,12 @@ namespace SharpVision.Styling
         public SharpVision.Styling.Shadow Apply(SharpVision.Styling.Shadow shadow) { }
         public SharpVision.Styling.ShadowOverlay Overlay(SharpVision.Styling.ShadowOverlay later) { }
     }
+    public readonly struct StatusGlyphs : System.IEquatable<SharpVision.Styling.StatusGlyphs>
+    {
+        public StatusGlyphs(SharpVision.Styling.ControlGlyph loading, SharpVision.Styling.ControlGlyph failed) { }
+        public SharpVision.Styling.ControlGlyph Failed { get; }
+        public SharpVision.Styling.ControlGlyph Loading { get; }
+    }
     public static class StyleStatesExtensions
     {
         public static SharpVision.Styling.AppearanceStates ToAppearanceStates<TStyle>(this SharpVision.Styling.StyleStates<TStyle> set)
@@ -4431,6 +4624,11 @@ namespace SharpVision.Styling
         public required TStyle Normal { get; init; }
         public TStyle Pressed { get; init; }
         public TStyle Selected { get; init; }
+    }
+    public readonly struct TextGlyphs : System.IEquatable<SharpVision.Styling.TextGlyphs>
+    {
+        public TextGlyphs(SharpVision.Styling.ControlGlyph ellipsis) { }
+        public SharpVision.Styling.ControlGlyph Ellipsis { get; }
     }
     public sealed class Theme
     {
@@ -4667,6 +4865,49 @@ namespace SharpVision.Text
     {
         public static string Escape(string value) { }
         public static SharpVision.Text.StyleSpan[] Parse(System.ReadOnlySpan<char> source, out string display) { }
+    }
+    public enum TextSelectionGesturePhase
+    {
+        Idle = 0,
+        Potential = 1,
+        Selecting = 2,
+    }
+    public readonly struct TextSelectionGlyph
+    {
+        public TextSelectionGlyph(SharpVision.Text.Selection range, SharpVision.Terminal.Geometry.Rect bounds, SharpVision.Text.TextSelectionSource? source = null) { }
+        public SharpVision.Terminal.Geometry.Rect Bounds { get; }
+        public SharpVision.Text.Selection Range { get; }
+        public SharpVision.Text.TextSelectionSource? Source { get; }
+    }
+    public sealed class TextSelectionMap
+    {
+        public TextSelectionMap(string text, SharpVision.Text.TextSelectionGlyph[] glyphs, SharpVision.Text.TextSelectionSource[] sources, int lineCount) { }
+        public ulong Fingerprint { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Text.TextSelectionGlyph> Glyphs { get; }
+        public System.Collections.Generic.IReadOnlyList<SharpVision.Text.TextSelectionSource> Sources { get; }
+        public string Text { get; }
+        public int VisualRowCount { get; }
+        public static SharpVision.Text.TextSelectionMap Empty { get; }
+        public int HitTest(SharpVision.Terminal.Geometry.Point point) { }
+        public int HitTestGlyph(SharpVision.Terminal.Geometry.Point point) { }
+        public int NextBoundary(int offset) { }
+        public int OffsetAtVisualColumn(int row, int column) { }
+        public int PreviousBoundary(int offset) { }
+        public SharpVision.Text.TextSelectionSource? ResolveSourceOccurrence(SharpVision.Text.TextSelectionSource source) { }
+        public bool TryGetCaretGeometry(int offset, out SharpVision.Terminal.Geometry.Rect bounds, out SharpVision.Text.TextSelectionSource? source) { }
+        public bool TryGetVisualLineBoundary(int offset, bool end, out int boundary, out SharpVision.Terminal.Geometry.Rect bounds, out SharpVision.Text.TextSelectionSource? source) { }
+        public bool TryGetVisualPosition(int offset, out int row, out int column) { }
+        public int VisualLineBoundary(int offset, bool end) { }
+    }
+    public sealed class TextSelectionSource
+    {
+        public TextSelectionSource(SharpVision.Text.ISelectableTextSource source, SharpVision.Text.ISelectableTextViewport? viewport, SharpVision.Text.Selection range, string text, ulong invalidationVersion) { }
+        public ulong InvalidationVersion { get; }
+        public SharpVision.Text.Selection Range { get; }
+        public SharpVision.Text.ISelectableTextSource Source { get; }
+        public string Text { get; }
+        public SharpVision.Text.ISelectableTextViewport? Viewport { get; }
+        public void UpdateInvalidationVersion(ulong value) { }
     }
 }
 namespace SharpVision.Threading

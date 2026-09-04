@@ -3,7 +3,7 @@
 
 namespace SharpVision.Document.Tests;
 
-using SharpVision.Controls.Documents;
+using SharpVision.Controls.Document;
 
 using Shouldly;
 

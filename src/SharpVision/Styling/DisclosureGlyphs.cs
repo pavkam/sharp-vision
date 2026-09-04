@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines collapsed, expanded, and drop-down indicators.</summary>
-internal readonly record struct DisclosureGlyphs
+[PublicAPI]
+public readonly record struct DisclosureGlyphs
 {
     /// <summary>Initializes the complete disclosure indicator family.</summary>
     /// <param name="collapsed">The collapsed indicator.</param>

@@ -4,7 +4,7 @@
 global using System.Text;
 
 global using SharpVision.Controls;
-global using SharpVision.Controls.Documents;
+global using SharpVision.Controls.Document;
 global using SharpVision.Controls.Input;
 global using SharpVision.Controls.Layout;
 global using SharpVision.Controls.Scrolling;

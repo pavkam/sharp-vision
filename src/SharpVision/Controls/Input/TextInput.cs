@@ -308,7 +308,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     }
 
     /// <inheritdoc/>
-    internal override TextSelectionMap GetTextSelectionMap()
+    protected override TextSelectionMap GetTextSelectionMap()
     {
         var glyphs = new List<TextSelectionGlyph>();
 

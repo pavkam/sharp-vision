@@ -4,7 +4,8 @@
 namespace SharpVision.Styling;
 
 /// <summary>Defines general, menu, table, and tab separator glyphs.</summary>
-internal readonly record struct SeparatorGlyphs
+[PublicAPI]
+public readonly record struct SeparatorGlyphs
 {
     /// <summary>Initializes the complete separator glyph family.</summary>
     /// <param name="horizontal">The general horizontal separator.</param>

@@ -6,7 +6,8 @@ namespace SharpVision.Text;
 using System.Runtime.CompilerServices;
 
 /// <summary>Owns one immutable semantic document stream, visible glyph map, and row-local hit index.</summary>
-internal sealed class TextSelectionMap
+[PublicAPI]
+public sealed class TextSelectionMap
 {
     private readonly TextSelectionGlyph[] _glyphs;
     private readonly int[] _graphemeBoundaries;
@@ -23,16 +24,29 @@ internal sealed class TextSelectionMap
     /// <param name="glyphs">Visible glyphs in visual reading order.</param>
     /// <param name="sources">Embedded sources in semantic order.</param>
     /// <param name="lineCount">The non-negative number of projected visual lines.</param>
-    internal TextSelectionMap(
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="text"/>, <paramref name="glyphs"/>, or <paramref name="sources"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="lineCount"/> is negative.
+    /// </exception>
+    public TextSelectionMap(
         string text,
         TextSelectionGlyph[] glyphs,
         TextSelectionSource[] sources,
         int lineCount)
     {
-        Debug.Assert(text is not null, "A document selection map owns semantic text.");
-        Debug.Assert(glyphs is not null, "A document selection map owns glyphs.");
-        Debug.Assert(sources is not null, "A document selection map owns sources.");
-        Debug.Assert(lineCount >= 0, "A document selection map has a non-negative visual height.");
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(glyphs);
+        ArgumentNullException.ThrowIfNull(sources);
+
+        if (lineCount < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lineCount),
+                lineCount,
+                "A text-selection map has a non-negative visual height.");
+        }
 
         Text = text;
         _glyphs = glyphs;
@@ -56,16 +70,16 @@ internal sealed class TextSelectionMap
     }
 
     /// <summary>Gets the empty map used before the first document layout.</summary>
-    internal static TextSelectionMap Empty { get; } = new(string.Empty, [], [], 0);
+    public static TextSelectionMap Empty { get; } = new(string.Empty, [], [], 0);
 
     /// <summary>Gets the complete normalized semantic UTF-16 stream.</summary>
-    internal string Text { get; }
+    public string Text { get; }
 
     /// <summary>Gets visible semantic graphemes in document reading order.</summary>
-    internal IReadOnlyList<TextSelectionGlyph> Glyphs { get; }
+    public IReadOnlyList<TextSelectionGlyph> Glyphs { get; }
 
     /// <summary>Gets embedded source snapshots in document order.</summary>
-    internal IReadOnlyList<TextSelectionSource> Sources { get; }
+    public IReadOnlyList<TextSelectionSource> Sources { get; }
 
     /// <summary>Gets the stable same-process fingerprint of semantic text and ordered source identity.</summary>
     /// <remarks>
@@ -73,10 +87,10 @@ internal sealed class TextSelectionMap
     /// same text must still invalidate selection. Exact source records remain available for
     /// collision-free comparison by the later mutation policy.
     /// </remarks>
-    internal ulong Fingerprint { get; }
+    public ulong Fingerprint { get; }
 
     /// <summary>Gets the number of visual rows participating in keyboard selection navigation.</summary>
-    internal int VisualRowCount => _rowGlyphIndexes.Length;
+    public int VisualRowCount => _rowGlyphIndexes.Length;
 
     /// <summary>Resolves a captured source occurrence by identity, semantic range, and captured text.</summary>
     /// <param name="source">The non-null previously captured occurrence.</param>
@@ -85,7 +99,7 @@ internal sealed class TextSelectionMap
     /// Range participates so one source identity projected more than once never drifts to another
     /// occurrence. Exact duplicates resolve to the first semantic occurrence deterministically.
     /// </remarks>
-    internal TextSelectionSource? ResolveSourceOccurrence(TextSelectionSource source)
+    public TextSelectionSource? ResolveSourceOccurrence(TextSelectionSource source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -105,7 +119,7 @@ internal sealed class TextSelectionMap
     /// <summary>Gets the preceding extended-grapheme boundary at or before one validated endpoint.</summary>
     /// <param name="offset">A grapheme-aligned UTF-16 endpoint.</param>
     /// <returns>The preceding endpoint, saturated at zero.</returns>
-    internal int PreviousBoundary(int offset) => PreviousBoundary(offset, out _);
+    public int PreviousBoundary(int offset) => PreviousBoundary(offset, out _);
 
     /// <summary>Gets the preceding boundary while reporting binary-index entries inspected.</summary>
     internal int PreviousBoundary(int offset, out int inspectedEntries)
@@ -118,7 +132,7 @@ internal sealed class TextSelectionMap
     /// <summary>Gets the following extended-grapheme boundary after one validated endpoint.</summary>
     /// <param name="offset">A grapheme-aligned UTF-16 endpoint.</param>
     /// <returns>The following endpoint, saturated at the semantic length.</returns>
-    internal int NextBoundary(int offset) => NextBoundary(offset, out _);
+    public int NextBoundary(int offset) => NextBoundary(offset, out _);
 
     /// <summary>Gets the following boundary while reporting binary-index entries inspected.</summary>
     internal int NextBoundary(int offset, out int inspectedEntries)
@@ -133,7 +147,7 @@ internal sealed class TextSelectionMap
     /// <param name="row">Receives the nearest mapped visual row.</param>
     /// <param name="column">Receives the endpoint's cell column.</param>
     /// <returns>True when the map contains visible glyph geometry.</returns>
-    internal bool TryGetVisualPosition(int offset, out int row, out int column)
+    public bool TryGetVisualPosition(int offset, out int row, out int column)
         => TryGetVisualPosition(offset, out row, out column, out _);
 
     /// <summary>Resolves one endpoint while reporting semantic-index entries inspected.</summary>
@@ -157,7 +171,7 @@ internal sealed class TextSelectionMap
     /// <param name="row">The requested visual row, clamped to the projection.</param>
     /// <param name="column">The remembered visual cell column.</param>
     /// <returns>A grapheme-aligned semantic endpoint.</returns>
-    internal int OffsetAtVisualColumn(int row, int column)
+    public int OffsetAtVisualColumn(int row, int column)
     {
         return _rowGlyphIndexes.Length == 0
             ? 0
@@ -168,14 +182,14 @@ internal sealed class TextSelectionMap
     /// <param name="offset">The current grapheme-aligned endpoint.</param>
     /// <param name="end">True for the line end; false for the line start.</param>
     /// <returns>The requested line endpoint, or the input when no glyph geometry exists.</returns>
-    internal int VisualLineBoundary(int offset, bool end)
+    public int VisualLineBoundary(int offset, bool end)
     {
         _ = TryGetVisualLineBoundary(offset, end, out var boundary, out _, out _);
         return boundary;
     }
 
     /// <summary>Gets a visual boundary together with the exact glyph geometry that selected it.</summary>
-    internal bool TryGetVisualLineBoundary(
+    public bool TryGetVisualLineBoundary(
         int offset,
         bool end,
         out int boundary,
@@ -212,7 +226,7 @@ internal sealed class TextSelectionMap
     /// <param name="bounds">Receives content-relative glyph cells.</param>
     /// <param name="source">Receives the embedded source occurrence, or null for document text.</param>
     /// <returns>True when visible glyph geometry exists.</returns>
-    internal bool TryGetCaretGeometry(int offset, out Rect bounds, out TextSelectionSource? source)
+    public bool TryGetCaretGeometry(int offset, out Rect bounds, out TextSelectionSource? source)
         => TryGetCaretGeometry(offset, out bounds, out source, out _);
 
     /// <summary>Gets caret geometry while reporting semantic-index entries inspected.</summary>
@@ -451,7 +465,7 @@ internal sealed class TextSelectionMap
     /// Duplicate or overlapping rectangles use the first entry in that order, making source arrays
     /// with arbitrary ordering deterministic without changing <see cref="Glyphs"/>' semantic order.
     /// </remarks>
-    internal int HitTest(Point point) => HitTest(point, out _);
+    public int HitTest(Point point) => HitTest(point, out _);
 
     /// <summary>Resolves one content-relative cell to the start of the glyph occupying it, falling
     /// back to the nearest endpoint exactly like <see cref="HitTest(Point)"/> when no glyph does.</summary>
@@ -464,7 +478,7 @@ internal sealed class TextSelectionMap
     /// neighbour whenever a multi-click lands on the trailing cell of a wide glyph, which the
     /// caret rule alone cannot distinguish from a click just past it.
     /// </remarks>
-    internal int HitTestGlyph(Point point) => HitTest(point, out _, snapToGlyphStart: true);
+    public int HitTestGlyph(Point point) => HitTest(point, out _, snapToGlyphStart: true);
 
     /// <summary>Resolves one cell while reporting the bounded number of row-index entries inspected.</summary>
     /// <param name="point">The content-relative cell coordinate.</param>

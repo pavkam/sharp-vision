@@ -3,7 +3,7 @@
 
 namespace SharpVision.Document.Tests;
 
-using DocumentControl = Controls.Documents.Document;
+using DocumentControl = Controls.Document.Document;
 
 /// <summary>Verifies the format abstraction, bounded input, and stream-loading surface.</summary>
 public sealed class DocumentFormatReaderTests

@@ -4,7 +4,8 @@
 namespace SharpVision.Text;
 
 /// <summary>Identifies one control-wide primary-pointer text-selection phase.</summary>
-internal enum TextSelectionGesturePhase
+[PublicAPI]
+public enum TextSelectionGesturePhase
 {
     /// <summary>No primary-pointer selection transaction is active.</summary>
     Idle,

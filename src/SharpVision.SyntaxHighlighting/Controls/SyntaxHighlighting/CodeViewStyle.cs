@@ -269,10 +269,8 @@ public sealed record CodeViewStyle: ContainerStyle
     }
 
     /// <summary>Gets the standard code-view presentation.</summary>
-    // A bare Theme, not ThemeCatalog.Dark or SharpVision's internal Theme.Unthemed: this style
-    // stays independent of SharpVision's InternalsVisibleTo grant to this assembly rather than
-    // depending on it, and Complete never reads the theme it is given, so any valid instance
-    // resolves identically.
+    // A bare Theme, not ThemeCatalog.Dark: Complete never reads the theme it is given, so any
+    // valid instance resolves identically.
     public static new CodeViewStyle Default => Complete(ContainerStyle.Default, VisualState.Normal, new Theme());
 
     /// <summary>Gets the foreground for one default style role.</summary>
