@@ -124,6 +124,18 @@ Outbound behavior follows typed ownership:
 - Encoders and terminal-description programs are the only sources of output
   bytes; discovery code never hand-writes protocol strings.
 
+```mermaid
+flowchart TD
+    Read["Session.ReadAsync reads one transport fragment"] --> Frame["ProtocolParser incrementally frames complete ECMA-48 sequences, or an explicit malformed/oversized recovery value"]
+    Frame --> Decode["InputDecoder produces one typed key, text, pointer, paste, focus, response, or diagnostic value"]
+    Decode --> Sink{"NegotiationSink active?"}
+    Sink -->|Yes| Correlate["Correlated startup replies feed the Negotiator's discovery baseline"]
+    Sink -->|No| Forward
+    Correlate --> Forward["Publish the observable value onward without duplicating ownership"]
+    Forward --> Enqueue["Application.Input(...) enqueues a Record"]
+    Enqueue --> Dispatch["Dispatcher thread serializes delivery to application code"]
+```
+
 The [protocol index](../protocols/index.md#protocol-families) maps each family
 to its wire contract, while
 [runtime protocol routing](../protocols/runtime-routing.md#overview) owns typed
