@@ -471,6 +471,14 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         RequireNotProgressive("Sorting is unavailable while the table is progressive; the data source owns sort order.");
         ArgumentOutOfRangeException.ThrowIfNotDefined(direction, nameof(direction), "The enum value is unknown.");
 
+        // ReorderRows below unconditionally detaches and reattaches every row's cells when the
+        // order changes, including a cell currently being edited; detaching a control that holds
+        // real keyboard focus nulls FocusManager.Focused with nothing to restore it on reattach.
+        // Committing first (matching the header pointer-click path) keeps IsEditing/_edit in sync
+        // with that focus loss instead of leaving them stale - see the header click handler below
+        // for the precedent this generalizes to every SortBy/SetSort/ResetSort caller.
+        _ = CommitEdit();
+
         if (direction == TableSortDirection.None)
         {
             if (columnIndex is not -1 && (columnIndex < 0 || columnIndex >= Columns.Count))

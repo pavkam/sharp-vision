@@ -1046,10 +1046,12 @@ public sealed class TableTests
         table.SelectedRows.ShouldBe([second, first]);
     }
 
-    /// <summary>Verifies sorting does not cancel an in-progress edit on a row that survives the
-    /// reorder — the row instance is only relocated, not removed.</summary>
+    /// <summary>Verifies sorting commits (rather than cancels) an in-progress edit before
+    /// reordering rows: the edited text survives, and Table's own IsEditing/_edit state is
+    /// cleared up front instead of staying stale once the reorder detaches and reattaches the
+    /// edited row's cells.</summary>
     [Fact]
-    public void SortBy_WhenRowIsBeingEdited_DoesNotCancelEdit()
+    public void SortBy_WhenRowIsBeingEdited_CommitsEditWithoutCancelling()
     {
         var editor = new TextInput { Text = "one" };
         var other = new TableRow([new ControlText("two")]);
@@ -1063,8 +1065,49 @@ public sealed class TableTests
 
         table.SortBy(0);
 
-        table.IsEditing.ShouldBeTrue();
+        table.IsEditing.ShouldBeFalse();
         editor.Text.ShouldBe("changed");
+    }
+
+    /// <summary>Verifies sorting while a cell editor genuinely holds keyboard focus (not just
+    /// Table's own edit-state bookkeeping) commits the edit before ReorderRows detaches and
+    /// reattaches the row's cells - so IsEditing/_edit are already cleared by the time the detach
+    /// nulls FocusManager.Focused, matching the built-in header pointer-click path instead of the
+    /// direct-call desync where IsEditing stayed true against a focus that had silently gone
+    /// null. Mirrors BeginEdit_WhenGotFocusDisposesTable_StopsEditContinuationAsync's attached
+    /// dispatcher/FocusManager setup, since only a real attached focus target can observe the
+    /// desync at all.</summary>
+    [Fact]
+    public async Task SortBy_WhenEditorHoldsRealFocus_CommitsEditBeforeReorderDropsFocusAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var editor = new TextInput { Text = "one" };
+            var other = new TableRow([new ControlText("two")]);
+            var edited = new TableRow([editor]);
+            var table = new Table();
+            table.Columns.Add(TableColumn.Auto("Value"));
+            table.Rows.Add(other);
+            table.Rows.Add(edited);
+            table.Attach(dispatcher);
+            using FocusManager focus = new(table);
+
+            table.BeginEdit(edited, 0).ShouldBeTrue();
+            editor.Text = "changed";
+            focus.Focused.ShouldBeSameAs(editor);
+            table.IsEditing.ShouldBeTrue();
+
+            table.SortBy(0);
+
+            // The reorder still detaches the (now-committed) editor's row, so real focus is lost
+            // either way - what the fix guarantees is that IsEditing reflects that up front rather
+            // than staying true against a focus that has already silently gone null.
+            table.IsEditing.ShouldBeFalse();
+            editor.Text.ShouldBe("changed");
+            focus.Focused.ShouldBeNull();
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>Verifies a column's SortKey overrides the default cell-text comparison - a numeric
