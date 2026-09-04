@@ -58,6 +58,21 @@ public sealed class LayoutTests
         lines.Select(static line => line.Cells).ShouldBe([4, 3]);
     }
 
+    /// <summary>Verifies a non-terminal word that fills the line exactly still advances the
+    /// word-boundary tracker, so the line is not needlessly re-wrapped at an earlier, stale
+    /// boundary.</summary>
+    [Fact]
+    public void Format_WhenNonTerminalWordFillsLineExactly_DoesNotReWrapAtStaleBoundary()
+    {
+        const string content = "one two three";
+        var lines = Format(content, width: 7, overflow: Overflow.Wrap);
+
+        lines.Length.ShouldBe(2);
+        content.AsSpan(lines[0].Offset, lines[0].Length).ToString().ShouldBe("one two");
+        content.AsSpan(lines[1].Offset, lines[1].Length).ToString().ShouldBe("three");
+        lines.Select(static line => line.Cells).ShouldBe([7, 5]);
+    }
+
     /// <summary>Verifies a run that fills the line exactly under WrapAnywhere still treats the
     /// immediately following whitespace as the break, so the next line does not open with a
     /// stray leading space the way word-boundary wrapping already avoids.</summary>
@@ -101,6 +116,17 @@ public sealed class LayoutTests
         var lines = Format(content, width: 6, overflow: Overflow.Ellipsis);
 
         lines.ShouldBe([new Line(0, 3, 4, 0, true)]);
+    }
+
+    /// <summary>Verifies a non-terminal word that fills the truncation limit exactly is kept in the
+    /// ellipsized output rather than silently dropped by a stale word-boundary tracker.</summary>
+    [Fact]
+    public void Format_WhenNonTerminalWordFillsEllipsisLimitExactly_KeepsWordInOutput()
+    {
+        const string content = "aa bbbb ccccc";
+        var lines = Format(content, width: 8, overflow: Overflow.Ellipsis);
+
+        lines.ShouldBe([new Line(0, 7, 8, 0, true)]);
     }
 
     /// <summary>Verifies start, center, and end alignment produce integer leading cells.</summary>

@@ -684,11 +684,13 @@ public sealed class TextTests
             .ShouldBe("The quick");
 
         // First widen: the text is still truncated, but the boundary must move — a stale reuse
-        // of the width=12 line would incorrectly still read "The quick" here.
+        // of the width=12 line would incorrectly still read "The quick" here. "fox" lands exactly
+        // flush against the width-20 ellipsis limit, so this also pins the word-boundary tracker
+        // correctly including a flush-fitting word rather than stopping one word short of it.
         text.Arrange(new Rect(0, 0, 20, 1));
         var medium = text.Lines.Span[0];
         medium.HasEllipsis.ShouldBeTrue();
-        content.AsSpan(medium.Offset, medium.Length).ToString().ShouldBe("The quick brown");
+        content.AsSpan(medium.Offset, medium.Length).ToString().ShouldBe("The quick brown fox");
 
         // Second widen: the full text now fits. This only works if _measuredMaxCells was
         // refreshed by the previous widen's reformat rather than left stale from width=12.

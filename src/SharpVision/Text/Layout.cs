@@ -199,15 +199,15 @@ public static class Layout
             var cluster = value.Slice(position, grapheme.Length);
             var clusterCells = ClusterCells(cluster, cells, ambiguous);
 
-            if (clusterCells > limit - cells)
-            {
-                break;
-            }
-
             if (IsWhitespace(cluster))
             {
                 wordEnd = position;
                 wordCells = cells;
+            }
+
+            if (clusterCells > limit - cells)
+            {
+                break;
             }
 
             cells += clusterCells;
@@ -258,6 +258,12 @@ public static class Layout
             var grapheme = Next(value[position..]);
             var cluster = value.Slice(position, grapheme.Length);
             var clusterCells = ClusterCells(cluster, cells, ambiguous);
+
+            if (IsWhitespace(cluster) && position > lineStart)
+            {
+                breakEnd = position;
+                breakCells = cells;
+            }
 
             if (clusterCells <= width - cells)
             {
