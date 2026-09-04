@@ -581,6 +581,68 @@ public sealed class ChaseIndicatorSurfaceTests
             TerminalPalette.Project(Color.Rgb(159, 159, 159), ColorDepth.Basic16));
     }
 
+    /// <summary>Verifies hiding a chase indicator mid-fade and showing it again continues the trail
+    /// fade gradually instead of folding the entire hidden wall-clock gap into the next tick's
+    /// elapsed time, which would otherwise snap every in-flight trail entry straight to fully
+    /// faded - proving the effective-visibility resume path resets <c>_lastTimestamp</c> exactly
+    /// like the explicit <see cref="AnimatedIndicatorBase.IsPlaying"/> resume already does.</summary>
+    [Fact]
+    public async Task AdvanceAsync_WhenHiddenThenShownMidFade_ContinuesGradualFadeAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        var indicator = new ChaseIndicator
+        {
+            Style = new ChaseIndicatorStyle(
+                ChaseIndicatorStyle.Default.Face,
+                ChaseIndicatorStyle.Default.Border,
+                ChaseIndicatorStyle.Default.Shadow,
+                Color.Rgb(255, 255, 255),
+                Color.Rgb(0, 0, 0),
+                Color.Rgb(0, 0, 0),
+                ChaseIndicatorStyle.Default.Glyphs),
+            FadeDuration = TimeSpan.FromMilliseconds(400),
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            indicator,
+            new Size(5, 1),
+            clock,
+            TestContext.Current.CancellationToken);
+
+        // Act: build partial trail-fade history exactly like the always-visible fade test.
+        await surface.AdvanceAsync(
+            TimeSpan.FromMilliseconds(50),
+            "advance chase fade before hiding");
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+
+        // Hide mid-fade, let a wall-clock gap far larger than FadeDuration pass while hidden, then
+        // show again.
+        await surface.UpdateAsync(
+            () => indicator.Visibility = Visibility.Hidden,
+            "hide chase indicator mid-fade");
+        await surface.AdvanceAsync(
+            TimeSpan.FromSeconds(10),
+            "advance far past FadeDuration while hidden");
+        await surface.UpdateAsync(
+            () => indicator.Visibility = Visibility.Visible,
+            "show chase indicator again");
+
+        // Assert: resuming visibility alone must not fold any of the hidden gap into the fade -
+        // the entry is exactly where it was left when hidden.
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(223, 223, 223), ColorDepth.Basic16));
+
+        // The same small tick that would have continued the fade gradually before hiding must
+        // still do so after resuming - if the hidden gap had leaked into elapsed time instead of
+        // being discarded, this tick would already show the entry fully faded to TrailColor.
+        await surface.AdvanceAsync(
+            TimeSpan.FromMilliseconds(50),
+            "continue chase fade after resume");
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(Color.Rgb(191, 191, 191), ColorDepth.Basic16));
+    }
+
     /// <summary>Verifies raising TrailLength at runtime immediately backfills the newly retained
     /// slots as fully faded history rather than leaving them empty until new movement ticks
     /// populate them — the exact seam ResizeTrail's synthesized <c>startedAt</c> values exist to

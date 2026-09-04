@@ -9,6 +9,7 @@ namespace SharpVision.Controls.Display;
 public abstract class AnimatedIndicatorBase: ControlBase
 {
     private readonly AnimationTimer _animation;
+    private bool _wasEffectiveIsVisible = true;
 
     /// <summary>Initializes a playing, non-interactive indicator with a 200 millisecond cadence.</summary>
     protected AnimatedIndicatorBase()
@@ -21,6 +22,7 @@ public abstract class AnimatedIndicatorBase: ControlBase
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         IsHitTestVisible = false;
+        PropertyChanged += OnAnimatedIndicatorPropertyChanged;
     }
 
     /// <summary>Gets or sets the duration between semantic animation advances.</summary>
@@ -127,5 +129,29 @@ public abstract class AnimatedIndicatorBase: ControlBase
         {
             OnAnimationTick();
         }
+    }
+
+    /// <summary>Fires <see cref="OnPlaybackStarting"/> on a hidden-to-visible transition, matching
+    /// the resume semantics the <see cref="IsPlaying"/>-driven path already gives a wall-clock
+    /// sensitive subclass. A control that was never hidden while attached stays at the initial
+    /// <see langword="true"/> baseline, so the very first render never double-fires alongside
+    /// <see cref="ControlBase.OnAttached"/>.</summary>
+    private void OnAnimatedIndicatorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (eventArgs.PropertyName != nameof(EffectiveIsVisible))
+        {
+            return;
+        }
+
+        var isVisible = EffectiveIsVisible;
+
+        if (isVisible && !_wasEffectiveIsVisible)
+        {
+            OnPlaybackStarting();
+        }
+
+        _wasEffectiveIsVisible = isVisible;
     }
 }
