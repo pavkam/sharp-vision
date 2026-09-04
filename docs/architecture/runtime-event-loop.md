@@ -142,6 +142,16 @@ size, invalidates root measure, completes layout, raises one resize event with
 the committed geometry, processes the resulting invalidation, and renders. A
 zero-sized terminal remains a valid suspended layout.
 
+```mermaid
+flowchart TD
+    Resize["DrainResize: newest coalesced size"] --> Commit["Commit Size and CellMetrics"]
+    Commit --> Layout["PerformLayout: Measure against the new Constraint (forces remeasure), then Arrange"]
+    Layout --> RaiseResize["Raise Resize with the committed geometry"]
+    RaiseResize --> Suspended{"Zero-sized suspended layout?"}
+    Suspended -->|Yes| MarkStarted["MarkStarted; no invalidation processed"]
+    Suspended -->|No| Process["ProcessInvalidation: re-layout while Measure/Arrange pending, then render if Render is pending"]
+```
+
 Input received before the first resize stays in the bounded queue until the tree
 is attached. Key, text, paste, and terminal-focus targeting obey the
 [modal keyboard contract](../concepts/modality.md#keyboard-text-and-paste)
