@@ -95,9 +95,10 @@ Kitty is mutually exclusive with the rest of the tree, because
 `TERM=xterm-kitty` never also contains `xterm`. This exact exclusivity was the
 source of two real bugs: an initial version let a stale `TERM_PROGRAM=iTerm.app`
 add the `ItermImages` hint even on a genuine Kitty session, and the fix that
-followed over-corrected by nesting the iTerm2 check inside the xterm branch,
-which wrongly made iTerm2 and xterm mutually exclusive too and dropped the xterm
-hint set from real iTerm2 sessions.
+followed over-corrected by chaining the iTerm2 check as a third `else if`
+sibling of the kitty/xterm chain, which wrongly made iTerm2 mutually exclusive
+with xterm too and dropped the `ItermImages` hint from real iTerm2 sessions
+(which report `TERM=xterm-256color` and matched the xterm branch first).
 
 ## Runtime diagnostics snapshot
 
