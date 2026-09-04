@@ -46,7 +46,8 @@ gap callouts, protocol sources, coverage claims, links, diagrams, or validators.
 ## Project-specific traps
 
 - Normative docs contain no TODO, TBD, internal milestones, delivery phases,
-  acceptance plans, or agent instructions.
+  acceptance plans, or agent instructions — reviewer-confirmed only; not
+  enforced by `lint:doc-content` or `test:docs`.
 - Examples demonstrate a stated rule; they never define a hidden default.
 - Coverage uses only the states defined by the protocol coverage matrix.
 - `docs/superpowers` is an internal artifact location and is forbidden.
