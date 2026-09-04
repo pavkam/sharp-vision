@@ -892,6 +892,24 @@ public sealed class ThemeCatalogTests
     public void Parse_WhenFieldIsUnknownOrDuplicated_Throws(string json) =>
         Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
 
+    /// <summary>Verifies a duplicate visual-state key nested inside a "styles" section is reported
+    /// as <see cref="InvalidDataException"/> instead of the serializer's own bare
+    /// <see cref="ArgumentException"/> ("An item with the same key has already been added").</summary>
+    [Fact]
+    public void Parse_WhenStyleSectionHasDuplicateNestedKey_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create(stylesOverride: /*lang=json,strict*/ """
+            {
+              "control": {
+                "normal": { "face": { "foreground": "controlText" } },
+                "normal": { "face": { "foreground": "accent" } }
+              }
+            }
+            """);
+
+        Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+    }
+
     /// <summary>Verifies the documented byte limit accepts its boundary and rejects one extra byte.</summary>
     [Fact]
     public void Parse_WhenDocumentReachesByteLimit_UsesExactBound()

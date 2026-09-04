@@ -357,12 +357,23 @@ public static class ThemeCatalog
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(path);
 
-        return element.ValueKind != JsonValueKind.Object
-            ? throw new InvalidDataException($"Theme '{source}' '{path}' must be an object{FormatPosition(positions, path)}.")
-            : element.EnumerateObject().ToDictionary(
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException($"Theme '{source}' '{path}' must be an object{FormatPosition(positions, path)}.");
+        }
+
+        try
+        {
+            return element.EnumerateObject().ToDictionary(
                 static property => property.Name,
                 static property => property.Value,
                 StringComparer.Ordinal);
+        }
+        catch (ArgumentException error)
+        {
+            throw new InvalidDataException(
+                $"Theme '{source}' '{path}' has a duplicate property{FormatPosition(positions, path)}.", error);
+        }
     }
 
     // Every key, including a dot-namespaced one, must be one of the six well-known role sections -
