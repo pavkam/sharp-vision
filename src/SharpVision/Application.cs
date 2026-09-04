@@ -1024,7 +1024,12 @@ public sealed class Application:
 
         try
         {
-            Stopping?.Invoke(this, eventArgs);
+            // Every eligible Stopping subscriber must run, even if an earlier one throws - a
+            // bare multicast Invoke would abort the remaining targets on the first exception,
+            // silently dropping a later subscriber's veto (eventArgs.Cancel = true). Publish
+            // runs each subscriber unconditionally and rethrows only the first captured
+            // exception, which the catch below already treats identically to a thrown handler.
+            EventPublication.Publish<EventHandler<StoppingEventArgs>>(Stopping, () => true, handler => handler(this, eventArgs));
         }
         catch (Exception stoppingException)
         {

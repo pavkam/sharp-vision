@@ -1388,6 +1388,62 @@ public sealed class ApplicationTests
         hostLease.Disposals.ShouldBe(1);
     }
 
+    /// <summary>Verifies a Stopping subscriber's veto is honored even when an earlier subscriber
+    /// throws. Before the fix, BeginStopping raised Stopping via a bare multicast Invoke, which
+    /// aborts every remaining target the moment one throws - so a later subscriber that would
+    /// have set eventArgs.Cancel = true never ran, and its veto was silently lost, letting the
+    /// first (vetoed) request tear the application down anyway. With the fix, the veto still
+    /// runs and aborts that request - Completion stays pending and no cleanup happens - while
+    /// the throw is still recorded on Failure/LastCleanupException exactly as the
+    /// single-subscriber case above verifies. Failure, once recorded, is sticky: it surfaces
+    /// from whichever later StopAsync call actually completes cleanup, which is exactly what the
+    /// unvetoed follow-up request below demonstrates.</summary>
+    [Fact]
+    public async Task StopAsync_WhenEarlierStoppingHandlerThrows_LaterHandlerVetoIsStillHonoredAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        var stoppingFailure = new InvalidOperationException("stopping-handler");
+        application.Stopping += Throw;
+        application.Stopping += Veto;
+
+        await application.StopAsync(TestContext.Current.CancellationToken)
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        application.Failure.ShouldBeSameAs(stoppingFailure);
+        application.LastCleanupException.ShouldBeSameAs(stoppingFailure);
+        application.Completion.IsCompleted.ShouldBeFalse();
+        hostLease.Disposals.ShouldBe(0);
+
+        // The veto only blocks this one request. A follow-up request that is not vetoed lets
+        // shutdown actually complete, at which point the Failure recorded above - still the same
+        // exception instance - surfaces from this call, exactly as the single-subscriber test
+        // above verifies for an unvetoed throw.
+        application.Stopping -= Veto;
+
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(stoppingFailure);
+        application.Completion.IsCompleted.ShouldBeTrue();
+        hostLease.Disposals.ShouldBe(1);
+        return;
+
+        void Throw(object? sender, StoppingEventArgs eventArgs) => throw stoppingFailure;
+        static void Veto(object? sender, StoppingEventArgs eventArgs) => eventArgs.Cancel = true;
+    }
+
     /// <summary>Verifies an UnhandledException handler that itself throws does not skip
     /// terminal-resource cleanup, and that the original failure - not the handler's own exception -
     /// remains what Failure reports.</summary>
