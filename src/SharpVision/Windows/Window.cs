@@ -1066,8 +1066,8 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         else if (_dragging)
         {
             var gestureParent = Parent;
-            var deltaX = cells.X - _dragPointerOrigin.X;
-            var deltaY = cells.Y - _dragPointerOrigin.Y;
+            var deltaX = (long) cells.X - _dragPointerOrigin.X;
+            var deltaY = (long) cells.Y - _dragPointerOrigin.Y;
             var clientBounds = Parent?.ContentBounds ?? default;
             var maximumLeft = Math.Max(0, clientBounds.Width - LocalBounds.Width);
             var maximumTop = Math.Max(0, clientBounds.Height - LocalBounds.Height);
@@ -1097,8 +1097,8 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
             Overlay.SetRight(this, null);
             Overlay.SetBottom(this, null);
-            Overlay.SetLeft(this, Length.Cells(Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
-            Overlay.SetTop(this, Length.Cells(Math.Clamp(_dragWindowOrigin.Y + deltaY, 0, maximumTop)));
+            Overlay.SetLeft(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
+            Overlay.SetTop(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.Y + deltaY, 0, maximumTop)));
             eventArgs.IsHandled = true;
         }
     }

@@ -1,8 +1,9 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-
 namespace SharpVision.Tests.Windows;
+
+using BindingFlags = System.Reflection.BindingFlags;
 
 /// <summary>Verifies framed terminal window layout, title chrome, and visual shadow behavior.</summary>
 public sealed class WindowTests
@@ -1953,6 +1954,65 @@ public sealed class WindowTests
 
             window.Width.ShouldBe(Length.Cells(extremeX ? 20 : 10));
             window.Height.ShouldBe(Length.Cells(extremeY ? 10 : 4));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies an extreme accepted pointer coordinate saturates the drag/move path at
+    /// the parent content bounds instead of wrapping the window to an incorrect position via
+    /// 32-bit int overflow. Mirrors
+    /// <see cref="Drag_WhenResizeMoveUsesExtremeCoordinates_ClampsToAvailableMaximumAsync"/> for
+    /// the move path.
+    /// <para>The move addition is <c>_dragWindowOrigin + (cells - _dragPointerOrigin)</c>, where
+    /// <c>_dragWindowOrigin</c> is the window's parent-relative LocalBounds captured at Press and
+    /// <c>_dragPointerOrigin</c>/<c>cells</c> are absolute pointer coordinates. Because every
+    /// Length in this codebase is non-negative and a title-bar Press must land inside the
+    /// window's own (parent-relative-or-greater) absolute bounds, <c>_dragWindowOrigin</c> can
+    /// never legitimately exceed the Press coordinate — so, unlike the resize sibling's
+    /// independent Width baseline, this specific overflow cannot be constructed through the
+    /// public Pointer gesture API alone. To still exercise the exact hardening the resize sibling
+    /// received (and that a future coordinate-space change could otherwise silently regress),
+    /// this test drives a real Press/Move gesture and then reflectively substitutes
+    /// <c>_dragWindowOrigin</c> with a value far larger than the Press point would ever produce,
+    /// directly reproducing the divergent-baseline condition the widened arithmetic
+    /// protects against.</para></summary>
+    [Fact]
+    public async Task Drag_WhenMoveUsesExtremeCoordinates_ClampsToAvailableMaximumAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        await dispatcher.InvokeAsync(() =>
+        {
+            var canvas = new Overlay();
+            var window = new Window
+            {
+                Width = Length.Cells(10),
+                Height = Length.Cells(4),
+                CanMove = true,
+                CanResize = false
+            };
+            Overlay.SetLeft(window, Length.Cells(2));
+            Overlay.SetTop(window, Length.Cells(1));
+            canvas.Children.Add(window);
+            new LayoutEngine().Layout(canvas, new Size(20, 10));
+            canvas.Attach(dispatcher);
+            using PointerManager capture = new(canvas);
+
+            var origin = new Point(window.Bounds.X + 1, window.Bounds.Y);
+            _ = capture.Dispatch(Pointer(origin, PointerAction.Press));
+
+            // Substitute the just-captured drag-window origin with a value the Press path could
+            // never legitimately produce (LocalBounds.X/Y cannot exceed the Press point given
+            // only non-negative Lengths), so that adding a near-int.MaxValue pointer delta to it
+            // genuinely overflows unwidened 32-bit int arithmetic.
+            var windowOriginField = typeof(Window).GetField(
+                "_dragWindowOrigin", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            windowOriginField.SetValue(window, new Point(2_000_000_000, 2_000_000_000));
+
+            _ = capture.Dispatch(Pointer(new Point(int.MaxValue, int.MaxValue), PointerAction.Move));
+
+            // Client bounds are 20x10 and the window is 10x4, so the drag must saturate at
+            // Left = 20 - 10 = 10, Top = 10 - 4 = 6 — never at a wrapped small or negative value.
+            Overlay.GetLeft(window).ShouldBe(Length.Cells(10));
+            Overlay.GetTop(window).ShouldBe(Length.Cells(6));
         }, TestContext.Current.CancellationToken);
     }
 
