@@ -321,6 +321,36 @@ public sealed class ColorPlaneTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a drag survives an ancestor re-arranging the plane at an extreme coordinate
+    /// mid-gesture: the pointer's small, terminal-bounded cell position and the plane's now-extreme
+    /// <see cref="ControlBase.Bounds"/> origin must combine with saturating arithmetic, not plain
+    /// subtraction, or the computed saturation/value wraps around instead of clamping toward the
+    /// endpoint that position implies.</summary>
+    [Fact]
+    public async Task Dispatch_WhenBoundsMovesToExtremeCoordinateDuringDrag_SaturatesInsteadOfWrappingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var plane = new ColorPlane { Bounds = new Rect(0, 0, 11, 11) };
+            plane.Attach(dispatcher);
+            using PointerManager pointer = new(plane);
+
+            _ = pointer.Dispatch(Pointer(new Point(5, 5), PointerAction.Press));
+
+            // Mirrors an ancestor (e.g. a deeply Right-docked panel) re-arranging this already-
+            // dragging plane at the integer coordinate limit mid-gesture: ContentBounds' origin now
+            // sits far from the pointer's real, terminal-bounded cell position.
+            plane.Bounds = new Rect(int.MinValue, int.MinValue, 11, 11);
+            _ = pointer.Dispatch(Pointer(new Point(5, 5), PointerAction.Move));
+
+            plane.Saturation.ShouldBe(1);
+            plane.Value.ShouldBe(0);
+            _ = pointer.Dispatch(Pointer(new Point(5, 5), PointerAction.Release));
+        }, TestContext.Current.CancellationToken);
+    }
+
     // Losing focus mid-drag cancelling capture (ColorPlane.OnFocusChanged -> DragBehavior.FocusChanged)
     // is proven end-to-end through the composed picker in
     // ColorPickerTests.Dispatch_WhenPlaneLosesFocus_CancelsPointerCaptureAsync, which lays the

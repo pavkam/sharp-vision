@@ -264,10 +264,10 @@ internal sealed class ColorPlane: ControlBase
         var bounds = ContentBounds;
         var saturation = bounds.Width <= 1
             ? 0
-            : Math.Clamp(point.X - bounds.X, 0, bounds.Width - 1) / (double) (bounds.Width - 1);
+            : Math.Clamp(point.X.SaturatingSubtract(bounds.X), 0, bounds.Width - 1) / (double) (bounds.Width - 1);
         var value = bounds.Height <= 1
             ? 1
-            : 1 - (Math.Clamp(point.Y - bounds.Y, 0, bounds.Height - 1) /
+            : 1 - (Math.Clamp(point.Y.SaturatingSubtract(bounds.Y), 0, bounds.Height - 1) /
             (double) (bounds.Height - 1));
         _ = Commit(saturation, value);
     }
