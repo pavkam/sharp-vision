@@ -354,6 +354,14 @@ internal static class ChartRenderer
             0,
             int.MaxValue);
 
+    /// <summary>Ceiling-divides an eighth-cell extent into whole cells, widening before adding the
+    /// rounding bias so a saturated <see cref="ExtentEighths"/> or <see cref="ScaleEighths"/> result
+    /// at <see cref="int.MaxValue"/> saturates the cell count instead of overflowing to negative.</summary>
+    [Pure]
+    [NonNegativeValue]
+    internal static int CeilEighthsToCells(int eighths) =>
+        (int) Math.Min(int.MaxValue, ((long) eighths + 7) / 8);
+
     [Pure]
     private static int ClampCoordinate(long value) =>
         (int) Math.Clamp(value, int.MinValue, int.MaxValue);

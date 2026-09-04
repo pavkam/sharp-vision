@@ -82,7 +82,7 @@ internal static class SparklineRenderer
 
             if (chart.Selection == new ChartSelection(0, first + index))
             {
-                var occupiedCells = Math.Max(1, (eighths + 7) / 8);
+                var occupiedCells = Math.Max(1, ChartRenderer.CeilEighthsToCells(eighths));
                 var markerY = Math.Max(plot.Y, plot.Bottom - occupiedCells);
 
                 canvas.DrawRune(

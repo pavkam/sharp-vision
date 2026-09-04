@@ -81,6 +81,22 @@ public sealed class ChartRendererTests
         eighths.ShouldBe(int.MaxValue);
     }
 
+    /// <summary>Verifies the eighths-to-cells ceiling division widens before adding its rounding
+    /// bias, so a saturated <see cref="int.MaxValue"/> eighths value - as
+    /// <see cref="ChartRenderer.ExtentEighths"/> or <see cref="ChartRenderer.ScaleEighths"/>
+    /// legitimately return for a very large plot extent - produces a large positive cell count
+    /// instead of overflowing <c>eighths + 7</c> to a negative number.</summary>
+    [Fact]
+    public void CeilEighthsToCells_WhenEighthsIsMaxValue_SaturatesWithoutWrapping()
+    {
+        // Act
+        var cells = ChartRenderer.CeilEighthsToCells(int.MaxValue);
+
+        // Assert
+        cells.ShouldBe(268435456);
+        cells.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies an eighth-cell distance whose exact value exceeds the drawing contract
     /// saturates rather than overflowing during subtraction or absolute-value conversion.</summary>
     [Fact]

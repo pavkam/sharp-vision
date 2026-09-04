@@ -152,8 +152,8 @@ internal static class BarChartRenderer
                         }
                     }
 
-                    left = point.Value >= 0 ? zero : zero - ((eighths + 7) / 8);
-                    right = point.Value >= 0 ? zero.Add((eighths + 7) / 8) : zero;
+                    left = point.Value >= 0 ? zero : zero - ChartRenderer.CeilEighthsToCells(eighths);
+                    right = point.Value >= 0 ? zero.Add(ChartRenderer.CeilEighthsToCells(eighths)) : zero;
                     RenderHorizontalValueLabel(
                         context,
                         canvas,
@@ -256,7 +256,7 @@ internal static class BarChartRenderer
                         }
                     }
 
-                    top = point.Value >= 0 ? zero - ((eighths + 7) / 8) : zero;
+                    top = point.Value >= 0 ? zero - ChartRenderer.CeilEighthsToCells(eighths) : zero;
                     RenderValueLabel(
                         context,
                         canvas,
@@ -270,7 +270,7 @@ internal static class BarChartRenderer
                         category,
                         new Point(
                             Math.Min(lane + (thickness / 2), band.Start + band.Length - 1),
-                            VerticalEndpoint(point.Value, top, zero, (eighths + 7) / 8, plot)),
+                            VerticalEndpoint(point.Value, top, zero, ChartRenderer.CeilEighthsToCells(eighths), plot)),
                         style);
                     continue;
                 }
