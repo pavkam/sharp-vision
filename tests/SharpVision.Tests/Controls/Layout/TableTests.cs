@@ -137,6 +137,56 @@ public sealed class TableTests
         notifications.ShouldBe([nameof(Table.ActualScrollBarStyle)]);
     }
 
+    /// <summary>Verifies a Theme swap that changes only the interactive row style set's Selected-
+    /// state Underline still re-resolves the selection highlight and requests a repaint, even though
+    /// <see cref="TableStyle.SelectedTextColor"/>/<see cref="TableStyle.SelectedBackground"/> - the
+    /// only two fields <see cref="TableStyle"/>'s own theme-change comparer diffs - stay equal
+    /// across both themes. Regression coverage: <c>Table.ResolveSelectionStyle</c> used to read
+    /// <c>Theme.GetInteractiveRowStyleSet</c> bare, so nothing ever registered a dependency on its
+    /// Attributes/Underline/UnderlineColor, and a Theme swap that moved only those fields left the
+    /// selection highlight stuck on the previous Theme's presentation.</summary>
+    [Fact]
+    public void ResolveSelectionStyle_WhenThemeChangesSelectedRowUnderline_ReResolvesAndInvalidatesRender()
+    {
+        // Arrange
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create());
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(
+            inputStates: """, "selected": { "face": { "underline": "straight" } } """));
+        var table = new Table();
+        table.SetTheme(previousTheme);
+        table.ResolveSelectionStyle(previousTheme, VisualState.Selected).Underline.ShouldBe(Underline.None);
+        table.Clear(Invalidation.All);
+
+        // Act
+        table.SetTheme(currentTheme);
+
+        // Assert
+        table.Pending.ShouldBe(Invalidation.Render);
+        table.ResolveSelectionStyle(currentTheme, VisualState.Selected).Underline.ShouldBe(Underline.Straight);
+    }
+
+    /// <summary>Verifies the counter-case that keeps the test above honest: a Theme swap that moves
+    /// nothing the selection highlight reads - neither <see cref="TableStyle.SelectedTextColor"/>/
+    /// <see cref="TableStyle.SelectedBackground"/> nor the interactive row style set's Selected-state
+    /// face - requests no repaint.</summary>
+    [Fact]
+    public void ResolveSelectionStyle_WhenThemeChangesNothingSelectionRelevant_DoesNotInvalidate()
+    {
+        // Arrange
+        var previousTheme = ThemeCatalog.Parse(ThemeJson.Create(name: "A"));
+        var currentTheme = ThemeCatalog.Parse(ThemeJson.Create(name: "B"));
+        var table = new Table();
+        table.SetTheme(previousTheme);
+        _ = table.ResolveSelectionStyle(previousTheme, VisualState.Selected);
+        table.Clear(Invalidation.All);
+
+        // Act
+        table.SetTheme(currentTheme);
+
+        // Assert
+        table.Pending.ShouldBe(Invalidation.None);
+    }
+
     /// <summary>Verifies disabling a Table makes it ineligible for focus and re-enabling restores
     /// eligibility, matching the framework's generic disabled-input gate that the mounted evidence
     /// exercises end-to-end through the real hit-test and focus pipeline.</summary>

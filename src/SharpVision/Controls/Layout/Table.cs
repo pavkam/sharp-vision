@@ -27,6 +27,24 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     private int _selectionAnchorColumn = -1;
     private TableEditState? _edit;
 
+    // Tracks only the Selected-state Attributes/Underline/UnderlineColor baked into the active
+    // theme's interactive row style set - never the Foreground/Background half, which always comes
+    // from ActualStyle.SelectedTextColor/SelectedBackground in ResolveSelectionStyle below and is
+    // already covered by TableStyle's own theme-change comparer. GetInteractiveRowStyleSet is a
+    // pure function of Theme (no instance state), so this can be a static, shared dependency, unlike
+    // ChartControlBase's per-instance one. Nothing but an explicit Theme value dependency ever
+    // notices a swap that moves only these fields: ResolveSelectionStyle is called solely from
+    // render paths, never through a tracked theme-change-impact hook.
+    private static readonly ThemeValueDependency<(Face Selected, Face SelectedDisabled)> _selectionFaceThemeDependency = new(
+        static theme =>
+        {
+            var states = theme.GetInteractiveRowStyleSet().ToAppearanceStates();
+            return (
+                states.Resolve(VisualState.Selected).Face,
+                states.Resolve(VisualState.Selected | VisualState.Disabled).Face);
+        },
+        InvalidationImpact.Render);
+
     // Lazily rebuilt, not eagerly shifted on every mutation: ReorderRows tears the row list down
     // and rebuilds it through repeated single-row remove/insert calls, and an eagerly-shifted
     // index would cost O(rows) per call during that loop (O(rows^2) total for one reorder). A
@@ -1055,6 +1073,13 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     internal TerminalStyle ResolveSelectionStyle(Theme theme, VisualState state)
     {
         ArgumentNullException.ThrowIfNull(theme);
+
+        // Registers this control's dependency on the theme-authored Selected-state Attributes/
+        // Underline/UnderlineColor, so GetThemeChangeImpact notices a theme swap that only moves
+        // those fields even though every field TableStyle's own comparer diffs
+        // (SelectedTextColor/SelectedBackground) stayed equal. ResolveThemeValue's returned value
+        // is intentionally unused here - the overlay-composed value below stays the source of truth.
+        _ = ResolveThemeValue(_selectionFaceThemeDependency);
         var overlay = new AppearanceStatesOverlay(
             selected: new AppearanceOverlay(
                 face: new FaceOverlay(
