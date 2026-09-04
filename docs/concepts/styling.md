@@ -111,6 +111,13 @@ winning:
 4. The developer's complete local `Face` and any protected derived-control
    border, shadow, or state contributions.
 
+```mermaid
+flowchart TD
+    ThemeNormal["1. Theme's complete resolved Normal appearance"] --> ThemeStates["2. Theme state contributions, fixed state order"]
+    ThemeStates --> LocalStyle["3. Local control Style's complete appearance, when assigned"]
+    LocalStyle --> LocalOverlay["4. Developer local Face + protected derived-control border/shadow/state overlays"]
+```
+
 A control with one immutable intrinsic appearance overlay registers it once in
 its constructor through `InitializeAppearanceOverlay`. `ControlBase` composes
 that overlay at the same final stage for both the live and prospective Theme, so
@@ -137,6 +144,19 @@ IsActive states apply in this order:
 ```text
 IsPointerOver -> FocusWithin -> Focused -> Current -> Selected -> Checked
 -> Indeterminate -> Pressed -> Disabled
+```
+
+```mermaid
+flowchart TD
+    Normal["Normal (no active flags)"] --> PointerOver["IsPointerOver"]
+    PointerOver --> FocusWithin["FocusWithin"]
+    FocusWithin --> Focused["Focused"]
+    Focused --> Current["Current"]
+    Current --> Selected["Selected"]
+    Selected --> Checked["Checked"]
+    Checked --> Indeterminate["Indeterminate"]
+    Indeterminate --> Pressed["Pressed"]
+    Pressed --> Disabled["Disabled"]
 ```
 
 Only the direct focus owner contributes `Focused`; its ancestors contribute
