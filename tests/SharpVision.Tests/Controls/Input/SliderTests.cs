@@ -298,6 +298,38 @@ public sealed class SliderTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a drag survives an ancestor re-arranging the slider at an extreme
+    /// coordinate mid-gesture: the pointer's small, terminal-bounded cell position and the rail's
+    /// now-extreme <see cref="ControlBase.Bounds"/> origin must combine with saturating
+    /// arithmetic, not plain subtraction, or the computed physical offset wraps around and the
+    /// committed value becomes garbage unrelated to the pointer's actual motion instead of
+    /// clamping toward the range endpoint that position implies.</summary>
+    [Fact]
+    public async Task Dispatch_WhenBoundsMovesToExtremeCoordinateDuringDrag_SaturatesInsteadOfWrappingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var slider = new Slider { Bounds = new Rect(0, 0, 11, 1), Maximum = 100 };
+            slider.Attach(dispatcher);
+            using PointerManager pointer = new(slider);
+
+            _ = pointer.Dispatch(Pointer(new Point(5, 0), PointerAction.Press));
+            slider.Value.ShouldBe(50);
+
+            // Mirrors an ancestor (e.g. a deeply Right-docked panel) re-arranging this already-
+            // dragging slider at the integer coordinate limit mid-gesture: ContentBounds' origin
+            // now sits far from the pointer's real, terminal-bounded cell position.
+            slider.Bounds = new Rect(int.MinValue, 0, 11, 1);
+            _ = pointer.Dispatch(Pointer(new Point(6, 0), PointerAction.Move));
+
+            slider.Value.ShouldBe(100);
+
+            _ = pointer.Dispatch(Pointer(new Point(6, 0), PointerAction.Release));
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a focus callback may dispose the pressed slider without the pointer path
     /// committing a value or starting capture afterward.</summary>
     [Fact]

@@ -411,8 +411,8 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         Debug.Assert(HasTravel(length), "Callers skip the commit on a rail without travel.");
 
         var physical = Orientation == Orientation.Horizontal
-            ? point.X - bounds.X
-            : point.Y - bounds.Y;
+            ? point.X.SaturatingSubtract(bounds.X)
+            : point.Y.SaturatingSubtract(bounds.Y);
         physical = Math.Clamp(physical, 0, length - 1);
         var logical = Orientation == Orientation.Vertical ? length - 1 - physical : physical;
 
