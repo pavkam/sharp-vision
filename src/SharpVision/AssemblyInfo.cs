@@ -6,10 +6,3 @@
 [assembly: InternalsVisibleTo("SharpVision.Document.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.FigletFonts.Tests")]
 [assembly: InternalsVisibleTo("SharpVision.SyntaxHighlighting.Tests")]
-
-namespace SharpVision;
-
-/// <summary>
-/// Identifies the user interface assembly to its test suite.
-/// </summary>
-internal sealed class AssemblyMarker;
