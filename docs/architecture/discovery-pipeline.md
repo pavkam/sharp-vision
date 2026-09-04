@@ -62,6 +62,43 @@ names. Backend evidence contains only the typed origin and resolved kind.
 Environment values, terminal payloads, clipboard data, native buffers, and raw
 command programs MUST NOT enter diagnostics or backend evidence.
 
+### Environment hint precedence
+
+`EnvironmentEvidenceAdapter.Apply` is the internal branch structure that turns
+`TERM`, `COLORTERM`, and `TERM_PROGRAM` into tentative feature hints before
+narrowing them for a detected multiplexer or a remote connection.
+
+```mermaid
+flowchart TD
+    Start["Apply(environment)"] --> Kitty{"TERM contains kitty?"}
+    Kitty -->|Yes| KittyHints["Hint 12 features: SynchronizedOutput, FocusReporting, BracketedPaste, PixelMouse, CellMouse, KittyKeyboard, Osc52, KittyClipboard, KittyGraphics, StyledUnderlines, UnderlineColor, Overline"]
+    Kitty -->|No| Xterm{"TERM contains xterm?"}
+    Xterm -->|Yes| XtermHints["Hint 8 features: FocusReporting, BracketedPaste, CellMouse, XtermKeyboard, Osc52, StyledUnderlines, UnderlineColor, Overline"]
+    Xterm -->|No| Iterm
+    XtermHints --> Iterm{"TERM_PROGRAM is iTerm.app?"}
+    Iterm -->|Yes| ItermHint["Hint ItermImages"]
+    Iterm -->|No| Multiplexer
+    KittyHints --> Multiplexer{"Multiplexer detected?"}
+    ItermHint --> Multiplexer
+    Multiplexer -->|Yes| Narrow["Narrow KittyClipboard, KittyGraphics, ItermImages to Unsupported"]
+    Multiplexer -->|No| Remote
+    Narrow --> Remote{"SSH or remote detected?"}
+    Remote -->|Yes| NarrowOsc52["Narrow Osc52 to Unknown unless already Authoritative"]
+    Remote -->|No| Done["Return capabilities"]
+    NarrowOsc52 --> Done
+```
+
+The xterm check and the iTerm2 check are independent siblings, not a chained
+`else if`: a genuine iTerm2 session reports `TERM=xterm-256color` by default, so
+it receives the xterm hint set and its own `ItermImages` hint together. Only
+Kitty is mutually exclusive with the rest of the tree, because
+`TERM=xterm-kitty` never also contains `xterm`. This exact exclusivity was the
+source of two real bugs: an initial version let a stale `TERM_PROGRAM=iTerm.app`
+add the `ItermImages` hint even on a genuine Kitty session, and the fix that
+followed over-corrected by nesting the iTerm2 check inside the xterm branch,
+which wrongly made iTerm2 and xterm mutually exclusive too and dropped the xterm
+hint set from real iTerm2 sessions.
+
 ## Runtime diagnostics snapshot
 
 `TerminalDiagnostics` preserves the discovery facts needed to explain runtime
