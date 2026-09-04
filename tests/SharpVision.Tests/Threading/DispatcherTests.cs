@@ -296,6 +296,32 @@ public sealed class DispatcherTests
         await idle.Task.WaitAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies an Idle subscriber that throws does not prevent delivery to later
+    /// subscribers, and that the original exception still reaches the dispatcher's unhandled
+    /// exception policy via <c>Report</c>.</summary>
+    [Fact]
+    public async Task Idle_WhenFirstSubscriberThrows_StillNotifiesLaterSubscriberAndReportsAsync()
+    {
+        using var releaseGate = new ManualResetEventSlim(initialState: false);
+        await using var dispatcher = Dispatcher.StartPaused(releaseGate);
+        var failure = new InvalidOperationException("idle");
+        var observed = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondRan = false;
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = observed.TrySetResult(eventArgs.Exception);
+        };
+        dispatcher.Idle += (_, _) => throw failure;
+        dispatcher.Idle += (_, _) => secondRan = true;
+
+        releaseGate.Set();
+
+        (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(failure);
+        secondRan.ShouldBeTrue();
+    }
+
     /// <summary>Verifies shutdown cancels a queued function invocation, remains idempotent, and
     /// preserves the caller-supplied token identity on the resulting cancellation - not a
     /// disconnected fabricated one.</summary>

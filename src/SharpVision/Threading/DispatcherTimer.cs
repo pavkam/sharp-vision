@@ -277,7 +277,7 @@ public sealed class DispatcherTimer: IDisposable
             callback = Tick;
         }
 
-        callback?.Invoke(this, EventArgs.Empty);
+        EventPublication.Publish<EventHandler>(callback, () => true, handler => handler(this, EventArgs.Empty));
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed != 0, this);

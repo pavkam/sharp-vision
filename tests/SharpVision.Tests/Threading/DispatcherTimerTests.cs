@@ -478,4 +478,42 @@ public sealed class DispatcherTimerTests
         (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(failure);
         timer.Dispose();
     }
+
+    /// <summary>Verifies a Tick subscriber that throws does not prevent delivery to later
+    /// subscribers, and that the original exception still reaches the dispatcher's unhandled
+    /// exception policy.</summary>
+    [Fact]
+    public async Task Tick_WhenFirstSubscriberThrows_StillNotifiesLaterSubscriberAndUsesUnhandledPolicyAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var failure = new InvalidOperationException("tick");
+        var observed = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = observed.TrySetResult(eventArgs.Exception);
+        };
+        var secondRan = false;
+        var timer = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => throw failure;
+                value.Tick += (_, _) => secondRan = true;
+                value.Start();
+                return value;
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        clock.Advance(TimeSpan.FromMilliseconds(200));
+
+        // Assert
+        (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(failure);
+        secondRan.ShouldBeTrue();
+        timer.Dispose();
+    }
 }

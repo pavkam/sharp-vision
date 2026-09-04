@@ -566,7 +566,10 @@ public sealed class Dispatcher: IAsyncDisposable
                 {
                     try
                     {
-                        Idle?.Invoke(this, EventArgs.Empty);
+                        EventPublication.Publish<EventHandler>(
+                            Idle,
+                            () => true,
+                            handler => handler(this, EventArgs.Empty));
                     }
                     catch (Exception exception)
                     {
