@@ -893,8 +893,13 @@ public sealed class ThemeCatalogTests
         Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
 
     /// <summary>Verifies a duplicate visual-state key nested inside a "styles" section is reported
-    /// as <see cref="InvalidDataException"/> instead of the serializer's own bare
-    /// <see cref="ArgumentException"/> ("An item with the same key has already been added").</summary>
+    /// as <see cref="InvalidDataException"/>, not left to the serializer's own bare
+    /// <see cref="ArgumentException"/> ("An item with the same key has already been added"). The
+    /// whole document - including the "styles" subtree later captured as a raw
+    /// <see cref="JsonElement"/> - is read by one <c>JsonSerializer.Deserialize</c> call, so its
+    /// <c>AllowDuplicateProperties = false</c> option already rejects this nested duplicate at that
+    /// layer, via the existing <see cref="JsonException"/> catch, before the object is ever split
+    /// into a per-key dictionary.</summary>
     [Fact]
     public void Parse_WhenStyleSectionHasDuplicateNestedKey_ThrowsInvalidDataException()
     {
@@ -907,7 +912,9 @@ public sealed class ThemeCatalogTests
             }
             """);
 
-        Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+
+        error.Message.ShouldContain("styles");
     }
 
     /// <summary>Verifies the documented byte limit accepts its boundary and rejects one extra byte.</summary>
