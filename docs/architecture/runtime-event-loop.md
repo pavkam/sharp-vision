@@ -149,7 +149,7 @@ flowchart TD
     Layout --> RaiseResize["Raise Resize with the committed geometry"]
     RaiseResize --> Suspended{"Zero-sized suspended layout?"}
     Suspended -->|Yes| MarkStarted["MarkStarted; no invalidation processed"]
-    Suspended -->|No| Process["ProcessInvalidation: re-layout while Measure/Arrange pending, then render if Render is pending"]
+    Suspended -->|No| Process["ProcessInvalidation: re-layout while Measure/Arrange pending, then render if Render is pending or this transaction performed layout"]
 ```
 
 Input received before the first resize stays in the bounded queue until the tree

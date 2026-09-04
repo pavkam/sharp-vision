@@ -128,9 +128,11 @@ Outbound behavior follows typed ownership:
 flowchart TD
     Read["Session.ReadAsync reads one transport fragment"] --> Frame["ProtocolParser incrementally frames complete ECMA-48 sequences, or an explicit malformed/oversized recovery value"]
     Frame --> Decode["InputDecoder produces one typed key, text, pointer, paste, focus, response, or diagnostic value"]
-    Decode --> Sink{"NegotiationSink active?"}
-    Sink -->|Yes| Correlate["Correlated startup replies feed the Negotiator's discovery baseline"]
-    Sink -->|No| Forward
+    Decode --> ValueKind{"Value kind?"}
+    ValueKind -->|"Response (capabilities, palette, metrics, status, Kitty graphics)"| SinkPresent{"Session wrapped the destination in a NegotiationSink? (decided once, at session start)"}
+    ValueKind -->|"Key, text, pointer, paste, focus, or diagnostic"| Forward
+    SinkPresent -->|Yes| Correlate["Negotiator.Accept(value) feeds the discovery baseline; result discarded"]
+    SinkPresent -->|No| Forward
     Correlate --> Forward["Publish the observable value onward without duplicating ownership"]
     Forward --> Enqueue["Application.Input(...) enqueues a Record"]
     Enqueue --> Dispatch["Dispatcher thread serializes delivery to application code"]
