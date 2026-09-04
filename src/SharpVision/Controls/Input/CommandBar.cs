@@ -741,6 +741,11 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             item.SetOverflowed(overflowItems.Contains(item));
         }
 
+        if (_overflowTargetSelected && !_overflowEntries.OfType<CommandBarItem>().Any())
+        {
+            SelectNearest(EntryCount);
+        }
+
         CommitSelectionPresentation(ContainsFocus);
         SynchronizeOverflowProjections();
     }

@@ -377,6 +377,54 @@ public sealed class CommandBarSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.Error), colorDepth));
     }
 
+    /// <summary>Verifies selecting the overflow trigger via keyboard, then resizing wide enough
+    /// that the overflow empties, immediately reselects a real item instead of leaving the now
+    /// invisible trigger holding the roving-focus selection until the next keypress.</summary>
+    [Fact]
+    public async Task Keyboard_WhenOverflowEmptiesAfterTriggerSelection_ReselectsRealItemWithoutExtraKeyPressAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "selected": { "face": { "foreground":"success", "background":"selectedControl" } }"""));
+        var bar = CreateBar(out _, out _, out var print);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(12, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        var triggerPosition = new Point(trigger.Bounds.X, trigger.Bounds.Y);
+
+        // Act: select the overflow trigger via keyboard, without opening the popup.
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the selection theme");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.End);
+
+        bar.SelectedItem.ShouldBeNull();
+        bar.SelectedIndex.ShouldBe(-1);
+        bar.IsOverflowOpen.ShouldBeFalse();
+        surface.Cell(triggerPosition).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        // Act: resize wide enough that every item fits and the overflow becomes empty.
+        await surface.ResizeAsync(new Size(60, 2));
+
+        // Assert: a real item is selected immediately, with no extra keypress required; the
+        // trigger has collapsed to zero size and no longer holds the selection presentation.
+        trigger.Bounds.Width.ShouldBe(0);
+        bar.SelectedItem.ShouldBeSameAs(print);
+        bar.SelectedIndex.ShouldBeGreaterThanOrEqualTo(0);
+        var printPosition = new Point(print.Bounds.X, print.Bounds.Y);
+        surface.Cell(printPosition).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+    }
+
     /// <summary>Verifies a disabled overflow trigger keeps the Bar plane, uses the theme's disabled
     /// foreground, and still respects a complete local overflow color.</summary>
     [Fact]
