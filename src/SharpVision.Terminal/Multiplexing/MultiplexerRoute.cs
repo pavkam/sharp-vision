@@ -231,7 +231,7 @@ public sealed class MultiplexerRoute
     {
         reply = default;
 
-        if ((!CanRouteCapabilityQueries && !CanRouteClipboard) ||
+        if ((!CanRouteCapabilityQueries && !CanRouteClipboard && !CanRouteGraphics) ||
             envelope.IsEmpty ||
             envelope.Length > Policy.MaxEnvelopeBytes)
         {
@@ -346,9 +346,9 @@ public sealed class MultiplexerRoute
         {
             MultiplexingOperation.CapabilityQueries => CanRouteCapabilityQueries,
             MultiplexingOperation.Clipboard => CanRouteClipboard,
-            MultiplexingOperation.None or MultiplexingOperation.Graphics or
-                MultiplexingOperation.Notifications or MultiplexingOperation.Title or
-                MultiplexingOperation.Bell => false,
+            MultiplexingOperation.Graphics => CanRouteGraphics,
+            MultiplexingOperation.None or MultiplexingOperation.Notifications or
+                MultiplexingOperation.Title or MultiplexingOperation.Bell => false,
             _ => throw new UnreachableException("Reply validation emits only defined operation families.")
         };
     }

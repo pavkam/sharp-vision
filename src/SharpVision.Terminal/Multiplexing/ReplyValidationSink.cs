@@ -88,7 +88,7 @@ internal sealed class ReplyValidationSink:
 
         if (value.Valid)
         {
-            RecordCapabilityReply();
+            RecordGraphicsReply();
         }
         else
         {
@@ -121,6 +121,12 @@ internal sealed class ReplyValidationSink:
     {
         _responses++;
         Operation = MultiplexingOperation.CapabilityQueries;
+    }
+
+    private void RecordGraphicsReply()
+    {
+        _responses++;
+        Operation = MultiplexingOperation.Graphics;
     }
 
     private void RecordClipboardReply()

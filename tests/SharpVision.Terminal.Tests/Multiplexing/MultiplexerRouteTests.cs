@@ -400,6 +400,7 @@ public sealed class MultiplexerRouteTests
     [Theory]
     [InlineData(MultiplexingOperation.Clipboard, "\u001b[?1;2c")]
     [InlineData(MultiplexingOperation.CapabilityQueries, "\u001b]52;c;aGk=\u001b\\")]
+    [InlineData(MultiplexingOperation.CapabilityQueries, "\u001b_Gi=99,I=1;OK\u001b\\")]
     public void TryUnwrapReply_WhenReplyFamilyIsNotApproved_Rejects(
         MultiplexingOperation approved,
         string reply)
@@ -414,6 +415,31 @@ public sealed class MultiplexerRouteTests
         TmuxWriter.WritePassthrough(wrapped, Encoding.ASCII.GetBytes(reply));
 
         new MultiplexerRoute(policy).TryUnwrapReply(wrapped.WrittenSpan, out _).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a Graphics-only policy - approving Kitty graphics writes but neither
+    /// CapabilityQueries nor Clipboard - authorizes and restores an exact wrapped Kitty graphics
+    /// reply. Before this fix the reply was misclassified as a CapabilityQueries operation in
+    /// <see cref="ReplyValidationSink"/>, the authorization switch always rejected the Graphics
+    /// operation regardless of policy, and TryUnwrapReply's early-exit gate short-circuited before
+    /// ever reaching that switch - so a policy that legitimately authorized graphics writes could
+    /// never receive the corresponding reply.</summary>
+    [Fact]
+    public void TryUnwrapReply_WhenGraphicsOnlyPolicyCarriesKittyGraphicsReply_RestoresExactReply()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics);
+        var route = new MultiplexerRoute(policy);
+        var reply = "\u001b_Gi=99,I=1;OK\u001b\\"u8.ToArray();
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, reply);
+
+        route.TryUnwrapReply(wrapped.WrittenSpan, out var owned).ShouldBeTrue();
+        owned.ToArray().ShouldBe(reply);
     }
 
     /// <summary>Verifies every transport split of a tmux-wrapped Kitty clipboard packet reaches
