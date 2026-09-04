@@ -124,6 +124,23 @@ Unix provider. It does not replace the ambiguous missing-or-generic result
 because that result may represent an accepted generic entry, and it never hides
 provider failure.
 
+```mermaid
+flowchart TD
+    Start["Load(request)"] --> Explicit{"ExplicitProfile set?"}
+    Explicit -->|Yes| Loaded1["Return Loaded(explicitProfile)"]
+    Explicit -->|No| Platform{"Platform?"}
+    Platform -->|Unix| UnixLoad["_unixProvider.Load(request)"]
+    Platform -->|"Windows, VT established"| WinLoad["_windowsProvider.Load(request)"]
+    Platform -->|"Windows, no VT"| WinUnavail["PlatformUnavailable"]
+    UnixLoad --> UnixStatus{"result.Status?"}
+    UnixStatus -->|PlatformUnavailable| Fallback{"AllowAnsiFallback?"}
+    UnixStatus -->|"Loaded / MissingOrGeneric / ProviderFailed"| Typed["Return typed result unchanged"]
+    Fallback -->|Yes| Ansi["Return Loaded(CreateAnsi) + AnsiFallback diagnostic"]
+    Fallback -->|No| Typed
+    WinLoad --> Typed
+    WinUnavail --> Typed
+```
+
 The exact-byte evidence pairs each built-in command with its compiled source,
 compares the fixed key map byte-for-byte, and covers provider precedence and
 fallback exclusions. Representative typed input has the same result at every
