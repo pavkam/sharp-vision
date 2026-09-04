@@ -146,7 +146,7 @@ internal sealed class TimeInputPane: CompositeControlBase
                 "<info>Format</info> overrides the derived segment order entirely with a custom pattern, taking precedence over <info>Use24HourFormat</info> and <info>ShowSeconds</info>.",
                 new DocExample(
                     "Fractional-second field",
-                    "One to seven <info>f</info> or <info>F</info> tokens create an editable fractional-second segment at that precision.",
+                    "One to seven <info>f</info> or <info>F</info> tokens create an editable fractional-second segment at that precision, but a literal \"/\" or \":\" in the pattern still resolves to the active culture's date or time separator.",
                     new DocColumn(inputFormat, statusFormat),
                     "timeInput.Format = \"HH:mm:ss.fff\";")),
             new DocSection(
