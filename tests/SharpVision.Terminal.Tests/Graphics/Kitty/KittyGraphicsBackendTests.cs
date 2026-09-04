@@ -514,6 +514,75 @@ public sealed class KittyGraphicsBackendTests
         Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("I=1");
     }
 
+    /// <summary>Verifies a wire number's ambiguous-transfer debt does not survive past the retiring
+    /// image it was recorded for being fully returned to the free pool by the quarantine flush in
+    /// <c>ReturnUncertain</c>. Full reachability trace: image A rents a number and never gets a
+    /// reply; image B replaces A while A is still unconfirmed, recording one owed stale-reply drop
+    /// for that number; B itself later retires with no further transfer and no reply of its own, so
+    /// it is quarantined and - one further Commit cycle later - flushed back to the free pool; the
+    /// same number is then rented for a brand-new, completely unrelated image C; C's own real reply
+    /// arrives. Before this fix, the leftover debt from A's never-arrived stale reply survived the
+    /// free-pool round trip and silently swallowed C's first real reply via the same guard the
+    /// chained-transfer tests above exercise deliberately.</summary>
+    [Fact]
+    public void Accept_WhenNumberRetiresAndRecirculatesAfterAnAmbiguousTransfer_StillAppliesTheNewTenantsReply()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 1, maxPlacements: 1);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(1, 1), [4, 5, 6, 255]);
+        var imageC = GraphicsImage.FromRgba(new Size(1, 1), [7, 8, 9, 255]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        using var empty = new RenderFrame(new Size(4, 2));
+        using var frameC = Frame(imageC, new Rect(0, 0, 1, 1));
+        using var frameCMoved = Frame(imageC, new Rect(1, 0, 1, 1));
+
+        // Image A rents Number 1 and transmits; its response is never accepted, simulating a still
+        // outstanding round-trip.
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // Image B replaces A, taking Number 1 via the transfer fast path while A is still
+        // unconfirmed - one stale reply (A's) is now owed for Number 1. B's own response is also
+        // never accepted, so B itself remains unconfirmed too.
+        _ = backend.Prepare(frameA, frameB, full: false);
+        var bBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(bBytes.Uploads).ShouldContain(",I=1;");
+
+        // B retires with no replacement image claiming Number 1 in this same Prepare call, so the
+        // transfer fast path is never taken for it - it is quarantined as uncertain instead.
+        _ = backend.Prepare(frameB, empty, full: false);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // One further, otherwise empty Commit cycle rotates and flushes the quarantine bucket,
+        // returning Number 1 to the free pool via ReturnUncertain.
+        _ = backend.Prepare(empty, empty, full: false);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // A brand-new, completely unrelated image C now rents Number 1 - the only number this
+        // backend's single-image capacity has to offer, guaranteeing the recycled number is reused.
+        _ = backend.Prepare(empty, frameC, full: false);
+        var cBytes = WritePrepared(backend);
+        backend.Commit();
+
+        Encoding.ASCII.GetString(cBytes.Uploads).ShouldContain(",I=1;");
+
+        // C's own real, successful reply now arrives for Number 1. It must be applied: a leftover
+        // debt entry for Number 1 - never cleared when Number 1 returned to the free pool - would
+        // otherwise silently drop it, exactly as if it were one of A's or B's stale replies.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+        _ = backend.Prepare(frameC, frameCMoved, full: false);
+        var afterOwnReply = WritePrepared(backend);
+
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldContain("i=42");
+        Encoding.ASCII.GetString(afterOwnReply.Placements).ShouldNotContain("I=1");
+    }
+
     /// <summary>Verifies upload, cursor-positioned placement, movement reuse, and last-use deletion.</summary>
     [Fact]
     public void Prepare_WhenImageMoves_ReusesIdsWithoutUploadingAndDeletesOnLastUse()

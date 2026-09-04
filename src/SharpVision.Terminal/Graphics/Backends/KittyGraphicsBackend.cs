@@ -1398,6 +1398,12 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
         foreach (var pair in _priorUncertainImages)
         {
             _imageIds.Return(pair.Key);
+
+            // The identifier is fully re-entering circulation here: any leftover ambiguous-transfer
+            // debt for it belongs to whatever image(s) previously held it, not to whoever rents it
+            // next. Leaving a stale entry behind would let a later, completely unrelated image's own
+            // first reply be silently dropped once this number gets recycled.
+            _ = _ambiguousTransferredNumbers.Remove(pair.Key);
         }
 
         _priorUncertainPlacements.Clear();
