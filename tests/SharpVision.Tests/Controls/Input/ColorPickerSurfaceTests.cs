@@ -112,9 +112,11 @@ public sealed class ColorPickerSurfaceTests
     [Fact]
     public async Task Render_WhenThemeChangesOnlyError_RefreshesInvalidTextForegroundAsync()
     {
-        // Arrange
-        var initialError = Color.Rgb(12, 12, 12);
-        var swappedError = Color.Rgb(240, 240, 240);
+        // Arrange: pure black/white survive the mounted surface's Basic16 color-depth quantization
+        // unchanged (unlike an arbitrary near-black/near-white RGB literal, which would be
+        // nearest-matched to the terminal's ANSI palette and no longer equal the raw Theme value).
+        var initialError = Color.Rgb(0, 0, 0);
+        var swappedError = Color.Rgb(255, 255, 255);
         var initialTheme = WithColor(SemanticColor.Error, initialError);
         var picker = new ColorPicker
         {
