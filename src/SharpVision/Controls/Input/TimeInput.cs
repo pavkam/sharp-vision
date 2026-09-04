@@ -124,7 +124,7 @@ public sealed class TimeInput: InputBase
             if (Format is { } format)
             {
                 TemporalFormatValidation.Validate(
-                    format, value, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c));
+                    format, value, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
             }
 
             if (SetPropertyWithComparer(
@@ -192,7 +192,7 @@ public sealed class TimeInput: InputBase
             {
                 ArgumentException.ThrowIfNullOrEmpty(value);
                 TemporalFormatValidation.Validate(
-                    value, _culture, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c));
+                    value, _culture, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))

@@ -162,7 +162,7 @@ public sealed class DateInput: InputBase
             }
 
             TemporalFormatValidation.Validate(
-                Format, value, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
+                Format, value, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
 
             _ = SetPropertyAndSynchronize(
                 ref _culture,
@@ -193,7 +193,7 @@ public sealed class DateInput: InputBase
         {
             ArgumentException.ThrowIfNullOrEmpty(value);
             TemporalFormatValidation.Validate(
-                value, _culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c));
+                value, _culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {

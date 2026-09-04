@@ -195,7 +195,7 @@ public sealed class DateTimeInput: InputBase
             if (Format is { } format)
             {
                 TemporalFormatValidation.Validate(
-                    format, value, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c));
+                    format, value, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
             }
 
             _ = SetPropertyAndSynchronize(
@@ -266,7 +266,7 @@ public sealed class DateTimeInput: InputBase
             {
                 ArgumentException.ThrowIfNullOrEmpty(value);
                 TemporalFormatValidation.Validate(
-                    value, _culture, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c));
+                    value, _culture, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))

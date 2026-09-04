@@ -836,6 +836,24 @@ public sealed class DateTimeInputTests
         _ = Should.Throw<ArgumentException>(() => control.Format = string.Empty);
     }
 
+    /// <summary>Verifies a fractional-second run longer than seven digits is rejected as the
+    /// property-boundary <see cref="ArgumentException"/> rather than surfacing later as the
+    /// segmented layout's own <see cref="ArgumentOutOfRangeException"/>. A percent-escaped custom
+    /// specifier (<c>%f</c>) makes <see cref="DateTime.ToString(string, IFormatProvider)"/> accept
+    /// an eight-digit run that a bare run of the same length would reject, so without this check the
+    /// value would pass property validation and only fail once the segmented layout - which
+    /// hard-caps digit capacity at seven - renders it.</summary>
+    [Fact]
+    public void Format_WhenFractionalSecondRunExceedsSevenDigits_Throws()
+    {
+        // Arrange
+        using var control = new DateTimeInput();
+
+        // Act and assert
+        var exception = Should.Throw<ArgumentException>(() => control.Format = "HH:mm:ss.%ffffffff");
+        exception.ParamName.ShouldBe("value");
+    }
+
     /// <summary>Verifies a custom Format overrides the culture- and flag-derived layout.</summary>
     [Fact]
     public void Render_WhenFormatIsCustom_OverridesDerivedLayout()
