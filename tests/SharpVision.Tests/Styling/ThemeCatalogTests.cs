@@ -239,6 +239,29 @@ public sealed class ThemeCatalogTests
         error.Message.ShouldContain(expected);
     }
 
+    /// <summary>Verifies a "styles.&lt;section&gt;" value that is not a JSON object - rejected lazily
+    /// from <c>Theme.ReadRawStyleSection</c>, not eagerly from <c>ThemeCatalog.ApplyStyleSections</c> -
+    /// still reports the exact line and column of the offending value. This is a sibling gap to
+    /// <see cref="Overlay_WhenStyleSectionLeafHasInvalidValue_ReportsLineAndColumn"/>: the same
+    /// <c>ThemeCatalog.ReadObject</c> helper backs both a section's own "must be an object" check and
+    /// a state's "must be an object" check, and both calls need the position map threaded through
+    /// separately from <see cref="Theme"/>'s per-section lazy read path.</summary>
+    [Fact]
+    public void Parse_WhenStyleSectionValueIsNotAnObject_ReportsLineAndColumn()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"tooltip\": { \"normal\": { \"border\": { \"sides\":\"none\" } } }",
+            "\"tooltip\": \"oops\"",
+            StringComparison.Ordinal);
+
+        var expected = ExpectedPosition(json, "\"oops\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "broken"));
+
+        error.Message.ShouldContain("styles.tooltip");
+        error.Message.ShouldContain(expected);
+    }
+
     /// <summary>Verifies a complete semantic theme loads metadata and concrete global colors.</summary>
     [Fact]
     public void Parse_WhenSemanticThemeIsComplete_LoadsGlobalValues()

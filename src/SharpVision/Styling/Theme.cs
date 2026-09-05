@@ -779,7 +779,7 @@ public sealed class Theme
             return null;
         }
 
-        var byState = ThemeCatalog.ReadObject(element, DiagnosticSource, $"styles.{key}");
+        var byState = ThemeCatalog.ReadObject(element, DiagnosticSource, $"styles.{key}", _stylePositions);
 
         var result = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.Ordinal);
         foreach (var (state, value) in byState)
@@ -789,7 +789,7 @@ public sealed class Theme
                 throw new InvalidDataException($"Theme '{DiagnosticSource}' 'styles.{key}' has unknown state '{state}'{FormatPosition($"styles.{key}.{state}")}.");
             }
 
-            result[state] = ThemeCatalog.ReadObject(value, DiagnosticSource, $"styles.{key}.{state}");
+            result[state] = ThemeCatalog.ReadObject(value, DiagnosticSource, $"styles.{key}.{state}", _stylePositions);
         }
 
         return result;
