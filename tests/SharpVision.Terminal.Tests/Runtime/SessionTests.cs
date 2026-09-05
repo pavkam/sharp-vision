@@ -763,6 +763,50 @@ public sealed class SessionTests
         await running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a pending legacy X10 mouse report (<c>ESC [ M</c> with none of its three
+    /// coordinate bytes ever following) is resolved at its own ambiguity deadline without any
+    /// further input, mirroring <see cref="RunAsync_WhenSs3Ages_ReportsAbandonedContinuationWithoutFurtherInputAsync"/>
+    /// for the sibling SS3 wake-up. The decoder held the pending X10 state and its deadline, but
+    /// nothing in the read loop woke to expire it - a stalled terminal that never sent the
+    /// coordinate bytes left the mouse decoder pending forever, so whatever real bytes arrived
+    /// later were silently consumed as the missing fields instead of being decoded as ordinary
+    /// keystrokes.</summary>
+    [Fact]
+    public async Task RunAsync_WhenX10MouseAges_ReportsAbandonedContinuationWithoutFurtherInputAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            TestContext.Current.CancellationToken);
+
+        // Act: ESC [ M arms a pending legacy X10 mouse report awaiting its three coordinate
+        // bytes, then only the clock moves - no coordinate byte ever arrives. The wake-up is
+        // armed when the bytes are routed; advancing past the ambiguity window afterwards fires
+        // it. Retry the advance until the abandonment is reported so the test cannot race the
+        // arming read.
+        transport.Input([0x1b, (byte) '[', (byte) 'M']);
+
+        while (sink.Diagnostics.Count == 0)
+        {
+            clock.Advance(InputOptions.Default.EscapeTimeout);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+
+        // Assert: the abandoned X10 report was reported with no coordinate byte ever arriving -
+        // proving the read loop woke on its own instead of leaving the pending state to wait
+        // forever - and the session still shuts down cleanly.
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Strokes.ShouldBeEmpty();
+        transport.Close();
+        await running.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies negotiation starts from the resolved profile rather than unrelated conservative defaults.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiating_PreservesResolvedProfileCapabilitiesAsync()

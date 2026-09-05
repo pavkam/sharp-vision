@@ -870,6 +870,7 @@ public sealed class Session: IAsyncDisposable
         Task? escapeExpiry = null;
         Task? keyMatcherExpiry = null;
         Task? ss3Expiry = null;
+        Task? mouseExpiry = null;
         var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
@@ -898,28 +899,45 @@ public sealed class Session: IAsyncDisposable
                 var escapeReady = escapeExpiry is not null && escapeExpiry.IsCompleted;
                 var keyMatcherReady = keyMatcherExpiry is not null && keyMatcherExpiry.IsCompleted;
                 var ss3Ready = ss3Expiry is not null && ss3Expiry.IsCompleted;
+                var mouseReady = mouseExpiry is not null && mouseExpiry.IsCompleted;
                 Task completed;
 
-                if (!deadlineReady && !escapeReady && !keyMatcherReady && !ss3Ready && !read.IsCompleted && !resize.IsCompleted)
+                if (!deadlineReady && !escapeReady && !keyMatcherReady && !ss3Ready && !mouseReady && !read.IsCompleted && !resize.IsCompleted)
                 {
-                    completed = (deadline, escapeExpiry, keyMatcherExpiry, ss3Expiry) switch
+                    completed = (deadline, escapeExpiry, keyMatcherExpiry, ss3Expiry, mouseExpiry) switch
                     {
-                        (null, null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
-                        ({ } negotiation, null, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
-                        (null, { } escape, null, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, null) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
-                        (null, null, null, { } ss3) => await Task.WhenAny(read, resize, ss3).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
-                        ({ } negotiation, null, null, { } ss3) => await Task.WhenAny(read, resize, negotiation, ss3).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, null) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
-                        (null, { } escape, null, { } ss3) => await Task.WhenAny(read, resize, escape, ss3).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, keyMatcher, ss3).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, { } ss3) => await Task.WhenAny(read, resize, negotiation, escape, ss3).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, { } ss3) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3).ConfigureAwait(false),
-                        var (negotiation, escape, keyMatcher, ss3) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!, ss3!).ConfigureAwait(false)
+                        (null, null, null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
+                        ({ } negotiation, null, null, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
+                        (null, { } escape, null, null, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, null, null) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
+                        (null, null, null, { } ss3, null) => await Task.WhenAny(read, resize, ss3).ConfigureAwait(false),
+                        (null, null, null, null, { } mouse) => await Task.WhenAny(read, resize, mouse).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, null, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, null, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
+                        ({ } negotiation, null, null, { } ss3, null) => await Task.WhenAny(read, resize, negotiation, ss3).ConfigureAwait(false),
+                        ({ } negotiation, null, null, null, { } mouse) => await Task.WhenAny(read, resize, negotiation, mouse).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, null, null) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
+                        (null, { } escape, null, { } ss3, null) => await Task.WhenAny(read, resize, escape, ss3).ConfigureAwait(false),
+                        (null, { } escape, null, null, { } mouse) => await Task.WhenAny(read, resize, escape, mouse).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, { } ss3, null) => await Task.WhenAny(read, resize, keyMatcher, ss3).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, null, { } mouse) => await Task.WhenAny(read, resize, keyMatcher, mouse).ConfigureAwait(false),
+                        (null, null, null, { } ss3, { } mouse) => await Task.WhenAny(read, resize, ss3, mouse).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, { } keyMatcher, null, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, { } ss3, null) => await Task.WhenAny(read, resize, negotiation, escape, ss3).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, null, { } mouse) => await Task.WhenAny(read, resize, negotiation, escape, mouse).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, { } ss3, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, null, { } mouse) => await Task.WhenAny(read, resize, negotiation, keyMatcher, mouse).ConfigureAwait(false),
+                        ({ } negotiation, null, null, { } ss3, { } mouse) => await Task.WhenAny(read, resize, negotiation, ss3, mouse).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, { } ss3, null) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, null, { } mouse) => await Task.WhenAny(read, resize, escape, keyMatcher, mouse).ConfigureAwait(false),
+                        (null, { } escape, null, { } ss3, { } mouse) => await Task.WhenAny(read, resize, escape, ss3, mouse).ConfigureAwait(false),
+                        (null, null, { } keyMatcher, { } ss3, { } mouse) => await Task.WhenAny(read, resize, keyMatcher, ss3, mouse).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, { } keyMatcher, { } ss3, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, ss3).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, { } keyMatcher, null, { } mouse) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, mouse).ConfigureAwait(false),
+                        ({ } negotiation, { } escape, null, { } ss3, { } mouse) => await Task.WhenAny(read, resize, negotiation, escape, ss3, mouse).ConfigureAwait(false),
+                        ({ } negotiation, null, { } keyMatcher, { } ss3, { } mouse) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3, mouse).ConfigureAwait(false),
+                        (null, { } escape, { } keyMatcher, { } ss3, { } mouse) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3, mouse).ConfigureAwait(false),
+                        var (negotiation, escape, keyMatcher, ss3, mouse) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!, ss3!, mouse!).ConfigureAwait(false)
                     };
                 }
                 else
@@ -930,6 +948,7 @@ public sealed class Session: IAsyncDisposable
                         false when escapeReady => escapeExpiry!,
                         false when keyMatcherReady => keyMatcherExpiry!,
                         false when ss3Ready => ss3Expiry!,
+                        false when mouseReady => mouseExpiry!,
                         false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
                         false when read.IsCompleted => read,
                         _ => resize
@@ -1035,6 +1054,22 @@ public sealed class Session: IAsyncDisposable
                     continue;
                 }
 
+                if (mouseExpiry is not null && ReferenceEquals(completed, mouseExpiry))
+                {
+                    await mouseExpiry.ConfigureAwait(false);
+
+                    // A timer callback may fire before the provider's wall clock reaches the
+                    // ambiguity deadline - the same slack the Escape, key-matcher, and SS3
+                    // deadlines tolerate above. ExpireMouse then resolves nothing and the pending
+                    // deadline is simply re-armed; when it does resolve, the pending deadline is
+                    // gone and the wake-up is retired until the next pending X10 mouse report.
+                    _ = router.ExpireMouse();
+                    mouseExpiry = router.PendingMouseDeadline is { } pendingMouse
+                        ? DelayUntilAsync(pendingMouse, linked.Token)
+                        : null;
+                    continue;
+                }
+
                 if (ReferenceEquals(completed, resize))
                 {
                     var dimensions = await resize.ConfigureAwait(false);
@@ -1130,6 +1165,14 @@ public sealed class Session: IAsyncDisposable
                     ? DelayUntilAsync(ss3Deadline, linked.Token)
                     : null;
 
+                // Routing may have begun a pending X10 mouse report. Mirror the decoder's pending
+                // deadline into a wake-up so the pending report is resolved even when no further
+                // byte ever arrives - a stalled terminal must not leave later real keystrokes
+                // silently consumed as the missing coordinate bytes.
+                mouseExpiry = router.PendingMouseDeadline is { } mouseDeadline
+                    ? DelayUntilAsync(mouseDeadline, linked.Token)
+                    : null;
+
                 Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
 
                 if (!ready && negotiator!.Completed)
@@ -1186,6 +1229,7 @@ public sealed class Session: IAsyncDisposable
             Observe(escapeExpiry);
             Observe(keyMatcherExpiry);
             Observe(ss3Expiry);
+            Observe(mouseExpiry);
 
             if (await DrainAsync(read).ConfigureAwait(false))
             {

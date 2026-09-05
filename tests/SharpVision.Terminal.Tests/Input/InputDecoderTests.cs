@@ -3493,6 +3493,48 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies a pending X10 mouse report (<c>ESC [ M</c> with none of its three field bytes
+    /// arrived yet) is resolved on its own ambiguity deadline when nothing further ever arrives,
+    /// mirroring <see cref="ExpireSs3_WhenDeadlineIsReachedWithNoFurtherByte_EndsSs3"/> for the
+    /// sibling SS3 ambiguity. Without <see cref="InputDecoder.ExpireMouse"/> being wired up, this
+    /// state would wait forever with nothing scheduled to resolve it, and whatever real bytes
+    /// eventually arrived would be silently consumed as the missing coordinate fields.
+    /// </summary>
+    [Fact]
+    public void ExpireMouse_WhenDeadlineIsReachedWithNoFurtherByte_EndsMouse()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // ESC [ M arms a pending X10 mouse report and its ambiguity deadline; none of its three
+        // field bytes ever follow.
+        decoder.Decode([0x1b, (byte) '[', (byte) 'M']);
+
+        _ = decoder.PendingMouseDeadline.ShouldNotBeNull();
+        decoder.ExpireMouse().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(24));
+        decoder.ExpireMouse().ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireMouse().ShouldBeTrue();
+        decoder.PendingMouseDeadline.ShouldBeNull();
+
+        // A second call at (or after) the same deadline is a no-op: the ambiguity is already
+        // resolved.
+        decoder.ExpireMouse().ShouldBeFalse();
+
+        // The abandoned report reports as malformed, exactly like every other reactive
+        // resolution path (a second Escape, an unrelated control byte, or stream Complete()).
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Malformed);
+        sink.Strokes.ShouldBeEmpty();
+        sink.Pointers.ShouldBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies escape-timeout expiry ends a pending X10 mouse continuation along with the lone
     /// Escape, so the following bytes decode as ordinary input instead of being consumed as a
     /// synthetic pointer report.

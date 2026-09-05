@@ -131,6 +131,10 @@ public sealed class ProtocolRouter: IDisposable
     /// <summary>Gets the pending SS3 ambiguity deadline, or null when none is pending.</summary>
     public DateTimeOffset? PendingSs3Deadline => _decoder.PendingSs3Deadline;
 
+    /// <summary>Gets the pending X10 mouse-report ambiguity deadline, or null when none is
+    /// pending.</summary>
+    public DateTimeOffset? PendingMouseDeadline => _decoder.PendingMouseDeadline;
+
     /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     public bool ExpireEscape() => _decoder.ExpireEscape();
@@ -142,6 +146,10 @@ public sealed class ProtocolRouter: IDisposable
     /// <summary>Expires a pending SS3 continuation when its deadline elapsed.</summary>
     /// <returns>Whether a pending SS3 continuation was resolved.</returns>
     public bool ExpireSs3() => _decoder.ExpireSs3();
+
+    /// <summary>Expires a pending X10 mouse continuation when its deadline elapsed.</summary>
+    /// <returns>Whether a pending X10 mouse continuation was resolved.</returns>
+    public bool ExpireMouse() => _decoder.ExpireMouse();
 
     /// <summary>Completes pending input and protocol framing once.</summary>
     public void Complete()

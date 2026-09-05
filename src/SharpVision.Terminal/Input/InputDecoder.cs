@@ -32,6 +32,7 @@ public sealed class InputDecoder: IDisposable
     private DateTimeOffset _escapeDeadline;
     private DateTimeOffset _keyMatcherDeadline;
     private DateTimeOffset _ss3Deadline;
+    private DateTimeOffset _mouseDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
@@ -222,6 +223,11 @@ public sealed class InputDecoder: IDisposable
     /// when no further byte ever arrives.</summary>
     public DateTimeOffset? PendingSs3Deadline => _ss3Pending ? _ss3Deadline : null;
 
+    /// <summary>Gets the pending X10 mouse-report ambiguity deadline, or null when no X10 mouse
+    /// continuation is pending. The read loop mirrors this into a wake-up so
+    /// <see cref="ExpireMouse"/> runs even when no further byte ever arrives.</summary>
+    public DateTimeOffset? PendingMouseDeadline => _mouseDecoder.Pending ? _mouseDeadline : null;
+
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
@@ -274,6 +280,22 @@ public sealed class InputDecoder: IDisposable
         }
 
         EndSs3IfPending();
+        return true;
+    }
+
+    /// <summary>Resolves a pending X10 mouse continuation after its ambiguity deadline.</summary>
+    /// <returns>Whether a pending X10 mouse continuation was resolved.</returns>
+    /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
+    public bool ExpireMouse()
+    {
+        ThrowIfDisposed();
+
+        if (!_mouseDecoder.Pending || _timeProvider.GetUtcNow() < _mouseDeadline)
+        {
+            return false;
+        }
+
+        _mouseDecoder.EndIfPending();
         return true;
     }
 
@@ -815,6 +837,17 @@ public sealed class InputDecoder: IDisposable
         {
             if (handler(parameters, intermediates, final))
             {
+                // Only TryHandleMouseCsi below can newly set _mouseDecoder.Pending here: the
+                // EndIfPending() call above already forced it false before this loop began, so a
+                // true reading now can only be the legacy X10 report this same dispatch just
+                // started. Stamp its ambiguity deadline the same way BeginEscape and the SS3
+                // branches stamp theirs, so the read loop can still wake up and resolve it even
+                // when the terminal never sends the three coordinate bytes.
+                if (_mouseDecoder.Pending)
+                {
+                    _mouseDeadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
+                }
+
                 return;
             }
         }
