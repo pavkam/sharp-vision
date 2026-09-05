@@ -831,12 +831,14 @@ namespace SharpVision.Terminal.Input
         public InputDecoder(SharpVision.Terminal.Abstractions.IInputSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
         public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
+        public System.DateTimeOffset? PendingMouseDeadline { get; }
         public System.DateTimeOffset? PendingSs3Deadline { get; }
         public void Complete() { }
         public void Decode(System.ReadOnlySpan<byte> input) { }
         public void Dispose() { }
         public bool ExpireEscape() { }
         public bool ExpireKeyMatcher() { }
+        public bool ExpireMouse() { }
         public bool ExpireSs3() { }
     }
     public sealed class InputOptions : System.IEquatable<SharpVision.Terminal.Input.InputOptions>
@@ -1401,11 +1403,13 @@ namespace SharpVision.Terminal.Protocols
         public ProtocolRouter(SharpVision.Terminal.Abstractions.IProtocolSink sink, SharpVision.Terminal.Input.InputOptions? options = null, System.TimeProvider? timeProvider = null) { }
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
         public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
+        public System.DateTimeOffset? PendingMouseDeadline { get; }
         public System.DateTimeOffset? PendingSs3Deadline { get; }
         public void Complete() { }
         public void Dispose() { }
         public bool ExpireEscape() { }
         public bool ExpireKeyMatcher() { }
+        public bool ExpireMouse() { }
         public bool ExpireSs3() { }
         public void Route(System.ReadOnlySpan<byte> input) { }
     }
