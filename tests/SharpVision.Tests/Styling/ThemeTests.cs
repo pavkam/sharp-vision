@@ -883,6 +883,36 @@ public sealed class ThemeTests
         exception.Message.ShouldContain("styles.popup.pressed.anchorGlyphs");
     }
 
+    /// <summary>Verifies InputStyle.AffixGap is rejected outside 'normal' by restrictToChrome.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsInputStyleAffixGap_ThrowsNamingTheExactPath()
+    {
+        var theme = CreateTheme();
+
+        var exception = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            InputStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"affixGap":2}"""),
+            "styles.input.pointerOver",
+            restrictToChrome: true));
+
+        exception.Message.ShouldContain("styles.input.pointerOver.affixGap");
+    }
+
+    /// <summary>Verifies InputStyle.DropDownGlyph is rejected outside 'normal' by restrictToChrome.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsInputStyleDropDownGlyph_ThrowsNamingTheExactPath()
+    {
+        var theme = CreateTheme();
+
+        var exception = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            InputStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"dropDownGlyph":"v"}"""),
+            "styles.input.pointerOver",
+            restrictToChrome: true));
+
+        exception.Message.ShouldContain("styles.input.pointerOver.dropDownGlyph");
+    }
+
     /// <summary>Verifies a scalar value where a fragment property expects an object surfaces as an
     /// InvalidDataException, never a raw JsonException.</summary>
     [Fact]

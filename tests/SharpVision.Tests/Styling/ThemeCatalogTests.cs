@@ -119,6 +119,20 @@ public sealed class ThemeCatalogTests
             $"line {readerError.LineNumber + 1}, column {readerError.BytePositionInLine + 1}");
     }
 
+    /// <summary>Verifies JSON nesting beyond the configured MaxDepth bound is rejected, not silently
+    /// accepted or left to crash somewhere far from the actual parse call.</summary>
+    [Fact]
+    public void Deserialize_WhenJsonNestingExceedsConfiguredMaxDepth_ThrowsInvalidDataException()
+    {
+        var nested = string.Concat(Enumerable.Repeat("{\"a\":", 15)) + "0" + string.Concat(Enumerable.Repeat("}", 15));
+        var json = ThemeJson.Create(stylesOverride: nested);
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "too-deep"));
+
+        exception.Message.ShouldContain("too-deep");
+        _ = exception.InnerException.ShouldBeOfType<JsonException>();
+    }
+
     /// <summary>Verifies a semantic color that references an unknown palette key - a malformed
     /// "colors.*" entry, as opposed to a missing one - reports the exact line and column of that
     /// entry's value, the same way the JSON syntax-error path already does. The expected position is
@@ -725,6 +739,21 @@ public sealed class ThemeCatalogTests
         _ = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t").Input.Normal.Border.GlyphStyle);
     }
 
+    /// <summary>Verifies an out-of-range AffixGap authored via JSON is rejected end-to-end through
+    /// ThemeCatalog.Parse, not just via the raw C# init accessor.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(5)]
+    public void Parse_WhenAffixGapIsOutOfRange_ThrowsInvalidDataException(int gap)
+    {
+        var json = ThemeJson.Create(inputExtra: $", \"affixGap\": {gap}");
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t"));
+
+        exception.Message.ShouldContain("styles.input.normal.affixGap");
+        _ = exception.InnerException.ShouldBeOfType<ArgumentOutOfRangeException>();
+    }
+
     /// <summary>Verifies every declared style leaf is converted before Parse publishes a Theme,
     /// even when no matching control or style property is ever requested.</summary>
     [Fact]
@@ -761,6 +790,19 @@ public sealed class ThemeCatalogTests
         var json = ThemeJson.Create(extraStyles: ""","buton":{}""");
 
         _ = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+    }
+
+    /// <summary>Verifies a dotted styles key is rejected exactly like an unqualified one - the old
+    /// reflective vendor-section registry that used to admit a dotted key is gone, so no dot admits
+    /// a section anymore.</summary>
+    [Fact]
+    public void Parse_WhenStylesKeyIsDottedAndUnknown_Throws()
+    {
+        var json = ThemeJson.Create(extraStyles: ""","sharpVision.document":{}""");
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json));
+
+        exception.Message.ShouldContain("sharpVision.document");
     }
 
     /// <summary>Verifies parsing valid JSON text returns a frozen theme with resolved control colors.</summary>
