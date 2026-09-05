@@ -254,15 +254,18 @@ stateDiagram-v2
     Leaf --> Unloaded: assign ChildSource
     Leaf --> Loaded: caller adds Children directly
     Loaded --> Leaf: caller clears Children directly
-    Loaded --> Unloaded: reassign ChildSource
-    Loaded --> Loading: ReloadChildrenAsync()
+    Loaded --> Leaf: reassign ChildSource to null (loader-owned)
+    Loaded --> Unloaded: reassign ChildSource (loader-owned)
+    Loaded --> Loading: ReloadChildrenAsync() (loader-owned)
     Unloaded --> Loading: expand while attached, or attach already expanded
     Unloaded --> Leaf: clear ChildSource
     Unloaded --> Unloaded: reassign ChildSource
     Unloaded --> Loading: ReloadChildrenAsync()
     Loading --> Loaded: GetChildrenAsync succeeds and validates
     Loading --> LoadFailed: GetChildrenAsync throws or fails validation
-    Loading --> Unloaded: collapse, or dispatcher detach/dispose - restores the prior state
+    Loading --> Unloaded: collapse, or dispatcher detach/dispose - restores Unloaded if that was the prior state
+    Loading --> Loaded: collapse, or dispatcher detach/dispose - restores Loaded if ReloadChildrenAsync() started from it
+    Loading --> LoadFailed: collapse, or dispatcher detach/dispose - restores LoadFailed if ReloadChildrenAsync() started from it
     Loading --> Leaf: clear ChildSource - cancels the in-flight load
     Loading --> Unloaded: reassign ChildSource - cancels the in-flight load
     Loading --> Loading: ReloadChildrenAsync()
@@ -270,6 +273,12 @@ stateDiagram-v2
     LoadFailed --> Unloaded: reassign ChildSource
     LoadFailed --> Loading: ReloadChildrenAsync()
 ```
+
+`Loaded`'s three loader-owned edges above (reassign `ChildSource`, reassign to
+`null`, and `ReloadChildrenAsync()`) apply only when that `Loaded` state came
+from a completed load; a caller-authored `Loaded` (built by adding `Children`
+directly, with `ChildSource` still null) has no source to reassign or reload,
+and throws `InvalidOperationException` from those same calls instead.
 
 Collapsing, a dispatcher detach, or disposal while `Loading` all cancel the
 pending request and restore whichever `ChildState` preceded it - normally

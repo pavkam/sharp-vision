@@ -126,12 +126,13 @@ A zero- or one-cell content box saturates without drawing outside its bounds.
 When no primary command fits, every visible command remains represented by the
 overflow snapshot; the trigger receives bounds only when one complete cell is
 available. Restoring width deterministically returns the same source identities
-to the primary plane. If keyboard roving focus rests on the overflow trigger and
-a resize widens the bar enough to empty overflow, the bar immediately moves that
-focus to the nearest available primary command — the same recovery mechanism as
-item removal or unavailability — without ever populating `SelectedItem` or
-`SelectedIndex`, which stay `null` and `-1` throughout since the trigger holds
-keyboard focus without ever becoming the selected item.
+to the primary plane. Keyboard roving focus resting on the overflow trigger
+leaves `SelectedItem` and `SelectedIndex` at `null` and `-1`, since the trigger
+holds keyboard focus without ever becoming the selected item; if a resize then
+widens the bar enough to empty overflow, the bar immediately moves that focus to
+the nearest available primary command — the same recovery mechanism as item
+removal or unavailability — which populates `SelectedItem` and `SelectedIndex`
+with that command.
 
 The control deliberately has no arbitrary child entries, nested command groups,
 overflow priorities, drag reordering, vertical mode, customization persistence,
