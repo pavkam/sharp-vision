@@ -2377,6 +2377,11 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         // change to the sort settings, not every re-sort of the row order.
         if (!_isReordering && SortDirection != TableSortDirection.None)
         {
+            // ReorderRows below unconditionally detaches and reattaches every row's cells,
+            // including a cell on a different, surviving row that currently holds real keyboard
+            // focus for an in-flight edit; detaching such a cell silently steals focus and leaves
+            // IsEditing/_edit stale. Committing first mirrors SetSort's precedent above.
+            _ = CommitEdit();
             ReorderRows(SpliceIntoSortedOrder(row));
         }
     }
@@ -2536,6 +2541,13 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         // change to the sort settings, not every re-sort of the row order.
         if (!_isReordering && SortDirection != TableSortDirection.None)
         {
+            // ReorderRows below unconditionally detaches and reattaches every row's cells,
+            // including a cell on a different, surviving row that currently holds real keyboard
+            // focus for an in-flight edit; detaching such a cell silently steals focus and leaves
+            // IsEditing/_edit stale. Committing first mirrors SetSort's precedent above -
+            // CancelActiveEditIfOwned(previous) already handled the replaced row itself, and the
+            // two calls can never target the same row.
+            _ = CommitEdit();
             ReorderRows(SpliceIntoSortedOrder(row));
         }
     }

@@ -1110,6 +1110,89 @@ public sealed class TableTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies inserting a row while a sort is already active commits an in-progress
+    /// edit on a different, surviving row before ReorderRows physically rebuilds the row list -
+    /// same defect and fix as SetSort's, but for InsertRow's own reorder call. Mirrors
+    /// SortBy_WhenEditorHoldsRealFocus_CommitsEditBeforeReorderDropsFocusAsync's real
+    /// dispatcher/FocusManager setup, since only a real attached focus target can observe the
+    /// silent-focus-loss desync at all.</summary>
+    [Fact]
+    public async Task Rows_WhenInsertedWhileSortedAndAnotherRowIsBeingEdited_CommitsEditBeforeReorderDropsFocusAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var editor = new TextInput { Text = "two" };
+            var other = new TableRow([new ControlText("three")]);
+            var edited = new TableRow([editor]);
+            var table = new Table();
+            table.Columns.Add(TableColumn.Auto("Value"));
+            table.Rows.Add(other);
+            table.Rows.Add(edited);
+            table.Attach(dispatcher);
+            using FocusManager focus = new(table);
+            table.SortBy(0);
+
+            table.BeginEdit(edited, 0).ShouldBeTrue();
+            editor.Text = "changed";
+            focus.Focused.ShouldBeSameAs(editor);
+            table.IsEditing.ShouldBeTrue();
+
+            // Sorted ahead of both existing rows, so InsertRow's own reorder call physically
+            // rebuilds the row list (Clear + re-Add), detaching every row's cells - including
+            // "edited"'s, a different, surviving row that still holds real keyboard focus.
+            var inserted = new TableRow([new ControlText("aaa")]);
+            table.Rows.Add(inserted);
+
+            table.IsEditing.ShouldBeFalse();
+            editor.Text.ShouldBe("changed");
+            focus.Focused.ShouldBeNull();
+            table.Rows.IndexOf(inserted).ShouldBe(0);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies replacing a row while a sort is already active commits an in-progress
+    /// edit on a different, surviving row before ReplaceRow's own ReorderRows call physically
+    /// rebuilds the row list - same defect and fix as SetSort's and InsertRow's.
+    /// CancelActiveEditIfOwned(previous) inside ReplaceRow only covers the row being replaced
+    /// itself, not a surviving row edited elsewhere.</summary>
+    [Fact]
+    public async Task Rows_WhenReplacedWhileSortedAndAnotherRowIsBeingEdited_CommitsEditBeforeReorderDropsFocusAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var editor = new TextInput { Text = "two" };
+            var replaced = new TableRow([new ControlText("three")]);
+            var edited = new TableRow([editor]);
+            var table = new Table();
+            table.Columns.Add(TableColumn.Auto("Value"));
+            table.Rows.Add(replaced);
+            table.Rows.Add(edited);
+            table.Attach(dispatcher);
+            using FocusManager focus = new(table);
+            table.SortBy(0);
+
+            table.BeginEdit(edited, 0).ShouldBeTrue();
+            editor.Text = "changed";
+            focus.Focused.ShouldBeSameAs(editor);
+            table.IsEditing.ShouldBeTrue();
+
+            // Sorted after "edited"'s live (uncommitted) text, so ReplaceRow's own reorder call
+            // physically rebuilds the row list, detaching every row's cells - including
+            // "edited"'s, which is not the row being replaced and still holds real keyboard focus.
+            var replacement = new TableRow([new ControlText("zzz")]);
+            table.Rows[table.Rows.IndexOf(replaced)] = replacement;
+
+            table.IsEditing.ShouldBeFalse();
+            editor.Text.ShouldBe("changed");
+            focus.Focused.ShouldBeNull();
+            table.Rows.ShouldBe([edited, replacement]);
+        }, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a column's SortKey overrides the default cell-text comparison - a numeric
     /// key sorts "9" before "10" where the default ordinal text comparison would order "10" before
     /// "9".</summary>
