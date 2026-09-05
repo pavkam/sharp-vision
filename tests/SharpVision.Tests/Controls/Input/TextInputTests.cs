@@ -460,6 +460,81 @@ public sealed class TextInputTests
         }
     }
 
+    /// <summary>Verifies a word break followed by a single whitespace grapheme does not carry that
+    /// whitespace onto the next visual line as a stray leading character: at a 2-cell viewport,
+    /// "ab" fills the first line exactly, so the following space must be consumed by the break -
+    /// not opened as column 0 of a second line whose content becomes " c".</summary>
+    [Fact]
+    public void Measure_WhenWordWrapBreaksExactlyBeforeASpace_DoesNotCarryTheSpaceOntoTheNextLine()
+    {
+        // Arrange
+        var control = new TextInput { Text = "ab c", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(2, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldBe([new VisualLineSnapshot(0, 2, 2), new VisualLineSnapshot(3, 1, 1)]);
+    }
+
+    /// <summary>Verifies a word break resumes past every whitespace grapheme the break point
+    /// leaves behind, rather than only the single grapheme <c>BuildVisualLines</c> recorded as the
+    /// break: "abc def" at a 3-cell viewport must produce exactly two visual lines ("abc", "def"),
+    /// not three with a whitespace-only line sitting between them.</summary>
+    [Fact]
+    public void Measure_WhenWordWrapBreaksAtAWord_DoesNotEmitAWhitespaceOnlyVisualLine()
+    {
+        // Arrange
+        var control = new TextInput { Text = "abc def", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(3, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldBe([new VisualLineSnapshot(0, 3, 3), new VisualLineSnapshot(4, 3, 3)]);
+    }
+
+    /// <summary>Verifies caret addressability survives the whitespace-skip fix: with "ab c" wrapped
+    /// at a 2-cell viewport (visual lines "ab" and "c", the space between them consumed by the
+    /// break), the text offset immediately before the space (2) still resolves to the end of line 0
+    /// and the offset immediately after it (3) still resolves to the start of line 1 - the skipped
+    /// space must not strand either neighboring offset without an addressable caret column.</summary>
+    [Fact]
+    public void Position_WhenWordWrapSkipsTheBreakWhitespace_StillAddressesBothNeighboringOffsets()
+    {
+        // Arrange
+        var control = new TextInput { Text = "ab c", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(2, 10));
+
+        // Act
+        InvokePosition(control, 2, out var beforeSpaceX, out var beforeSpaceY);
+        InvokePosition(control, 3, out var afterSpaceX, out var afterSpaceY);
+
+        // Assert
+        beforeSpaceY.ShouldBe(0);
+        beforeSpaceX.ShouldBe(2);
+        afterSpaceY.ShouldBe(1);
+        afterSpaceX.ShouldBe(0);
+    }
+
+    /// <summary>Invokes TextInput's private caret-to-visual-column resolver via reflection, since
+    /// <c>Position</c> is an implementation detail with no public surface.</summary>
+    private static void InvokePosition(TextInput control, int index, out int x, out int y)
+    {
+        var method = typeof(TextInput).GetMethod(
+            "Position",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var parameters = new object?[] { index, 0, 0 };
+        _ = method.Invoke(control, parameters);
+        x = (int) parameters[1]!;
+        y = (int) parameters[2]!;
+    }
+
     /// <summary>Reads TextInput's private per-line word-wrap layout (offset/length/cell-width
     /// triples) via reflection, since <c>BuildVisualLines</c> and its <c>VisualLine</c> result are
     /// implementation details with no public surface.</summary>

@@ -1914,6 +1914,25 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                     i--;
                 }
 
+                // A break only records the single whitespace grapheme that triggered it, but
+                // further whitespace can still follow (consecutive spaces, or the whitespace
+                // grapheme that itself overflowed above). Skip all of it here so the new line
+                // never opens with a stray leading whitespace character — mirroring the
+                // invariant Layout.SkipBreakWhitespace enforces for the display-only formatter.
+                while (i < graphemes.Count)
+                {
+                    var candidate = graphemes[i];
+                    var candidateCluster = Text.AsSpan(candidate.Offset, candidate.Length);
+
+                    if (!IsWordBreak(candidateCluster))
+                    {
+                        break;
+                    }
+
+                    lineStart = candidate.Offset + candidate.Length;
+                    i++;
+                }
+
                 continue;
             }
 
