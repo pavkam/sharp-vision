@@ -22,8 +22,8 @@ internal sealed class NavigationViewPane: CompositeControlBase
         basic.Items.Add(new NavigationViewItem { Text = "&Reports", Glyph = "📈" });
         basic.Items.Add(new NavigationViewItem { Text = "&Settings", Glyph = "⚙", IsEnabled = false });
         basic.SelectItem((NavigationViewItem) basic.Items[0]);
-        basic.SelectionChanged += (_, _) =>
-            status.Content = $"Selected: {DocCaption.PlainCaption(basic.SelectedItem?.Text ?? "none")}";
+        basic.SelectionChanged += (_, eventArgs) =>
+            status.Content = $"Selected: {DocCaption.PlainCaption(basic.SelectedItem?.Text ?? "none")} ({eventArgs.Cause})";
 
         var grouped = new NavigationView { Header = "&PROJECT", Width = Length.Cells(24), Height = Length.Cells(8) };
         var core = new NavigationViewGroup { Header = "&Core", IsExpanded = false };
@@ -36,8 +36,8 @@ internal sealed class NavigationViewPane: CompositeControlBase
         grouped.Items.Add(new NavigationViewSeparator());
         grouped.Items.Add(tests);
         var groupedStatus = new Text("Right expands/enters · Left returns/collapses");
-        grouped.SelectionChanged += (_, _) => groupedStatus.Content =
-            $"Selected: {DocCaption.PlainCaption(grouped.SelectedItem?.Text ?? "group header")}";
+        grouped.SelectionChanged += (_, eventArgs) => groupedStatus.Content =
+            $"Selected: {DocCaption.PlainCaption(grouped.SelectedItem?.Text ?? "group header")} ({eventArgs.Cause})";
 
         var footer = new NavigationView { Header = "S&ETTINGS", Width = Length.Cells(24), Height = Length.Cells(10) };
         footer.Items.Add(new NavigationViewItem { Text = "&General" });
@@ -66,8 +66,8 @@ internal sealed class NavigationViewPane: CompositeControlBase
             EndAffix = new Affix("●", "*", SemanticColor.Error)
         });
         badges.Items.Add(new NavigationViewItem { Text = "Arc&hive" });
-        badges.SelectionChanged += (_, _) =>
-            badgeStatus.Content = $"Selected: {DocCaption.PlainCaption(badges.SelectedItem?.Text ?? "none")}";
+        badges.SelectionChanged += (_, eventArgs) =>
+            badgeStatus.Content = $"Selected: {DocCaption.PlainCaption(badges.SelectedItem?.Text ?? "none")} ({eventArgs.Cause})";
 
         var styled = new NavigationView { Header = "C&USTOM", Width = Length.Cells(24), Height = Length.Cells(7) };
         var styledGroup = new NavigationViewGroup
