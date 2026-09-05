@@ -238,6 +238,18 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
 
         var transferredImageIds = new List<uint>();
 
+        // Numbers newly flagged as owing a stale reply by this call, applied to the real
+        // _ambiguousTransferredNumbers debt ledger only once the method reaches its success-commit
+        // point below. Recording the mutation locally first - mirroring the existing
+        // transferredImageIds/rentedImages/etc. idiom in this same method - keeps a failed Prepare
+        // call (e.g. WriteUpload throwing over budget, after this transfer already ran) from
+        // leaving behind debt for a transfer whose upload never actually transmitted. The catch
+        // block below needs no change: on any exception this local list is simply discarded along
+        // with everything else, leaving _ambiguousTransferredNumbers exactly as it was before this
+        // call, including any unrelated pre-existing debt for the same number from an earlier,
+        // already-committed call.
+        var newlyAmbiguousNumbers = new List<uint>();
+
         // Same reasoning as retiringImageIds, for placement identifiers. This mirrors the
         // position/identity matching the main loop below performs to decide whether a placement
         // is retained in place (the effectiveIndex comparison against _placements later in this
@@ -311,8 +323,7 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
                             // instead of misattribute once ApplyAssignedImageIds sees it.
                             if (transferred.WasUnconfirmed)
                             {
-                                _ambiguousTransferredNumbers[id] =
-                                    _ambiguousTransferredNumbers.GetValueOrDefault(id) + 1;
+                                newlyAmbiguousNumbers.Add(id);
                             }
                         }
                         else
@@ -538,6 +549,16 @@ internal sealed class KittyGraphicsBackend: IGraphicsBackend
             }
 
             _removals = FinishApcPhase(output, ref remaining);
+
+            // Only now, with the method guaranteed to succeed, does deferred ambiguous-transfer debt
+            // recorded above become real - see the newlyAmbiguousNumbers declaration for why this
+            // must not happen any earlier.
+            foreach (var newlyAmbiguousId in newlyAmbiguousNumbers)
+            {
+                _ambiguousTransferredNumbers[newlyAmbiguousId] =
+                    _ambiguousTransferredNumbers.GetValueOrDefault(newlyAmbiguousId) + 1;
+            }
+
             _preparedImages = images;
             _preparedPlacements = placements;
             PreparedCellOverlay = preparedCellOverlay;

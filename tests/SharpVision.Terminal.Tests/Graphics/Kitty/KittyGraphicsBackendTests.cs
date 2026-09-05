@@ -656,6 +656,45 @@ public sealed class KittyGraphicsBackendTests
         second.ShouldBe(new GraphicsBackendResult(changed: true, uploads: 1, placements: 1, removals: 0));
     }
 
+    /// <summary>Verifies a transfer's ambiguous-stale-reply debt is not permanently recorded when
+    /// the same <see cref="KittyGraphicsBackend.Prepare"/> call that performed the transfer later
+    /// fails before it can commit (e.g. the replacement image's own upload exceeds the prepared-
+    /// output budget). The transfer never actually completed - the replacement upload was never
+    /// transmitted - so the retiring image's own later reply for that number must still be applied
+    /// normally afterward, rather than dropped as a stale, ambiguous reply belonging to a transfer
+    /// that never really happened.</summary>
+    [Fact]
+    public void Prepare_WhenTransferSucceedsButTheSameCallLaterFails_DoesNotLeakAmbiguousTransferDebt()
+    {
+        using var backend = new KittyGraphicsBackend(maxImages: 1, maxPlacements: 1, maxPreparedBytes: 160);
+        var imageA = GraphicsImage.FromRgba(new Size(1, 1), [1, 2, 3, 255]);
+        var imageB = GraphicsImage.FromRgba(new Size(100, 1), new byte[400]);
+        using var frameA = Frame(imageA, new Rect(0, 0, 1, 1));
+        using var frameB = Frame(imageB, new Rect(0, 0, 1, 1));
+        _ = backend.Prepare(null, frameA, full: true);
+        _ = WritePrepared(backend);
+        backend.Commit();
+
+        // imageA's own upload reply is deliberately never Accept-ed here, leaving it unconfirmed
+        // when the transfer below runs - the precondition for the retiring number to be flagged
+        // ambiguous at all.
+        _ = Should.Throw<InvalidOperationException>(() => backend.Prepare(frameA, frameB, full: false));
+
+        // The reply belongs to imageA's own original, still-unconfirmed upload - the exact number
+        // the failed call above transferred to imageB. If the ambiguous-transfer debt leaked out of
+        // that failed call, this reply gets dropped instead of applied.
+        backend.Accept(KittyGraphicsResponse.Parse("Gi=42,I=1;OK"u8));
+
+        using var movedA = Frame(imageA, new Rect(1, 0, 1, 1));
+        var result = backend.Prepare(frameA, movedA, full: false);
+        var bytes = WritePrepared(backend);
+
+        result.Placements.ShouldBe(1);
+        var placement = Encoding.ASCII.GetString(bytes.Placements);
+        placement.ShouldContain("i=42");
+        placement.ShouldNotContain("I=1");
+    }
+
     /// <summary>Verifies transfer eligibility deliberately excludes an identifier that is already
     /// quarantined as uncertain by an earlier invalidated attempt: a retry that would need to
     /// reuse that same identifier still throws today, rather than risk the double-resolution of
