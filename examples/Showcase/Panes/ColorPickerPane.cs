@@ -82,7 +82,7 @@ internal sealed class ColorPickerPane: CompositeControlBase
             new DocSection(
                 "⌨️",
                 "Keyboard, pointer, and presets",
-                "Click or drag across the plane. <reverse>Tab</reverse> reaches all six retained parts; arrows edit the surface and sliders; the final field accepts #RRGGBB, rgb(r, g, b), decimal components, or DEFAULT directly.",
+                "Click or drag across the plane. <reverse>Tab</reverse> reaches all six retained parts; arrows edit the surface and sliders; the final field accepts #RRGGBB, rgb(r, g, b), decimal components, or DEFAULT directly; an unparsable value (for example \"#GG0000\" or a stray character) turns the field the active theme's error background/foreground until the text becomes valid again.",
                 new DocExample(
                     "Preset initial color",
                     "Set <info>Value</info> before display to open at a known color, then Tab to the final field for direct entry.",
