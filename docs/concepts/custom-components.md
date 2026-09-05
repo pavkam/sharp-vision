@@ -184,6 +184,58 @@ their own slot and an ancestor slot participate. Failure is aggregated without
 inverse ownership publication or rollback, and reentrant tree mutation through
 any participant is rejected until publication completes.
 
+The following sequence shows this transaction across two simultaneous slots,
+matching `TabControl`'s items/headers move:
+
+```mermaid
+sequenceDiagram
+    participant Caller as Caller (e.g. TabControl.MoveTab)
+    participant Coord as CommitCompound (coordinator)
+    participant SlotA as Slot: items
+    participant SlotB as Slot: headers
+    participant Removed as Removed controls
+    participant Added as Added controls
+
+    Caller->>Coord: CommitCompound(continuation, (SlotA, next), (SlotB, next))
+    Coord->>SlotA: validate snapshot, diff vs current
+    Coord->>SlotB: validate snapshot, diff vs current
+    Note over Coord: reject repeated slots/controls; no-op slots produce no change
+
+    Coord->>Coord: enter lifecycle-publication guard
+    Coord->>Coord: enter compound-publication guard (unless already active)
+
+    Coord->>Removed: NotifyUnavailable(reason)
+    Coord->>Removed: capture appearance snapshot
+    Coord->>Added: capture appearance snapshot
+    Coord->>Coord: snapshot derived focus state
+
+    Coord->>Removed: build detach context-transition plan
+    Coord->>Added: build attach context-transition plan (per owning slot)
+
+    Note over Coord,SlotB: structural boundary - all slots swap together
+    Coord->>SlotA: Items.Clear() + AddRange(next)
+    Coord->>SlotB: Items.Clear() + AddRange(next)
+
+    Coord->>Removed: CommitOwnership(null, null)
+    Coord->>Added: CommitOwnership(owner, slot)
+
+    Coord->>Coord: commit context-transition plans
+    Coord->>Added: SetCapabilities / SetCellMetrics
+
+    Coord->>Caller: run structuralContinuation()
+    Note over Caller: e.g. TabControl updates SelectedIndex mid-transaction
+
+    Coord->>Removed: PublishParentChanged(owner, null)
+    Coord->>Added: PublishParentChanged(null, owner)
+    Coord->>Coord: PublishDerivedFocusStateChanges (once per overlapping root)
+    Coord->>Removed: PublishAppearanceChanged
+    Coord->>Added: PublishAppearanceChanged
+    Coord->>Removed: PublishDetached
+    Coord->>Added: PublishAttached
+    Coord->>SlotA: PublishChanged(committedChange)
+    Coord->>SlotB: PublishChanged(committedChange)
+```
+
 Framework item owners receive an immutable committed delta for each retained
 slot rather than inferring an insert, removal, replacement, move, clear, or
 direct disposal from the final list. When such an owner must temporarily impose
