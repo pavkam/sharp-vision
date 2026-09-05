@@ -19,16 +19,16 @@ classDiagram
 
 ## API
 
-| Member                                              | Type       | Default                          | Description                                                                                            |
-| --------------------------------------------------- | ---------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `Interval`                                          | `TimeSpan` | `TimeSpan.FromMilliseconds(200)` | Semantic cadence; rejects unsupported dispatcher-timer intervals.                                      |
-| `IsPlaying`                                         | `bool`     | `true`                           | Starts or pauses attached playback while retaining the current frame.                                  |
-| `OnAnimationTick()`                                 | `void`     | —                                | Abstract; advances one semantic frame on the owning dispatcher.                                        |
-| `OnRenderFrame(TerminalCanvas canvas, Rect bounds)` | `void`     | —                                | Abstract; draws the current frame inside the non-empty, enforced content clip.                         |
-| `OnIntervalChanged()`                               | `void`     | —                                | Synchronizes derived timing after a cadence change; schedules `Interval` by default.                   |
-| `ShouldSynchronizeIntervalBeforePublication()`      | `bool`     | —                                | Returns `true` by default; a derived compatibility contract may choose publish-then-synchronize order. |
-| `OnPlaybackStarting()`                              | `void`     | —                                | Synchronizes derived clock state immediately before playback starts; no-op by default.                 |
-| `ScheduleAnimation(TimeSpan interval)`              | `void`     | —                                | Schedules an intermediate callback without changing `Interval`.                                        |
+| Member                                              | Type       | Default                          | Description                                                                                                                                                                                                          |
+| --------------------------------------------------- | ---------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Interval`                                          | `TimeSpan` | `TimeSpan.FromMilliseconds(200)` | Semantic cadence; rejects unsupported dispatcher-timer intervals.                                                                                                                                                    |
+| `IsPlaying`                                         | `bool`     | `true`                           | Starts or pauses attached playback while retaining the current frame.                                                                                                                                                |
+| `OnAnimationTick()`                                 | `void`     | —                                | Abstract; advances one semantic frame on the owning dispatcher.                                                                                                                                                      |
+| `OnRenderFrame(TerminalCanvas canvas, Rect bounds)` | `void`     | —                                | Abstract; draws the current frame inside the non-empty, enforced content clip.                                                                                                                                       |
+| `OnIntervalChanged()`                               | `void`     | —                                | Synchronizes derived timing after a cadence change; schedules `Interval` by default.                                                                                                                                 |
+| `ShouldSynchronizeIntervalBeforePublication()`      | `bool`     | —                                | Returns `true` by default; a derived compatibility contract may choose publish-then-synchronize order.                                                                                                               |
+| `OnPlaybackStarting()`                              | `void`     | —                                | Fires immediately before tick delivery resumes: on an `IsPlaying` transition to `true`, and unconditionally on an `EffectiveIsVisible` false-to-true transition even if `IsPlaying` never changed. No-op by default. |
+| `ScheduleAnimation(TimeSpan interval)`              | `void`     | —                                | Schedules an intermediate callback without changing `Interval`.                                                                                                                                                      |
 
 The base installs a sealed content-rendering step. It resumes a visibility-
 suspended timer, skips an empty content box, and passes `ContentBounds` to
@@ -73,6 +73,7 @@ AnimatedIndicatorBase indicator = new Spinner
   explicitly opted-in publish-first contract still completes mandatory
   synchronization after an observer failure.
 - Effective invisibility suspends callbacks without discarding derived frame
-  state; rendering restarts the attached timer when visibility returns.
+  state; rendering restarts the attached timer when visibility returns, invoking
+  `OnPlaybackStarting()` before ticking resumes.
 - The base stays outside focus and pointer hit testing, and derived frames draw
   only within the content box left by intrinsic border and padding.
