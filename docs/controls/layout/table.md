@@ -378,9 +378,10 @@ directions.
 > [!NOTE]
 >
 > Sorting commits any in-flight cell edit before reordering rows: `SortBy`,
-> `SetSort`, and `ResetSort` all call the same commit path as the built-in
-> header click, so `IsEditing` clears and the edited text is kept rather than
-> left stale against a row whose cells were just detached and reattached.
+> `SetSort`, `ResetSort`, `InsertRow`, and `ReplaceRow` all call the same commit
+> path as the built-in header click, so `IsEditing` clears and the edited text
+> is kept rather than left stale against a row whose cells were just detached
+> and reattached.
 
 `CopySelection()` returns the selected rows or cells as deterministic
 tab-separated text with LF row separators. A host can pass that text to the
