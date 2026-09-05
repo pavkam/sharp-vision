@@ -287,6 +287,30 @@ public sealed class ProtocolParserTests
             observation => observation.Final.ShouldBe((byte) 'q'));
     }
 
+    /// <summary>
+    /// Verifies a well-formed DCS payload completes when a false ESC candidate
+    /// (one that does not complete a 7-bit ST) is itself an enabled 8-bit ST,
+    /// rather than being misparsed as malformed payload.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenEightBitStFollowsFalseEscCandidateInWellFormedDcs_DeliversPayload()
+    {
+        var limits = ParserLimits.Default with { AcceptEightBitControls = true };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+        // 0x9c is the raw C1 ST byte; a string literal would UTF-8 encode
+        // it as two bytes instead of the single byte the parser expects.
+        byte[] input = [.. "\u001bPqa"u8.ToArray(), 0x1b, 0x9c, .. "Z"u8.ToArray()];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Dcs:EightBit:"),
+            observation => observation.Second.ShouldBe("a"u8.ToArray()));
+        sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
+    }
+
     /// <summary>Verifies BEL is forbidden DCS payload rather than a terminator.</summary>
     [Fact]
     public void Parse_WhenDcsContainsBell_ReportsMalformedAtSt()
@@ -929,6 +953,50 @@ public sealed class ProtocolParserTests
         sink.Observations.Count.ShouldBe(2);
         sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.Malformed);
         sink.Observations[0].Diagnostic!.Value.Kind.ShouldBe(SequenceKind.Osc);
+        sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies a well-formed OSC payload completes when a false ESC candidate
+    /// (one that does not complete a 7-bit ST) is itself an enabled 8-bit ST,
+    /// rather than being misparsed as malformed payload.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenEightBitStFollowsFalseEscCandidateInWellFormedOsc_DeliversPayload()
+    {
+        var limits = ParserLimits.Default with { AcceptEightBitControls = true };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+        // 0x9c is the raw C1 ST byte; a string literal would UTF-8 encode
+        // it as two bytes instead of the single byte the parser expects.
+        byte[] input = [.. "\u001b]2;a"u8.ToArray(), 0x1b, 0x9c, .. "Z"u8.ToArray()];
+
+        parser.Parse(input, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Osc:EightBit"),
+            observation => observation.First.ShouldBe("2;a"u8.ToArray()));
+        sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies a well-formed OSC payload completes when a false ESC candidate
+    /// (one that does not complete a 7-bit ST) is itself an enabled BEL
+    /// terminator, rather than being misparsed as malformed payload.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenBellFollowsFalseEscCandidateInWellFormedOsc_DeliversPayload()
+    {
+        using ProtocolParser parser = new();
+        var sink = new RecordingSink();
+
+        parser.Parse("\u001b]2;a\u001b\aZ"u8, ref sink);
+
+        sink.Observations.Count.ShouldBe(2);
+        sink.Observations[0].ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Osc:Bell"),
+            observation => observation.First.ShouldBe("2;a"u8.ToArray()));
         sink.Observations[1].First.ShouldBe("Z"u8.ToArray());
     }
 

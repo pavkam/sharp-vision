@@ -778,6 +778,18 @@ public sealed class ProtocolParser: IDisposable
                 return;
             }
 
+            if (_limits.AcceptEightBitControls && value == ControlBytes.EightBitSt)
+            {
+                EmitString(StringTerminator.EightBit, ref sink);
+                return;
+            }
+
+            if (_stringKind == SequenceKind.Osc && _limits.AcceptBellTerminatedOsc && value == ControlBytes.Bell)
+            {
+                EmitString(StringTerminator.Bell, ref sink);
+                return;
+            }
+
             BeginStringIgnore(DiagnosticCode.Malformed, currentOffset - 1);
             _discarded++;
             _state = value == ControlBytes.Escape
