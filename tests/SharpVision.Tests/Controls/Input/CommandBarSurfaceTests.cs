@@ -425,6 +425,66 @@ public sealed class CommandBarSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
     }
 
+    /// <summary>Verifies keyboard-selecting a primary item, then resizing narrow enough that it
+    /// (and a sibling ahead of it) move into overflow, immediately repairs the selection onto the
+    /// nearest still-available PRIMARY item instead of leaving SelectedItem/SelectedIndex pointing
+    /// at the now-invisible, overflowed item. A naive nearest-search that does not exclude
+    /// overflowed items could land back on the sibling that overflowed alongside it; this proves
+    /// it lands on the further, still-primary item instead.</summary>
+    [Fact]
+    public async Task Keyboard_WhenSelectedPrimaryItemOverflowsAfterResize_ReselectsNearestPrimarySiblingWithoutExtraKeyPressAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "selected": { "face": { "foreground":"success", "background":"selectedControl" } }"""));
+        var bar = CreateBar(out var open, out var save, out var print);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(28, 2),
+            options,
+            TestContext.Current.CancellationToken);
+
+        // Act: select the last primary item via keyboard while everything still fits.
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the selection theme");
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.End);
+
+        bar.SelectedItem.ShouldBeSameAs(print);
+        open.IsOverflowed.ShouldBeFalse();
+        save.IsOverflowed.ShouldBeFalse();
+        print.IsOverflowed.ShouldBeFalse();
+
+        // Act: shrink narrow enough that both save and the selected print move into overflow in
+        // the same layout pass.
+        await surface.ResizeAsync(new Size(16, 2));
+
+        // Assert: save and print are now overflowed, but selection did not stay on print, nor did
+        // it fall onto save (also overflowed) — it repaired onto open, the nearest remaining
+        // available PRIMARY item, with no extra keypress required.
+        open.IsOverflowed.ShouldBeFalse();
+        save.IsOverflowed.ShouldBeTrue();
+        print.IsOverflowed.ShouldBeTrue();
+        bar.SelectedItem.ShouldBeSameAs(open);
+        bar.SelectedIndex.ShouldBeGreaterThanOrEqualTo(0);
+        var openPosition = new Point(open.Bounds.X, open.Bounds.Y);
+        surface.Cell(openPosition).Style.Background.ShouldBe(
+            TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth));
+
+        // Assert: the roving-focus navigation is coherent again — the overflow trigger, which now
+        // holds both overflowed siblings, is reachable as the next stop after open.
+        var trigger = OwnedTree.Find<CommandBarOverflowButton>(bar).ShouldNotBeNull();
+        await surface.Keyboard.PressAsync(Code.End);
+        bar.SelectedItem.ShouldBeNull();
+        surface.ShouldHaveFocus(bar);
+        trigger.Bounds.Width.ShouldBeGreaterThan(0);
+    }
+
     /// <summary>Verifies a disabled overflow trigger keeps the Bar plane, uses the theme's disabled
     /// foreground, and still respects a complete local overflow color.</summary>
     [Fact]

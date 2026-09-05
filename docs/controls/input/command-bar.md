@@ -132,7 +132,12 @@ holds keyboard focus without ever becoming the selected item; if a resize then
 widens the bar enough to empty overflow, the bar immediately moves that focus to
 the nearest available primary command — the same recovery mechanism as item
 removal or unavailability — which populates `SelectedItem` and `SelectedIndex`
-with that command.
+with that command. The reverse transition is repaired the same way: if a resize
+narrows the bar enough to move the keyboard-selected primary command into
+overflow, the bar immediately repairs the selection onto the nearest
+still-primary command instead of leaving `SelectedItem` pointing at the
+now-overflowed one, and falls back to selecting the trigger itself when no
+primary command remains.
 
 The control deliberately has no arbitrary child entries, nested command groups,
 overflow priorities, drag reordering, vertical mode, customization persistence,

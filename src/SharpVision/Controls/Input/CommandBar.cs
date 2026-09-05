@@ -617,6 +617,23 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     private bool IsAvailableIndex(int index) =>
         EntryAt(index) is CommandBarItem item && IsAvailableItem(item);
 
+    /// <summary>Finds the nearest currently-available PRIMARY (non-overflowed) item to
+    /// <paramref name="sourceIndex"/>. Unlike <see cref="FindNearestAvailable"/>, this excludes
+    /// items that are overflowed, so it cannot re-select another sibling that just overflowed
+    /// alongside the one being repaired.</summary>
+    /// <param name="sourceIndex">The index to repair, typically the just-overflowed selection.</param>
+    /// <returns>The nearest available primary item, or null when none remains.</returns>
+    [Pure]
+    private CommandBarItem? FindNearestAvailablePrimary(int sourceIndex)
+    {
+        var index = SingleSelectionIndex.FindNearest(sourceIndex, EntryCount, IsAvailablePrimaryIndex);
+        return index < 0 ? null : (CommandBarItem) EntryAt(index);
+    }
+
+    [Pure]
+    private bool IsAvailablePrimaryIndex(int index) =>
+        EntryAt(index) is CommandBarItem item && IsAvailableItem(item) && _primaryEntries.Contains(item);
+
     [Pure]
     private bool IsAvailableItem(CommandBarItem item) =>
         !item.IsDisposed &&
@@ -726,6 +743,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             }
         }
 
+        // Captured before the snapshot below is replaced: distinguishes a selection that was
+        // primary just prior to this layout pass (and so may need repair below) from one that was
+        // already overflowed on entry, such as an item deliberately selected via its overflow
+        // projection (e.g. an access key). The latter must not be disturbed here.
+        var selectedWasPrimary = _selectedItem is not null && _primaryEntries.Contains(_selectedItem);
+
         _primaryEntries.Clear();
         _primaryEntries.UnionWith(primary);
         _overflowEntries.Clear();
@@ -744,6 +767,26 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         if (_overflowTargetSelected && !_overflowEntries.OfType<CommandBarItem>().Any())
         {
             SelectNearest(EntryCount);
+        }
+        else if (selectedWasPrimary && !_overflowTargetSelected && overflowItems.Contains(_selectedItem!))
+        {
+            // The keyboard-selected primary item just moved into overflow. Its highlight was
+            // cleared above by SetOverflowed, but SelectedItem/SelectedIndex would otherwise keep
+            // pointing at an item that no longer appears in NavigationTargets(). Repair the
+            // selection onto the nearest still-available PRIMARY sibling; IsAvailableItem alone
+            // does not exclude overflowed items, so a plain SelectNearest here could re-select
+            // another sibling that just overflowed too. When no primary sibling remains, fall
+            // back to the overflow trigger itself, mirroring the reverse case above.
+            var replacement = FindNearestAvailablePrimary(IndexOfItemControl(_selectedItem!));
+
+            if (replacement is not null)
+            {
+                Select(replacement);
+            }
+            else
+            {
+                SelectOverflowTarget();
+            }
         }
 
         CommitSelectionPresentation(ContainsFocus);
