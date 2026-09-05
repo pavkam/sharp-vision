@@ -329,7 +329,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                         continue;
                     }
 
-                    var width = ClusterWidth(cluster, x);
+                    var width = ClampWrappedTabWidth(cluster, x, ClusterWidth(cluster, x), _editorBounds.Width);
                     glyphs.Add(new TextSelectionGlyph(
                         new Selection(line.Offset + grapheme.Offset, line.Offset + grapheme.Offset + grapheme.Length),
                         new Rect(x, row, width, 1)));
@@ -417,7 +417,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                     continue;
                 }
 
-                var width = ClusterWidth(cluster, x);
+                var width = ClampWrappedTabWidth(cluster, x, ClusterWidth(cluster, x), _editorBounds.Width);
                 AddVisibleGlyph(
                     clip,
                     glyphs,
@@ -804,7 +804,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                     continue;
                 }
 
-                var width = ClusterWidth(c, x);
+                var width = ClampWrappedTabWidth(c, x, ClusterWidth(c, x), _editorBounds.Width);
                 var point = new Point(bounds.X.Add(x), screenY);
                 var style = ResolvedStyle;
 
@@ -1801,7 +1801,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
 
                 if (!IsLineBreak(c))
                 {
-                    x += ClusterWidth(c, x);
+                    x += ClampWrappedTabWidth(c, x, ClusterWidth(c, x), _editorBounds.Width);
                 }
             }
 
@@ -1886,7 +1886,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                 continue;
             }
 
-            var width = ClusterWidth(cluster, x);
+            var width = ClampWrappedTabWidth(cluster, x, ClusterWidth(cluster, x), viewportWidth);
 
             // Would this grapheme exceed the viewport?
             if (x + width > viewportWidth && lineStart < grapheme.Offset)
@@ -1962,6 +1962,19 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                 ? 4 - (x % 4)
                 : UnicodeWidth.Measure(cluster, CellPolicy.AmbiguousWidth).Cells;
     }
+
+    // A tab's width is elastic (up to 4 cells to the next stop), not a fixed physical property
+    // the way a wide CJK/emoji cluster's is. BuildVisualLines's overflow guard is deliberately
+    // suppressed for a first-on-line grapheme so a genuinely atomic wide cluster that can never
+    // fit a narrow viewport still gets placed rather than looping forever; a first-on-line tab
+    // hits that same suppression for no physical reason, so it gets clamped here to the same
+    // width BuildVisualLines placed it at. Every other wrapped-line walk (rendering, hit-testing,
+    // caret placement) must apply this identical clamp or it will disagree with BuildVisualLines
+    // about where that line actually ends.
+    private static int ClampWrappedTabWidth(ReadOnlySpan<char> cluster, int x, int width, int viewportWidth) =>
+        x == 0 && viewportWidth > 0 && width > viewportWidth && cluster.Length == 1 && cluster[0] == '\t'
+            ? viewportWidth
+            : width;
 
     private int PasswordWidth(Rune value)
     {

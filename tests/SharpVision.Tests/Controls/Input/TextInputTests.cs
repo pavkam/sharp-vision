@@ -498,6 +498,54 @@ public sealed class TextInputTests
         lines.ShouldBe([new VisualLineSnapshot(0, 3, 3), new VisualLineSnapshot(4, 3, 3)]);
     }
 
+    /// <summary>The overflow guard's escape hatch for a first-on-line grapheme exists so a
+    /// genuinely atomic wide cluster (CJK, emoji) that can never fit a narrow viewport still
+    /// gets placed instead of looping forever. A tab is not such a cluster - its width is
+    /// elastic (up to 4 cells to the next stop), not a fixed physical property - so a leading
+    /// tab in a viewport narrower than 4 cells must be clamped to the viewport width rather
+    /// than reported as overflowing it.</summary>
+    [Fact]
+    public void Measure_WhenLeadingTabExceedsANarrowViewport_ClampsToTheViewportWidth()
+    {
+        // Arrange
+        var control = new TextInput { AcceptsTab = true, WordWrap = true, Text = "\t" };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(2, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldBe([new VisualLineSnapshot(0, 1, 2)]);
+
+        foreach (var line in lines)
+        {
+            line.Cells.ShouldBeLessThanOrEqualTo(2);
+        }
+    }
+
+    /// <summary>The viewport clamp above only helps if every other wrapped-line walk (caret
+    /// placement, rendering, hit-testing) agrees with it about where the tab actually ends -
+    /// otherwise the line reports fitting the viewport while the caret is placed past it and
+    /// disappears. <c>Position</c> must resolve the offset right after the leading tab to the
+    /// same clamped column <see cref="Measure_WhenLeadingTabExceedsANarrowViewport_ClampsToTheViewportWidth"/>
+    /// established for the line itself.</summary>
+    [Fact]
+    public void Position_WhenLeadingTabExceedsANarrowViewport_ClampsCaretToTheViewportWidth()
+    {
+        // Arrange
+        var control = new TextInput { AcceptsTab = true, WordWrap = true, Text = "\t" };
+        control.SetTheme(TestThemes.BorderlessInput);
+        new LayoutEngine().Layout(control, new Size(2, 10));
+
+        // Act
+        InvokePosition(control, 1, out var caretX, out var caretY);
+
+        // Assert
+        caretY.ShouldBe(0);
+        caretX.ShouldBe(2);
+    }
+
     /// <summary>Verifies caret addressability survives the whitespace-skip fix: with "ab c" wrapped
     /// at a 2-cell viewport (visual lines "ab" and "c", the space between them consumed by the
     /// break), the text offset immediately before the space (2) still resolves to the end of line 0
