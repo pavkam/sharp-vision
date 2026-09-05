@@ -794,6 +794,21 @@ public sealed class ThemeCatalogTests
         exception.Message.ShouldContain("styles.tooltip.normal.border.sides");
     }
 
+    /// <summary>Verifies a multi-codepoint PopupStyle.AnchorGlyphs.PointingUp authored via JSON is
+    /// rejected end-to-end through ThemeCatalog.Parse, naming the full nested-fragment path.</summary>
+    [Fact]
+    public void Parse_WhenPopupAnchorGlyphIsMultiRune_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\" } } }",
+            "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\" }, \"anchorGlyphs\": { \"pointingUp\": \"ab\" } } }",
+            StringComparison.Ordinal);
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t"));
+
+        exception.Message.ShouldContain("styles.popup.normal.anchorGlyphs.pointingUp");
+    }
+
     /// <summary>Verifies stream loading retains its diagnostic label through eager style compilation.</summary>
     [Fact]
     public void Load_WhenUnusedStyleLeafIsMalformed_ThrowsNamingTheStream()
