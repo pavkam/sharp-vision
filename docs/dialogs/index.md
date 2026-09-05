@@ -84,6 +84,50 @@ family. Calling `Window.ShowModal` directly instead bypasses this typed result
 plumbing and the framework's rollback and cancellation handling, and is not a
 supported alternative.
 
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Dialog
+    participant PresentationHost
+    participant ModalScope
+    participant Awaiter
+    Caller->>Dialog: PresentAsync(owner, initialFocus, cancellationToken)
+    Dialog->>Dialog: validate owner, dispatcher access, cancellationToken [raw throws; no dialog state yet]
+    Dialog->>PresentationHost: FindHost(owner)
+    PresentationHost-->>Dialog: host (throws ArgumentException if none)
+    alt host already owns this dialog (re-presentation)
+        Note over Dialog: skips attach and the outer rollback below entirely
+    else fresh presentation
+        Dialog->>PresentationHost: Add(dialog)
+    end
+    Note over Dialog: shared core PresentAsync(host, initialFocus, cancellationToken)
+    Dialog->>Dialog: re-validate one-shot guard and host ownership [raw throws]
+    Dialog->>ModalScope: ShowModal(OutsideInteraction.Ignore, initialFocus)
+    ModalScope-->>Dialog: scope
+    alt scope not active
+        Dialog->>Dialog: throw InvalidOperationException
+    else scope active
+        opt cancellationToken can be cancelled
+            Dialog->>Dialog: register external cancellation callback
+        end
+        Dialog-->>Caller: completion.Task
+    end
+    opt core PresentAsync throws (inner rollback)
+        Dialog->>Dialog: capture original exception
+        Dialog->>Dialog: force-latch cancelled result
+        Dialog->>ModalScope: dispose cancellation registration, exit modal scope
+        Dialog->>PresentationHost: remove dialog from host
+        Dialog->>Dialog: Dispose()
+        Dialog->>Awaiter: settle completion with cancelled/failed result
+        Dialog-->>Caller: rethrow original exception
+    end
+    opt fresh presentation and core PresentAsync threw (outer rollback)
+        Dialog->>PresentationHost: Remove(dialog)
+        Dialog->>Dialog: Dispose()
+        Dialog-->>Caller: rethrow original exception
+    end
+```
+
 > [!WARNING]
 >
 > Nothing prevents that call, and the failure mode is severe: a dialog shown
