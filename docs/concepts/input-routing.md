@@ -62,11 +62,15 @@ it only after `Options.EscapeTimeout` elapses on the injected `TimeProvider`,
 and `Complete` resolves it immediately at end-of-stream. A pending fallback
 key-sequence match — a bound sequence that is a strict prefix of another — is
 ambiguous the same way; `ExpireKeyMatcher` resolves it to its longest completed
-binding after `Options.KeyMatcherTimeout` elapses on the same `TimeProvider`.
-The decoder accounts for bytes handled outside the protocol parser, so later
-diagnostic offsets stay absolute. Bracketed paste, focus, and mouse decoding
-build on these values in the [paste/focus](../protocols/paste-focus.md#overview)
-and [mouse](../protocols/mouse.md#overview) contracts.
+binding after `Options.KeyMatcherTimeout` elapses on the same `TimeProvider`. A
+pending SS3 continuation (`ESC O` awaiting its final byte) is ambiguous the same
+way too; `ExpireSs3` resolves it after the same `Options.EscapeTimeout` elapses,
+sharing the raw Escape's ambiguity class rather than introducing a separate
+timeout. The decoder accounts for bytes handled outside the protocol parser, so
+later diagnostic offsets stay absolute. Bracketed paste, focus, and mouse
+decoding build on these values in the
+[paste/focus](../protocols/paste-focus.md#overview) and
+[mouse](../protocols/mouse.md#overview) contracts.
 
 ## Route construction
 
