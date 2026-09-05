@@ -283,7 +283,7 @@ internal sealed class TablePane: CompositeControlBase
                 "The table owns basic row/cell interaction while preserving ordinary TextInput ownership and the existing clipboard boundary.",
                 new DocExample(
                     "Editable data table",
-                    "Arrows move the active cell; <reverse>Shift+arrows</reverse>, paging, Home, and End extend a range. Enter edits, Escape cancels, Ctrl+A selects all, and headers cycle stable sorting.",
+                    "Arrows move the active cell; <reverse>Shift+arrows</reverse>, paging, Home, and End extend a range. Enter edits, Escape cancels, Ctrl+A selects all, and headers cycle stable sorting, but clicking a header while a cell edit is in flight commits that edit first.",
                     new DocColumn(
                         behavior,
                         behaviorStatus,
