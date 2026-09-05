@@ -344,7 +344,7 @@ public static class ThemeCatalog
         }
 
         var rawSections = ReadObject(stylesElement, source, "styles", positions);
-        theme.SetStyleSections(ReadStyleSections(rawSections, source, positions));
+        theme.SetStyleSections(ReadStyleSections(rawSections, source, positions), positions);
     }
 
     /// <summary>Reads one required JSON object without exposing serializer shape exceptions.</summary>

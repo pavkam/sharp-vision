@@ -214,6 +214,31 @@ public sealed class ThemeCatalogTests
         return $"(line {line + 1}, column {offset - lineStart + 1})";
     }
 
+    /// <summary>Verifies a "styles.*" semantic validation failure - raised well after
+    /// <c>ThemeCatalog.Deserialize</c>'s position map is built, from deep inside
+    /// <c>Theme.Overlay</c>'s leaf conversion rather than from ThemeCatalog itself - still
+    /// reports the exact line and column of the offending value, the same way a top-level
+    /// "colors.*"/"palette.*"/"glyphs" failure already does. Reuses the exact mutation
+    /// <see cref="Parse_WhenUnusedStyleLeafIsMalformed_ThrowsAtTheLoadBoundaryWithSource"/> uses to
+    /// reach an invalid "styles.tooltip.normal.border.sides" value, since the position map records a
+    /// position for every dotted path in the whole document, "styles.*" included - before this fix,
+    /// that already-computed position never reached the message a "styles.*" failure raises.</summary>
+    [Fact]
+    public void Overlay_WhenStyleSectionLeafHasInvalidValue_ReportsLineAndColumn()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"tooltip\": { \"normal\": { \"border\": { \"sides\":\"none\" } } }",
+            "\"tooltip\": { \"normal\": { \"border\": { \"sides\":\"diagonal\" } } }",
+            StringComparison.Ordinal);
+
+        var expected = ExpectedPosition(json, "\"diagonal\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "broken"));
+
+        error.Message.ShouldContain("styles.tooltip.normal.border.sides");
+        error.Message.ShouldContain(expected);
+    }
+
     /// <summary>Verifies a complete semantic theme loads metadata and concrete global colors.</summary>
     [Fact]
     public void Parse_WhenSemanticThemeIsComplete_LoadsGlobalValues()
