@@ -754,6 +754,30 @@ public sealed class ThemeCatalogTests
         _ = exception.InnerException.ShouldBeOfType<ArgumentOutOfRangeException>();
     }
 
+    /// <summary>Verifies a multi-codepoint WindowStyle.CloseGlyph authored via JSON is rejected
+    /// end-to-end through ThemeCatalog.Parse, not just via the raw C# init accessor.</summary>
+    [Fact]
+    public void Parse_WhenWindowCloseGlyphIsMultiRune_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create(windowExtra: ", \"closeGlyph\": \"ab\"");
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t"));
+
+        exception.Message.ShouldContain("styles.window.normal.closeGlyph");
+    }
+
+    /// <summary>Verifies a transparent WindowStyle.CloseMarkColor authored via JSON is rejected
+    /// end-to-end through ThemeCatalog.Parse, not just via the raw C# init accessor.</summary>
+    [Fact]
+    public void Parse_WhenWindowCloseMarkColorIsTransparent_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create(windowExtra: ", \"closeMarkColor\": \"transparent\"");
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "t"));
+
+        exception.Message.ShouldContain("styles.window.normal.closeMarkColor");
+    }
+
     /// <summary>Verifies every declared style leaf is converted before Parse publishes a Theme,
     /// even when no matching control or style property is ever requested.</summary>
     [Fact]

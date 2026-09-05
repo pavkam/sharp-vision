@@ -913,6 +913,21 @@ public sealed class ThemeTests
         exception.Message.ShouldContain("styles.input.pointerOver.dropDownGlyph");
     }
 
+    /// <summary>Verifies WindowStyle.CloseGlyph is rejected outside 'normal' by restrictToChrome.</summary>
+    [Fact]
+    public void Overlay_WhenRestrictedToChromeAndKeyIsWindowStyleCloseGlyph_ThrowsNamingTheExactPath()
+    {
+        var theme = CreateTheme();
+
+        var exception = Should.Throw<InvalidDataException>(() => theme.Overlay(
+            WindowStyle.Default,
+            ParseOverrides(/*lang=json,strict*/ """{"closeGlyph":"X"}"""),
+            "styles.window.pointerOver",
+            restrictToChrome: true));
+
+        exception.Message.ShouldContain("styles.window.pointerOver.closeGlyph");
+    }
+
     /// <summary>Verifies a scalar value where a fragment property expects an object surfaces as an
     /// InvalidDataException, never a raw JsonException.</summary>
     [Fact]
