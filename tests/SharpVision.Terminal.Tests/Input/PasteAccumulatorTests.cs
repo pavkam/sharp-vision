@@ -22,7 +22,7 @@ public sealed class PasteAccumulatorTests
 
         var completed = false;
 
-        foreach (var value in "[201~"u8)
+        foreach (var value in "\u001b[201~"u8)
         {
             completed = accumulator.Process(value);
         }
@@ -42,12 +42,38 @@ public sealed class PasteAccumulatorTests
 
         // Escape followed by '[' matches the first two marker bytes, then 'x' breaks the match —
         // both prefix bytes must be recovered into the buffer as data, not discarded.
-        foreach (var value in "[x"u8)
+        foreach (var value in "\u001b[x"u8)
         {
             accumulator.Process(value).ShouldBeFalse();
         }
 
-        accumulator.Buffered.ToArray().ShouldBe("[x"u8.ToArray());
+        accumulator.Buffered.ToArray().ShouldBe("\u001b[x"u8.ToArray());
+    }
+
+    /// <summary>Verifies the real six-byte terminator (escape, then "[201~") completes the paste
+    /// without leaking a spurious trailing escape byte into the buffered content - the escape byte
+    /// must be consumed as part of the marker match, not appended as ordinary data first.</summary>
+    [Fact]
+    public void Process_WhenRealEscapePrefixedEndMarkerArrives_DoesNotAppendSpuriousEscapeByte()
+    {
+        using var accumulator = new PasteAccumulator(64);
+        accumulator.Begin();
+
+        foreach (var value in "hi"u8)
+        {
+            accumulator.Process(value).ShouldBeFalse();
+        }
+
+        var completed = false;
+
+        foreach (var value in "\u001b[201~"u8)
+        {
+            completed = accumulator.Process(value);
+        }
+
+        completed.ShouldBeTrue();
+        accumulator.Buffered.ToArray().ShouldBe("hi"u8.ToArray());
+        accumulator.Buffered.ToArray().ShouldNotContain((byte) 0x1b);
     }
 
     /// <summary>Verifies bytes past the configured limit are discarded and counted rather than

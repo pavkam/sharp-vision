@@ -2187,6 +2187,28 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies a paste containing the bare terminator text with no preceding escape byte does not
+    /// terminate the paste early - only the real escape-prefixed six-byte marker ends a paste, so a
+    /// "[201~" substring embedded in pasted content must survive intact as paste data rather than
+    /// leaking its remainder into the live keystroke decode path.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenPasteContainsBareTerminatorTextWithoutEscape_PreservesEntirePayload()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+
+        const string payload = "before[201~after";
+
+        decoder.Decode(Encoding.UTF8.GetBytes($"\u001b[200~{payload}\u001b[201~x"));
+        decoder.Complete();
+
+        Encoding.UTF8.GetString(sink.Pastes.Single().Utf8.Span).ShouldBe(payload);
+        sink.Text.Single().Value.ShouldBe(new Rune('x'));
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>
     /// Verifies malformed UTF-8 is normalized to replacement scalars.
     /// </summary>
     [Fact]

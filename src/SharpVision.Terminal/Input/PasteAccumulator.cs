@@ -16,7 +16,7 @@ using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
 /// </remarks>
 internal sealed class PasteAccumulator: IDisposable
 {
-    private static readonly byte[] _endMarker = "[201~"u8.ToArray();
+    private static readonly byte[] _endMarker = "\u001b[201~"u8.ToArray();
 
     private readonly int _maxBytes;
     private byte[]? _buffer;
