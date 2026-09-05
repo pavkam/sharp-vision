@@ -577,6 +577,12 @@ public sealed class Grid: Container
         }
     }
 
+    /// <summary>Re-measures every child whose row span touches an Auto track against the final
+    /// column widths. Called at most once from <see cref="MeasureOverride"/> and once from
+    /// <see cref="ArrangeOverride"/> per layout pass, so broadening the eligibility check in
+    /// <see cref="SpanHasAutomaticTrack"/> from "every row Auto" to "any row Auto" adds at most one
+    /// extra unconstrained-height measure per newly-eligible child per pass, not an unbounded or
+    /// repeating remeasure.</summary>
     private void MeasureAutomaticRows(
         ReadOnlySpan<Track> rows,
         ReadOnlySpan<int> columnExtents,
@@ -585,7 +591,7 @@ public sealed class Grid: Container
         foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed ||
-                !IsAutomaticSpan(rows, GetRow(child), GetRowSpan(child)))
+                !SpanHasAutomaticTrack(rows, GetRow(child), GetRowSpan(child)))
             {
                 continue;
             }
@@ -600,21 +606,26 @@ public sealed class Grid: Container
         }
     }
 
+    /// <summary>Determines whether a span touches at least one Auto track, matching the
+    /// per-index absorbing split <see cref="Requests"/> already applies within a span: an Auto
+    /// track absorbs the remaining size deficit regardless of what other track kinds share the
+    /// span, so a span mixing Auto with Cells/Percent/Star still needs the remeasure - only a
+    /// span with no Auto track at all can never grow from it.</summary>
     [Pure]
-    private static bool IsAutomaticSpan(ReadOnlySpan<Track> definitions, int origin, int span)
+    private static bool SpanHasAutomaticTrack(ReadOnlySpan<Track> definitions, int origin, int span)
     {
         Debug.Assert(span >= 1, "Grid automatic span is positive.");
         Debug.Assert(origin >= 0 && origin + span <= definitions.Length, "Grid automatic span fits definitions.");
 
         for (var index = origin; index < origin + span; index++)
         {
-            if (definitions[index].Length.Kind != LengthKind.Auto)
+            if (definitions[index].Length.Kind == LengthKind.Auto)
             {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     [Pure]

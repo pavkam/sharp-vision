@@ -442,6 +442,35 @@ public sealed class GridTests
         grid.DesiredSize.Height.ShouldBeGreaterThan(1);
     }
 
+    /// <summary>Verifies a RowSpan mixing an Auto row with a non-Auto row still remeasures wrapped
+    /// content against the grid's final column width, matching the fully-Auto RowSpan case above
+    /// line-for-line. Before the fix, MeasureAutomaticRows skipped any span that was not entirely
+    /// Auto, so this child kept the height the general remeasure pass clamped it to against the
+    /// still-probe row extent (one line) instead of growing the Auto row to fit every wrapped line
+    /// - it would have reported a strictly smaller height than the fully-Auto baseline below.</summary>
+    [Fact]
+    public void Layout_WhenMixedAutoRowSpanNarrowsWrappedText_GrowsAutoRowForEveryLine()
+    {
+        var baselineGrid = new Grid();
+        baselineGrid.Columns.Add(Track.Star(1));
+        var baselineText = new ControlText("One two three four five six") { Overflow = Overflow.Wrap };
+        baselineGrid.Children.Add(baselineText);
+        new LayoutEngine().Layout(baselineGrid, new Size(10, 10));
+
+        var grid = new Grid();
+        grid.Columns.Add(Track.Star(1));
+        grid.Rows.Add(Track.Cells(1));
+        grid.Rows.Add(Track.Auto());
+        var text = new ControlText("One two three four five six") { Overflow = Overflow.Wrap };
+        Grid.SetRowSpan(text, 2);
+        grid.Children.Add(text);
+
+        new LayoutEngine().Layout(grid, new Size(10, 10));
+
+        text.Bounds.Height.ShouldBe(baselineText.Bounds.Height);
+        grid.DesiredSize.Height.ShouldBe(baselineGrid.DesiredSize.Height);
+    }
+
     /// <summary>Verifies resize recomputes percentage edges and star remainder.</summary>
     [Fact]
     public void Layout_WhenViewportResizes_RecomputesDeferredTrackGeometry()
