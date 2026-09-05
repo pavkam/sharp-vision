@@ -49,6 +49,10 @@ public sealed class DispatcherTimer: IDisposable
     }
 
     /// <summary>Raised on the owning dispatcher after one eligible interval.</summary>
+    /// <remarks>
+    /// Every subscriber runs to completion even when an earlier subscriber throws; only the
+    /// first exception is captured and reported.
+    /// </remarks>
     public event EventHandler? Tick;
 
     /// <summary>Gets the current <see cref="Tick"/> subscriber count for duplicate-subscription

@@ -94,7 +94,10 @@ continues to the next transition either way. A `Stopping` handler's exception
 takes a different channel: it is recorded into `Failure` and
 `LastCleanupException` directly, without raising `UnhandledException`, because
 transport ordering can no longer host an interactive policy decision once
-shutdown has begun.
+shutdown has begun. Every subscriber of a given event runs to completion even
+when an earlier subscriber throws, and only the first exception is captured and
+reported; a `Stopping` subscriber's veto (`Cancel = true`) is honored even when
+an earlier `Stopping` subscriber threw.
 
 > [!NOTE]
 >

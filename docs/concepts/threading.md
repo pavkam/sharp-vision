@@ -124,7 +124,9 @@ pending tick, and any periods that elapse while that tick is queued are skipped
 rather than replayed as a burst. A full dispatcher queue drops that period, and
 a later period may try again. Stop, disposal, and dispatcher shutdown suppress
 posted ticks that have not started running. Tick handlers run outside locks, and
-their failures follow the ordinary `Dispatcher.UnhandledException` policy.
+their failures follow the ordinary `Dispatcher.UnhandledException` policy. Every
+`Tick` subscriber runs to completion even when an earlier subscriber throws, and
+only the first exception is captured and reported.
 
 ## Locks and reentrancy
 
@@ -137,7 +139,9 @@ The queue resets an idle-transition flag whenever ready work arrives, and
 internal pending-phase leases keep asynchronous frame output counted as
 non-idle. When both ready and pending work reach zero, `Idle` runs once on the
 owner thread. Work posted by that handler drains before the next wait, and the
-loop blocks on a condition variable rather than polling.
+loop blocks on a condition variable rather than polling. Every `Idle` subscriber
+runs to completion even when an earlier subscriber throws, and only the first
+exception is captured and reported.
 
 `Application` holds a pending lease while renderer I/O is incomplete. The lease
 may be released from a renderer continuation, but frame and lifecycle callbacks

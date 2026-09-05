@@ -58,7 +58,9 @@ public sealed class Dispatcher: IAsyncDisposable
     /// <summary>Raised once when ready and pending work transitions to empty.</summary>
     /// <remarks>
     /// The event runs on the dispatcher thread. Work posted by a handler is
-    /// drained before the dispatcher waits again.
+    /// drained before the dispatcher waits again. Every subscriber runs to
+    /// completion even when an earlier subscriber throws; only the first
+    /// exception is captured and reported.
     /// </remarks>
     public event EventHandler? Idle;
 

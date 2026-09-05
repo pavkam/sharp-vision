@@ -251,15 +251,29 @@ public sealed class Application:
     }
 
     /// <summary>Raised on the dispatcher before terminal startup begins.</summary>
+    /// <remarks>
+    /// Every subscriber runs to completion even when an earlier subscriber throws; only the
+    /// first exception is captured and reported.
+    /// </remarks>
     public event EventHandler? Starting;
 
     /// <summary>Raised after initial layout and the first committed frame or suspension.</summary>
     public event EventHandler? Started;
 
     /// <summary>Raised once before explicit or forced shutdown begins.</summary>
+    /// <remarks>
+    /// Every subscriber runs to completion even when an earlier subscriber throws, and a
+    /// subscriber's veto (<see cref="StoppingEventArgs.Cancel"/> set to <see langword="true"/>)
+    /// is honored even when an earlier subscriber threw; only the first exception is captured
+    /// and reported.
+    /// </remarks>
     public event EventHandler<StoppingEventArgs>? Stopping;
 
     /// <summary>Raised once after terminal and renderer cleanup completes.</summary>
+    /// <remarks>
+    /// Every subscriber runs to completion even when an earlier subscriber throws; only the
+    /// first exception is captured and reported.
+    /// </remarks>
     public event EventHandler? Stopped;
 
     /// <summary>Raised after layout commits new terminal dimensions.</summary>
