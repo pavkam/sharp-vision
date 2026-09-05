@@ -2601,11 +2601,7 @@ public sealed class Application:
         Failure ??= exception;
         var eventArgs = new UnhandledEventArgs(exception);
 
-        try
-        {
-            UnhandledException?.Invoke(this, eventArgs);
-        }
-        catch (Exception handlerException)
+        if (RaiseIsolated(UnhandledException, eventArgs) is { } handlerException)
         {
             // A consumer handler that itself throws must be treated as though it never marked
             // the failure handled, so shutdown still proceeds; the handler's own exception is

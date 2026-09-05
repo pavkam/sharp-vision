@@ -500,6 +500,32 @@ public sealed class DispatcherTests
         await dispatcher.DisposeAsync();
     }
 
+    /// <summary>Verifies an <c>UnhandledException</c> subscriber that throws does not prevent
+    /// delivery to a later subscriber on the same event, mirroring the sibling-isolation guarantee
+    /// already covered for <c>Idle</c>.</summary>
+    [Fact]
+    public async Task FatalException_WhenAnEarlierSubscriberThrows_StillInvokesLaterSubscriberAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        InvalidOperationException failure = new("callback-boom");
+        InvalidOperationException handlerFailure = new("handler-boom");
+        var secondRan = false;
+        dispatcher.UnhandledException += (_, _) => throw handlerFailure;
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            secondRan = true;
+            eventArgs.IsHandled = true;
+        };
+
+        dispatcher.Post(() => throw failure);
+        await WaitForStopAsync(dispatcher);
+
+        secondRan.ShouldBeTrue();
+        var aggregate = dispatcher.FatalException.ShouldBeOfType<AggregateException>();
+        aggregate.InnerExceptions.ShouldBe([failure, handlerFailure]);
+        await dispatcher.DisposeAsync();
+    }
+
     /// <summary>Verifies disposal never faults, in the arm that used to. A faulting completion
     /// made an unawaited DisposeAsync surface as a process-wide unobserved task exception, and
     /// would fault every <c>await using</c> at implicit dispose.</summary>

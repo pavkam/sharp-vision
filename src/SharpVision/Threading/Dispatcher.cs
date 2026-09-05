@@ -635,7 +635,10 @@ public sealed class Dispatcher: IAsyncDisposable
 
         try
         {
-            UnhandledException?.Invoke(this, eventArgs);
+            EventPublication.Publish<EventHandler<UnhandledEventArgs>>(
+                UnhandledException,
+                () => true,
+                handler => handler(this, eventArgs));
         }
         catch (Exception thrown)
         {

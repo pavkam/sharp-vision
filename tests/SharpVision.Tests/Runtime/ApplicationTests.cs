@@ -1475,6 +1475,44 @@ public sealed class ApplicationTests
         hostLease.Disposals.ShouldBe(1);
     }
 
+    /// <summary>Verifies an UnhandledException subscriber that throws does not prevent delivery to
+    /// a later subscriber on the same event, mirroring the sibling-isolation guarantee already
+    /// covered for the RaiseIsolated-routed events.</summary>
+    [Fact]
+    public async Task StartAsync_WhenAnEarlierUnhandledExceptionSubscriberThrows_StillInvokesLaterSubscriberAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+        var originalFailure = new NotSupportedException("resize-handler");
+        var handlerFailure = new InvalidOperationException("unhandled-handler");
+        var secondRan = false;
+        application.Resize += (_, _) => throw originalFailure;
+        application.UnhandledException += (_, _) => throw handlerFailure;
+        application.UnhandledException += (_, eventArgs) =>
+        {
+            secondRan = true;
+            eventArgs.IsHandled = true;
+        };
+
+        var thrown = await Should.ThrowAsync<NotSupportedException>(async () =>
+            await application.StartAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.ShouldBeSameAs(originalFailure);
+        secondRan.ShouldBeTrue();
+        application.Failure.ShouldBeSameAs(originalFailure);
+        application.LastCleanupException.ShouldBeSameAs(handlerFailure);
+        hostLease.Disposals.ShouldBe(1);
+    }
+
     /// <summary>Verifies a throwing input handler does not permanently latch the drain loop's
     /// wake flag: with UnhandledException marked handled, a later keystroke is still delivered
     /// instead of the application silently going deaf while it keeps running.</summary>
