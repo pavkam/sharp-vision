@@ -176,7 +176,7 @@ public sealed class DateTimeInput: InputBase
     /// text, and digit glyphs. Set <see cref="Format"/> to override the combined pattern entirely.
     /// </remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, or a non-null <see cref="Format"/> cannot be rendered by a <see cref="DateTime"/> under this culture.</exception>
+    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, a non-null <see cref="Format"/> cannot be rendered by a <see cref="DateTime"/> under this culture, or that format declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="DateTime"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -254,7 +254,7 @@ public sealed class DateTimeInput: InputBase
     /// designator token for correct 12-hour clamping and rendering, since a lowercase hour token
     /// without a designator token is treated as a 24-hour segment for both editing and display.
     /// </remarks>
-    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>.</exception>
+    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="DateTime"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string? Format

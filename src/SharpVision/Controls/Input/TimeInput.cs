@@ -111,7 +111,7 @@ public sealed class TimeInput: InputBase
     /// <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering never depends on
     /// the host operating system's locale; set this explicitly to localize the field.</summary>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">A non-null <see cref="Format"/> cannot be rendered by a <see cref="TimeOnly"/> under this culture.</exception>
+    /// <exception cref="ArgumentException">A non-null <see cref="Format"/> cannot be rendered by a <see cref="TimeOnly"/> under this culture, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="TimeOnly"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CultureInfo Culture
@@ -180,7 +180,7 @@ public sealed class TimeInput: InputBase
     /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
     /// designator token is treated as a 24-hour segment for editing purposes.
     /// </remarks>
-    /// <exception cref="ArgumentException">The value is empty, or cannot be rendered by a <see cref="TimeOnly"/> under <see cref="Culture"/>.</exception>
+    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="TimeOnly"/> under <see cref="Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="TimeOnly"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string? Format

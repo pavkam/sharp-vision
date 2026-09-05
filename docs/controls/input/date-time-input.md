@@ -43,13 +43,16 @@ already select, localizing only its separator, AM/PM designator text, and digit
 glyphs. Set `Format` to a custom combined pattern (for example
 `"yyyy/MM/dd HH:mm:ss.fff"`) to override that structure directly. Runs of one to
 seven `f` or `F` tokens expose an editable fractional-second segment at the
-declared precision. Uppercase `F` still omits insignificant trailing zeroes,
-while the field reserves the run's blank cells so focus and pointer targeting do
-not collapse. Pair a 12-hour `h`/`hh` hour token with a `t`/`tt` AM/PM
-designator token for correct 12-hour clamping and rendering. A lowercase hour
-token without a designator is treated as a 24-hour segment for both editing and
-display, so committed values above 12 round-trip through the visible digits
-unchanged.
+declared precision. The seven-digit cap applies even to a percent-escaped run
+(for example `%ffffffff`) that `DateTime.ToString` would otherwise accept
+without complaint; `Format` throws `ArgumentException` for such a run because
+the segmented layout cannot represent it. Uppercase `F` still omits
+insignificant trailing zeroes, while the field reserves the run's blank cells so
+focus and pointer targeting do not collapse. Pair a 12-hour `h`/`hh` hour token
+with a `t`/`tt` AM/PM designator token for correct 12-hour clamping and
+rendering. A lowercase hour token without a designator is treated as a 24-hour
+segment for both editing and display, so committed values above 12 round-trip
+through the visible digits unchanged.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`

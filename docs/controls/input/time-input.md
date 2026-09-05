@@ -22,16 +22,20 @@ culture's time pattern, since those two properties are the field's own explicit
 structural contract. Set `Format` to a custom pattern (for example
 `"HH:mm:ss.fff"`) to override that structure directly. Runs of one to seven `f`
 or `F` tokens expose an editable fractional-second segment at the declared
-precision. Uppercase `F` still omits insignificant trailing zeroes, while the
-field reserves the run's blank cells so focus and pointer targeting do not
-collapse. Pair a 12-hour `h`/`hh` hour token with a `t`/`tt` AM/PM designator
-token for correct 12-hour clamping, since a 12-hour hour token without a
-designator is treated as a 24-hour segment for editing purposes. `TimeInput`
-derives from [`InputBase`](../input-base.md#overview), enabling only segment
-editing - it has no press activation and no popup. It shares its active-segment
-navigation, digit-entry buffering, routed key classification, pointer hit
-testing, active/null segment styling, and focus-continuation engine with
-[`DateInput`](date-input.md) and [`DateTimeInput`](date-time-input.md) through
+precision. The seven-digit cap applies even to a percent-escaped run (for
+example `%ffffffff`) that `TimeOnly.ToString` would otherwise accept without
+complaint; `Format` throws `ArgumentException` for such a run because the
+segmented layout cannot represent it. Uppercase `F` still omits insignificant
+trailing zeroes, while the field reserves the run's blank cells so focus and
+pointer targeting do not collapse. Pair a 12-hour `h`/`hh` hour token with a
+`t`/`tt` AM/PM designator token for correct 12-hour clamping, since a 12-hour
+hour token without a designator is treated as a 24-hour segment for editing
+purposes. `TimeInput` derives from [`InputBase`](../input-base.md#overview),
+enabling only segment editing - it has no press activation and no popup. It
+shares its active-segment navigation, digit-entry buffering, routed key
+classification, pointer hit testing, active/null segment styling, and
+focus-continuation engine with [`DateInput`](date-input.md) and
+[`DateTimeInput`](date-time-input.md) through
 [`InputBase.EnableSegmentEditing`](../input-base.md#api). Only the
 calendar/clock arithmetic and pattern for each control's own value type differ.
 The three controls also use the same generic nullable value state for one-shot
