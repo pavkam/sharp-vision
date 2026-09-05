@@ -383,15 +383,14 @@ read, and, only while pending, a negotiation deadline, an ambiguous-Escape
 expiry, an ambiguous-key-match expiry, an ambiguous-SS3 expiry, and an
 ambiguous-mouse-report expiry — and invokes exactly one sink callback per
 iteration. Because `Task.WhenAny` is biased toward whichever task is listed
-first when several are already complete, the loop re-checks readiness
-explicitly each iteration and applies a fixed priority (negotiation deadline,
-then Escape expiry, then key-matcher expiry, then SS3 expiry, then mouse
-expiry, then read/resize alternating) so a synchronous read burst cannot starve
-resize or an elapsed deadline. Input and resize handlers therefore cannot race
-each other, and no callback runs while `StreamTransport` holds its write gate.
-Input closure completes the decoder before `ISink.Closed`; read, decoder,
-resize, and handler faults are reported through `ISink.Fault` and remain the
-primary exception.
+first when several are already complete, the loop re-checks readiness explicitly
+each iteration and applies a fixed priority (negotiation deadline, then Escape
+expiry, then key-matcher expiry, then SS3 expiry, then mouse expiry, then
+read/resize alternating) so a synchronous read burst cannot starve resize or an
+elapsed deadline. Input and resize handlers therefore cannot race each other,
+and no callback runs while `StreamTransport` holds its write gate. Input closure
+completes the decoder before `ISink.Closed`; read, decoder, resize, and handler
+faults are reported through `ISink.Fault` and remain the primary exception.
 
 ```mermaid
 flowchart TD

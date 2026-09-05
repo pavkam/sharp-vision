@@ -76,10 +76,10 @@ placements unchanged.
 3. Every child is measured again with its resolved spanned slot. The grid
    rebuilds the intrinsic requests once from that result, so wrapping on either
    axis can affect the other. A child whose row span touches at least one
-   automatic row is measured with its resolved finite column width and
-   unbounded height, which lets wrapped text grow that row instead of being
-   clipped to the height probed before wrapping — even when the span mixes an
-   automatic row with fixed, percentage, or proportional rows.
+   automatic row is measured with its resolved finite column width and unbounded
+   height, which lets wrapped text grow that row instead of being clipped to the
+   height probed before wrapping — even when the span mixes an automatic row
+   with fixed, percentage, or proportional rows.
 4. Arrange repeats the bounded pass when the final viewport differs from
    measure, computes cumulative integer origins, and commits each child to the
    union of its tracks plus the actual allocated internal gaps. The arrange
