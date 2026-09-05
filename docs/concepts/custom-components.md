@@ -189,7 +189,7 @@ matching `TabControl`'s items/headers move:
 
 ```mermaid
 sequenceDiagram
-    participant Caller as Caller (e.g. TabControl.MoveTab)
+    participant Caller as Caller (e.g. TabControl.MoveItem)
     participant Coord as CommitCompound (coordinator)
     participant SlotA as Slot: items
     participant SlotB as Slot: headers
