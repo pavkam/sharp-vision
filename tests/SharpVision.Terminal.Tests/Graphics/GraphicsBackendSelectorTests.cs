@@ -20,6 +20,30 @@ public sealed class GraphicsBackendSelectorTests
     public void DefaultMaxPreparedBytes_WhenRead_Is16Mebibytes() =>
         GraphicsBackendSelector.DefaultMaxPreparedBytes.ShouldBe(16 * 1024 * 1024);
 
+    /// <summary>Verifies Authoritative delegates to Feature.Authoritative and, on top of that,
+    /// suppresses only query evidence when the caller disallows it, for every origin and
+    /// allowQuery combination.</summary>
+    [Theory]
+    [InlineData(Origin.Override, true, true)]
+    [InlineData(Origin.Override, false, true)]
+    [InlineData(Origin.Query, true, true)]
+    [InlineData(Origin.Query, false, false)]
+    [InlineData(Origin.Database, true, true)]
+    [InlineData(Origin.Database, false, true)]
+    [InlineData(Origin.Environment, true, false)]
+    [InlineData(Origin.Environment, false, false)]
+    [InlineData(Origin.Default, true, false)]
+    [InlineData(Origin.Default, false, false)]
+    public void Authoritative_ForEveryOriginAndAllowQuery_MatchesFeatureAuthoritativePolicy(
+        Origin origin,
+        bool allowQuery,
+        bool expected)
+    {
+        var feature = new Feature(CapabilitySupport.Supported, origin);
+
+        GraphicsBackendSelector.Authoritative(feature, allowQuery).ShouldBe(expected);
+    }
+
     /// <summary>Verifies authoritative Kitty support dominates both fallback protocols.</summary>
     [Fact]
     public void Create_WhenAllProtocolsAreSupported_SelectsKitty()
@@ -34,19 +58,28 @@ public sealed class GraphicsBackendSelectorTests
         _ = backend.ShouldBeOfType<KittyGraphicsBackend>();
     }
 
-    /// <summary>Verifies environment and database evidence cannot authorize iTerm2 3.5 multipart.</summary>
-    [Theory]
-    [InlineData(CapabilitySupport.Tentative, Origin.Environment)]
-    [InlineData(CapabilitySupport.Supported, Origin.Database)]
-    public void Create_WhenItermEvidenceIsNotOverrideOrQuery_ReturnsFallback(
-        CapabilitySupport state,
-        Origin origin)
+    /// <summary>Verifies environment evidence cannot authorize iTerm2 3.5 multipart.</summary>
+    [Fact]
+    public void Create_WhenItermEvidenceIsEnvironment_ReturnsFallback()
     {
-        var profile = Profile(iterm: new Feature(state, origin));
+        var profile = Profile(iterm: new Feature(CapabilitySupport.Tentative, Origin.Environment));
 
         var backend = GraphicsBackendSelector.Create(profile.Capabilities);
 
         backend.ShouldBeNull();
+    }
+
+    /// <summary>Verifies database evidence authorizes iTerm2 3.5 multipart even though query
+    /// evidence cannot: Feature.Authoritative treats a validated terminal-description database
+    /// the same as an explicit override.</summary>
+    [Fact]
+    public void Create_WhenItermEvidenceIsDatabase_SelectsNonRetainedBackend()
+    {
+        var profile = Profile(iterm: new Feature(CapabilitySupport.Supported, Origin.Database));
+
+        using var backend = GraphicsBackendSelector.Create(profile.Capabilities);
+
+        _ = backend.ShouldBeOfType<NonRetainedGraphicsBackend>();
     }
 
     /// <summary>Verifies query evidence cannot authorize iTerm2 3.5 multipart, unlike Kitty and
@@ -62,16 +95,28 @@ public sealed class GraphicsBackendSelectorTests
         backend.ShouldBeNull();
     }
 
-    /// <summary>Verifies environment and database origins cannot authorize Kitty or sixel output.</summary>
-    [Theory]
-    [InlineData(Origin.Environment)]
-    [InlineData(Origin.Database)]
-    public void Create_WhenKittyOrSixelOriginIsNotAuthoritative_ReturnsFallback(Origin origin)
+    /// <summary>Verifies environment origin cannot authorize Kitty or sixel output.</summary>
+    [Fact]
+    public void Create_WhenKittyOrSixelOriginIsEnvironment_ReturnsFallback()
     {
-        var supported = new Feature(CapabilitySupport.Supported, origin);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Environment);
 
         GraphicsBackendSelector.Create(Profile(kitty: supported).Capabilities).ShouldBeNull();
         GraphicsBackendSelector.Create(Profile(sixel: supported).Capabilities).ShouldBeNull();
+    }
+
+    /// <summary>Verifies database origin authorizes Kitty and sixel output, matching
+    /// Feature.Authoritative's policy for a validated terminal-description database.</summary>
+    [Fact]
+    public void Create_WhenKittyOrSixelOriginIsDatabase_SelectsBackend()
+    {
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
+
+        using var kittyBackend = GraphicsBackendSelector.Create(Profile(kitty: supported).Capabilities);
+        using var sixelBackend = GraphicsBackendSelector.Create(Profile(sixel: supported).Capabilities);
+
+        _ = kittyBackend.ShouldBeOfType<KittyGraphicsBackend>();
+        _ = sixelBackend.ShouldBeOfType<NonRetainedGraphicsBackend>();
     }
 
     /// <summary>

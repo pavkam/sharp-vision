@@ -57,6 +57,5 @@ internal static class GraphicsBackendSelector
     /// <returns>True only when support and origin authorize output.</returns>
     [Pure]
     public static bool Authoritative(Feature feature, bool allowQuery) =>
-        feature.State == CapabilitySupport.Supported &&
-        (feature.Origin == Origin.Override || (allowQuery && feature.Origin == Origin.Query));
+        feature.Authoritative && (allowQuery || feature.Origin != Origin.Query);
 }
