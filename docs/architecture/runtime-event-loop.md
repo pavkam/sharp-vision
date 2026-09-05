@@ -378,13 +378,14 @@ Each attempted enable becomes a lease that owns its exact enable and disable
 bytes before transport I/O, so even an uncertain partial write receives its
 exact conservative cleanup attempt.
 
-One event loop awaits up to six wake sources — one transport read, one resize
+One event loop awaits up to seven wake sources — one transport read, one resize
 read, and, only while pending, a negotiation deadline, an ambiguous-Escape
-expiry, an ambiguous-key-match expiry, and an ambiguous-SS3 expiry — and invokes
-exactly one sink callback per iteration. Because `Task.WhenAny` is biased toward
-whichever task is listed first when several are already complete, the loop
-re-checks readiness explicitly each iteration and applies a fixed priority
-(negotiation deadline, then Escape expiry, then key-matcher expiry, then SS3
+expiry, an ambiguous-key-match expiry, an ambiguous-SS3 expiry, and an
+ambiguous-mouse-report expiry — and invokes exactly one sink callback per
+iteration. Because `Task.WhenAny` is biased toward whichever task is listed
+first when several are already complete, the loop re-checks readiness
+explicitly each iteration and applies a fixed priority (negotiation deadline,
+then Escape expiry, then key-matcher expiry, then SS3 expiry, then mouse
 expiry, then read/resize alternating) so a synchronous read burst cannot starve
 resize or an elapsed deadline. Input and resize handlers therefore cannot race
 each other, and no callback runs while `StreamTransport` holds its write gate.
@@ -394,7 +395,7 @@ primary exception.
 
 ```mermaid
 flowchart TD
-    Pending["Six wake sources pending: read, resize, negotiation deadline, Escape expiry, key-matcher expiry, SS3 expiry"] --> Ready{"Any already complete?"}
+    Pending["Seven wake sources pending: read, resize, negotiation deadline, Escape expiry, key-matcher expiry, SS3 expiry, mouse expiry"] --> Ready{"Any already complete?"}
     Ready -->|No| WhenAny["await Task.WhenAny over read, resize, and whichever deadline tasks are non-null"]
     WhenAny --> Pending
     Ready -->|Yes| Deadline{"Negotiation deadline ready?"}
@@ -405,17 +406,20 @@ flowchart TD
     KeyMatcher -->|Yes| KeyMatcherAction["Expire the ambiguous key match; re-arm or clear keyMatcherExpiry"]
     KeyMatcher -->|No| Ss3{"SS3 expiry ready?"}
     Ss3 -->|Yes| Ss3Action["Expire the ambiguous SS3 continuation; re-arm or clear ss3Expiry"]
-    Ss3 -->|No| Both{"Both read and resize ready?"}
+    Ss3 -->|No| Mouse{"Mouse expiry ready?"}
+    Mouse -->|Yes| MouseAction["Expire the pending X10 mouse report; re-arm or clear mouseExpiry"]
+    Mouse -->|No| Both{"Both read and resize ready?"}
     Both -->|Yes| Alternate["Alternate via the preferResize toggle"]
     Both -->|No| Single["Take whichever of read or resize is ready"]
     Alternate --> Selected{"Selected task"}
     Single --> Selected
     Selected -->|Resize| ResizeAction["Forward resize to the sink; re-issue the resize read"]
-    Selected -->|Read| ReadAction["Route bytes through decoder and router; re-derive Escape and key-matcher deadlines"]
+    Selected -->|Read| ReadAction["Route bytes through decoder and router; re-derive Escape, key-matcher, SS3, and mouse deadlines"]
     DeadlineAction --> Pending
     EscapeAction --> Pending
     KeyMatcherAction --> Pending
     Ss3Action --> Pending
+    MouseAction --> Pending
     ResizeAction --> Pending
     ReadAction --> Pending
 ```
