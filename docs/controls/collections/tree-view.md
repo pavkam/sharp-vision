@@ -245,6 +245,43 @@ in that lifecycle:
 | `Loading`    | A child request is in flight; a synthetic status row shows `LoadingText`.                         |
 | `LoadFailed` | The most recent request failed or was rejected by validation; a prior committed load is retained. |
 
+The table above describes what each state means; the diagram below describes
+what moves an item between them.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Leaf
+    Leaf --> Unloaded: assign ChildSource
+    Leaf --> Loaded: caller adds Children directly
+    Loaded --> Leaf: caller clears Children directly
+    Loaded --> Unloaded: reassign ChildSource
+    Loaded --> Loading: ReloadChildrenAsync()
+    Unloaded --> Loading: expand while attached, or attach already expanded
+    Unloaded --> Leaf: clear ChildSource
+    Unloaded --> Unloaded: reassign ChildSource
+    Unloaded --> Loading: ReloadChildrenAsync()
+    Loading --> Loaded: GetChildrenAsync succeeds and validates
+    Loading --> LoadFailed: GetChildrenAsync throws or fails validation
+    Loading --> Unloaded: collapse, or dispatcher detach/dispose - restores the prior state
+    Loading --> Leaf: clear ChildSource - cancels the in-flight load
+    Loading --> Unloaded: reassign ChildSource - cancels the in-flight load
+    Loading --> Loading: ReloadChildrenAsync()
+    LoadFailed --> Leaf: clear ChildSource
+    LoadFailed --> Unloaded: reassign ChildSource
+    LoadFailed --> Loading: ReloadChildrenAsync()
+```
+
+Collapsing, a dispatcher detach, or disposal while `Loading` all cancel the
+pending request and restore whichever `ChildState` preceded it - normally
+`Unloaded`, but `Loaded` or `LoadFailed` when `ReloadChildrenAsync()` started
+that request from one of those states. A collapse restores through the normal
+notification path; a dispatcher detach or disposal restores silently, without
+flattening a structural rebuild into the owning tree. A failed request keeps
+whatever children a prior committed load left in place rather than clearing
+them. Reassigning `ChildSource` - to a new source or to `null` - cancels any
+in-flight request and evicts loader-owned children first, regardless of which
+state it starts from.
+
 Implement the interface and its two supporting types like this:
 
 ```csharp
