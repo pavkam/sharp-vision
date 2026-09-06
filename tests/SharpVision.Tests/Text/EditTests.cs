@@ -332,6 +332,20 @@ public sealed class EditTests
         Edit.SelectWord(value, 3).ShouldBe(new Selection(3, 4));
     }
 
+    /// <summary>Verifies a Prepend mark immediately followed by a Control scalar does not
+    /// attach to it: per the grapheme enumerator's GB4/GB5 precedence (checked before GB9b), a
+    /// Control/Cr/Lf scalar isolates itself even after a Prepend, so the mark forms its own
+    /// single-scalar "other" cluster instead of borrowing the next cluster's classification.</summary>
+    [Fact]
+    public void SelectWord_WhenPrependMarkPrecedesControlScalar_DoesNotBorrowNextClusterClassification()
+    {
+        const string value = "؀\tab";
+
+        Edit.SelectWord(value, 0).ShouldBe(new Selection(0, 1));
+        Edit.MoveNextWord(value, new Selection(0, 0), extend: false)
+            .Selection.Caret.ShouldBe(2);
+    }
+
     /// <summary>Verifies password projection emits one caller-selected Rune per grapheme.</summary>
     [Fact]
     public void ProjectPassword_WhenTextIsComplex_MasksWithoutSourceText()

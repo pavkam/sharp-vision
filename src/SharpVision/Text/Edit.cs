@@ -562,11 +562,14 @@ public static class Edit
     /// whitespace (1), or other (0). Decodes runes forward from <paramref name="position"/>,
     /// skipping any leading <see cref="GraphemeBreak.Prepend"/> scalars: per GB9b a Prepend
     /// scalar attaches to the following base character, so it is never itself the scalar that
-    /// determines the cluster's classification. Falls back to the last scalar examined when
-    /// the cluster is exhausted without a non-Prepend scalar (a base-less Prepend at the end
-    /// of the text), which still yields "other". Exposed internally so <c>TextInput</c> can
-    /// replicate <see cref="MovePreviousWord"/>'s classification against its own cached
-    /// boundary offsets instead of this type's O(n) <see cref="PreviousBoundary"/> scan.</summary>
+    /// determines the cluster's classification. Mirrors the grapheme enumerator's GB4/GB5
+    /// precedence (a Control/Cr/Lf scalar isolates itself even after a Prepend), so a Prepend
+    /// immediately followed by one of those does not borrow the next cluster's classification.
+    /// Falls back to the last scalar examined when the cluster is exhausted without a
+    /// non-Prepend, non-isolating scalar (a base-less Prepend at the end of the text), which
+    /// still yields "other". Exposed internally so <c>TextInput</c> can replicate
+    /// <see cref="MovePreviousWord"/>'s classification against its own cached boundary offsets
+    /// instead of this type's O(n) <see cref="PreviousBoundary"/> scan.</summary>
     [Pure]
     [ValueRange(0, 2)]
     internal static int Kind(string text, int position)
@@ -580,15 +583,24 @@ public static class Edit
                 return 0;
             }
 
-            var atEnd = position + consumed >= text.Length;
+            var next = position + consumed;
 
-            if (atEnd || rune.Value.GetGraphemeBreak() != GraphemeBreak.Prepend)
+            if (next >= text.Length || rune.Value.GetGraphemeBreak() != GraphemeBreak.Prepend)
             {
                 return Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 :
                     Rune.IsWhiteSpace(rune) ? 1 : 0;
             }
 
-            position += consumed;
+            var peekStatus = Rune.DecodeFromUtf16(text.AsSpan(next), out var peek, out _);
+
+            if (peekStatus == OperationStatus.Done &&
+                peek.Value.GetGraphemeBreak() is GraphemeBreak.Control or GraphemeBreak.Cr or GraphemeBreak.Lf)
+            {
+                return Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 :
+                    Rune.IsWhiteSpace(rune) ? 1 : 0;
+            }
+
+            position = next;
         }
     }
 
