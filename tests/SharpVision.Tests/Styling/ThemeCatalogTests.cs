@@ -1213,7 +1213,10 @@ public sealed class ThemeCatalogTests
     /// <summary>Verifies a directory cannot be opened as a theme file and reports the documented access failure.</summary>
     [Fact]
     public void LoadFile_WhenPathNamesDirectory_ThrowsUnauthorizedAccessException() =>
-        _ = Should.Throw<UnauthorizedAccessException>(() => ThemeCatalog.LoadFile(Path.GetTempPath()));
+        // Trim the trailing separator: on Windows, File.OpenRead throws DirectoryNotFoundException
+        // for a directory path ending in a separator, but UnauthorizedAccessException without one.
+        _ = Should.Throw<UnauthorizedAccessException>(
+            () => ThemeCatalog.LoadFile(Path.TrimEndingDirectorySeparator(Path.GetTempPath())));
 
     /// <summary>Verifies loading a missing file path throws <see cref="FileNotFoundException"/>.</summary>
     [Fact]
