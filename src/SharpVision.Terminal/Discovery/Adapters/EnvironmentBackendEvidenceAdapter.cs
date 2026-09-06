@@ -50,7 +50,7 @@ internal sealed class EnvironmentBackendEvidenceAdapter: IBackendEvidenceAdapter
                 ? new BackendEvidence(TerminalBackendKind.Iterm2, BackendEvidenceOrigin.Environment)
                 : string.IsNullOrEmpty(term) || isMultiplexer
                     ? null
-                    : Contains(term, "xterm")
+                    : TerminalNames.IsXtermFamily(term)
                         ? new BackendEvidence(TerminalBackendKind.Xterm, BackendEvidenceOrigin.Environment)
                         : null;
     }

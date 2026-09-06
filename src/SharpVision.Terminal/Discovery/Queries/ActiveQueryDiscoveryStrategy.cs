@@ -1021,7 +1021,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     // contains "xterm", so it needs its own explicit carve-out alongside the environment-hint
     // test rather than being folded into it - see the related handling in TryStart above.
     private static bool IsXtermLikeHint(string? term) =>
-        (Contains(term, "xterm") && !Contains(term, "kitty")) ||
+        (TerminalNames.IsXtermFamily(term) && !Contains(term, "kitty")) ||
         string.Equals(term, "windows-vt", StringComparison.Ordinal);
 
     private static bool HasPositive(Size? value) =>

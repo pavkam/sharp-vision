@@ -1049,6 +1049,24 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         bytes.ShouldEndWith("\u001bP+q524742\u001b\\\u001bP$q>4m\u001b\\");
     }
 
+    /// <summary>Verifies an xterm-compatible terminal that ships its own terminfo name rather than
+    /// an "xterm"-branded one - Alacritty's default TERM value - still receives the xterm-specific
+    /// DECRQSS/XTGETTCAP probes, the same as a bare xterm-256color hint.</summary>
+    [Fact]
+    public void TryStart_WhenAlacrittyIsHinted_AppendsExactBoundedDcsQueries()
+    {
+        var options = new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "alacritty" },
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
+        var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = negotiator.TryStart(destination, null, null);
+
+        var bytes = Encoding.ASCII.GetString(destination.WrittenSpan);
+        bytes.ShouldEndWith("\u001bP+q524742\u001b\\\u001bP$q>4m\u001b\\\u001b[c");
+    }
+
     /// <summary>Verifies DCS replies match once and retain owned semantic evidence.</summary>
     [Fact]
     public void Accept_WhenDcsRepliesRepeat_ClassifiesDuplicatesWithoutRawProgramMutation()

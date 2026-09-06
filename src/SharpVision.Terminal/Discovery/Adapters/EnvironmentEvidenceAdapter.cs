@@ -29,7 +29,7 @@ internal static class EnvironmentEvidenceAdapter
             _ = environment.TryGetValue(EvidenceEnvironmentVars.TermProgram, out var program);
             _ = environment.TryGetValue(EvidenceEnvironmentVars.NoColor, out var noColor);
             var kitty = Contains(term, "kitty");
-            var xterm = Contains(term, "xterm");
+            var xterm = TerminalNames.IsXtermFamily(term);
             var hasNoColor = !string.IsNullOrEmpty(noColor);
 
             // Color evidence is a lattice: the environment may only raise fidelity above what the

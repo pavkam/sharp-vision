@@ -35,7 +35,7 @@ internal sealed class DescriptionBackendEvidenceAdapter: IBackendEvidenceAdapter
             ? new BackendEvidence(TerminalBackendKind.Kitty, BackendEvidenceOrigin.Description)
             : Contains(name, "iterm2")
                 ? new BackendEvidence(TerminalBackendKind.Iterm2, BackendEvidenceOrigin.Description)
-                : Contains(name, "xterm")
+                : TerminalNames.IsXtermFamily(name)
                     ? new BackendEvidence(TerminalBackendKind.Xterm, BackendEvidenceOrigin.Description)
                     : null;
     }

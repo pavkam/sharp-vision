@@ -45,6 +45,8 @@ public sealed class TerminalBackendResolverTests
             ("screen-256color", null, VtBackend.Instance),
             ("tmux-256color", null, VtBackend.Instance),
             ("vt100", null, VtBackend.Instance),
+            ("alacritty", null, XtermBackend.Instance),
+            ("foot", null, XtermBackend.Instance),
         ];
 
         foreach (var (term, program, expected) in cases)
