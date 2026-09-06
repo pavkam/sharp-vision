@@ -142,6 +142,23 @@ public sealed class RadioButtonTests
         replacement.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a throwing Checked handler still lets the captured command execute
+    /// afterward, matching the isolate-then-rethrow behavior CommandBar and MenuItem use for the
+    /// same activation shape.</summary>
+    [Fact]
+    public void PerformClick_WhenCheckedHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("checked handler");
+        var command = new ProbeCommand();
+        var radio = new RadioButton { Command = command };
+        radio.Checked += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(radio.PerformClick);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Executions.ShouldBe([null]);
+    }
+
     /// <summary>Verifies null-name siblings remain mutually exclusive.</summary>
     [Fact]
     public void IsChecked_WhenSiblingSelectionChanges_CommitsExclusiveStateBeforeEvents()

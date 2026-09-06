@@ -3,6 +3,8 @@
 
 namespace SharpVision.Navigation;
 
+using System.Runtime.ExceptionServices;
+
 /// <summary>Defines one command-bearing retained location in a <see cref="Breadcrumb"/> path.</summary>
 [PublicAPI]
 public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
@@ -94,11 +96,15 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
             return;
         }
 
-        InvokeAfterOwnerCommit(cause);
-        _ = TryPublishForCurrentDetachedAttachment(
-            attachment,
-            () => ExecuteCommandIfAny(command),
-            () => FindBreadcrumb() is null);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => InvokeAfterOwnerCommit(cause), ref failure);
+        CaptureFailure(
+            () => TryPublishForCurrentDetachedAttachment(
+                attachment,
+                () => ExecuteCommandIfAny(command),
+                () => FindBreadcrumb() is null),
+            ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

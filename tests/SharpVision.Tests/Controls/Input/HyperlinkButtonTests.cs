@@ -159,6 +159,23 @@ public sealed class HyperlinkButtonTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a throwing Click handler does not suppress command execution, and that the
+    /// failure still propagates to the caller.</summary>
+    [Fact]
+    public void PerformClick_WhenClickHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("click handler");
+        var parameter = new object();
+        var command = new ProbeCommand();
+        var link = new HyperlinkButton("Go") { Command = command, CommandParameter = parameter };
+        link.Click += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(link.PerformClick);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Executions.ShouldBe([parameter]);
+    }
+
     /// <summary>Verifies unavailable controls reject programmatic activation.</summary>
     [Theory]
     [InlineData(false, Visibility.Visible)]

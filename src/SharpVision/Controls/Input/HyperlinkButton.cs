@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 /// <summary>Defines a focusable clickable text control styled as a classic hyperlink.</summary>
 [PublicAPI]
 public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
@@ -59,8 +61,10 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
         }
 
         var eventArgs = new ActivationEventArgs(cause);
-        Click?.Invoke(this, eventArgs);
-        command?.Execute(parameter);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => Click?.Invoke(this, eventArgs), ref failure);
+        CaptureFailure(() => command?.Execute(parameter), ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

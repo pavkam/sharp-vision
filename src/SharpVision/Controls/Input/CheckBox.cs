@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 /// <summary>Defines a focusable two- or three-state toggle with optional content.</summary>
 [PublicAPI]
 public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
@@ -124,8 +126,10 @@ public sealed class CheckBox: InputBase, IStyled<CheckBoxStyle>
             true when ThreeState => null,
             _ => false
         };
-        SetChecked(next, cause);
-        ExecuteCommandIfAny(command);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => SetChecked(next, cause), ref failure);
+        CaptureFailure(() => ExecuteCommandIfAny(command), ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

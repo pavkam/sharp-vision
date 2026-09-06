@@ -3,6 +3,8 @@
 
 namespace SharpVision.Navigation;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Controls;
 using SharpVision.Text;
 
@@ -130,8 +132,10 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     protected override void Activate(ActivationCause cause)
     {
         var command = CaptureCommand();
-        Invoked?.Invoke(this, new ActivationEventArgs(cause));
-        ExecuteCommandIfAny(command);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => Invoked?.Invoke(this, new ActivationEventArgs(cause)), ref failure);
+        CaptureFailure(() => ExecuteCommandIfAny(command), ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

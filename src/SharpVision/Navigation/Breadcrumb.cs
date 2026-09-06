@@ -3,6 +3,8 @@
 
 namespace SharpVision.Navigation;
 
+using System.Runtime.ExceptionServices;
+
 using SharpVision.Terminal.Input;
 
 using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
@@ -356,17 +358,19 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         var collectionGeneration = CollectionGeneration;
         var currentGeneration = _currentGeneration;
         _ = _navigator.SetCurrent(item);
-        item.InvokeAfterOwnerCommit(cause);
 
-        if (collectionGeneration != CollectionGeneration ||
-            currentGeneration != _currentGeneration ||
-            !IsAvailableOwned(item) ||
-            !ReferenceEquals(_currentItem, item))
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => item.InvokeAfterOwnerCommit(cause), ref failure);
+
+        if (collectionGeneration == CollectionGeneration &&
+            currentGeneration == _currentGeneration &&
+            IsAvailableOwned(item) &&
+            ReferenceEquals(_currentItem, item))
         {
-            return true;
+            CaptureFailure(() => InputBase.ExecuteCommandIfAny(command), ref failure);
         }
 
-        InputBase.ExecuteCommandIfAny(command);
+        failure?.Throw();
         return true;
     }
 

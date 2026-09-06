@@ -153,6 +153,26 @@ public sealed class BreadcrumbTests
         breadcrumb.Items.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a throwing Invoked handler still lets the captured command execute
+    /// afterward, matching the isolate-then-rethrow behavior CommandBar and MenuItem use for the
+    /// same activation shape.</summary>
+    [Fact]
+    public void PerformInvoke_WhenInvokedHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("invoked handler");
+        var command = new Mock<System.Windows.Input.ICommand>();
+        _ = command.Setup(candidate => candidate.CanExecute(null)).Returns(true);
+        var item = new BreadcrumbItem { Text = "Root", Command = command.Object };
+        var breadcrumb = new Breadcrumb();
+        breadcrumb.Items.Add(item);
+        item.Invoked += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(item.PerformInvoke);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Verify(candidate => candidate.Execute(null), Times.Once);
+    }
+
     /// <summary>Verifies event publication follows index, item, then transition-event order.</summary>
     [Fact]
     public void CurrentItem_WhenChanged_PublishesCommittedPropertyOrder()

@@ -269,6 +269,23 @@ public sealed class CheckBoxTests
         replacement.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a throwing Checked handler still lets the captured command execute
+    /// afterward, matching the isolate-then-rethrow behavior CommandBar and MenuItem use for the
+    /// same activation shape.</summary>
+    [Fact]
+    public void PerformClick_WhenCheckedHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("checked handler");
+        var command = new ProbeCommand();
+        var checkBox = new CheckBox { Command = command };
+        checkBox.Checked += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(checkBox.PerformClick);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Executions.ShouldBe([null]);
+    }
+
     /// <summary>Verifies the default arrangement hugs the mark, separator, and label instead of stretching.</summary>
     [Fact]
     public void Arrange_WhenDefaultAlignmentIsUsed_HugsMeasuredContentWidth()

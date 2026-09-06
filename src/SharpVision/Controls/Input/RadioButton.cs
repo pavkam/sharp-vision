@@ -125,12 +125,14 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
     protected override void Activate(ActivationCause cause)
     {
         var command = CaptureCommand();
-        this.SelectInGroup(cause);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => this.SelectInGroup(cause), ref failure);
 
         // Unlike SelectInGroup, which is a hard no-op when this member is already the sole
         // checked one in its group, the command executes on every activation - re-selecting
         // the current member still counts as an activation.
-        ExecuteCommandIfAny(command);
+        CaptureFailure(() => ExecuteCommandIfAny(command), ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

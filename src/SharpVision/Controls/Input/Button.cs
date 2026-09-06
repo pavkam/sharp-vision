@@ -3,6 +3,8 @@
 
 namespace SharpVision.Controls.Input;
 
+using System.Runtime.ExceptionServices;
+
 using Text;
 
 using DisplayText = Display.Text;
@@ -131,8 +133,10 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         }
 
         var eventArgs = new ActivationEventArgs(cause);
-        Click?.Invoke(this, eventArgs);
-        command?.Execute(parameter);
+        ExceptionDispatchInfo? failure = null;
+        CaptureFailure(() => Click?.Invoke(this, eventArgs), ref failure);
+        CaptureFailure(() => command?.Execute(parameter), ref failure);
+        failure?.Throw();
     }
 
     /// <inheritdoc/>

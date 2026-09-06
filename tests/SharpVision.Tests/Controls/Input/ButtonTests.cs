@@ -778,6 +778,23 @@ public sealed class ButtonTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies a throwing Click handler does not suppress command execution, and that the
+    /// failure still propagates to the caller.</summary>
+    [Fact]
+    public void PerformClick_WhenClickHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("click handler");
+        var parameter = new object();
+        var command = new ProbeCommand();
+        var button = new Button { Command = command, CommandParameter = parameter };
+        button.Click += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(button.PerformClick);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Executions.ShouldBe([parameter]);
+    }
+
     /// <summary>Verifies command replacement raises the standard property notification once.</summary>
     [Fact]
     public void Command_WhenReplacementChanges_RaisesPropertyChangedOnce()

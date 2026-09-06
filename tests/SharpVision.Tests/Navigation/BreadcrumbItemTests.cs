@@ -72,4 +72,22 @@ public sealed class BreadcrumbItemTests
         breadcrumb.Items.ShouldBe([item]);
         command.Verify(candidate => candidate.Execute(null), Times.Never);
     }
+
+    /// <summary>Verifies a throwing Invoked handler still lets the captured command execute
+    /// afterward on the detached path, matching the isolate-then-rethrow behavior CommandBar and
+    /// MenuItem use for the same activation shape.</summary>
+    [Fact]
+    public void PerformInvoke_WhenDetachedAndInvokedHandlerThrows_StillExecutesCommandThenRethrowsFailure()
+    {
+        var failure = new FormatException("invoked handler");
+        var command = new Mock<System.Windows.Input.ICommand>();
+        _ = command.Setup(candidate => candidate.CanExecute(null)).Returns(true);
+        var item = new BreadcrumbItem { Command = command.Object };
+        item.Invoked += (_, _) => throw failure;
+
+        var thrown = Should.Throw<FormatException>(item.PerformInvoke);
+
+        thrown.ShouldBeSameAs(failure);
+        command.Verify(candidate => candidate.Execute(null), Times.Once);
+    }
 }
