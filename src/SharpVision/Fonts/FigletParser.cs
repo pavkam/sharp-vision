@@ -62,7 +62,10 @@ internal static class FigletParser
                 throw new InvalidDataException("The FIG-font height exceeds the configured limit.");
             }
 
-            baseline = Math.Min(baseline, height);
+            if (baseline > height)
+            {
+                throw new FormatException("The FIG-font baseline cannot exceed the height.");
+            }
 
             if (maxLength > limits.MaxRowWidth)
             {
@@ -443,5 +446,16 @@ internal static class FigletParser
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     [Pure]
-    private static FigletLayout FullLayout(int value) => (FigletLayout) value;
+    private static FigletLayout FullLayout(int value)
+    {
+        // Matches FigletOptions's own "_all" mask: the bitwise union of every defined
+        // FigletLayout flag. FigletOptions's mask is private to that type and not
+        // reasonably reusable from here, so the literal is duplicated deliberately.
+        const FigletLayout allFlags = (FigletLayout) 0x7fff;
+        var layout = (FigletLayout) value;
+
+        return (layout & ~allFlags) == 0
+            ? layout
+            : throw new FormatException("The FIG-font full layout contains undefined flag bits.");
+    }
 }

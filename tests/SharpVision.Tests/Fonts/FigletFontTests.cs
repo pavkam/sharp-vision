@@ -575,4 +575,41 @@ public sealed class FigletFontTests
 
         return builder.ToString();
     }
+
+    /// <summary>Verifies a declared <c>baseline</c> greater than the declared <c>height</c> is
+    /// rejected as a spec violation instead of being silently truncated to the height, matching
+    /// the sibling header fields' throw-on-violation convention.</summary>
+    [Fact]
+    public void Load_WhenBaselineExceedsHeight_ThrowsFormatException()
+    {
+        using var stream = Stream("flf2a$ 1 2 80 -1 1 0\n");
+
+        _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "baseline-too-large"));
+    }
+
+    /// <summary>Verifies a <c>full_layout</c> value carrying bits outside every defined
+    /// <see cref="FigletLayout"/> flag is rejected instead of silently carrying the undefined
+    /// bits through, matching the flag-validity check <see cref="FigletOptions"/> already
+    /// performs for the same enum.</summary>
+    [Fact]
+    public void Load_WhenFullLayoutContainsUndefinedFlagBits_ThrowsFormatException()
+    {
+        using var stream = Stream("flf2a$ 1 1 80 -1 1 0 32768\n");
+
+        _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "full-layout-undefined-bits"));
+    }
+
+    /// <summary>Verifies the highest legal <c>full_layout</c> value - the bitwise union of every
+    /// defined <see cref="FigletLayout"/> flag, including the high vertical-smushing bits that
+    /// (unlike <c>old_layout</c>) are legitimately reachable through this field - still loads
+    /// successfully rather than being mistaken for an out-of-range value.</summary>
+    [Fact]
+    public void Load_WhenFullLayoutIsAllDefinedFlags_LoadsSuccessfully()
+    {
+        using var stream = Stream(CreateFont(fullLayoutField: "32767"));
+
+        var font = FigletFont.Load(stream, "full-layout-all-flags");
+
+        font.Layout.ShouldBe((FigletLayout) 32767);
+    }
 }
