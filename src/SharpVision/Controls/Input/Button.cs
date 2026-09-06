@@ -57,6 +57,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
                 ? InvalidationImpact.Arrange
                 : previous.Face != current.Face ||
                   previous.Border != current.Border ||
+                  previous.BorderStyles != current.BorderStyles ||
                   previous.Shadow != current.Shadow
             ? InvalidationImpact.Render
             : InvalidationImpact.None;

@@ -278,6 +278,56 @@ public sealed class ButtonTests
         button.Pending.ShouldBe(Invalidation.Render);
     }
 
+    /// <summary>Verifies a Theme swap that changes only the relief-resolved highlight/shade colors -
+    /// leaving the plain literal Face, Border, and Shadow untouched - still invalidates rendering.
+    ///
+    /// <para><see cref="Button.GetAppearanceChangeImpact"/>'s Render bucket used to compare only
+    /// <c>Face</c>, <c>Border</c>, and <c>Shadow</c>, omitting <c>BorderStyles</c> - the per-edge
+    /// colors <see cref="ResolvedBorderStyles.Create"/> derives from a
+    /// <see cref="BorderRelief.Raised"/> border's relief palette independently of Border's own
+    /// literal foreground. A theme swap that only moves <see cref="SemanticColor.ReliefHighlight"/>
+    /// therefore left <c>Face</c>/<c>Border</c>/<c>Shadow</c> all equal and was wrongly classified
+    /// <see cref="InvalidationImpact.None"/>, silently skipping the repaint of the embossed edges.</para>
+    /// </summary>
+    [Fact]
+    public void Style_WhenOnlyReliefResolvedBorderColorsChange_InvalidatesRenderOnly()
+    {
+        var previousTheme = new Theme();
+        previousTheme.SetColor(SemanticColor.ReliefHighlight, Color.Rgb(10, 10, 10));
+        previousTheme.SetColor(SemanticColor.ReliefShade, Color.Rgb(20, 20, 20));
+        previousTheme.Freeze();
+        var currentTheme = new Theme();
+        currentTheme.SetColor(SemanticColor.ReliefHighlight, Color.Rgb(30, 30, 30));
+        currentTheme.SetColor(SemanticColor.ReliefShade, Color.Rgb(20, 20, 20));
+        currentTheme.Freeze();
+        var style = ButtonStyle.Standard with
+        {
+            Face = AppearanceTestValues.Face(
+                foreground: Color.Rgb(9, 9, 9),
+                background: Color.Rgb(2, 2, 2),
+                attributes: TerminalAttributes.None),
+            Border = new Border(
+                BorderSide.All,
+                BorderGlyphStyle.Heavy,
+                Color.Rgb(1, 1, 1),
+                BorderRelief.Raised,
+                Color.Rgb(2, 2, 2),
+                TerminalAttributes.None),
+            Shadow = AppearanceTestValues.Shadow(
+                visible: false,
+                foreground: Color.Rgb(3, 3, 3),
+                background: Color.Rgb(2, 2, 2),
+                attributes: TerminalAttributes.None)
+        };
+        using var button = new Button { Style = style };
+        button.SetTheme(previousTheme);
+        button.Clear(Invalidation.All);
+
+        button.SetTheme(currentTheme);
+
+        button.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies a filled Button uses the compact centered default in a taller row.</summary>
     [Fact]
     public void Arrange_WhenFilledButtonSharesTallHorizontalRow_UsesCenteredDefault()
