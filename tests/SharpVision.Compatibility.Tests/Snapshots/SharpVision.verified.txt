@@ -111,6 +111,7 @@
         public SharpVision.ConsoleApplicationBuilder UseModifyOtherKeys(int? level) { }
         public SharpVision.ConsoleApplicationBuilder UseMouse(SharpVision.Terminal.Protocols.MouseTracking tracking = 1003, SharpVision.Terminal.Protocols.MouseCoordinates coordinates = 1006) { }
         public SharpVision.ConsoleApplicationBuilder UseNegotiation(SharpVision.Terminal.Capabilities.NegotiationOptions negotiation) { }
+        public SharpVision.ConsoleApplicationBuilder UseParserLimits(SharpVision.Terminal.Protocols.ParserLimits limits) { }
         public SharpVision.ConsoleApplicationBuilder UseTerminalProfile(SharpVision.Terminal.Capabilities.TerminalProfile profile) { }
         public SharpVision.ConsoleApplicationBuilder UseTheme(SharpVision.Styling.Theme theme) { }
         public SharpVision.ConsoleApplicationBuilder UseTransferLimits(SharpVision.Terminal.Clipboard.TransferLimits limits) { }
@@ -144,6 +145,7 @@
         public SharpVision.Terminal.Protocols.MouseTracking? MouseTracking { get; init; }
         public SharpVision.Terminal.Capabilities.NegotiationOptions? Negotiation { get; init; }
         public bool NegotiationDisabled { get; init; }
+        public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
         public SharpVision.Terminal.Capabilities.TerminalProfile? Profile { get; init; }
         public int ReadBufferSize { get; init; }
         public string? RedirectedMessage { get; init; }
