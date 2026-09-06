@@ -253,6 +253,41 @@ public sealed class DispatcherTests
         dispatcher.FatalException.ShouldBeNull();
     }
 
+    /// <summary>Verifies a <see cref="Dispatcher.StoppingToken"/> registration that itself throws -
+    /// mirroring <c>SuggestionInput</c>'s own production registration, which can legitimately throw
+    /// - does not prevent <see cref="Dispatcher.DisposeAsync"/> from completing normally, and does
+    /// not stop it from still cancelling every work item still queued when shutdown began.
+    /// <see cref="CancellationTokenSource.Cancel()"/> runs every registered callback even when one
+    /// throws, but rethrows an <see cref="AggregateException"/> afterward; unless that is guarded
+    /// the same way the sibling <c>work.Cancel()</c> loop already is, the cancellation loop below it
+    /// never runs at all, hanging every caller awaiting queued work.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenAStoppingTokenRegistrationThrows_StillCancelsQueuedWorkAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        dispatcher.StoppingToken.Register(() => throw new InvalidOperationException("registration-boom"));
+        var invocationToken = TestContext.Current.CancellationToken;
+        var pending = dispatcher.InvokeAsync(static () => 42, invocationToken).AsTask();
+
+        var disposal = dispatcher.DisposeAsync().AsTask();
+        var thrown = await Should.ThrowAsync<OperationCanceledException>(pending);
+        thrown.CancellationToken.ShouldBe(invocationToken);
+        release.Set();
+
+        await disposal;
+
+        dispatcher.FatalException.ShouldBeNull();
+    }
+
     /// <summary>Verifies Idle fires for a freshly started dispatcher that never receives any work.</summary>
     /// <remarks>
     /// Ordinary <see cref="Dispatcher.Start"/> returns as soon as the background thread exists,
@@ -575,6 +610,52 @@ public sealed class DispatcherTests
 
         observed.ShouldBe([originalFailure, cancelFailure]);
         dispatcher.FatalException.ShouldBeSameAs(originalFailure);
+        await dispatcher.DisposeAsync();
+    }
+
+    /// <summary>Verifies a <see cref="Dispatcher.StoppingToken"/> registration that itself throws,
+    /// reached through the fault path (<c>Report</c> -&gt; <c>RequestStop</c>) on the dispatcher's
+    /// own background thread rather than through <c>DisposeAsync</c> - is reported instead of
+    /// crashing the thread, the same way the sibling test above already covers a throwing
+    /// <c>onCancelled</c> reached through that same path. The original callback failure still wins
+    /// <see cref="Dispatcher.FatalException"/>, the registration failure surfaces only through a
+    /// second <see cref="Dispatcher.UnhandledException"/> notification (wrapped in the
+    /// <see cref="AggregateException"/> <see cref="CancellationTokenSource.Cancel()"/> itself
+    /// throws), and the still-queued work item is cancelled regardless - proving the cancellation
+    /// loop runs even though the guarded call immediately above it threw.</summary>
+    [Fact]
+    public async Task RequestStop_WhenAStoppingTokenRegistrationThrows_ReportsItInsteadOfCrashingTheThreadAsync()
+    {
+        var dispatcher = Dispatcher.Start();
+        InvalidOperationException originalFailure = new("callback-boom");
+        InvalidOperationException registrationFailure = new("registration-boom");
+        List<Exception> observed = [];
+        var workCancelled = false;
+        using ManualResetEventSlim release = new();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) => observed.Add(eventArgs.Exception);
+        dispatcher.StoppingToken.Register(() => throw registrationFailure);
+
+        dispatcher.Post(() =>
+        {
+            entered.SetResult();
+            release.Wait();
+        });
+        await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        dispatcher.Post(() => throw originalFailure);
+        dispatcher.Post(static () => { }, () => workCancelled = true);
+
+        release.Set();
+        await WaitForStopAsync(dispatcher);
+
+        observed.Count.ShouldBe(2);
+        observed[0].ShouldBeSameAs(originalFailure);
+        var wrappedRegistrationFailure = observed[1].ShouldBeOfType<AggregateException>();
+        wrappedRegistrationFailure.InnerExceptions.ShouldBe([registrationFailure]);
+        dispatcher.FatalException.ShouldBeSameAs(originalFailure);
+        workCancelled.ShouldBeTrue(
+            "queued work must still be cancelled even though the StoppingToken registration threw first");
         await dispatcher.DisposeAsync();
     }
 
