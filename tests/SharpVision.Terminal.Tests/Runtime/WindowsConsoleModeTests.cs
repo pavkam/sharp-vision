@@ -19,6 +19,9 @@ public sealed class WindowsConsoleModeTests
     private const uint _savedInputMode = 0x10;
     private const uint _savedOutputMode = 0x20;
 
+    private static readonly string[] _outputThenFlushThenInputOrder =
+        ["restore-output", "flush-input", "restore-input"];
+
     /// <summary>Verifies the success path restores output before input, mirroring Enter's own LIFO unwind.</summary>
     /// <remarks>
     /// <see cref="WindowsConsoleMode.Dispose"/> never calls into Win32 directly - only the
@@ -40,6 +43,59 @@ public sealed class WindowsConsoleModeTests
         mode.Dispose();
 
         order.ShouldBe(new[] { _outputHandle, _inputHandle });
+    }
+
+    /// <summary>Verifies the pending input buffer is flushed before the input mode is restored.</summary>
+    /// <remarks>
+    /// A negotiation reply or pointer/focus report that arrives after this process's last read
+    /// must be discarded before canonical line input comes back, exactly like the Unix lease's use
+    /// of <c>TCSAFLUSH</c>; flushing after the input mode restores would leave a window in which a
+    /// queued reply could still be delivered as shell keystrokes.
+    /// </remarks>
+    [Fact]
+    public void Dispose_OnSuccess_FlushesInputBeforeRestoringInputMode()
+    {
+        var order = new List<string>();
+        using var mode = CreateForDisposeOnly(
+            setConsoleMode: (handle, _) =>
+            {
+                order.Add(handle == _inputHandle ? "restore-input" : "restore-output");
+
+                return true;
+            },
+            flushConsoleInput: _ =>
+            {
+                order.Add("flush-input");
+
+                return true;
+            });
+
+        mode.Dispose();
+
+        order.ShouldBe(_outputThenFlushThenInputOrder);
+    }
+
+    /// <summary>Verifies a failing input-buffer flush still restores both console modes.</summary>
+    /// <remarks>
+    /// An unflushed input buffer is a smaller hazard than a console left in raw VT mode, so the
+    /// flush failure must be reported without ever skipping either mode restore.
+    /// </remarks>
+    [Fact]
+    public void Dispose_WhenFlushFails_StillRestoresBothModesAndThrows()
+    {
+        var restores = new List<nint>();
+        using var mode = CreateForDisposeOnly(
+            setConsoleMode: (handle, _) =>
+            {
+                restores.Add(handle);
+
+                return true;
+            },
+            flushConsoleInput: static _ => false);
+
+        _ = Should.Throw<IOException>(mode.Dispose);
+
+        restores.ShouldBe(new[] { _outputHandle, _inputHandle });
     }
 
     /// <summary>Verifies a failing input restore still attempts the output handle.</summary>
@@ -132,7 +188,9 @@ public sealed class WindowsConsoleModeTests
     /// and the real console handles/modes it reads. Only <see cref="WindowsConsoleMode.Dispose"/> is under
     /// test here, and it touches nothing but the injected write boundary.
     /// </summary>
-    private static WindowsConsoleMode CreateForDisposeOnly(Func<nint, uint, bool> setConsoleMode)
+    private static WindowsConsoleMode CreateForDisposeOnly(
+        Func<nint, uint, bool> setConsoleMode,
+        Func<nint, bool>? flushConsoleInput = null)
     {
         var constructor = typeof(WindowsConsoleMode)
             .GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -141,6 +199,7 @@ public sealed class WindowsConsoleModeTests
         return (WindowsConsoleMode) constructor.Invoke(
         [
             _inputHandle, _outputHandle, _savedInputMode, _savedOutputMode, setConsoleMode,
+            flushConsoleInput ?? (static _ => true),
         ]);
     }
 

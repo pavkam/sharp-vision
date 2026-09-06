@@ -544,6 +544,16 @@ internal static class RuntimeInterop
         uint charsToWrite,
         out uint charsWritten,
         nint reserved);
+
+    /// <summary>Discards every unread input record buffered for a console input handle.</summary>
+    /// <param name="handle">The console input handle to flush.</param>
+    /// <returns>True when the buffer was flushed.</returns>
+    [SupportedOSPlatform("windows")]
+    public static bool TryFlushConsoleInput(nint handle) => FlushConsoleInputBuffer(handle);
+
+    [DllImport("kernel32", EntryPoint = "FlushConsoleInputBuffer", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FlushConsoleInputBuffer(nint handle);
 }
 
 #pragma warning restore SYSLIB1054
