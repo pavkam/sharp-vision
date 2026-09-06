@@ -2542,6 +2542,30 @@ public sealed class InputDecoderTests
             [new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)]);
     }
 
+    /// <summary>Verifies a described KeyMap binding for a bare cursor-key SS3 final byte does not
+    /// shadow the enhanced/legacy cursor-key mapping once the Kitty keyboard disambiguation lease
+    /// is active, mirroring the CSI-side precedence contract for the SS3 form of the same keys
+    /// (<c>ESC O A</c> for Up, etc.).</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsActiveAndDescriptionBindsSs3CursorKey_LegacyCursorKeyWins()
+    {
+        var bytes = "\u001bOA"u8.ToArray();
+        var options = InputOptions.Default.WithKeyMap(
+            new KeyMap([new KeyBinding(bytes, Code.F63)]),
+            useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+
+        using (InputDecoder decoder = new(sink, options))
+        {
+            decoder.EnableKittyKeyboardDisambiguation();
+            decoder.Decode(bytes);
+            decoder.Complete();
+        }
+
+        sink.Strokes.ShouldBe(
+            [new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Press)]);
+    }
+
     /// <summary>Verifies an active paste consumes its terminator before described-key matching.</summary>
     [Fact]
     public void Decode_WhenPasteTerminatorIsAlsoDescribed_PasteTerminatorWins()
@@ -3623,6 +3647,52 @@ public sealed class InputDecoderTests
         // stream Complete()).
         sink.Text.ShouldBe([new TerminalText(Rune.ReplacementChar)]);
         sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.Character);
+    }
+
+    /// <summary>
+    /// Verifies that discarding a stale pending UTF-8 prefix and immediately restarting a new one
+    /// within the same <c>Decode</c> call refreshes <see cref="InputDecoder.PendingUtf8Deadline"/>
+    /// to the new sequence's own window, instead of leaving it pointed at the discarded sequence's
+    /// original (now stale) deadline.
+    /// </summary>
+    [Fact]
+    public void ExpireUtf8_WhenAStalePrefixIsReplacedMidCall_RefreshesDeadlineForTheNewSequence()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // 0xE0 is a valid three-byte lead, so it is buffered pending its two continuation bytes.
+        decoder.Decode([0xE0]);
+        _ = decoder.PendingUtf8Deadline.ShouldNotBeNull();
+
+        clock.Advance(TimeSpan.FromMilliseconds(20));
+
+        // 0xC2 is not a valid continuation byte for 0xE0's lead, so the buffered 0xE0 is discarded
+        // (emitting one replacement rune) and 0xC2 itself becomes a brand-new pending lead byte
+        // (it is a valid two-byte lead awaiting one continuation byte) — all within this one call.
+        decoder.Decode([0xC2]);
+        _ = decoder.PendingUtf8Deadline.ShouldNotBeNull();
+
+        clock.Advance(TimeSpan.FromMilliseconds(5));
+
+        // Time is now 25ms past the FIRST sequence's original deadline, but only 5ms past the
+        // SECOND sequence's own start — it must not have expired yet.
+        decoder.ExpireUtf8().ShouldBeFalse();
+        _ = decoder.PendingUtf8Deadline.ShouldNotBeNull();
+
+        clock.Advance(TimeSpan.FromMilliseconds(20));
+        decoder.ExpireUtf8().ShouldBeTrue();
+        decoder.PendingUtf8Deadline.ShouldBeNull();
+
+        sink.Text.ShouldBe(
+        [
+            new TerminalText(Rune.ReplacementChar),
+            new TerminalText(Rune.ReplacementChar)
+        ]);
     }
 
     /// <summary>

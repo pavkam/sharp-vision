@@ -1238,6 +1238,18 @@ public sealed class InputDecoder: IDisposable
     {
         _utf8.Flush();
         _ss3Pending = false;
+
+        // Mirrors TryHandleLegacyCsiKey's precedence for the CSI form of the same cursor/function
+        // keys: a valid Kitty-disambiguated or ANSI-grammar cursor-key final byte is consumed
+        // before terminal-description key lookup, so a KeyMap binding cannot shadow it.
+        var isKittyGrammar = _kittyKeyboardDisambiguationEnabled;
+
+        if ((_options.UseAnsiKeyGrammar || isKittyGrammar) && TryMapCursorKey(final, out var mappedCode))
+        {
+            EmitStroke(mappedCode, null, 0);
+            return;
+        }
+
         if (_options.KeyMap.TryGet(
                 KeySignatureKind.Ss3,
                 [],
@@ -1257,9 +1269,10 @@ public sealed class InputDecoder: IDisposable
 
         // Unlike CSI, SS3 has no further fallback handler once this table is exhausted, so an
         // unmapped final byte still becomes a real stroke — Code.Unknown carrying the native byte
-        // for diagnostics — instead of silently dropping the input.
-        var mapped = TryMapCursorKey(final, out var code);
-        EmitStroke(code, null, mapped ? 0 : final);
+        // for diagnostics — instead of silently dropping the input. Reaching here means the
+        // grammar-gated TryMapCursorKey attempt above already ran (UseAnsiKeyGrammar is true) and
+        // did not recognize this final byte.
+        EmitStroke(Code.Unknown, null, final);
     }
 
     /// <summary>Attempts one candidate handler for a parsed OSC/APC/PM string sequence.</summary>
@@ -1731,10 +1744,18 @@ public sealed class InputDecoder: IDisposable
         }
 
         TextAccumulationCallCount++;
-        var wasUtf8Pending = _utf8.HasPending;
+
+        // A single call can both resolve a stale pending sequence (emitting its replacement
+        // rune) and immediately start a new one from whatever bytes remain after the invalid
+        // prefix is shifted out — comparing only the before/after HasPending state misses that
+        // inner restart and would otherwise leave the deadline pointed at the discarded
+        // sequence's window instead of the new one's, expiring it early. Restamping whenever
+        // this call actually fed the accumulator a byte and it is still pending afterward covers
+        // both the fresh-start and mid-sequence-restart cases without needing to distinguish them.
+        var utf8Touched = !value.IsEmpty;
         _utf8.Process(value);
 
-        if (!wasUtf8Pending && _utf8.HasPending)
+        if (utf8Touched && _utf8.HasPending)
         {
             _utf8Deadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
         }
