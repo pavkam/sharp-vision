@@ -7,7 +7,6 @@ namespace SharpVision.Notifications;
 internal sealed class InfoBarDismissButton: ControlBase
 {
     private readonly InfoBar _owner;
-    private readonly PressBehavior _interaction;
 
     /// <summary>Initializes a dismiss part bound to one non-null owner.</summary>
     /// <param name="owner">The InfoBar that owns this part for its lifetime.</param>
@@ -15,18 +14,9 @@ internal sealed class InfoBarDismissButton: ControlBase
     {
         ArgumentNullException.ThrowIfNull(owner);
         _owner = owner;
-        _interaction = new PressBehavior(
-            () => Bounds,
-            IsAvailable,
-            () => FocusOwner is null || IsFocused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            _ => _owner.Dismiss(),
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_interaction);
+        EnablePressActivation(
+            isAvailable: IsAvailable,
+            activate: _ => _owner.Dismiss());
         IsFocusable = true;
         IsTabStop = true;
     }
@@ -39,7 +29,7 @@ internal sealed class InfoBarDismissButton: ControlBase
             return;
         }
 
-        _interaction.Unavailable();
+        CancelPressActivation(releaseCapture: false);
 
         if (HasPointerCapture)
         {
@@ -87,7 +77,7 @@ internal sealed class InfoBarDismissButton: ControlBase
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         base.OnEvent(eventArgs);
-        _interaction.Handle(eventArgs);
+        HandlePressActivation(eventArgs);
     }
 
     private bool IsAvailable() =>

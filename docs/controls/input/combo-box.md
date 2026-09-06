@@ -22,7 +22,7 @@ interior row, including trailing blank cells, following the
 The selected value is the field's face, so `ComboBox` exposes neither `Content`
 nor `Children`. It owns exactly one popup-layer framework part, and that
 `Popup.Content` owns the private ListView. Keyboard and pointer press mechanics
-come from [`InputBase.EnablePressActivation`](../input-base.md#api), the same
+come from [`ControlBase.EnablePressActivation`](../control.md#api), the same
 capability `Button` and the other
 [caption-and-command controls](../pressable.md#overview) enable in their own
 constructors, without taking on their `EnableCaption` single-text-caption role.

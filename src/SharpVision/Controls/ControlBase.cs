@@ -2701,11 +2701,30 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// public focus callbacks.</summary>
     /// <param name="dispatcher">The dispatcher attachment captured before requesting focus.</param>
     /// <returns>True when lifetime, attachment, visibility, and enabled state remain current.</returns>
-    internal bool CanContinueAfterFocus(Dispatcher? dispatcher) =>
+    protected bool CanContinueAfterFocus(Dispatcher? dispatcher) =>
         !IsDisposed &&
         ReferenceEquals(Dispatcher, dispatcher) &&
         EffectiveIsVisible &&
         EffectiveIsEnabled;
+
+    /// <summary>Requests focus for an interaction and reports whether input may continue
+    /// afterward.</summary>
+    /// <remarks>
+    /// Captures <see cref="Dispatcher"/> before requesting focus because a synchronous focus
+    /// handler can detach, dispose, or otherwise invalidate this control before
+    /// <see cref="RequestFocus"/> returns; combines that capture, the request, and
+    /// <see cref="CanContinueAfterFocus"/> for the common "request focus, then verify the
+    /// interaction may proceed" shape shared by pointer-driven interactions across concrete
+    /// controls.
+    /// </remarks>
+    /// <returns>True when focus was requested and lifetime, attachment, visibility, and enabled
+    /// state remain current afterward.</returns>
+    protected bool TryFocusForInteraction()
+    {
+        var dispatcher = Dispatcher;
+        _ = RequestFocus();
+        return CanContinueAfterFocus(dispatcher);
+    }
 
     /// <summary>Invokes the protected access-key seam after manager eligibility validation.</summary>
     /// <param name="key">The matched Unicode scalar.</param>
@@ -2909,7 +2928,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         IsPointerDirectlyOver == directlyOver;
 
     /// <summary>Updates pressed visual state on the owning dispatcher.</summary>
-    internal void SetPressed(bool value)
+    /// <remarks>
+    /// <see langword="protected internal"/> because a small number of core sibling owners (a
+    /// container control that paints a pressed appearance for a part it does not itself compose
+    /// press activation onto, such as a command bar overflow trigger) still commit pressed state
+    /// for another control they own directly, cross-type within this assembly.
+    /// </remarks>
+    protected internal void SetPressed(bool value)
     {
         VerifyMutable();
 
@@ -6604,6 +6629,190 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         IsCurrentFact = value;
         return true;
     }
+
+    #endregion
+
+    #region Press and drag activation
+
+    private PressBehavior? _press;
+    private DragBehavior? _drag;
+
+    /// <summary>Gets the rectangle press interaction (pointer press/drag/release and hit testing
+    /// via <see cref="HitTest"/>) is evaluated against when a concrete control does not supply a
+    /// different rectangle through <see cref="EnablePressActivation"/>. Defaults to
+    /// <see cref="Bounds"/>.</summary>
+    /// <remarks>
+    /// A concrete control whose pressed visual state translates the drawn face away from
+    /// <see cref="Bounds"/> - a Button showing a whole-cell shadow, for example - must override
+    /// this to the same translated rectangle it actually paints, so the pointer geometry a user
+    /// presses and releases against agrees with what is on screen.
+    /// </remarks>
+    protected virtual Rect InteractionBounds => Bounds;
+
+    /// <summary>Opts into the shared pointer-press and Enter/Space keyboard-activation
+    /// interaction.</summary>
+    /// <param name="bounds">Resolves the rectangle press interaction is evaluated against.
+    /// Defaults to <see cref="InteractionBounds"/>; supply this only when a concrete control
+    /// presses a different rectangle than the one it hit-tests against by default.</param>
+    /// <param name="activate">Runs the completed activation. Defaults to <see cref="Activate"/>;
+    /// supply this only when a concrete control cannot express its activation by overriding
+    /// <see cref="Activate"/>, such as one that composes press activation instead of deriving
+    /// <see cref="InputBase"/>.</param>
+    /// <param name="isAvailable">Reports whether press interaction can currently start or
+    /// continue. Defaults to <c>!IsDisposed &amp;&amp; EffectiveIsEnabled &amp;&amp;
+    /// EffectiveIsVisible</c>; supply this only when a concrete control's availability adds
+    /// further conditions beyond that default.</param>
+    /// <param name="canCompleteSpace">Reports whether a held Space release may complete
+    /// activation. Defaults to <c>FocusOwner is null || IsFocused</c>; supply this only when a
+    /// concrete control's completion condition differs from that default.</param>
+    /// <param name="requestFocus">Requests focus for the interaction. Defaults to
+    /// <see cref="RequestFocus"/>; supply this only when a concrete control's press must focus a
+    /// different owner than itself.</param>
+    /// <exception cref="InvalidOperationException">Press activation is already enabled, or the
+    /// attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void EnablePressActivation(
+        Func<Rect>? bounds = null,
+        Action<ActivationCause>? activate = null,
+        Func<bool>? isAvailable = null,
+        Func<bool>? canCompleteSpace = null,
+        Func<bool>? requestFocus = null)
+    {
+        VerifyMutable();
+
+        if (_press is not null)
+        {
+            throw new InvalidOperationException("Press activation is already enabled.");
+        }
+
+        _press = new PressBehavior(
+            bounds ?? (() => InteractionBounds),
+            isAvailable ?? (() => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible),
+            canCompleteSpace ?? (() => FocusOwner is null || IsFocused),
+            requestFocus ?? RequestFocus,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed,
+            activate ?? Activate,
+            () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_press);
+    }
+
+    /// <summary>Routes one event through the press-activation state machine, if enabled.</summary>
+    /// <param name="e">The event to evaluate.</param>
+    protected void HandlePressActivation(RoutedEventArgs e) => _press?.Handle(e);
+
+    /// <summary>Cancels any held press-activation pointer or keyboard state outside the routed-
+    /// event and automatic focus/capture-loss notification paths.</summary>
+    /// <remarks>
+    /// A concrete control uses this when it must abort a pending press for a reason the automatic
+    /// lifecycle notifications do not observe by themselves - for example, a pointer target the
+    /// press was tracking moving out from under an unchanged real focus and capture state, or an
+    /// owning control independently deciding a composed affordance is no longer available.
+    /// </remarks>
+    /// <param name="releaseCapture">Whether to also release pointer capture when this control
+    /// currently holds it.</param>
+    protected void CancelPressActivation(bool releaseCapture)
+    {
+        if (releaseCapture)
+        {
+            _press?.FocusChanged(focused: false);
+        }
+        else
+        {
+            _press?.Unavailable();
+        }
+    }
+
+    /// <summary>Completes one validated activation in a concrete control that enabled press
+    /// activation.</summary>
+    /// <param name="cause">The input path that completed activation.</param>
+    protected virtual void Activate(ActivationCause cause)
+    {
+    }
+
+    /// <summary>Attempts one semantic activation after validating the source, mutation context,
+    /// and effective availability shared by every programmatic activation entry point.</summary>
+    /// <param name="cause">The semantic source of the activation attempt.</param>
+    /// <returns><see langword="true"/> when activation was admitted and dispatched to
+    /// <see cref="Activate"/>; otherwise <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected bool TryActivate(ActivationCause cause)
+    {
+        VerifyMutable();
+        ArgumentOutOfRangeException.ThrowIfNotDefined(cause);
+
+        if (!EffectiveIsEnabled || !EffectiveIsVisible)
+        {
+            return false;
+        }
+
+        Activate(cause);
+        return true;
+    }
+
+    /// <summary>Gets whether a drag interaction, enabled through <see cref="EnableDrag"/>, is
+    /// currently in progress.</summary>
+    protected bool IsDragging => _drag?.IsDragging ?? false;
+
+    /// <summary>Opts into the shared pointer-driven drag interaction used by value-editing and
+    /// divider controls.</summary>
+    /// <param name="bounds">Resolves the rectangle a drag may start inside. Defaults to
+    /// <see cref="ContentBounds"/>; supply this only when a concrete control drags against a
+    /// different rectangle, such as a divider rather than its own content area.</param>
+    /// <param name="tryCapture">Attempts to acquire the drag's exclusive pointer target. Defaults
+    /// to <see cref="CapturePointer"/>; supply this only when a concrete control captures through
+    /// a more specific gesture than an ordinary pointer capture, such as one gated on a
+    /// still-current pending target.</param>
+    /// <param name="isAvailable">Reports whether a drag may currently start or continue. Defaults
+    /// to <c>!IsDisposed &amp;&amp; EffectiveIsEnabled &amp;&amp; EffectiveIsVisible</c>; supply
+    /// this only when a concrete control's availability adds further conditions beyond that
+    /// default.</param>
+    /// <remarks>
+    /// A drag can only ever be started from a routed pointer-press event delivered by the
+    /// dispatcher to a live, attached control, so the shared mutation guard omits an explicit
+    /// <c>!IsDisposed</c> reachability check around <see cref="TryStartDrag"/> itself: the
+    /// dispatcher never delivers that event to an already-disposed control.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Drag is already enabled, or the attached
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void EnableDrag(
+        Func<Rect>? bounds = null,
+        Func<bool>? tryCapture = null,
+        Func<bool>? isAvailable = null)
+    {
+        VerifyMutable();
+
+        if (_drag is not null)
+        {
+            throw new InvalidOperationException("Drag is already enabled.");
+        }
+
+        _drag = new DragBehavior(
+            bounds ?? (() => ContentBounds),
+            isAvailable ?? (() => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible),
+            () => !IsDisposed,
+            RequestFocus,
+            tryCapture ?? CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            SetPressed);
+        RegisterLifecycleParticipant(_drag);
+    }
+
+    /// <summary>Attempts to start a drag from a pointer press event, if enabled.</summary>
+    /// <param name="cells">The pressed pointer location in absolute cells.</param>
+    /// <returns>True when a drag started.</returns>
+    protected bool TryStartDrag(Point cells) => _drag?.TryStart(cells) ?? false;
+
+    /// <summary>Cancels an active drag, if enabled.</summary>
+    /// <param name="releaseCapture">Whether to also release pointer capture when this control
+    /// currently holds it.</param>
+    protected void CancelDrag(bool releaseCapture) => _drag?.Cancel(releaseCapture);
 
     #endregion
 

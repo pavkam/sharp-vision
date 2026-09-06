@@ -18,11 +18,16 @@ needs arbitrary owned content instead of a plain caption does not call
 and calls whichever capabilities it actually needs, the way
 [`ComboBox`](input/combo-box.md#overview), `DateInput`, and `DateTimeInput` do
 for their popup-backed fields, pairing `EnablePopup` with
-`EnablePressActivation` and skipping the caption capability. `ListItem` composes
-the same shared press behavior directly (not through `InputBase`) while keeping
+`EnablePressActivation` and skipping the caption capability.
+`EnablePressActivation` itself lives on [`ControlBase`](control.md#api), not
+`InputBase`, so a control that needs press activation without any of
+`InputBase`'s caption, command, or popup machinery calls it directly instead of
+deriving `InputBase` at all. The internal `ListItem` is one such control: it
+calls `EnablePressActivation` while keeping
 [`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
 realized template output, since it already derives from `ContentControl` for
-that reason.
+that reason. `Expander`, `Pager`, the internal `InfoBarDismissButton`, and
+`NavigationViewGroup` do the same, each for its own non-`InputBase` public base.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 `RadioButton`, `HyperlinkButton`, and `MenuItem` call `EnablePressActivation`,
@@ -62,7 +67,7 @@ classDiagram
 
 `EnableCommand` supplies `Command`/`CommandParameter` lifetime - including
 `CanExecuteChanged` subscription and dispatcher-marshaled invalidation - on top
-of the [`InputBase`](input-base.md#api) press-activation capability a control
+of the [`ControlBase`](control.md#api) press-activation capability a control
 enables separately. Concrete classes still publish their own events and their
 own programmatic activation method (`Button.Click`/`PerformClick`,
 `MenuItem.Invoked`/`PerformInvoke`, and so on); only the command lifetime itself
@@ -117,12 +122,12 @@ while the other source is still held and, for a pointer hold, inside. Focus
 loss, capture loss, and other cancellation boundaries clear both sources.
 
 The rectangle used for that containment test is
-[`InteractionBounds`](input-base.md#api), a `protected virtual` seam that
-defaults to `Bounds`. A derived control that paints its pressed face translated
-away from `Bounds` - such as `Button`'s whole-cell shadow translation while
-`IsPressed` is true - overrides `InteractionBounds` to return the same rectangle
-it actually paints, so press, drag, and release always agree with the committed
-painted geometry instead of the untranslated layout footprint (see
+[`InteractionBounds`](control.md#api), a `protected virtual` seam that defaults
+to `Bounds`. A derived control that paints its pressed face translated away from
+`Bounds` - such as `Button`'s whole-cell shadow translation while `IsPressed` is
+true - overrides `InteractionBounds` to return the same rectangle it actually
+paints, so press, drag, and release always agree with the committed painted
+geometry instead of the untranslated layout footprint (see
 [`docs/controls/input/button.md`](input/button.md#interaction)). `HitTest` stays
 on `Bounds` regardless: it is the stable layout footprint used before a press
 begins, and capture governs hit testing once a press is under way.
@@ -140,17 +145,28 @@ completions carry the `Keyboard` and `Pointer` `ActivationCause` values; a
 concrete programmatic API uses `Programmatic`.
 
 The press-activation state machine is one internal composed behavior, enabled
-once through [`InputBase.EnablePressActivation`](input-base.md#api) and used by
+once through [`ControlBase.EnablePressActivation`](control.md#api) and used by
 every control described on this page as well as `ComboBox`, `DateInput`, and
-`DateTimeInput`, each of which enables it directly. `Expander`, `ListItem`,
-`Toast`, and `Window` compose the same behavior directly instead of through
-`InputBase`, since each already derives from a different public base
-(`HeaderedContentControl`, `ContentControl`, and — for both `Toast` and `Window`
-— `FloatingSurfaceBase` respectively) for its own content role. In every case
-the behavior owns no control-tree state and operates only through the protected
+`DateTimeInput`, each of which enables it directly. `EnablePressActivation`
+lives on `ControlBase`, not `InputBase`, precisely so a control whose whole face
+activates on press can call it without deriving `InputBase` at all: `Expander`,
+`ListItem`, `Pager`, the internal `InfoBarDismissButton`, and
+`NavigationViewGroup` do exactly that, each from a different public base
+(`HeaderedContentControl`, `ContentControl`, `ControlBase`, `ControlBase`, and
+`ControlBase` respectively) for its own authoring role. In every case the
+behavior owns no control-tree state and operates only through the protected
 focus and capture boundaries, keeping the public inheritance role about
 replaceable content, rather than using inheritance merely to reuse event
 handling.
+
+`Toast` and `Window` are a distinct case: only one small affordance on each -
+the close button, not the whole surface - activates on press, so
+[`FloatingSurfaceBase`](../concepts/floating-surfaces.md#overview) composes its
+own narrower `InitializeSurfaceCloseInteraction` wrapper instead of the shared
+`EnablePressActivation`, letting each family supply its own pressed-appearance
+callback (a chrome-level pressed flag, not the surface's own `IsPressed`) and
+close action while still sharing focus, pointer capture, and key-release
+capability policy.
 
 ## Visual state and extension
 

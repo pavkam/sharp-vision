@@ -11,7 +11,6 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 [PublicAPI]
 public sealed class SplitPane: Container
 {
-    private readonly DragBehavior _drag;
     private readonly CallbackTransitionStream _splitTransitions = new();
     private ControlBase? _firstVisibilitySource;
     private ControlBase? _secondVisibilitySource;
@@ -32,16 +31,10 @@ public sealed class SplitPane: Container
     /// <summary>Initializes an empty horizontal split with capacity for two panes.</summary>
     public SplitPane() : base(capacity: 2)
     {
-        _drag = new DragBehavior(
-            ResolveVisibleDividerBounds,
-            () => _dividerInteractionAvailable && EffectiveIsEnabled && EffectiveIsVisible,
-            () => !IsDisposed,
-            RequestFocus,
-            TryCaptureDividerPointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed);
-        RegisterLifecycleParticipant(_drag);
+        EnableDrag(
+            bounds: ResolveVisibleDividerBounds,
+            tryCapture: TryCaptureDividerPointer,
+            isAvailable: () => _dividerInteractionAvailable && EffectiveIsEnabled && EffectiveIsVisible);
         _ = AddHandler(Events.Pointer, OnDividerPointerRouted, handledEventsToo: true);
         InitializePanelPresentation();
         IsFocusable = true;
@@ -776,7 +769,7 @@ public sealed class SplitPane: Container
             return;
         }
 
-        if (_drag.IsDragging)
+        if (IsDragging)
         {
             eventArgs.IsHandled = true;
 
@@ -816,14 +809,14 @@ public sealed class SplitPane: Container
 
         try
         {
-            _ = _drag.TryStart(cells);
+            _ = TryStartDrag(cells);
         }
         finally
         {
             _dragFocusDispatcher = null;
             _pendingDragCell = null;
 
-            if (!_drag.IsDragging)
+            if (!IsDragging)
             {
                 ResetDividerDragState();
             }
@@ -878,7 +871,7 @@ public sealed class SplitPane: Container
 
     private void CancelDividerDrag()
     {
-        _drag.Cancel(releaseCapture: true);
+        CancelDrag(releaseCapture: true);
         ResetDividerDragState();
     }
 

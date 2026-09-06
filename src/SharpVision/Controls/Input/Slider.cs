@@ -13,23 +13,13 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
 {
     private int _value;
     private readonly CallbackTransitionStream _valueTransitions = new();
-    private readonly DragBehavior _drag;
     private readonly StyleSlot<SliderStyle> _style;
 
     /// <summary>Initializes a horizontal focusable range from zero through one hundred.</summary>
     public Slider()
     {
         _style = InitializeStyle(SliderStyle.Definition);
-        _drag = new DragBehavior(
-            () => ContentBounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => !IsDisposed,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed);
-        RegisterLifecycleParticipant(_drag);
+        EnableDrag();
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -338,13 +328,13 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
-        if (_drag.IsDragging)
+        if (IsDragging)
         {
             eventArgs.IsHandled = true;
 
             if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
-                _drag.Cancel(releaseCapture: true);
+                CancelDrag(releaseCapture: true);
             }
             else if (pointer.Cells is { } dragCells)
             {
@@ -382,10 +372,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-
-        if (!CanContinueAfterFocus(dispatcher))
+        if (!TryFocusForInteraction())
         {
             return;
         }
@@ -399,7 +386,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         }
 
         eventArgs.IsHandled = true;
-        _ = _drag.TryStart(cells);
+        _ = TryStartDrag(cells);
     }
 
     /// <summary>Reports whether a rail of <paramref name="length"/> cells can map more than one

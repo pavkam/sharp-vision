@@ -10,21 +10,10 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 /// <summary>Edits saturation and value for one hue across a semantic color plane.</summary>
 internal sealed class ColorPlane: ControlBase
 {
-    private readonly DragBehavior _drag;
-
     /// <summary>Initializes a focusable stretching saturation/value surface.</summary>
     public ColorPlane()
     {
-        _drag = new DragBehavior(
-            () => ContentBounds,
-            () => EffectiveIsEnabled && EffectiveIsVisible,
-            () => !IsDisposed,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed);
-        RegisterLifecycleParticipant(_drag);
+        EnableDrag();
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -222,13 +211,13 @@ internal sealed class ColorPlane: ControlBase
     {
         var pointer = eventArgs.Pointer;
 
-        if (_drag.IsDragging)
+        if (IsDragging)
         {
             eventArgs.IsHandled = true;
 
             if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
-                _drag.Cancel(releaseCapture: true);
+                CancelDrag(releaseCapture: true);
             }
             else if (pointer.Cells is { } dragCells)
             {
@@ -246,17 +235,14 @@ internal sealed class ColorPlane: ControlBase
             return;
         }
 
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-
-        if (!CanContinueAfterFocus(dispatcher))
+        if (!TryFocusForInteraction())
         {
             return;
         }
 
         Select(cells);
         eventArgs.IsHandled = true;
-        _ = _drag.TryStart(cells);
+        _ = TryStartDrag(cells);
     }
 
     private void Select(Point point)

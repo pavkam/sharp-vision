@@ -417,10 +417,7 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
             return;
         }
 
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-
-        if (!CanContinueAfterFocus(dispatcher) || !TryHitTestSelection(cells, out var selection))
+        if (!TryFocusForInteraction() || !TryHitTestSelection(cells, out var selection))
         {
             return;
         }

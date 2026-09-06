@@ -93,81 +93,6 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     #endregion
 
-    #region Press activation
-
-    private PressBehavior? _press;
-
-    /// <summary>Gets the rectangle press interaction (pointer press/drag/release and hit testing
-    /// via <see cref="ControlBase.HitTest"/>) is evaluated against. Defaults to <see cref="ControlBase.Bounds"/>.</summary>
-    /// <remarks>
-    /// A concrete control whose pressed visual state translates the drawn face away from
-    /// <see cref="ControlBase.Bounds"/> - a Button showing a whole-cell shadow, for example -
-    /// must override this to the same translated rectangle it actually paints, so the pointer
-    /// geometry a user presses and releases against agrees with what is on screen.
-    /// </remarks>
-    protected virtual Rect InteractionBounds => Bounds;
-
-    /// <summary>Opts into the shared pointer-press and Enter/Space keyboard-activation
-    /// interaction.</summary>
-    /// <exception cref="InvalidOperationException">Press activation is already enabled.</exception>
-    protected void EnablePressActivation()
-    {
-        VerifyMutable();
-
-        if (_press is not null)
-        {
-            throw new InvalidOperationException("Press activation is already enabled.");
-        }
-
-        _press = new PressBehavior(
-            () => InteractionBounds,
-            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || IsFocused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_press);
-    }
-
-    /// <summary>Routes one event through the press-activation state machine, if enabled.</summary>
-    /// <param name="e">The event to evaluate.</param>
-    protected void HandlePressActivation(RoutedEventArgs e) => _press?.Handle(e);
-
-    /// <summary>Completes one validated activation in a concrete control that enabled press
-    /// activation.</summary>
-    /// <param name="cause">The input path that completed activation.</param>
-    protected virtual void Activate(ActivationCause cause)
-    {
-    }
-
-    /// <summary>Attempts one semantic activation after validating the source, mutation context,
-    /// and effective availability shared by every programmatic activation entry point.</summary>
-    /// <param name="cause">The semantic source of the activation attempt.</param>
-    /// <returns><see langword="true"/> when activation was admitted and dispatched to
-    /// <see cref="Activate"/>; otherwise <see langword="false"/>.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    protected bool TryActivate(ActivationCause cause)
-    {
-        VerifyMutable();
-        ArgumentOutOfRangeException.ThrowIfNotDefined(cause);
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            return false;
-        }
-
-        Activate(cause);
-        return true;
-    }
-
-    #endregion
-
     #region Caption
 
     private OwnedControlSlot? _textSlot;
@@ -814,7 +739,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             getDecimalPlaces,
             () => IsFocused,
             point => ContentBounds.Contains(point),
-            RequestNumericEditingFocus,
+            TryFocusForInteraction,
             resolveCaretIndex,
             () => Invalidate(InvalidationImpact.Render));
 #pragma warning restore IDE0200
@@ -964,13 +889,6 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             _ = canvas.Draw(cluster, point, placeholderStyle);
             x += width;
         }
-    }
-
-    private bool RequestNumericEditingFocus()
-    {
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-        return CanContinueAfterFocus(dispatcher);
     }
 
     private static TerminalStyle EditableInputSelectionStyle(TerminalStyle current) => new(

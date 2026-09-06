@@ -15,7 +15,6 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     private int _pageIndex = -1;
     private ulong _layoutGeneration;
     private readonly CallbackTransitionStream _pageTransitions = new();
-    private readonly PressBehavior _press;
     private PagerLayoutTarget? _pressedTarget;
     private ulong _pressedLayoutGeneration;
     private readonly StyleSlot<PagerStyle> _style;
@@ -24,18 +23,11 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     public Pager()
     {
         _style = InitializeStyle(PagerStyle.Definition);
-        _press = new PressBehavior(
-            () => _pressedTarget?.Bounds ?? default,
-            IsPressedTargetCurrent,
-            IsPressedTargetCurrent,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            ActivatePressedTarget,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_press);
+        EnablePressActivation(
+            bounds: () => _pressedTarget?.Bounds ?? default,
+            activate: ActivatePressedTarget,
+            isAvailable: IsPressedTargetCurrent,
+            canCompleteSpace: IsPressedTargetCurrent);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -391,7 +383,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             _pressedLayoutGeneration = LayoutSnapshot.Generation;
         }
 
-        _press.Handle(eventArgs);
+        HandlePressActivation(eventArgs);
 
         if (pointer.Action is PointerAction.Release or PointerAction.Leave)
         {
@@ -459,7 +451,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             return;
         }
 
-        _press.FocusChanged(focused: false);
+        CancelPressActivation(releaseCapture: true);
         _pressedTarget = null;
         _pressedLayoutGeneration = 0;
     }

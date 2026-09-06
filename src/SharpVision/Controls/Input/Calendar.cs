@@ -597,10 +597,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             return;
         }
 
-        var dispatcher = Dispatcher;
-        _ = RequestFocus();
-
-        if (!CanContinueAfterFocus(dispatcher))
+        if (!TryFocusForInteraction())
         {
             return;
         }

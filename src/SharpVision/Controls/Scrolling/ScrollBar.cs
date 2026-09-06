@@ -13,7 +13,6 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 {
     private int _value;
     private readonly CallbackTransitionStream _valueTransitions = new();
-    private readonly DragBehavior _drag;
     private int _dragPointerStart;
     private int? _dragPixelStart;
     private int _dragValueStart;
@@ -23,20 +22,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     public ScrollBar()
     {
         _style = InitializeStyle(ScrollBarStyle.Definition);
-        _drag = new DragBehavior(
-            () => Bounds,
-            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
-            () => !IsDisposed,
-            () =>
-            {
-                _ = FocusOwner?.Focus(this);
-                return true;
-            },
-            () => CaptureOwner is { } c && c.Capture(this),
-            () => CaptureOwner?.Captured is { } captured && ReferenceEquals(captured, this),
-            () => CaptureOwner?.Release(),
-            SetPressed);
-        RegisterLifecycleParticipant(_drag);
+        EnableDrag(bounds: () => Bounds);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -360,7 +346,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
             return;
         }
 
-        if (_drag.IsDragging)
+        if (IsDragging)
         {
             Drag(eventArgs);
             return;
@@ -444,7 +430,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         Point cells,
         int trackPosition)
     {
-        if (!_drag.TryStart(cells))
+        if (!TryStartDrag(cells))
         {
             return;
         }
@@ -469,7 +455,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 
             if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
             {
-                _drag.Cancel(releaseCapture: true);
+                CancelDrag(releaseCapture: true);
                 ResetDragState();
             }
 
@@ -528,7 +514,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 
         if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
         {
-            _drag.Cancel(releaseCapture: true);
+            CancelDrag(releaseCapture: true);
             ResetDragState();
         }
     }

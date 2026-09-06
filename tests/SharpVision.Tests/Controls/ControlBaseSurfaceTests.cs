@@ -3,8 +3,9 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies convenience CLR events on the base ControlBase class through a mounted
-/// ComponentSurface, exercising ControlBase's routed-event plumbing.</summary>
+/// <summary>Verifies convenience CLR events and the composable press/drag capabilities on the
+/// base ControlBase class through a mounted ComponentSurface, exercising ControlBase's
+/// routed-event plumbing without deriving <see cref="InputBase"/>.</summary>
 public sealed class ControlBaseSurfaceTests
 {
     /// <summary>Verifies the primary-only convenience event ignores every auxiliary button.</summary>
@@ -370,5 +371,78 @@ public sealed class ControlBaseSurfaceTests
 
         // Assert
         fired.ShouldBeGreaterThanOrEqualTo(1);
+    }
+
+    /// <summary>Verifies a primary press-and-release inside bounds activates exactly once with the
+    /// pointer cause, on a control that composes press activation directly.</summary>
+    [Fact]
+    public async Task EnablePressActivation_WhenPointerPressesAndReleasesInsideBounds_ActivatesOnceAsync()
+    {
+        // Arrange
+        var probe = new PressActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.ClickAsync(probe);
+
+        // Assert
+        probe.ActivationCount.ShouldBe(1);
+        probe.LastActivationCause.ShouldBe(ActivationCause.Pointer);
+    }
+
+    /// <summary>Verifies a control that never calls <see cref="ControlBase.EnablePressActivation"/>
+    /// never commits pressed state or activates from the same press-and-release gesture, so the
+    /// positive assertion above is not vacuously true.</summary>
+    [Fact]
+    public async Task EnablePressActivation_WhenNeverCalled_ClickNeverCommitsPressedStateAsync()
+    {
+        // Arrange
+        var probe = new ProbeControl { Width = Length.Cells(4), Height = Length.Cells(2) };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(probe);
+        await surface.Pointer.PressAsync();
+
+        // Assert
+        probe.IsPressed.ShouldBeFalse();
+
+        // Act
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.IsPressed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a primary press inside bounds starts a drag that stays reported until the
+    /// matching release, on a control that composes drag directly.</summary>
+    [Fact]
+    public async Task EnableDrag_WhenPointerPressesInsideBounds_ReportsDraggingUntilReleaseAsync()
+    {
+        // Arrange
+        var probe = new DragActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(probe);
+        await surface.Pointer.PressAsync();
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeFalse();
     }
 }

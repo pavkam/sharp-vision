@@ -20,7 +20,6 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;
     private readonly RetainedPropertyOverrideService _propertyOverrides;
-    private readonly PressBehavior _press;
     private readonly StyleSlot<NavigationViewGroupStyle> _style;
 
     /// <summary>Initializes an expanded navigation group with no header.</summary>
@@ -43,22 +42,14 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
         Items = new NavigationViewItemCollection(this);
         IsFocusable = false;
         IsTabStop = false;
-        _press = new PressBehavior(
-            () => new Rect(
+        EnablePressActivation(
+            bounds: () => new Rect(
                 ContentBounds.X,
                 ContentBounds.Y,
                 ContentBounds.Width,
                 Math.Min(1, ContentBounds.Height)),
-            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
-            () => true,
-            () => FindNavigationView()?.Focus() == true,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_press);
+            canCompleteSpace: () => true,
+            requestFocus: () => FindNavigationView()?.Focus() == true);
     }
 
     /// <summary>Gets this group's constrained sub-item collection.</summary>
@@ -372,11 +363,12 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
         if (eventArgs is PointerEventArgs)
         {
-            _press.Handle(eventArgs);
+            HandlePressActivation(eventArgs);
         }
     }
 
-    private void Activate(ActivationCause cause)
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
     {
         _ = cause;
         FindNavigationView()?.NotifyGroupInvoked(this);

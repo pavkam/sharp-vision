@@ -23,7 +23,6 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         static theme => theme.Hotkey,
         InvalidationImpact.Render);
 
-    private readonly PressBehavior _interaction;
     private readonly StyleSlot<ExpanderStyle> _style;
     private readonly CallbackTransitionStream _expandedTransitions = new();
     private bool _isHeaderPointerOver;
@@ -33,14 +32,9 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     public Expander()
     {
         _style = InitializeStyle(ExpanderStyle.Definition);
-        _interaction = new PressBehavior(
-            () => HeaderBounds,
-            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || IsFocused, RequestFocus, CapturePointer,
-            () => HasPointerCapture, ReleasePointerCapture, SetPressed,
-            _ => IsExpanded = !IsExpanded,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_interaction);
+        EnablePressActivation(
+            bounds: () => HeaderBounds,
+            activate: _ => IsExpanded = !IsExpanded);
         IsFocusable = true;
         IsTabStop = true;
     }
@@ -308,7 +302,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             UpdateHeaderPointerOver(pointer);
         }
 
-        _interaction.Handle(eventArgs);
+        HandlePressActivation(eventArgs);
     }
 
     /// <inheritdoc/>

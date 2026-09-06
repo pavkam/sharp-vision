@@ -9,14 +9,13 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Owns one realized ListView template control and its selection behavior.</summary>
 /// <remarks>
-/// Composes <see cref="PressBehavior"/> directly instead of deriving <see cref="InputBase"/> and
-/// opting into its caption capability, so it can keep arbitrary owned
+/// Enables <see cref="ControlBase.EnablePressActivation"/> directly instead of deriving
+/// <see cref="InputBase"/> and opting into its caption capability, so it can keep arbitrary owned
 /// <see cref="ContentControl.Content"/> for realized template output, which the single-text-caption
 /// capability does not support.
 /// </remarks>
 internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
 {
-    private readonly PressBehavior _interaction;
     private int _pointerClickCount;
     private Modifiers _pointerModifiers;
 
@@ -27,18 +26,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentNullException.ThrowIfNull(content);
-        _interaction = new PressBehavior(
-            () => Bounds,
-            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible,
-            () => FocusOwner is null || IsFocused,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            SetPressed,
-            Activate,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_interaction);
+        EnablePressActivation();
         HorizontalAlignment = HorizontalAlignment.Stretch;
         IsFocusable = false;
         IsTabStop = false;
@@ -134,7 +122,8 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
         return resolvedTheme.GetInteractiveRowStyleSet().ToAppearanceStates().Compose(overlay);
     }
 
-    private void Activate(ActivationCause cause)
+    /// <inheritdoc/>
+    protected override void Activate(ActivationCause cause)
     {
         if (cause == ActivationCause.Pointer)
         {
@@ -181,7 +170,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
         }
 
         base.OnEvent(eventArgs);
-        _interaction.Handle(eventArgs);
+        HandlePressActivation(eventArgs);
     }
 
     /// <inheritdoc/>

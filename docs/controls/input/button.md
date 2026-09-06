@@ -91,7 +91,7 @@ matching key up. Enter activates immediately. A primary pointer press focuses
 the button and captures the pointer; releasing inside the bounds activates once.
 Disabling, detaching, losing focus, or having capture cancelled clears the press
 without activating. `PerformClick()` runs the same programmatic activation path.
-It enters through [`InputBase.TryActivate`](../input-base.md#api), so direct or
+It enters through [`ControlBase.TryActivate`](../control.md#api), so direct or
 ancestor-disabled/hidden state is a no-op while disposal and off-dispatcher
 access retain their documented failures. Button still owns command gating: when
 the captured command can execute it raises `Click` before executing that
@@ -99,7 +99,7 @@ command, and when it cannot, the activation raises nothing at all.
 
 While pressed with a visible whole-cell shadow, the button paints its entire
 face translated by the shadow offset instead of at its untranslated `Bounds`.
-Button overrides [`InputBase.InteractionBounds`](../input-base.md#api) to return
+Button overrides [`ControlBase.InteractionBounds`](../control.md#api) to return
 that same translated rectangle, so press, drag, and release track the drawn
 face: a cell the translated face newly covers activates on release, and a cell
 it no longer covers does not — even where that cell lies inside or outside the

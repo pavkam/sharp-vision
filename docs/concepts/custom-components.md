@@ -11,14 +11,16 @@ arbitrary controls and the new type's public purpose is laying them out. Use
 typed semantic collection with a private presentation host, and direct
 `ControlBase` inheritance for a new primitive leaf.
 [`InputBase`](../controls/input-base.md#overview) is the focusable role for a
-value editor or popup-backed input: it exposes press activation, a single text
-caption, an optional command, segment editing, step-key translation, the shared
-drop-down glyph, and an owned popup as independent `Enable*` capabilities, so a
-control opts into exactly the ones it needs instead of inheriting all of them -
-`Button` calls `EnablePressActivation`, `EnableCaption`, and `EnableCommand`
-together, while `ComboBox` calls only `EnablePressActivation`. The role supplies
-the `InputStyle` appearance fallback even when no capability is enabled; a
-concrete typed style still takes precedence normally.
+value editor or popup-backed input: on top of the inherited
+[`ControlBase.EnablePressActivation`](../controls/control.md#api) press
+activation every control can opt into, it exposes a single text caption, an
+optional command, segment editing, step-key translation, the shared drop-down
+glyph, and an owned popup as independent `Enable*` capabilities, so a control
+opts into exactly the ones it needs instead of inheriting all of them - `Button`
+calls `EnablePressActivation`, `EnableCaption`, and `EnableCommand` together,
+while `ComboBox` calls only `EnablePressActivation`. The role supplies the
+`InputStyle` appearance fallback even when no capability is enabled; a concrete
+typed style still takes precedence normally.
 
 There is no `View` type and no measure-time `Build()` composition. Construction
 is never deferred to measure, arrange, or rendering: a component creates its
