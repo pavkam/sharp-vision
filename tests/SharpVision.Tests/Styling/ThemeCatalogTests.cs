@@ -262,6 +262,29 @@ public sealed class ThemeCatalogTests
         error.Message.ShouldContain(expected);
     }
 
+    /// <summary>Verifies a "styles.*" unknown-attribute-name failure - raised from
+    /// <c>ThemeCatalog.ResolveAttributeName</c>, shared between <see cref="Theme.ResolveSectionDecoration"/>
+    /// and <c>ThemeCatalog.ParseAttributes</c> - still reports the exact line and column of the
+    /// offending value, the same sibling gap <see cref="Overlay_WhenStyleSectionLeafHasInvalidValue_ReportsLineAndColumn"/>
+    /// and <see cref="Parse_WhenStyleSectionValueIsNotAnObject_ReportsLineAndColumn"/> already cover for
+    /// other "styles.*" checks: ResolveAttributeName used to throw without threading through the
+    /// position map its ThemeCatalog.ParseAttributes sibling already receives.</summary>
+    [Fact]
+    public void Overlay_WhenStyleSectionAttributeNameIsUnknown_ReportsLineAndColumn()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"attributes\":\"border\"",
+            "\"attributes\":\"boldd\"",
+            StringComparison.Ordinal);
+
+        var expected = ExpectedPosition(json, "\"boldd\"");
+
+        var error = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "broken"));
+
+        error.Message.ShouldContain("styles.control.normal.border.attributes");
+        error.Message.ShouldContain(expected);
+    }
+
     /// <summary>Verifies a complete semantic theme loads metadata and concrete global colors.</summary>
     [Fact]
     public void Parse_WhenSemanticThemeIsComplete_LoadsGlobalValues()

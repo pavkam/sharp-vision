@@ -595,7 +595,7 @@ public sealed class Theme
             var name = value.GetString()!;
             return Enum.TryParse<SemanticDecoration>(name, ignoreCase: true, out var semantic) && Enum.IsDefined(semantic)
                 ? semantic
-                : ThemeCatalog.ResolveAttributeName(name, DiagnosticSource, context);
+                : ThemeCatalog.ResolveAttributeName(name, DiagnosticSource, context, _stylePositions);
         }
 
         if (value.ValueKind != JsonValueKind.Array)
@@ -611,7 +611,7 @@ public sealed class Theme
                 throw new InvalidDataException($"Theme '{DiagnosticSource}' '{context}' must contain strings{FormatPosition(context)}.");
             }
 
-            result |= ThemeCatalog.ResolveAttributeName(item.GetString()!, DiagnosticSource, context);
+            result |= ThemeCatalog.ResolveAttributeName(item.GetString()!, DiagnosticSource, context, _stylePositions);
         }
 
         return result;

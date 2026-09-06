@@ -65,12 +65,19 @@ public static class ThemeCatalog
 
     // Shared by Theme.ResolveSectionDecoration, via the ConvertLeaf unification, and this
     // file's own ParseAttributes below, so the one literal-attribute-name vocabulary is defined
-    // exactly once.
+    // exactly once. The position map is optional because a Theme built without JSON provenance
+    // (e.g. Unthemed) has none to report - callers that do parse from JSON pass their positions
+    // map through so this reports a location exactly like every other "styles.*" diagnostic.
     [Pure]
-    internal static TerminalAttributes ResolveAttributeName(string name, string source, string context) =>
+    internal static TerminalAttributes ResolveAttributeName(
+        string name,
+        string source,
+        string context,
+        IReadOnlyDictionary<string, (int Line, int Column)>? positions = null) =>
         _attributeNames.TryGetValue(name, out var attribute)
             ? attribute
-            : throw new InvalidDataException($"Theme '{source}' '{context}' has unknown attribute '{name}'.");
+            : throw new InvalidDataException(
+                $"Theme '{source}' '{context}' has unknown attribute '{name}'{FormatPosition(positions, context)}.");
 
     static ThemeCatalog()
     {
