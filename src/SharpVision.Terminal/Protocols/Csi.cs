@@ -181,6 +181,30 @@ public static class Csi
     /// <param name="writer">The validated protocol writer.</param>
     public static void ReportWindowCells(ProtocolWriter writer) => writer.Csi("18"u8, [], (byte) 't');
 
+    /// <summary>
+    /// Pushes the icon label and window title onto the terminal's title stack using XTWINOPS 22;0.
+    /// </summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <remarks>
+    /// Per xterm ctlseqs, "Window manipulation (XTWINOPS)", <c>CSI 22 ; 0 t</c> saves both the icon
+    /// label and the window title on a terminal-maintained stack; a terminal without a title stack
+    /// ignores the unrecognized parameter combination, so callers need no additional capability
+    /// gate beyond title support itself.
+    /// </remarks>
+    public static void PushTitle(ProtocolWriter writer) => writer.Csi("22;0"u8, [], (byte) 't');
+
+    /// <summary>
+    /// Pops the most recently saved icon label and window title from the terminal's title stack
+    /// using XTWINOPS 23;0.
+    /// </summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <remarks>
+    /// Per xterm ctlseqs, "Window manipulation (XTWINOPS)", <c>CSI 23 ; 0 t</c> restores the icon
+    /// label and window title most recently saved by <see cref="PushTitle"/>; a terminal without a
+    /// title stack ignores it the same way it ignores the push.
+    /// </remarks>
+    public static void PopTitle(ProtocolWriter writer) => writer.Csi("23;0"u8, [], (byte) 't');
+
     /// <summary>Queries one DEC private mode using DECRQM.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="mode">The positive private mode number.</param>

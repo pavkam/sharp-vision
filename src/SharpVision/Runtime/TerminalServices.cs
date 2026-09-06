@@ -156,7 +156,7 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
             }
             else if (TryRouteTitle(destination.WrittenMemory, out var routed))
             {
-                _application.PostOutOfBand(routed);
+                PostTitle(routed);
             }
         }
         finally
@@ -185,8 +185,75 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
         if (TryRouteTitle(destination.WrittenMemory, out var routed))
         {
-            _application.PostOutOfBand(routed);
+            PostTitle(routed);
         }
+    }
+
+    /// <summary>
+    /// Posts one already routed title-setting command, preceded by a title-stack push the first
+    /// time this session sets a title, so the terminal's own stack later restores whatever title
+    /// was active before this application ever touched it. Titles set through this OSC path and
+    /// through the described <c>tsl</c>/<c>fsl</c> path both funnel through here, so both get the
+    /// identical push/pop treatment: the stack controls restore whatever the title bar showed
+    /// before, independent of which mechanism wrote it.
+    /// </summary>
+    /// <param name="routedTitle">The complete, already routed title-setting bytes.</param>
+    private void PostTitle(ReadOnlyMemory<byte> routedTitle)
+    {
+        if (!TryAcquireTitleStackPush(out var routedPush))
+        {
+            _application.PostOutOfBand(routedTitle);
+            return;
+        }
+
+        var combined = new ArrayBufferWriter<byte>(routedPush.Length + routedTitle.Length);
+        combined.Write(routedPush.Span);
+        combined.Write(routedTitle.Span);
+        _application.PostOutOfBand(combined.WrittenMemory);
+    }
+
+    /// <summary>
+    /// Attempts to claim this session's one-time title-stack push, routing both the push and its
+    /// paired pop through the exact same multiplexer policy already applied to the title itself -
+    /// a terminal without a title stack simply ignores both controls, and an approved tmux route
+    /// wraps them the same way it wraps the title, so no separate capability gate or routing rule
+    /// is needed for either one.
+    /// </summary>
+    /// <param name="routedPush">
+    /// The routed push bytes to write immediately before the title, when this call returns true.
+    /// </param>
+    /// <returns>
+    /// True the first time a title is set for this session and the route can carry both controls;
+    /// false on every later title for this session, or when either control fails to route, in
+    /// which case the title itself is still written without a stack lease this time.
+    /// </returns>
+    private bool TryAcquireTitleStackPush(out ReadOnlyMemory<byte> routedPush)
+    {
+        routedPush = default;
+
+        var pushBuffer = new ArrayBufferWriter<byte>(8);
+        Csi.PushTitle(new ProtocolWriter(pushBuffer));
+
+        if (!TryRouteTitle(pushBuffer.WrittenMemory, out var candidatePush))
+        {
+            return false;
+        }
+
+        var popBuffer = new ArrayBufferWriter<byte>(8);
+        Csi.PopTitle(new ProtocolWriter(popBuffer));
+
+        if (!TryRouteTitle(popBuffer.WrittenMemory, out var candidatePop))
+        {
+            return false;
+        }
+
+        if (!_application.Session.TryAcquireTitleLease(candidatePush.Span, candidatePop.Span))
+        {
+            return false;
+        }
+
+        routedPush = candidatePush;
+        return true;
     }
 
     /// <inheritdoc/>

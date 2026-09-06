@@ -117,7 +117,9 @@ public sealed class TerminalServicesTests
         var title = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += memory =>
         {
-            if (memory.Span.SequenceEqual("PREFIX:Olá:SUFFIX"u8))
+            // The first title of the session is preceded by a title-stack push (XTWINOPS 22;0),
+            // written in the same out-of-band buffer as the described program itself.
+            if (memory.Span.SequenceEqual("[22;0tPREFIX:Olá:SUFFIX"u8))
             {
                 _ = title.TrySetResult();
             }
@@ -213,7 +215,9 @@ public sealed class TerminalServicesTests
         var title = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += memory =>
         {
-            if (memory.Span.SequenceEqual("]2;hi\\"u8))
+            // The first title of the session is preceded by an unwrapped title-stack push
+            // (XTWINOPS 22;0), written in the same out-of-band buffer as the OSC 2 title itself.
+            if (memory.Span.SequenceEqual("[22;0t]2;hi\\"u8))
             {
                 _ = title.TrySetResult();
             }
@@ -231,7 +235,8 @@ public sealed class TerminalServicesTests
     /// <summary>Verifies an explicitly authorized tmux title route wraps the OSC 2 string in DCS
     /// passthrough before the ordered out-of-band write reaches the transport, matching the
     /// existing clipboard and notification routing precedent instead of posting bare bytes that
-    /// tmux would otherwise swallow.</summary>
+    /// tmux would otherwise swallow, and that the first title of the session also wraps a leading
+    /// title-stack push in its own independent passthrough envelope.</summary>
     [Fact]
     public async Task SetTitle_WhenTmuxRouteApprovesTitleFamily_WrapsAnsiTitleBytesAsync()
     {
@@ -261,7 +266,7 @@ public sealed class TerminalServicesTests
 
         var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         bytes.ToArray().ShouldBe(
-            "Ptmux;]2;hi\\\\"u8.ToArray());
+            "Ptmux;[22;0t\\Ptmux;]2;hi\\\\"u8.ToArray());
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -328,7 +333,8 @@ public sealed class TerminalServicesTests
         application.Terminal.SetTitle("hi");
 
         var bytes = await written.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        bytes.ToArray().ShouldBe("Ptmux;PREFIX:hi:SUFFIX\\"u8.ToArray());
+        bytes.ToArray().ShouldBe(
+            "Ptmux;[22;0t\\Ptmux;PREFIX:hi:SUFFIX\\"u8.ToArray());
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -362,6 +368,66 @@ public sealed class TerminalServicesTests
 
         terminal.Writes.Count.ShouldBe(before);
         await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the title-stack push accompanies only the first title set during a
+    /// session, a later title omits it, and reverse cleanup pops the stack once the session ends -
+    /// the push/pop counterpart to
+    /// <see cref="SetTitle_WhenDescriptionSuppliesTsAndFsl_EmitsExactPairedBytesAsync"/>'s exact-byte
+    /// structure.</summary>
+    [Fact]
+    public async Task SetTitle_WhenCalledTwiceThenSessionStops_PushesOnceAndPopsDuringCleanupAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var firstTitle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondTitle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.SequenceEqual("\u001b[22;0t\u001b]2;first\u001b\\"u8))
+            {
+                _ = firstTitle.TrySetResult();
+            }
+            else if (memory.Span.SequenceEqual("\u001b]2;second\u001b\\"u8))
+            {
+                _ = secondTitle.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("first");
+        await firstTitle.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("second");
+        await secondTitle.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        // Expression-tree overload resolution rejects Span usage in the predicate, so the
+        // check is evaluated as an ordinary delegate first.
+        var poppedTitleStack = terminal.Writes.Any(
+            static write => write.AsSpan().SequenceEqual("\u001b[23;0t"u8));
+        poppedTitleStack.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a session that never sets a title never touches the title stack, leaving
+    /// the outer terminal's title bar - or a nested multiplexer pane's - exactly as it found
+    /// it.</summary>
+    [Fact]
+    public async Task SetTitle_WhenNeverCalled_LeavesTitleStackUntouchedAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        var touchedTitleStack = terminal.Writes.Any(static write =>
+            write.AsSpan().IndexOf("\u001b[22;0t"u8) >= 0 ||
+            write.AsSpan().IndexOf("\u001b[23;0t"u8) >= 0);
+        touchedTitleStack.ShouldBeFalse();
     }
 
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>

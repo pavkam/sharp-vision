@@ -37,6 +37,12 @@ public sealed class Session: IAsyncDisposable
     private Task? _disposal;
     private bool _disposed;
     private bool _running;
+    // Unlike every other lease, the title stack's enable bytes are not written by this class: the
+    // owning Application writes them itself, out of band, the first time a caller sets a title, and
+    // only then reports that write here so reverse cleanup can pop what was actually pushed. This
+    // flag guards against a title set many times over one run from registering the pop more than
+    // once, which would otherwise unbalance the terminal's own title stack during cleanup.
+    private bool _titleLeaseAcquired;
 
     #region Construction and lifecycle
 
@@ -431,6 +437,7 @@ public sealed class Session: IAsyncDisposable
     private async ValueTask<TerminalModeDiagnostics> StartAsync(CancellationToken cancellationToken)
     {
         Debug.Assert(_leases.Count == 0, "A new session run starts without retained terminal-mode leases.");
+        _titleLeaseAcquired = false;
         var alternateScreenActive = false;
         var cursorHiddenActive = false;
 
@@ -634,6 +641,44 @@ public sealed class Session: IAsyncDisposable
         // every attempted acquisition without guessing what reached the terminal.
         _leases.Add(lease);
         await WriteAsync(lease.Enable, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Registers the terminal title-stack push/pop lease at most once per run, so a title later set
+    /// through the terminal output services facade is restored during reverse cleanup on every exit
+    /// path - the same guarantee already given to the alternate screen, cursor, keypad, mouse,
+    /// focus, paste, and Kitty keyboard modes.
+    /// </summary>
+    /// <param name="enable">
+    /// The exact routed bytes the caller already wrote, out of band, to push the title.
+    /// </param>
+    /// <param name="disable">The exact routed bytes that pop the stack and restore the prior title.</param>
+    /// <returns>
+    /// True the first time this run acquires the lease, meaning the caller's already-written
+    /// <paramref name="enable"/> bytes are now paired with a guaranteed restoration; false on every
+    /// later call for the same run, meaning the stack was already pushed once and the caller must
+    /// not push it again.
+    /// </returns>
+    /// <remarks>
+    /// This lease is unlike every other one in this class: its enable bytes never travel through
+    /// <see cref="WriteAsync"/> here, because the title write path runs through the owning
+    /// application's own out-of-band queue rather than through this session's transport calls
+    /// directly. Only the resulting pair is recorded so <see cref="CleanupAsync"/> can unwind it in
+    /// the same reverse order as every other lease.
+    /// </remarks>
+    internal bool TryAcquireTitleLease(ReadOnlySpan<byte> enable, ReadOnlySpan<byte> disable)
+    {
+        lock (_lifecycle)
+        {
+            if (_titleLeaseAcquired)
+            {
+                return false;
+            }
+
+            _titleLeaseAcquired = true;
+            _leases.Add(new Lease(enable, disable));
+            return true;
+        }
     }
 
     private bool TryCreateDescriptionLease(

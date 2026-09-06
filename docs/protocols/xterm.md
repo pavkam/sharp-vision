@@ -92,6 +92,21 @@ Every fragmented size report produces the same owned `MetricsResponse`.
 Malformed decimal fields, zero dimensions, and values beyond `int.MaxValue` are
 rejected before capability discovery or pixel-to-cell mapping can consume them.
 
+## Title stack
+
+`Csi.PushTitle` and `Csi.PopTitle` write the XTWINOPS title-stack controls
+`CSI 22 ; 0 t` and `CSI 23 ; 0 t`. The runtime writes the push once, the first
+time a session sets a title through either the OSC 2 path or the described
+`tsl`/`fsl` terminfo path, immediately before that first title's own bytes; the
+matching pop is registered as a session lease and restored during reverse
+cleanup on every exit path, alongside the alternate screen, cursor, keypad,
+mouse, focus, paste, and Kitty keyboard modes. A later title in the same session
+omits the push, since the terminal's stack already holds the title that predates
+the application. A terminal without a title stack ignores both controls, so no
+capability gate beyond title support itself is required. An approved multiplexer
+route wraps the push and pop the same way it wraps the title itself, as two
+independent passthrough envelopes.
+
 ## Compatibility boundaries
 
 DEC originals remain distinct from xterm private modes. Typed DCS replies have

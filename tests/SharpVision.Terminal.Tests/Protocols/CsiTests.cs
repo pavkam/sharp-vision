@@ -130,6 +130,21 @@ public sealed class CsiTests
     }
 
     /// <summary>
+    /// Verifies the title-stack push and pop commands write exact XTWINOPS 22;0 and 23;0 bytes.
+    /// </summary>
+    [Fact]
+    public void TitleStack_WhenPushedAndPopped_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        Csi.PushTitle(writer);
+        Csi.PopTitle(writer);
+
+        destination.WrittenSpan.ToArray().ShouldBe("\u001b[22;0t\u001b[23;0t"u8.ToArray());
+    }
+
+    /// <summary>
     /// Verifies that invalid typed arguments fail before any bytes are written.
     /// </summary>
     [Fact]

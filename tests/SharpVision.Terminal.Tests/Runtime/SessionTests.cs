@@ -1336,6 +1336,43 @@ public sealed class SessionTests
             "\u001b[?1004l\u001b[?25h\u001b[?1049l");
     }
 
+    /// <summary>Verifies the title-stack lease unwinds in the same reverse order as every other
+    /// lease: acquired after the alternate screen is already active, its pop is written before
+    /// the alternate screen is left during cleanup, exactly as if it had been the last mode
+    /// enabled.</summary>
+    [Fact]
+    public async Task RunAsync_WhenTitleLeaseIsAcquiredAfterAlternateScreen_PopsBeforeLeavingItAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        Session? session = null;
+        var push = "\u001b[22;0t"u8.ToArray();
+        var pop = "\u001b[23;0t"u8.ToArray();
+        var sink = new RuntimeSink
+        {
+            // The out-of-band owner (an Application's TerminalServices) writes the push bytes
+            // itself; this hook only exercises the session's own bookkeeping side of the lease,
+            // fired synchronously from inside the session's own resize delivery so it lands
+            // after the alternate screen lease already acquired during startup.
+            OnResize = () => session!.TryAcquireTitleLease(push, pop).ShouldBeTrue()
+        };
+        var options = TerminalOptions.Minimal with { AlternateScreen = true };
+        await using Session ownedSession = new(transport, resize, sink, options);
+        session = ownedSession;
+        var running = ownedSession.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        resize.Resize(new Dimensions(new Size(80, 24)));
+        await sink.ResizeReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        transport.JoinedWrites.ShouldBe("\u001b[?1049h\u001b[23;0t\u001b[?1049l");
+    }
+
     /// <summary>
     /// Verifies resize is delivered with pixels before later closure.
     /// </summary>

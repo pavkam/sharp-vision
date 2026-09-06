@@ -34,6 +34,9 @@ public interface ITerminalServices
     /// <remarks>
     /// A described pair is emitted as opaque terminal-description programs and is
     /// not assumed to encode OSC 2. An unsupported title request is a byte-quiet no-op.
+    /// The first title set during a session pushes the terminal's title stack before writing the
+    /// title; the previous title is popped back automatically on every exit path, so a well-behaved
+    /// terminal or multiplexer never keeps this application's title after it closes.
     /// </remarks>
     /// <param name="title">The non-null title without terminal control characters.</param>
     /// <exception cref="ArgumentNullException"><paramref name="title"/> is null.</exception>

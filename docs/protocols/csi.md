@@ -31,13 +31,14 @@ reports default, value, invalid, overflow, count-limit, and end states.
 `Csi` encodes relative movement, absolute position, display/line erase,
 character/line insert and delete, scroll up/down, scroll-region set and reset
 (DECSTBM), ANSI cursor save and restore, DA1/DA2, cursor-position DSR, DECRQM,
-and xterm window-operation queries 14, 16, and 18 for text-area pixels,
-character-cell pixels, and text-area cells. `XtermResponses.TryMetricsCsi`
-accepts only matching 4/6/8 reports with positive dimensions no greater
-than 65535. `ProtocolModes` encodes cursor visibility, alternate screen 1049,
-focus 1004, bracketed paste 2004, synchronized output 2026, Kitty clipboard mode
-5522, and the mouse tracking (9/1000/1002/1003) and coordinate
-(1005/1006/1015/1016) modes.
+xterm window-operation queries 14, 16, and 18 for text-area pixels,
+character-cell pixels, and text-area cells, and the window-operation title stack
+push and pop (22;0 and 23;0). `XtermResponses.TryMetricsCsi` accepts only
+matching 4/6/8 reports with positive dimensions no greater than 65535.
+`ProtocolModes` encodes cursor visibility, alternate screen 1049, focus 1004,
+bracketed paste 2004, synchronized output 2026, Kitty clipboard mode 5522, and
+the mouse tracking (9/1000/1002/1003) and coordinate (1005/1006/1015/1016)
+modes.
 
 For an ANSI-compatible profile, the frame encoder detects contiguous rows that
 have moved vertically between committed and target frames. When the saved cell
