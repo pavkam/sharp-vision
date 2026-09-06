@@ -42,12 +42,26 @@ output, and both encoder paths gate on that predicate, so environment-only
 evidence emits no mode-2026 wrapping, no overline, no typed underline, and no
 underline color. Environment evidence remains observable, but it cannot silently
 enable a feature. `ColorDepth` separately records monochrome, 16-color,
-indexed-256, or true-color fidelity together with its origin. Presence of the
-`NO_COLOR` environment variable (any value, including empty, per the
-no-color.org convention) forces `ColorDepth.Monochrome`/`Origin.Environment`
-ahead of the `COLORTERM`/`TERM` heuristics, so a caller's explicit request to
-disable color output is never masked by a terminal that also happens to
-advertise truecolor or 256-color support.
+indexed-256, or true-color fidelity together with its origin, but it follows a
+different rule than every other feature: color evidence forms a lattice in which
+the environment may only raise fidelity above what the terminal description
+already established, or apply the user's own opt-out. A validated terminal
+description sets the color floor — including the informal `Tc` boolean and a
+validated `RGB` capability, both stronger true-color evidence than the numeric
+`colors` capability alone, since tmux and countless user configurations
+advertise 24-bit support that way even though the shared `xterm-256color`,
+`tmux-256color` and `screen-256color` entries all still say `colors#256`.
+`COLORTERM=truecolor`/`24bit`, the Kitty identity, and a bounded query's
+direct-color reply may each raise a `Default` or `Database` depth to
+`TrueColor`, but none of them can lower a depth or reach a `Query` or `Override`
+origin. Presence of the `NO_COLOR` environment variable with a non-empty value,
+per the no-color.org convention, is the one carve-out that runs the other way:
+it forces `ColorDepth.Monochrome`/`Origin.Environment` ahead of the
+`COLORTERM`/`TERM` heuristics and ahead of database and query color evidence
+alike, so a caller's explicit request to disable color output is never masked by
+a terminal that also happens to advertise truecolor or 256-color support. An
+empty `NO_COLOR` value leaves color evidence unaffected. Only an explicit
+`Settings.ColorDepth` override outranks `NO_COLOR` itself.
 
 The profile reports `UnicodeVersion` as the library's pinned Unicode 17.0.0 data
 and carries an explicit `AmbiguousWidth` policy. The policy defaults to narrow,
@@ -323,17 +337,20 @@ degrade safely on a terminal that does not understand them: conhost's own DCS
 parser answers an unrecognized DECRQSS status with a conformant `DCS 0 $ r ST`
 negative reply and consumes an unrecognized XTGETTCAP request the same way it
 discards any other unknown DCS. That status may publish query-origin
-`XtermKeyboard` support. RGB can refine only default or environment-only color
-evidence; database, prior-query, and override origins remain authoritative.
-`NO_COLOR` is the one carve-out within that environment-only case: once it has
-forced `Monochrome`/`Origin.Environment`, the RGB query must not refine that
-evidence even though its origin is otherwise refinable, so a live terminal that
-answers the direct-color probe can never silently override the caller's request
-to disable color. An explicit `Settings.ColorDepth`, or `NO_COLOR` itself,
-prevents the RGB query from registering or writing at all, which preserves its
-capacity slot for another probe. `Session` prefers proven Kitty keyboard
-support; otherwise it leases the configured xterm level and restores xterm's
-initial resource value during reverse cleanup.
+`XtermKeyboard` support. Color evidence is the one family where the query phase
+may raise, rather than merely narrow, a lower-precedence result: RGB can refine
+a default, environment, or database color depth, since a live direct-color reply
+is stronger evidence than any of the three, but prior-query and override origins
+remain authoritative. `NO_COLOR` with a non-empty value is the one carve-out
+that runs the other way: once it has forced `Monochrome`/`Origin.Environment`,
+the RGB query must not refine that evidence even though its origin is otherwise
+refinable, so a live terminal that answers the direct-color probe can never
+silently override the caller's request to disable color. An explicit
+`Settings.ColorDepth`, or `NO_COLOR` itself, prevents the RGB query from
+registering or writing at all, which preserves its capacity slot for another
+probe. `Session` prefers proven Kitty keyboard support; otherwise it leases the
+configured xterm level and restores xterm's initial resource value during
+reverse cleanup.
 
 Synchronous host dimensions are the highest-confidence geometry evidence.
 `TIOCGWINSZ` cells and pixels suppress the corresponding window queries before

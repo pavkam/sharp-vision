@@ -63,8 +63,9 @@ internal static class QueryEvidenceAdapter
         CapabilityResponse? response,
         IReadOnlyDictionary<string, string?> environment)
     {
-        if (environment.ContainsKey(EvidenceEnvironmentVars.NoColor) ||
-            value.ColorOrigin is not (Origin.Default or Origin.Environment) ||
+        if ((environment.TryGetValue(EvidenceEnvironmentVars.NoColor, out var noColor) &&
+                !string.IsNullOrEmpty(noColor)) ||
+            value.ColorOrigin is not (Origin.Default or Origin.Environment or Origin.Database) ||
             response is not { Valid: true } ||
             !response.Items.TryGetValue(CapabilityName.DirectColor, out var directColor))
         {

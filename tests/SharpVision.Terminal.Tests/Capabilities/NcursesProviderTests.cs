@@ -884,6 +884,53 @@ public sealed class NcursesProviderTests
         result.Profile.Capabilities.ColorDepth.ShouldBe(expected);
     }
 
+    /// <summary>Verifies the informal "Tc" boolean reports true color even though the shared
+    /// xterm-256color, tmux-256color, and screen-256color entries all still say colors#256 — tmux
+    /// and countless user configurations rely on this flag rather than an inflated color count.</summary>
+    [Fact]
+    public void Load_WhenColorsAre256AndTcFlagIsSet_ReportsTrueColor()
+    {
+        var native = ReadyNative();
+        native.SetNumber("colors", 256);
+        native.SetFlag("Tc", 1);
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        _ = result.Profile.ShouldNotBeNull();
+        result.Profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        result.Profile.Capabilities.ColorOrigin.ShouldBe(Origin.Database);
+    }
+
+    /// <summary>Verifies a validated RGB descriptor reports true color regardless of the numeric
+    /// colors capability, the same way the informal Tc boolean does.</summary>
+    [Fact]
+    public void Load_WhenColorsAre256AndRgbDescriptorIsValid_ReportsTrueColor()
+    {
+        var native = ReadyNative();
+        native.SetNumber("colors", 256);
+        native.SetFlag("RGB", 1);
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        _ = result.Profile.ShouldNotBeNull();
+        result.Profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        result.Profile.Capabilities.ColorOrigin.ShouldBe(Origin.Database);
+    }
+
+    /// <summary>Verifies a colors#256 entry without the Tc flag or a validated RGB descriptor still
+    /// reports only indexed-256 fidelity.</summary>
+    [Fact]
+    public void Load_WhenColorsAre256WithoutTcOrValidRgb_ReportsIndexed256()
+    {
+        var native = ReadyNative();
+        native.SetNumber("colors", 256);
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        _ = result.Profile.ShouldNotBeNull();
+        result.Profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
+    }
+
     /// <summary>Verifies relevant environment snapshot bounds include names even when values are absent.</summary>
     [Fact]
     public void Load_WhenLiveEnvironmentSnapshotExceedsLimit_RejectsBeforeSetup()

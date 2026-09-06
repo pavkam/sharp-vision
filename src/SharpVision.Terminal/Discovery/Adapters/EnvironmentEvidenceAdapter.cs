@@ -27,15 +27,26 @@ internal static class EnvironmentEvidenceAdapter
             _ = environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term);
             _ = environment.TryGetValue(EvidenceEnvironmentVars.ColorTerm, out var colorTerm);
             _ = environment.TryGetValue(EvidenceEnvironmentVars.TermProgram, out var program);
+            _ = environment.TryGetValue(EvidenceEnvironmentVars.NoColor, out var noColor);
             var kitty = Contains(term, "kitty");
             var xterm = Contains(term, "xterm");
+            var hasNoColor = !string.IsNullOrEmpty(noColor);
 
-            if (capabilities.ColorOrigin == Origin.Default &&
-                environment.ContainsKey(EvidenceEnvironmentVars.NoColor))
+            // Color evidence is a lattice: the environment may only raise fidelity above what the
+            // terminal description already established, or apply the user's own opt-out. NO_COLOR
+            // is checked first so it always wins over the truecolor upgrade below, and it outranks
+            // every color origin except an explicit override (which this adapter never sees, since
+            // overrides apply in a later discovery phase). The COLORTERM/kitty upgrade only ever
+            // raises a Default or Database depth that has not already reached TrueColor, so it can
+            // never lower evidence or reach past a Query or Override origin. The TERM=*256color
+            // heuristic stays subordinate to database evidence, gated on Origin.Default exactly as
+            // before.
+            if (hasNoColor && capabilities.ColorOrigin != Origin.Override)
             {
                 capabilities = capabilities with { ColorDepth = ColorDepth.Monochrome, ColorOrigin = Origin.Environment };
             }
-            else if (capabilities.ColorOrigin == Origin.Default &&
+            else if (capabilities.ColorOrigin is Origin.Default or Origin.Database &&
+                capabilities.ColorDepth != ColorDepth.TrueColor &&
                 (Contains(colorTerm, "truecolor") || Contains(colorTerm, "24bit") || kitty))
             {
                 capabilities = capabilities with { ColorDepth = ColorDepth.TrueColor, ColorOrigin = Origin.Environment };

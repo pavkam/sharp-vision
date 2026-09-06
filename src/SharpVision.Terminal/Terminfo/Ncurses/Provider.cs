@@ -196,7 +196,7 @@ internal sealed class Provider: IDescriptionProvider
         var flags = ReadFlags(native, diagnostics);
         var numbers = ReadNumbers(native, diagnostics);
         var strings = ReadStrings(native, request.Limits, diagnostics);
-        ValidateRgb(native, numbers.GetValueOrDefault("colors", -1), request.Limits, diagnostics);
+        var rgbValid = ValidateRgb(native, numbers.GetValueOrDefault("colors", -1), request.Limits, diagnostics);
         if (checked(environmentBytes + SnapshotSize(flags, numbers, strings)) >
             request.Limits.MaxDescriptionSnapshotBytes)
         {
@@ -233,7 +233,7 @@ internal sealed class Provider: IDescriptionProvider
             flags.GetValueOrDefault("am"),
             flags.GetValueOrDefault("bce"),
             flags.GetValueOrDefault("xenl"));
-        var capabilities = CreateCapabilities(colors, programs);
+        var capabilities = CreateCapabilities(colors, programs, flags, rgbValid);
 
         return new TerminalProfile(description, capabilities, programSet, keyMap);
     }
@@ -443,16 +443,26 @@ internal sealed class Provider: IDescriptionProvider
 
     private static TerminalCapabilities CreateCapabilities(
         int? colors,
-        IReadOnlyDictionary<string, DescriptionProgram> programs)
+        IReadOnlyDictionary<string, DescriptionProgram> programs,
+        IReadOnlyDictionary<string, bool> flags,
+        bool rgbValid)
     {
         var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
-        var colorDepth = colors switch
-        {
-            >= 16_777_216 => ColorDepth.TrueColor,
-            >= 256 => ColorDepth.Indexed256,
-            >= 16 => ColorDepth.Basic16,
-            _ => ColorDepth.Monochrome
-        };
+
+        // The informal "Tc" boolean and a validated RGB descriptor are both stronger true-color
+        // evidence than the numeric "colors" capability alone: they are how tmux and countless
+        // user configurations advertise 24-bit support even though the shared xterm-256color,
+        // tmux-256color and screen-256color entries all still say colors#256. Either one reports
+        // TrueColor regardless of what "colors" says.
+        var colorDepth = flags.GetValueOrDefault("Tc") || rgbValid
+            ? ColorDepth.TrueColor
+            : colors switch
+            {
+                >= 16_777_216 => ColorDepth.TrueColor,
+                >= 256 => ColorDepth.Indexed256,
+                >= 16 => ColorDepth.Basic16,
+                _ => ColorDepth.Monochrome
+            };
 
         return TerminalCapabilities.Conservative with
         {
@@ -608,7 +618,7 @@ internal sealed class Provider: IDescriptionProvider
         return bytes;
     }
 
-    private static void ValidateRgb(
+    private static bool ValidateRgb(
         INative native,
         int colors,
         DescriptionLimits limits,
@@ -636,6 +646,8 @@ internal sealed class Provider: IDescriptionProvider
         {
             diagnostics.Add(new DescriptionDiagnostic(DescriptionDiagnosticCode.InvalidProgram, "RGB"));
         }
+
+        return valid;
     }
 
     [Pure]

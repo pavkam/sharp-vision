@@ -16,8 +16,8 @@ internal static class EvidenceEnvironmentVars
     /// <summary>The color-capability hint some terminals set independently of TERM.</summary>
     public const string ColorTerm = "COLORTERM";
 
-    /// <summary>Presence (any value, including empty) requests that color output be
-    /// disabled, per the no-color.org convention.</summary>
+    /// <summary>Presence with a non-empty value requests that color output be disabled, per the
+    /// no-color.org convention; an empty value leaves color evidence unaffected.</summary>
     public const string NoColor = "NO_COLOR";
 
     /// <summary>The terminal application's own self-identification.</summary>

@@ -162,9 +162,10 @@ public sealed class DiscoveryPipelineTests
             new Feature(CapabilitySupport.Supported, Origin.Override));
     }
 
-    /// <summary>Verifies tentative environment hints cannot erase accepted database evidence.</summary>
+    /// <summary>Verifies tentative environment hints cannot erase accepted database evidence for
+    /// features that are not part of the color lattice.</summary>
     [Fact]
-    public void Detect_WhenBaselineHasDatabaseEvidence_PreservesItOverHint()
+    public void Detect_WhenBaselineHasDatabaseEvidence_PreservesFeatureHintOverHint()
     {
         var database = new Feature(CapabilitySupport.Supported, Origin.Database);
         var baseline = TerminalCapabilities.Conservative with
@@ -173,17 +174,95 @@ public sealed class DiscoveryPipelineTests
             ColorDepth = ColorDepth.Indexed256,
             ColorOrigin = Origin.Database
         };
-        var environment = new Dictionary<string, string?>
-        {
-            ["TERM"] = "xterm-kitty",
-            ["COLORTERM"] = "truecolor"
-        };
+        var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
 
         var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
 
         capabilities.FocusReporting.ShouldBe(database);
         capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
         capabilities.ColorOrigin.ShouldBe(Origin.Database);
+    }
+
+    /// <summary>Verifies a terminal-set COLORTERM=truecolor raises a database color depth, since it
+    /// is stronger, more specific evidence than a terminfo entry shared by dozens of terminals.</summary>
+    [Fact]
+    public void Detect_WhenBaselineHasDatabaseColorEvidenceAndColortermIsTruecolor_UpgradesToTrueColor()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+        var environment = new Dictionary<string, string?>
+        {
+            ["TERM"] = "xterm-256color",
+            ["COLORTERM"] = "truecolor"
+        };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        capabilities.ColorOrigin.ShouldBe(Origin.Environment);
+    }
+
+    /// <summary>Verifies the COLORTERM upgrade never lowers evidence or steals credit for a color
+    /// depth the database already established as TrueColor.</summary>
+    [Fact]
+    public void Detect_WhenBaselineHasDatabaseTrueColorAndColortermIsTruecolor_LeavesOriginUnchanged()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.TrueColor,
+            ColorOrigin = Origin.Database
+        };
+        var environment = new Dictionary<string, string?> { ["COLORTERM"] = "truecolor" };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        capabilities.ColorOrigin.ShouldBe(Origin.Database);
+    }
+
+    /// <summary>Verifies an unrecognized COLORTERM value cannot raise database color evidence.</summary>
+    [Fact]
+    public void Detect_WhenBaselineHasDatabaseColorEvidenceAndColortermIsUnrecognized_LeavesItUnchanged()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+        var environment = new Dictionary<string, string?> { ["COLORTERM"] = "yes" };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
+        capabilities.ColorOrigin.ShouldBe(Origin.Database);
+    }
+
+    /// <summary>Verifies a bounded query's direct-color reply can raise a database color depth,
+    /// since a live terminal reply is stronger evidence than any of default, environment, or
+    /// database origin.</summary>
+    [Fact]
+    public void Detect_WhenBaselineHasDatabaseColorEvidenceAndQueryConfirmsDirectColor_UpgradesToTrueColor()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+        var queries = new QueryResults
+        {
+            CapabilityString = new CapabilityResponse(
+                isValid: true,
+                new Dictionary<CapabilityName, byte[]> { [CapabilityName.DirectColor] = "24"u8.ToArray() })
+        };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(
+            new DiscoveryContext(baseline, new Dictionary<string, string?>(), queries));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        capabilities.ColorOrigin.ShouldBe(Origin.Query);
     }
 
     /// <summary>Verifies presence of NO_COLOR forces monochrome ahead of color heuristics.</summary>
@@ -199,18 +278,52 @@ public sealed class DiscoveryPipelineTests
         capabilities.ColorOrigin.ShouldBe(Origin.Environment);
     }
 
-    /// <summary>Verifies NO_COLOR forces monochrome by presence alone, even with an empty value,
-    /// per the no-color.org convention.</summary>
+    /// <summary>Verifies an empty NO_COLOR value leaves color evidence unaffected, per the
+    /// no-color.org convention, which applies the opt-out only when the variable is present and
+    /// non-empty.</summary>
     [Fact]
-    public void Detect_WhenNoColorIsEmptyString_StillForcesMonochrome()
+    public void Detect_WhenNoColorIsEmptyString_LeavesColorUnaffected()
     {
         var environment = new Dictionary<string, string?> { ["NO_COLOR"] = "" };
 
         var capabilities = DiscoveryPipeline.Default.Detect(
             new DiscoveryContext(TerminalCapabilities.Conservative, environment));
 
+        capabilities.ColorDepth.ShouldBe(TerminalCapabilities.Conservative.ColorDepth);
+        capabilities.ColorOrigin.ShouldBe(Origin.Default);
+    }
+
+    /// <summary>Verifies NO_COLOR forces monochrome over database color evidence, the same way it
+    /// outranks every other color origin below an explicit override.</summary>
+    [Fact]
+    public void Detect_WhenBaselineHasDatabaseEvidenceAndNoColorIsPresent_NoColorForcesMonochrome()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+        var environment = new Dictionary<string, string?> { ["NO_COLOR"] = "1" };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
+
         capabilities.ColorDepth.ShouldBe(ColorDepth.Monochrome);
         capabilities.ColorOrigin.ShouldBe(Origin.Environment);
+    }
+
+    /// <summary>Verifies an explicit override still wins over NO_COLOR, the only origin NO_COLOR
+    /// cannot outrank.</summary>
+    [Fact]
+    public void Detect_WhenNoColorIsPresentAndOverrideSetsColorDepth_OverrideWins()
+    {
+        var environment = new Dictionary<string, string?> { ["NO_COLOR"] = "1" };
+        var overrides = new CapabilityOverrides { ColorDepth = ColorDepth.TrueColor };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(
+            new DiscoveryContext(TerminalCapabilities.Conservative, environment, queries: null, overrides));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        capabilities.ColorOrigin.ShouldBe(Origin.Override);
     }
 
     /// <summary>Verifies NO_COLOR wins over a simultaneously present COLORTERM hint.</summary>
@@ -228,24 +341,6 @@ public sealed class DiscoveryPipelineTests
 
         capabilities.ColorDepth.ShouldBe(ColorDepth.Monochrome);
         capabilities.ColorOrigin.ShouldBe(Origin.Environment);
-    }
-
-    /// <summary>Verifies database color evidence still outranks NO_COLOR, same as every other
-    /// environment hint — NO_COLOR is a hint-only hint, not a database or override origin.</summary>
-    [Fact]
-    public void Detect_WhenBaselineHasDatabaseEvidenceAndNoColorIsPresent_PreservesDatabaseOverHint()
-    {
-        var baseline = TerminalCapabilities.Conservative with
-        {
-            ColorDepth = ColorDepth.Indexed256,
-            ColorOrigin = Origin.Database
-        };
-        var environment = new Dictionary<string, string?> { ["NO_COLOR"] = "1" };
-
-        var capabilities = DiscoveryPipeline.Default.Detect(new DiscoveryContext(baseline, environment));
-
-        capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
-        capabilities.ColorOrigin.ShouldBe(Origin.Database);
     }
 
     /// <summary>Verifies each phase receives evidence in the fixed database, query, and override precedence order.</summary>

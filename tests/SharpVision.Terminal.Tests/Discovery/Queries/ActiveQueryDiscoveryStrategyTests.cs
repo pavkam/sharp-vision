@@ -1217,9 +1217,10 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         detected.ColorOrigin.ShouldBe(Origin.Query);
     }
 
-    /// <summary>Verifies query color refinement cannot replace authoritative evidence or use unrelated values.</summary>
+    /// <summary>Verifies query color refinement cannot replace prior-query or override evidence, or
+    /// use an unrelated or negative capability value.</summary>
     [Fact]
-    public void Detect_WhenColorEvidenceIsAuthoritativeOrNonDirect_PreservesExistingColor()
+    public void Detect_WhenColorEvidenceIsQueryOrOverrideOrNonDirect_PreservesExistingColor()
     {
         var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
         var negative = CapabilityDetector.Detect(
@@ -1228,15 +1229,6 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var unrelated = CapabilityDetector.Detect(
             environment,
             new QueryResults { CapabilityString = Capability("6B63757531=1B5B41"u8) });
-        var database = TerminalCapabilities.Conservative with
-        {
-            ColorDepth = ColorDepth.Indexed256,
-            ColorOrigin = Origin.Database
-        };
-        var authoritative = CapabilityDetector.Detect(
-            database,
-            environment,
-            new QueryResults { CapabilityString = Capability("524742=3234"u8) });
         var queryBaseline = CapabilityDetector.Detect(
             TerminalCapabilities.Conservative with
             {
@@ -1258,12 +1250,31 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negative.ColorOrigin.ShouldBe(Origin.Environment);
         unrelated.ColorDepth.ShouldBe(ColorDepth.Indexed256);
         unrelated.ColorOrigin.ShouldBe(Origin.Environment);
-        authoritative.ColorDepth.ShouldBe(ColorDepth.Indexed256);
-        authoritative.ColorOrigin.ShouldBe(Origin.Database);
         queryBaseline.ColorDepth.ShouldBe(ColorDepth.Indexed256);
         queryBaseline.ColorOrigin.ShouldBe(Origin.Query);
         overrideBaseline.ColorDepth.ShouldBe(ColorDepth.Basic16);
         overrideBaseline.ColorOrigin.ShouldBe(Origin.Override);
+    }
+
+    /// <summary>Verifies a validated direct-color reply can raise a database color depth, since a
+    /// live terminal reply is stronger evidence than the terminfo entry it refines.</summary>
+    [Fact]
+    public void Detect_WhenColorEvidenceIsDatabaseAndQueryConfirmsDirectColor_UpgradesToTrueColor()
+    {
+        var environment = new Dictionary<string, string?> { ["TERM"] = "xterm-256color" };
+        var database = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+
+        var upgraded = CapabilityDetector.Detect(
+            database,
+            environment,
+            new QueryResults { CapabilityString = Capability("524742=3234"u8) });
+
+        upgraded.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        upgraded.ColorOrigin.ShouldBe(Origin.Query);
     }
 
     /// <summary>Verifies an explicit color override suppresses RGB bytes and tracker capacity.</summary>
