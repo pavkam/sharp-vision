@@ -168,8 +168,21 @@ public static class FrameEncoder
             }
         }
 
+        // An eager-wrap description (am without xenl) never has its bottom-right cell written
+        // below: the write loop truncates writeEnd one column short of the margin there, so the
+        // real screen's bottom-right glyph can differ from what the retained front/back models
+        // both agree it is (Renderer.CommitFront copies back into front wholesale, cell skipped
+        // or not). Damage.TryFindVerticalScroll compares those in-memory models, so it would
+        // treat the bottom row as an eligible scroll source and, once a real csr/scroll moves the
+        // stale on-screen content into a row the model already considers matched, that wrong
+        // content would never be repainted. Disabling the scroll path entirely for this
+        // description shape keeps every row's content honestly re-derived from cup-positioned
+        // writes instead.
+        var eagerWrapProfile = IsEagerWrapProfile(profile);
+
         if (!redraw &&
             profile.AnsiCompatible &&
+            !eagerWrapProfile &&
             Damage.TryFindVerticalScroll(
                 front!,
                 back,
@@ -233,10 +246,7 @@ public static class FrameEncoder
             // never print into the bottom-right cell at all on such a terminal, and this mirrors
             // that: the row's write is truncated one column short of the margin so the cell is
             // left showing whatever was already there instead of ever being touched.
-            var eagerBottomRow =
-                profile.Description.AutomaticMargins &&
-                !profile.Description.EatNewlineGlitch &&
-                span.Row == back.Size.Height - 1;
+            var eagerBottomRow = eagerWrapProfile && span.Row == back.Size.Height - 1;
             var writeEnd = eagerBottomRow ? Math.Min(end, back.Size.Width - 1) : end;
 
             for (var column = span.Start; column < writeEnd; column++)
@@ -317,14 +327,18 @@ public static class FrameEncoder
                 WriteRequired(profile, interpreter, destination, "cup", span.Row, end - 1);
             }
 
-            // The bottom-right cell an eager-wrap terminal skips above is never revisited by a
-            // later frame's damage detection: Renderer.CommitFront copies every cell of "back"
+            // The bottom-right cell an eager-wrap terminal skips above is permanently
+            // untouchable, not merely delayed: Renderer.CommitFront copies every cell of "back"
             // into the retained "front" model wholesale (Frame.CopyFrom), not only the cells this
-            // call actually wrote. So the in-memory model already agrees with "back" for that
-            // cell once this call returns, and DamageEnumerator's front-vs-back comparison finds
-            // no difference there next frame - the skip does not turn into a repeated retry. The
-            // real terminal glyph at that position can lag by one generation until it changes
-            // again, which is the same trade-off ncurses makes for this terminal shape.
+            // call actually wrote, so the in-memory model claims that cell already holds whatever
+            // content "back" specifies even though the real screen was never sent it. Later
+            // frames' plain cup-and-rewrite damage re-derives every visible cell from span writes
+            // regardless of what the model believes, so that mismatch stays harmless there - but
+            // Damage.TryFindVerticalScroll instead trusts the front/back models' agreement to
+            // decide a real csr/scroll is safe, which would carry the screen's stale glyph into a
+            // row the model then considers already correct and never repaint it. That is exactly
+            // why the scroll path above is disabled outright for this description shape, the same
+            // trade-off ncurses makes for this terminal shape.
         }
 
         ResetStyle(destination, style, profile, interpreter);
@@ -438,6 +452,22 @@ public static class FrameEncoder
         semanticStyle = semantic.Value;
         return profile.Programs.TryWrite("el", [], interpreter, destination);
     }
+
+    /// <summary>Determines whether a description's automatic margins wrap eagerly.</summary>
+    /// <param name="profile">The non-null terminal profile.</param>
+    /// <returns>
+    /// Whether the description declares automatic margins (<c>am</c>) without deferred wrap
+    /// (<c>xenl</c>) - the classic <c>vt100</c> shape that wraps, and on the bottom row scrolls,
+    /// as part of writing the final column itself. The vertical-scroll optimization must never be
+    /// used for such a description: its bottom-right cell is permanently left unwritten by the
+    /// write loop below, so the retained front/back frame models can disagree with the real screen
+    /// there even though both models agree with each other, and <see cref="Damage.TryFindVerticalScroll"/>
+    /// - which compares only those models - would otherwise treat the bottom row as a legitimate
+    /// scroll source and carry that stale on-screen content into a row the models then believe is
+    /// already correct.
+    /// </returns>
+    internal static bool IsEagerWrapProfile(TerminalProfile profile) =>
+        profile.Description.AutomaticMargins && !profile.Description.EatNewlineGlitch;
 
     private static bool UsesFallback(
         CellStyle semantic,

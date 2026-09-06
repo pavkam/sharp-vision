@@ -769,6 +769,61 @@ public sealed class FrameEncoderTests
         destination.WrittenSpan.IndexOf("\u001b[1;3H"u8).ShouldBeLessThan(0);
     }
 
+    /// <summary>Verifies <see cref="FrameEncoder.IsEagerWrapProfile"/> requires automatic margins
+    /// without deferred wrap: a description without "am" has no wrap shape the vertical-scroll
+    /// optimization needs to worry about, one with "am" and "xenl" is the deferred-wrap shape the
+    /// absolute-cursor repair already handles safely, and only "am" without "xenl" is the eager-wrap
+    /// shape that must disable the optimization.</summary>
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    public void IsEagerWrapProfile_ReturnsExpectedForDescriptionShape(
+        bool automaticMargins,
+        bool eatNewlineGlitch,
+        bool expected)
+    {
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            CorePrograms(),
+            automaticMargins: automaticMargins,
+            eatNewlineGlitch: eatNewlineGlitch);
+
+        FrameEncoder.IsEagerWrapProfile(profile).ShouldBe(expected);
+    }
+
+    /// <summary>Verifies an eager-wrap (am without xenl) description never uses the vertical-scroll
+    /// optimization, even when given rows shaped exactly like the classic scroll case that
+    /// <see cref="Encode_WhenRowsScrollUp_WritesRegionScrollResetAndExposedRow"/> exercises on a
+    /// deferred-wrap description. The write loop leaves an eager-wrap bottom row's final column
+    /// permanently unwritten, so the real screen there can lag behind what the retained front/back
+    /// frame models both agree it holds; Damage.TryFindVerticalScroll only ever compares those
+    /// models, so it would still report the bottom row as a legitimate scroll source. Reusing that
+    /// scroll would carry the screen's stale glyph into whatever row the scroll moved it to, and
+    /// later damage enumeration would then believe that row already matches and never repaint it.
+    /// Repainting every changed row through plain "cup"-positioned writes instead - what this test
+    /// confirms happens - keeps every cell honestly re-derived every frame.</summary>
+    [Fact]
+    public void Encode_WhenEagerWrapDescriptionHasScrollShapedRows_NeverEmitsScrollRegion()
+    {
+        using var front = CreateRows("head", "1111", "2222", "3333", "4444");
+        using var back = CreateRows("head", "2222", "3333", "4444", "5555");
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            CorePrograms(),
+            automaticMargins: true,
+            eatNewlineGlitch: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(front, back, destination, profile);
+
+        destination.WrittenSpan.IndexOf("[2;5r"u8).ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("[1S"u8).ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("2222"u8).ShouldBeGreaterThanOrEqualTo(0);
+        destination.WrittenSpan.IndexOf("555"u8).ShouldBeGreaterThanOrEqualTo(0);
+    }
+
     /// <summary>Verifies the continuation-cell check runs before the overlay branch, so a cell
     /// overlay that (incorrectly) lands on a wide glyph's continuation cell is skipped instead of
     /// emitting a spurious placeholder column. A placeholder is always exactly one protocol

@@ -423,6 +423,12 @@ region, one scroll-up or scroll-down operation, and an immediate region reset;
 only exposed and independently changed rows remain damaged. Overlay-aware row
 equality lets eligible Kitty placeholder cells move in that same operation.
 Unprojected graphics and non-beneficial candidates stay on absolute repaint.
+This recognition is skipped outright for an eager-wrap description (`am` without
+`xenl`, described below): its bottom row's final column is never written, so the
+retained frame models can agree with each other about that cell while the real
+screen still shows older content, and a scroll would carry that stale glyph into
+whatever row it lands on before later damage enumeration - which trusts the same
+models - ever notices the difference.
 
 Rapid blink lowers to ordinary blink when only `blink` is described and is
 omitted when neither form is available. Other unavailable visual attributes are
