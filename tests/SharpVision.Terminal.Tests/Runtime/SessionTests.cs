@@ -1360,11 +1360,16 @@ public sealed class SessionTests
         var pop = "\u001b[23;0t"u8.ToArray();
         var sink = new RuntimeSink
         {
-            // The out-of-band owner (an Application's TerminalServices) writes the push bytes
-            // itself; this hook only exercises the session's own bookkeeping side of the lease,
-            // fired synchronously from inside the session's own resize delivery so it lands
-            // after the alternate screen lease already acquired during startup.
-            OnResize = () => session!.TryAcquireTitleLease(push, pop).ShouldBeTrue()
+            // The out-of-band owner (an Application's TerminalServices) reserves the slot, writes
+            // the push bytes itself, and only then confirms; this hook only exercises the session's
+            // own bookkeeping side of that reserve/confirm pair, fired synchronously from inside the
+            // session's own resize delivery so it lands after the alternate screen lease already
+            // acquired during startup.
+            OnResize = () =>
+            {
+                session!.TryReserveTitleLease().ShouldBeTrue();
+                session.ConfirmTitleLease(push, pop).ShouldBeTrue();
+            }
         };
         var options = TerminalOptions.Minimal with { AlternateScreen = true };
         await using Session ownedSession = new(transport, resize, sink, options);
@@ -1380,6 +1385,29 @@ public sealed class SessionTests
 
         // Assert
         transport.JoinedWrites.ShouldBe("\u001b[?1049h\u001b[23;0t\u001b[?1049l");
+    }
+
+    /// <summary>Verifies a title-stack reservation attempted once a run's reverse cleanup has
+    /// already finished is refused rather than silently granted - the same guard that also refuses
+    /// a reservation racing the very start of that cleanup walk, so a caller can never register a
+    /// pop lease this run's cleanup will never get a chance to unwind.</summary>
+    [Fact]
+    public async Task TryReserveTitleLease_WhenTheRunHasAlreadyCleanedUp_ReturnsFalseAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        transport.Close();
+        await running;
+
+        // Assert
+        session.TryReserveTitleLease().ShouldBeFalse();
     }
 
     /// <summary>

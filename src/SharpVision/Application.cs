@@ -2630,31 +2630,52 @@ public sealed class Application:
 
     /// <summary>Buffers out-of-band protocol bytes and drains them on the dispatcher.</summary>
     /// <param name="bytes">The exact bytes to write; flushed only when no frame render is in flight.</param>
-    internal void PostOutOfBand(ReadOnlyMemory<byte> bytes)
+    /// <remarks>
+    /// Most callers do not need to know whether the bytes were actually queued once stopping
+    /// silently discards them - see <see cref="TryPostOutOfBand"/> for the one caller that does.
+    /// </remarks>
+    internal void PostOutOfBand(ReadOnlyMemory<byte> bytes) => _ = TryPostOutOfBand(bytes);
+
+    /// <summary>
+    /// Buffers out-of-band protocol bytes and drains them on the dispatcher, reporting whether they
+    /// were actually queued.
+    /// </summary>
+    /// <param name="bytes">The exact bytes to write; flushed only when no frame render is in flight.</param>
+    /// <returns>
+    /// True when the bytes were queued (they still reach the transport, ordinary flush failures
+    /// aside) or the call was a byte-quiet no-op because <paramref name="bytes"/> was empty. False
+    /// once <c>_stopping</c> is already observed true, meaning these exact bytes were silently
+    /// dropped. The title-stack lease is the caller that cares: committing a pop lease for a push
+    /// that this method just dropped would leave the session's reverse-cleanup walk writing an
+    /// unpaired pop that could restore an entry an enclosing shell or multiplexer pushed itself,
+    /// not this application's own.
+    /// </returns>
+    internal bool TryPostOutOfBand(ReadOnlyMemory<byte> bytes)
     {
         if (bytes.IsEmpty)
         {
-            return;
+            return true;
         }
 
         lock (_gate)
         {
             if (_stopping)
             {
-                return;
+                return false;
             }
 
             _outOfBand.Write(bytes.Span);
 
             if (_outOfBandWake)
             {
-                return;
+                return true;
             }
 
             _outOfBandWake = true;
         }
 
         PostOrResetWake(DrainOutOfBand, () => _outOfBandWake = false);
+        return true;
     }
 
     private void DrainOutOfBand()

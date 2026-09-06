@@ -43,6 +43,13 @@ public sealed class Session: IAsyncDisposable
     // flag guards against a title set many times over one run from registering the pop more than
     // once, which would otherwise unbalance the terminal's own title stack during cleanup.
     private bool _titleLeaseAcquired;
+    // Set once, under _lifecycle, at the very start of CleanupAsync's reverse walk. A title
+    // reservation or confirmation observed after this point must refuse: CleanupAsync reads
+    // _leases without taking _lifecycle again for the walk itself, so an addition arriving after
+    // the walk already started reading the list could either race the unsynchronized read or, even
+    // if it did not, would never be visited by a walk whose bounds are already fixed - either way
+    // its pop would never run.
+    private bool _cleanupStarted;
 
     #region Construction and lifecycle
 
@@ -438,6 +445,7 @@ public sealed class Session: IAsyncDisposable
     {
         Debug.Assert(_leases.Count == 0, "A new session run starts without retained terminal-mode leases.");
         _titleLeaseAcquired = false;
+        _cleanupStarted = false;
         var alternateScreenActive = false;
         var cursorHiddenActive = false;
 
@@ -644,20 +652,52 @@ public sealed class Session: IAsyncDisposable
     }
 
     /// <summary>
-    /// Registers the terminal title-stack push/pop lease at most once per run, so a title later set
-    /// through the terminal output services facade is restored during reverse cleanup on every exit
-    /// path - the same guarantee already given to the alternate screen, cursor, keypad, mouse,
+    /// Reserves this run's one-time title-stack lease slot, before the caller has built or enqueued
+    /// any push bytes, so at most one caller ever becomes this session's title pusher and a caller
+    /// arriving once reverse cleanup has begun never reserves a slot whose pop could never run.
+    /// </summary>
+    /// <returns>
+    /// True when this call becomes the session's title pusher: the caller must follow with exactly
+    /// one of <see cref="ConfirmTitleLease"/>, once its push bytes are actually enqueued, or
+    /// <see cref="ReleaseTitleLease"/>, if they never reach the wire. False when a pusher already
+    /// exists for this run or reverse cleanup already began, in which case the caller must not
+    /// write a push at all and must not call either follow-up method.
+    /// </returns>
+    /// <remarks>
+    /// Splitting reservation from the commit in <see cref="ConfirmTitleLease"/> is what lets the
+    /// caller defer recording the pop until it knows the matching push genuinely reached the
+    /// application's out-of-band queue - committing eagerly, before that queue's own
+    /// <c>_stopping</c> check could still silently drop the bytes, is what previously let
+    /// <see cref="CleanupAsync"/> write a pop with no preceding push ever written.
+    /// </remarks>
+    internal bool TryReserveTitleLease()
+    {
+        lock (_lifecycle)
+        {
+            if (_cleanupStarted || _titleLeaseAcquired)
+            {
+                return false;
+            }
+
+            _titleLeaseAcquired = true;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Commits a reservation from <see cref="TryReserveTitleLease"/> now that its push bytes were
+    /// actually enqueued, recording the matching pop as a reverse-cleanup lease restored on every
+    /// exit path - the same guarantee already given to the alternate screen, cursor, keypad, mouse,
     /// focus, paste, and Kitty keyboard modes.
     /// </summary>
-    /// <param name="enable">
-    /// The exact routed bytes the caller already wrote, out of band, to push the title.
-    /// </param>
+    /// <param name="enable">The exact routed bytes already enqueued to push the title.</param>
     /// <param name="disable">The exact routed bytes that pop the stack and restore the prior title.</param>
     /// <returns>
-    /// True the first time this run acquires the lease, meaning the caller's already-written
-    /// <paramref name="enable"/> bytes are now paired with a guaranteed restoration; false on every
-    /// later call for the same run, meaning the stack was already pushed once and the caller must
-    /// not push it again.
+    /// True once the lease is recorded for reverse cleanup. False when reverse cleanup began in the
+    /// narrow window between the reservation and this call - the caller's push already reached the
+    /// application's out-of-band queue in that case, but no pop will ever be written for it, since
+    /// this session cannot hold <see cref="_lifecycle"/> across the caller's own enqueue without
+    /// coupling this class's lock to the owning application's.
     /// </returns>
     /// <remarks>
     /// This lease is unlike every other one in this class: its enable bytes never travel through
@@ -666,18 +706,32 @@ public sealed class Session: IAsyncDisposable
     /// directly. Only the resulting pair is recorded so <see cref="CleanupAsync"/> can unwind it in
     /// the same reverse order as every other lease.
     /// </remarks>
-    internal bool TryAcquireTitleLease(ReadOnlySpan<byte> enable, ReadOnlySpan<byte> disable)
+    internal bool ConfirmTitleLease(ReadOnlySpan<byte> enable, ReadOnlySpan<byte> disable)
     {
         lock (_lifecycle)
         {
-            if (_titleLeaseAcquired)
+            Debug.Assert(_titleLeaseAcquired, "A confirm always follows a successful reservation.");
+
+            if (_cleanupStarted)
             {
                 return false;
             }
 
-            _titleLeaseAcquired = true;
             _leases.Add(new Lease(enable, disable));
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Releases a reservation from <see cref="TryReserveTitleLease"/> whose push bytes never
+    /// actually reached the application's out-of-band queue, so this run's title-stack slot never
+    /// records a pop for a push that was never written.
+    /// </summary>
+    internal void ReleaseTitleLease()
+    {
+        lock (_lifecycle)
+        {
+            _titleLeaseAcquired = false;
         }
     }
 
@@ -1444,6 +1498,18 @@ public sealed class Session: IAsyncDisposable
 
     private async ValueTask CleanupAsync()
     {
+        lock (_lifecycle)
+        {
+            // Setting this under the same lock TryReserveTitleLease and ConfirmTitleLease check
+            // closes the race between this reverse walk and a concurrent SetTitle call: every
+            // addition to _leases from here on happens strictly under _lifecycle too, so either it
+            // completed before this critical section (already visible below, happens-before this
+            // point) or it is refused because this flag is now true. Either way, nothing mutates
+            // _leases again after this line, so reading it unsynchronized for the rest of this walk
+            // is safe.
+            _cleanupStarted = true;
+        }
+
         var timeout = new CancellationTokenSource(
             _options.CleanupTimeout,
             _timeProvider);

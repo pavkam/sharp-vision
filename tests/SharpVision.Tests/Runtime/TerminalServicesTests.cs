@@ -430,6 +430,91 @@ public sealed class TerminalServicesTests
         touchedTitleStack.ShouldBeFalse();
     }
 
+    /// <summary>Verifies two concurrent first-time SetTitle calls never let a title reach the wire
+    /// ahead of the push that must precede it. Deciding which caller becomes this session's title
+    /// pusher, building the combined push+title bytes, and enqueuing them is one atomic step, so a
+    /// losing caller's title-only bytes - built the instant it observes the lease already taken -
+    /// can never overtake the winning caller's still in-flight combined enqueue. Before that
+    /// decide-build-enqueue sequence was one critical section, the two steps were guarded by two
+    /// different locks (the session's own lease lock, and the application's out-of-band queue
+    /// lock), leaving a window for exactly that overtake.</summary>
+    [Fact]
+    public async Task SetTitle_WhenCalledConcurrentlyForTheFirstTime_NeverWritesATitleAheadOfThePushAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var firstTitleSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondTitleSeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.IndexOf("\u001b]2;race-a"u8) >= 0)
+            {
+                _ = firstTitleSeen.TrySetResult();
+            }
+
+            if (memory.Span.IndexOf("\u001b]2;race-b"u8) >= 0)
+            {
+                _ = secondTitleSeen.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        using var start = new Barrier(3);
+
+        var titleA = Task.Run(() =>
+        {
+            _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            application.Terminal.SetTitle("race-a");
+        }, TestContext.Current.CancellationToken);
+        var titleB = Task.Run(() =>
+        {
+            _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            application.Terminal.SetTitle("race-b");
+        }, TestContext.Current.CancellationToken);
+        _ = start.SignalAndWait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await Task.WhenAll(titleA, titleB);
+
+        await firstTitleSeen.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await secondTitleSeen.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        var combined = terminal.Writes.SelectMany(static write => write).ToArray();
+        var pushIndex = combined.AsSpan().IndexOf("\u001b[22;0t"u8);
+        var titleIndex = combined.AsSpan().IndexOf("\u001b]2;"u8);
+
+        pushIndex.ShouldBeGreaterThanOrEqualTo(0);
+        titleIndex.ShouldBeGreaterThanOrEqualTo(0);
+        pushIndex.ShouldBeLessThan(titleIndex);
+
+        // Exactly one push ever reaches the wire, no matter which caller won the reservation.
+        var afterPush = pushIndex + "\u001b[22;0t"u8.Length;
+        combined.AsSpan(afterPush).IndexOf("\u001b[22;0t"u8).ShouldBe(-1);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a first-time SetTitle call issued once stop has already begun neither
+    /// pushes nor pops the title stack. The reservation the push would need is refused once the
+    /// session's reverse cleanup has already run to completion, so no push ever reaches the wire -
+    /// and, since the reservation itself was refused rather than granted and then abandoned, no
+    /// pop lease was ever committed for cleanup to unwind either.</summary>
+    [Fact]
+    public async Task SetTitle_WhenCalledForTheFirstTimeAfterStopHasBegun_WritesNoPushOrPopAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("too-late");
+
+        var touchedTitleStack = terminal.Writes.Any(static write =>
+            write.AsSpan().IndexOf("\u001b[22;0t"u8) >= 0 ||
+            write.AsSpan().IndexOf("\u001b[23;0t"u8) >= 0);
+        touchedTitleStack.ShouldBeFalse();
+    }
+
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>
     /// <param name="source">The bell program with a broken zero-parameter contract.</param>
     [Theory]

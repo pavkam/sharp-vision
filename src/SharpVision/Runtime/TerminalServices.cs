@@ -19,6 +19,9 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     private readonly Application _application;
     private readonly MultiplexerRoute? _multiplexerRoute;
     private readonly Lock _programGate = new();
+    // SetTitle is rare enough that a plain lock around its whole decide-build-enqueue sequence
+    // costs nothing, and it is what keeps that sequence atomic - see PostTitle.
+    private readonly Lock _titleGate = new();
     private ProgramExpander? _expander;
     private KittyClipboardTransaction? _kittyPasteTransaction;
     private DispatcherTimer? _kittyPasteTimeoutTimer;
@@ -198,22 +201,51 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// before, independent of which mechanism wrote it.
     /// </summary>
     /// <param name="routedTitle">The complete, already routed title-setting bytes.</param>
+    /// <remarks>
+    /// Deciding whether this call is the one that pushes
+    /// (<see cref="Terminal.Runtime.Session.TryReserveTitleLease"/>, atomic under the session's own
+    /// lock), building the combined push+title bytes, and enqueuing
+    /// them (<see cref="Application.TryPostOutOfBand"/>, serialized only by the application's own
+    /// lock) has to be one critical section here. Without it, a second thread that lost the
+    /// reservation race - and so has only its own title-only bytes to enqueue - could still win the
+    /// race to actually reach <see cref="Application.TryPostOutOfBand"/> first, ahead of the first
+    /// thread's still-in-flight combined enqueue, putting a title on the wire with no push before
+    /// it. <see cref="_titleGate"/> is a plain lock local to this rare call rather than a change to
+    /// either of those hotter-path types, since <see cref="SetTitle"/> is never called often enough
+    /// for the extra serialization to matter.
+    /// </remarks>
     private void PostTitle(ReadOnlyMemory<byte> routedTitle)
     {
-        if (!TryAcquireTitleStackPush(out var routedPush))
+        lock (_titleGate)
         {
-            _application.PostOutOfBand(routedTitle);
-            return;
-        }
+            if (!TryReserveTitleStackPush(out var routedPush, out var routedPop))
+            {
+                _application.PostOutOfBand(routedTitle);
+                return;
+            }
 
-        var combined = new ArrayBufferWriter<byte>(routedPush.Length + routedTitle.Length);
-        combined.Write(routedPush.Span);
-        combined.Write(routedTitle.Span);
-        _application.PostOutOfBand(combined.WrittenMemory);
+            var combined = new ArrayBufferWriter<byte>(routedPush.Length + routedTitle.Length);
+            combined.Write(routedPush.Span);
+            combined.Write(routedTitle.Span);
+
+            if (_application.TryPostOutOfBand(combined.WrittenMemory))
+            {
+                _ = _application.Session.ConfirmTitleLease(routedPush.Span, routedPop.Span);
+            }
+            else
+            {
+                // The combined bytes never reached the application's out-of-band queue - it is
+                // already stopping - so committing a pop lease for them would leave the session's
+                // reverse-cleanup walk writing a pop with no preceding push. Release the
+                // reservation instead; the title itself is silently dropped along with the push,
+                // exactly like every other out-of-band write attempted after stopping begins.
+                _application.Session.ReleaseTitleLease();
+            }
+        }
     }
 
     /// <summary>
-    /// Attempts to claim this session's one-time title-stack push, routing both the push and its
+    /// Attempts to reserve this session's one-time title-stack push, routing both the push and its
     /// paired pop through the exact same multiplexer policy already applied to the title itself -
     /// a terminal without a title stack simply ignores both controls, and an approved tmux route
     /// wraps them the same way it wraps the title, so no separate capability gate or routing rule
@@ -222,20 +254,32 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// <param name="routedPush">
     /// The routed push bytes to write immediately before the title, when this call returns true.
     /// </param>
+    /// <param name="routedPop">
+    /// The routed pop bytes to confirm as a reverse-cleanup lease once <paramref name="routedPush"/>
+    /// is actually enqueued, when this call returns true.
+    /// </param>
     /// <returns>
     /// True the first time a title is set for this session and the route can carry both controls;
-    /// false on every later title for this session, or when either control fails to route, in
-    /// which case the title itself is still written without a stack lease this time.
+    /// false on every later title for this session, when either control fails to route, or when
+    /// reverse cleanup already began - in which case the title itself is still written without a
+    /// stack lease this time.
     /// </returns>
-    private bool TryAcquireTitleStackPush(out ReadOnlyMemory<byte> routedPush)
+    private bool TryReserveTitleStackPush(out ReadOnlyMemory<byte> routedPush, out ReadOnlyMemory<byte> routedPop)
     {
         routedPush = default;
+        routedPop = default;
+
+        if (!_application.Session.TryReserveTitleLease())
+        {
+            return false;
+        }
 
         var pushBuffer = new ArrayBufferWriter<byte>(8);
         Csi.PushTitle(new ProtocolWriter(pushBuffer));
 
         if (!TryRouteTitle(pushBuffer.WrittenMemory, out var candidatePush))
         {
+            _application.Session.ReleaseTitleLease();
             return false;
         }
 
@@ -244,15 +288,12 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
         if (!TryRouteTitle(popBuffer.WrittenMemory, out var candidatePop))
         {
-            return false;
-        }
-
-        if (!_application.Session.TryAcquireTitleLease(candidatePush.Span, candidatePop.Span))
-        {
+            _application.Session.ReleaseTitleLease();
             return false;
         }
 
         routedPush = candidatePush;
+        routedPop = candidatePop;
         return true;
     }
 
