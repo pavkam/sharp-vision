@@ -3800,6 +3800,102 @@ public sealed class ApplicationTests
         application.LastCleanupException.ShouldBeNull();
     }
 
+    /// <summary>Verifies out-of-band bytes buffered behind an in-flight frame render are NOT
+    /// flushed once that frame's write completes if a resize commits a suspended (zero-cell) size
+    /// while the write is still outstanding. A resize is off-thread I/O relative to the frame's own
+    /// transport write/flush, and <c>DrainResize</c> never checks <c>IsRendering</c>, so it is free
+    /// to commit the zero-cell size on the dispatcher while the frame's write is still paused.
+    /// <c>CompleteRender</c>'s non-stopping branch used to flush pending out-of-band bytes
+    /// unconditionally once out-of-band bytes were pending, missing the <c>Suspended()</c> check its
+    /// two structural siblings - <c>DrainOutOfBand</c> and <c>PumpAfterWrite</c> - both already have,
+    /// so the buffered bytes reached the transport even though the application had already become
+    /// suspended by the time the flush ran, violating the documented "bytes stay buffered until
+    /// resumed" out-of-band policy. The final section proves the byte was correctly delayed rather
+    /// than lost: once the application resumes to a nonzero size, a later frame render's own
+    /// <c>CompleteRender</c> flush still delivers it.</summary>
+    [Fact]
+    public async Task CompleteRender_WhenResizeSuspendsWhileRenderIsInFlight_DoesNotFlushBufferedOutOfBandBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        terminal.PauseFlush();
+
+        // A frame render is already in flight (its transport write/flush will not complete until it
+        // is released below).
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "b".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+        await WaitForAsync(() => application.IsRendering, TimeSpan.FromSeconds(5));
+
+        // Buffer an out-of-band write while the render is in flight.
+        application.PostOutOfBand(new byte[] { 0x07 });
+
+        // Commit a zero-cell resize while that same frame's write is still outstanding. DrainResize
+        // never checks IsRendering, so this is free to land on the dispatcher and suspend the
+        // application before CompleteRender ever runs for the in-flight frame.
+        var suspended = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Resize += (_, eventArgs) =>
+        {
+            if (eventArgs.Dimensions.Cells == new Size(0, 0))
+            {
+                suspended.TrySetResult();
+            }
+        };
+        terminal.QueueResize(new Dimensions(new Size(0, 0)));
+        await suspended.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        application.Size.ShouldBe(new Size(0, 0));
+
+        terminal.ReleaseFlush(); // let the in-flight frame's write succeed
+
+        await WaitForAsync(() => !application.IsRendering, TimeSpan.FromSeconds(5));
+
+        // The frame itself landed, but the buffered BEL must not have: the application was
+        // suspended by the time CompleteRender observed the pending out-of-band bytes.
+        terminal.Writes.ShouldContain(write => write.Length > 0);
+        terminal.Writes.ShouldNotContain(write => write.Length == 1 && write[0] == 0x07); // BUG (pre-fix): flushed anyway
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+
+        // Resume to a nonzero size, then drive another frame render - proving the buffered byte was
+        // correctly delayed rather than permanently lost: CompleteRender's own flush branch still
+        // delivers it once the application is no longer suspended.
+        var resumed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.Resize += (_, eventArgs) =>
+        {
+            if (eventArgs.Dimensions.Cells == new Size(10, 4))
+            {
+                resumed.TrySetResult();
+            }
+        };
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await resumed.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                probe.Content = "c".AsMemory();
+                probe.InvalidateKernel(InvalidationImpact.Render);
+            },
+            TestContext.Current.CancellationToken);
+
+        await WaitForAsync(
+            () => terminal.Writes.Any(write => write.Length == 1 && write[0] == 0x07),
+            TimeSpan.FromSeconds(5));
+
+        application.Failure.ShouldBeNull();
+        application.LastCleanupException.ShouldBeNull();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a shortcut invokes its item without ever reaching Router.Route, so a
     /// focused TextInput neither consumes the chord nor sees it as typed text.</summary>
     [Fact]

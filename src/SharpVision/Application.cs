@@ -1182,7 +1182,7 @@ public sealed class Application:
                 MarkStarted();
             }
 
-            if (!_stopping && HasPendingOutOfBand())
+            if (!_stopping && !Suspended() && HasPendingOutOfBand())
             {
                 FlushOutOfBand();
             }
