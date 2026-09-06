@@ -182,19 +182,22 @@ The drain reuses the renderer's single-writer discipline: it shares the
 `IsRendering` flag with frame rendering, so at most one of a frame render or an
 out-of-band flush is ever writing to the transport. If a frame render is already
 in flight, the bytes stay buffered until that frame's write completes; at that
-point `CompleteRender` flushes them, gated behind the same `Suspended()` check
-as `DrainOutOfBand` and `PumpAfterWrite`, before servicing any deferred render
-request. A resize that commits a zero-cell size while the frame's write is still
-outstanding therefore leaves the bytes buffered instead of letting them reach
-the transport. If no render is in flight, the drain itself starts an out-of-band
-flush: it sets `IsRendering`, writes and flushes the buffered bytes through the
-transport under a dispatcher hold, and on completion clears `IsRendering` and
-resumes normal invalidation (a pending render, or another out-of-band write
-queued meanwhile) through the same pump used after an ordinary frame. Because
-frame renders and out-of-band flushes share both the `IsRendering` gate and the
-dispatcher hold, byte ordering between UI frames and protocol bytes is
-deterministic, and a bell or title change requested mid-frame is guaranteed to
-land only after that frame's bytes are on the wire.
+point `CompleteRender` re-checks the same stopping-then-`Suspended()` sequence
+as `DrainOutOfBand` and `PumpAfterWrite`: a stop that commits mid-write still
+gets its bounded `FlushOutOfBandOnStop` write, a suspended layout leaves the
+bytes buffered, and only otherwise does `CompleteRender` flush them, before
+servicing any deferred render request. A resize that commits a zero-cell size
+while the frame's write is still outstanding therefore leaves the bytes buffered
+instead of letting them reach the transport, and a stop that commits mid-write
+is not silently dropped either. If no render is in flight, the drain itself
+starts an out-of-band flush: it sets `IsRendering`, writes and flushes the
+buffered bytes through the transport under a dispatcher hold, and on completion
+clears `IsRendering` and resumes normal invalidation (a pending render, or
+another out-of-band write queued meanwhile) through the same pump used after an
+ordinary frame. Because frame renders and out-of-band flushes share both the
+`IsRendering` gate and the dispatcher hold, byte ordering between UI frames and
+protocol bytes is deterministic, and a bell or title change requested mid-frame
+is guaranteed to land only after that frame's bytes are on the wire.
 
 ```mermaid
 flowchart TD
@@ -204,7 +207,7 @@ flowchart TD
     Rendering -->|No| Stopping{"Stopping?"}
     Stopping -->|Yes| FlushOnStop["FlushOutOfBandOnStop: last bounded write during shutdown"]
     Stopping -->|No| Suspended{"Suspended layout?"}
-    CompleteRender --> Suspended
+    CompleteRender --> Stopping
     Suspended -->|Yes| Wait["Return; bytes stay buffered until resumed"]
     Suspended -->|No| Flush["FlushOutOfBand: set IsRendering, write and flush under a dispatcher hold"]
     Flush --> Complete["CompleteOutOfBand: clear IsRendering, resume any pending render or queued out-of-band write"]
