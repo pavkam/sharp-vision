@@ -111,6 +111,32 @@ public sealed class MultiplexerRouteTests
         policy.Active.ShouldBe(expected);
     }
 
+    /// <summary>Verifies PaneVisible can change after construction - reflecting the runtime's
+    /// outer-terminal focus signal - and that Active immediately re-evaluates against the updated
+    /// value for PassthroughMode.Visible, instead of staying fixed at the constructor argument.</summary>
+    [Fact]
+    public void PaneVisible_WhenSetAfterConstruction_UpdatesActiveForVisiblePassthrough()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.Visible,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+
+        policy.Active.ShouldBeTrue();
+
+        policy.PaneVisible = false;
+
+        policy.PaneVisible.ShouldBeFalse();
+        policy.Active.ShouldBeFalse();
+
+        policy.PaneVisible = true;
+
+        policy.PaneVisible.ShouldBeTrue();
+        policy.Active.ShouldBeTrue();
+    }
+
     /// <summary>Verifies MayEnd requires an odd escape run for tmux (its ST-doubling policy makes
     /// an odd count the exact signature of a genuine terminator) but accepts any positive escape
     /// run for GNU screen, whose pass-through payload is never escaped and so cannot distinguish

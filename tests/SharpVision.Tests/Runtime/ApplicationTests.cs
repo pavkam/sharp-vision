@@ -2877,6 +2877,63 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies a received TerminalFocus record updates the configured multiplexer
+    /// route's MultiplexingPolicy.PaneVisible - the outer-terminal focus signal that
+    /// PassthroughMode.Visible consults - instead of leaving it fixed at construction.</summary>
+    [Fact]
+    public async Task Input_WhenTerminalFocusChangesWithMultiplexerRouteConfigured_UpdatesPaneVisibleAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative));
+        var options = TerminalOptions.Minimal with { Multiplexing = policy };
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            options);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        policy.PaneVisible.ShouldBeTrue();
+
+        var lost = new TerminalFocus(gained: false);
+        application.Input(in lost);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        policy.PaneVisible.ShouldBeFalse();
+
+        var gained = new TerminalFocus(gained: true);
+        application.Input(in gained);
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        policy.PaneVisible.ShouldBeTrue();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a received TerminalFocus record is a no-op against multiplexing state -
+    /// not a crash - when no multiplexer route is configured.</summary>
+    [Fact]
+    public async Task Input_WhenTerminalFocusChangesWithoutMultiplexerRoute_DoesNotThrowAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var lost = new TerminalFocus(gained: false);
+        Should.NotThrow(() => application.Input(in lost));
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        application.HasFocus.ShouldBeFalse();
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies Kitty cleanup delete and flush complete before Session disposes transport.</summary>
     [Fact]
     public async Task StopAsync_WhenKittyStateExists_DeletesAndFlushesBeforeTransportDisposalAsync()

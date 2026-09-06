@@ -8,28 +8,21 @@ namespace SharpVision.Terminal.Diagnostics;
 public sealed class TerminalRouteDiagnostics
 {
     private readonly ReadOnlyCollection<MultiplexerKind> _layers;
+    private readonly MultiplexingPolicy _policy;
+    private readonly MultiplexerRoute? _route;
 
     /// <summary>Initializes diagnostics from an optional immutable multiplexer policy.</summary>
     /// <param name="policy">The detected or explicit policy, or null when no multiplexer was identified.</param>
     internal TerminalRouteDiagnostics(MultiplexingPolicy? policy)
     {
-        var resolved = policy ?? new MultiplexingPolicy([], outerProfile: null);
-        var route = resolved.Layers.Count == 0 ? null : new MultiplexerRoute(resolved);
-        _layers = Array.AsReadOnly(resolved.Layers.ToArray());
-        OuterProfile = resolved.OuterProfile;
-        Passthrough = resolved.Passthrough;
-        PaneVisible = resolved.PaneVisible;
-        ApprovedOperations = resolved.ApprovedOperations;
-        MaxDepth = resolved.MaxDepth;
-        MaxEnvelopeBytes = resolved.MaxEnvelopeBytes;
-        IsActive = resolved.Active;
-        CanRouteCapabilityQueries = route?.CanRouteCapabilityQueries == true;
-        CanRouteClipboard = route?.CanRouteClipboard == true;
-        CanRouteGraphics = route?.CanRouteGraphics == true;
-        CanRouteNotifications = route?.CanRouteNotifications == true;
-        CanRouteTitle = route?.CanRouteTitle == true;
-        CanRouteBell = route?.CanRouteBell == true;
-        SupportsStringTerminatedQueries = CanRouteCapabilityQueries && route!.SupportsStringTerminatedQueries;
+        _policy = policy ?? new MultiplexingPolicy([], outerProfile: null);
+        _route = _policy.Layers.Count == 0 ? null : new MultiplexerRoute(_policy);
+        _layers = Array.AsReadOnly(_policy.Layers.ToArray());
+        OuterProfile = _policy.OuterProfile;
+        Passthrough = _policy.Passthrough;
+        ApprovedOperations = _policy.ApprovedOperations;
+        MaxDepth = _policy.MaxDepth;
+        MaxEnvelopeBytes = _policy.MaxEnvelopeBytes;
     }
 
     /// <summary>Gets the owned nearest-to-farthest multiplexer layers.</summary>
@@ -41,8 +34,12 @@ public sealed class TerminalRouteDiagnostics
     /// <summary>Gets the configured passthrough visibility mode.</summary>
     public PassthroughMode Passthrough { get; }
 
-    /// <summary>Gets whether the originating pane was declared visible.</summary>
-    public bool PaneVisible { get; }
+    /// <summary>Gets whether the originating pane is currently focused. Reflects live outer-terminal
+    /// focus (via tmux <c>focus-events</c>), including tmux's own focus-in/focus-out notifications
+    /// on an internal pane or window switch, not only a change of the outer terminal's OS-level
+    /// focus - so in a split layout this tracks keyboard focus, not on-screen visibility, and a
+    /// pane can still be rendered on screen while this reads false.</summary>
+    public bool PaneVisible => _policy.PaneVisible;
 
     /// <summary>Gets the explicitly approved typed operation families.</summary>
     public MultiplexingOperation ApprovedOperations { get; }
@@ -54,26 +51,27 @@ public sealed class TerminalRouteDiagnostics
     public int MaxEnvelopeBytes { get; }
 
     /// <summary>Gets whether every policy authorization required for passthrough is present.</summary>
-    public bool IsActive { get; }
+    public bool IsActive => _policy.Active;
 
     /// <summary>Gets whether capability queries can traverse the configured route.</summary>
-    public bool CanRouteCapabilityQueries { get; }
+    public bool CanRouteCapabilityQueries => _route?.CanRouteCapabilityQueries == true;
 
     /// <summary>Gets whether clipboard strings can traverse the configured route.</summary>
-    public bool CanRouteClipboard { get; }
+    public bool CanRouteClipboard => _route?.CanRouteClipboard == true;
 
     /// <summary>Gets whether graphics strings can traverse the configured route.</summary>
-    public bool CanRouteGraphics { get; }
+    public bool CanRouteGraphics => _route?.CanRouteGraphics == true;
 
     /// <summary>Gets whether notification strings can traverse the configured route.</summary>
-    public bool CanRouteNotifications { get; }
+    public bool CanRouteNotifications => _route?.CanRouteNotifications == true;
 
     /// <summary>Gets whether title commands can traverse the configured route.</summary>
-    public bool CanRouteTitle { get; }
+    public bool CanRouteTitle => _route?.CanRouteTitle == true;
 
     /// <summary>Gets whether bell commands can traverse the configured route.</summary>
-    public bool CanRouteBell { get; }
+    public bool CanRouteBell => _route?.CanRouteBell == true;
 
     /// <summary>Gets whether routed capability queries preserve string terminators.</summary>
-    public bool SupportsStringTerminatedQueries { get; }
+    public bool SupportsStringTerminatedQueries =>
+        CanRouteCapabilityQueries && _route!.SupportsStringTerminatedQueries;
 }

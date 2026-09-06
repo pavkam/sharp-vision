@@ -39,6 +39,21 @@ envelope limit is 1 MiB with a hard maximum of 16 MiB. Construction rejects
 it has at least one layer, an explicit outer profile, an approved operation, and
 a visibility-compatible passthrough mode.
 
+`MultiplexingPolicy.PaneVisible` updates from the runtime's existing terminal
+focus handling: `Application` sets it from every received `TerminalFocus`
+record, the same signal that drives `HasFocus` and `TerminalFocusChanged`. tmux
+sends a focus-in/focus-out pair whenever the active pane changes - including an
+internal pane or window switch (`prefix-o`, `prefix-n`, and similar) -
+independent of whether the outer terminal ever loses OS-level focus, so
+`PaneVisible` reflects which pane currently has keyboard focus, not which panes
+are actually rendered on screen: in a split layout, the pane that just lost
+focus reads `PaneVisible: false` even though its content stays fully visible
+next to the newly-focused split. Without `focus-events` enabled, tmux never
+forwards these sequences and `PassthroughMode.Visible` degrades to behaving like
+`PassthroughMode.All` for the whole session. This is a real but partial
+improvement over a value fixed at construction, not a complete per-pane
+visibility signal.
+
 The route's capability-query, clipboard, Kitty/sixel/iTerm2 graphics, desktop
 notification, title, and bell families are connected typed output operations. A
 route wraps the farthest layer first, then works inward so the nearest

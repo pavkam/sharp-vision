@@ -1468,6 +1468,11 @@ public sealed class Application:
             case RecordKind.Focus:
                 HasFocus = record.Focus.Gained;
 
+                if (_multiplexerRoute?.Policy is { } policy)
+                {
+                    policy.PaneVisible = record.Focus.Gained;
+                }
+
                 if (!record.Focus.Gained)
                 {
                     Capture.TerminalFocusLost();

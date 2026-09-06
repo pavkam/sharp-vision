@@ -105,8 +105,21 @@ public sealed class MultiplexingPolicy
     /// <summary>Gets the configured passthrough visibility gate.</summary>
     public PassthroughMode Passthrough { get; }
 
-    /// <summary>Gets whether the originating pane is visible.</summary>
-    public bool PaneVisible { get; }
+    /// <summary>
+    /// Gets or sets whether the originating pane is visible.
+    /// </summary>
+    /// <remarks>
+    /// This reflects the originating pane's keyboard focus, reported through tmux
+    /// <c>focus-events</c> when enabled - not on-screen visibility. tmux emits a focus-in/focus-out
+    /// pair whenever the active pane changes, including an internal pane or window switch, entirely
+    /// independent of whether the outer terminal itself ever loses OS-level focus. So in a split
+    /// layout this value tracks which pane currently has keyboard focus, not which panes are
+    /// actually rendered on screen: a pane can lose focus (this becomes <see langword="false"/>)
+    /// while its content stays fully visible alongside the newly-focused split. Without
+    /// <c>focus-events</c> enabled, this value never changes and
+    /// <see cref="PassthroughMode.Visible"/> degrades to behaving like <see cref="PassthroughMode.All"/>.
+    /// </remarks>
+    public bool PaneVisible { get; internal set; }
 
     /// <summary>Gets the approved typed operation families.</summary>
     public MultiplexingOperation ApprovedOperations { get; }
