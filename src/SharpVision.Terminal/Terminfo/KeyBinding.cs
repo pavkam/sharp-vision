@@ -116,9 +116,38 @@ internal readonly record struct KeyBinding
     // malformed rather than merely non-conformant. IsStructurallyRepresentable, not just a failed
     // signature at the active limits, decides eligibility: a sequence that only overflows a
     // configured parameter or intermediate limit remains an error, since raising the limit would
-    // have described it structurally after all.
+    // have described it structurally after all. IsReservedIntroducer excludes shapes the decoder
+    // already owns outright, regardless of representability, because KeySequenceMatcher's trie
+    // fires unconditionally the instant it reaches a leaf - it has no grammar awareness of its
+    // own, so a raw-escape binding that happened to match one of those shapes would silently
+    // hijack it byte-for-byte with no way for the real handler to ever see it again.
     private static bool IsRawEscapeCandidate(ReadOnlySpan<byte> sequence) =>
         sequence[0] == ControlBytes.Escape &&
         sequence.Length >= 3 &&
-        !KeySignature.IsStructurallyRepresentable(sequence);
+        !KeySignature.IsStructurallyRepresentable(sequence) &&
+        !IsReservedIntroducer(sequence);
+
+    // Every shape below is either owned by ProtocolParser's own string-sequence grammar (OSC via
+    // `ESC ]`, DCS via `ESC P`, APC via `ESC _`) or by a specific CSI handler this decoder already
+    // dispatches to ahead of any terminal-description lookup: private-mode/DA1/DECRPM replies
+    // (`CSI ?`), SGR mouse reports (`CSI <`), DA2/xterm replies (`CSI >`), legacy X10 mouse reports
+    // (`CSI M`), and the bracketed-paste begin/end markers (`CSI 200~`/`CSI 201~`). None of these
+    // can ever legitimately describe a terminal key, so a raw-escape candidate matching one is
+    // rejected the same way an unrepresentable Escape-prefixed string was rejected before the
+    // raw-escape tier existed. The comparisons below start one byte past the caller-verified
+    // leading Escape, so each pattern spells only what follows it.
+    private static bool IsReservedIntroducer(ReadOnlySpan<byte> sequence)
+    {
+        var afterEscape = sequence[1..];
+
+        return afterEscape.StartsWith("[?"u8) ||
+            afterEscape.StartsWith("[<"u8) ||
+            afterEscape.StartsWith("[>"u8) ||
+            afterEscape.StartsWith("[M"u8) ||
+            afterEscape.StartsWith("[200~"u8) ||
+            afterEscape.StartsWith("[201~"u8) ||
+            afterEscape.StartsWith("]"u8) ||
+            afterEscape.StartsWith("P"u8) ||
+            afterEscape.StartsWith("_"u8);
+    }
 }

@@ -96,4 +96,47 @@ public sealed class KeyBindingTests
 
         _ = binding.Signature.ShouldNotBeNull();
     }
+
+    /// <summary>Verifies an unrepresentable raw-escape candidate that does not begin with any
+    /// reserved introducer this decoder already owns - such as the Linux virtual console's kf1
+    /// shape - is still retained without a signature, confirming the reserved-introducer guard
+    /// does not reject a genuine non-ECMA-48 dialect.</summary>
+    [Fact]
+    public void Constructor_WhenSequenceDoesNotMatchReservedIntroducer_IsRetainedWithoutSignature()
+    {
+        byte[] sequence = [0x1b, (byte) '[', (byte) '[', (byte) 'A'];
+
+        var binding = new KeyBinding(sequence, Code.F1);
+
+        binding.Signature.ShouldBeNull();
+        binding.Sequence.ToArray().ShouldBe(sequence);
+    }
+
+    /// <summary>Verifies an unrepresentable raw-escape candidate that begins with the SGR mouse
+    /// introducer (<c>ESC [ &lt;</c>) still throws instead of being silently accepted as a
+    /// raw-escape binding: <see cref="KeySequenceMatcher"/>'s trie fires unconditionally the
+    /// instant it reaches a leaf, so a binding matching this shape would hijack real SGR mouse
+    /// reports sharing the same prefix.</summary>
+    [Fact]
+    public void Constructor_WhenRawEscapeCandidateMatchesSgrMouseIntroducer_Throws()
+    {
+        byte[] sequence = [0x1b, (byte) '[', (byte) '<', 0x00, (byte) 'M'];
+
+        var exception = Should.Throw<ArgumentException>(() => new KeyBinding(sequence, Code.F1));
+
+        exception.ParamName.ShouldBe("sequence");
+    }
+
+    /// <summary>Verifies an unrepresentable raw-escape candidate that begins with the OSC
+    /// introducer (<c>ESC ]</c>) still throws for the same reason: OSC/DCS/APC string sequences are
+    /// owned by the protocol parser's own grammar, never by a terminal-description key.</summary>
+    [Fact]
+    public void Constructor_WhenRawEscapeCandidateMatchesOscIntroducer_Throws()
+    {
+        byte[] sequence = [0x1b, (byte) ']', 0x00];
+
+        var exception = Should.Throw<ArgumentException>(() => new KeyBinding(sequence, Code.F1));
+
+        exception.ParamName.ShouldBe("sequence");
+    }
 }

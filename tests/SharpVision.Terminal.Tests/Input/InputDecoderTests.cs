@@ -3317,6 +3317,53 @@ public sealed class InputDecoderTests
     public void KeyMap_WhenRawEscapeBindingIsPresent_HasRawEscapeBindingsIsTrue() =>
         CombinedRawAndStructuralKeyMap().HasRawEscapeBindings.ShouldBeTrue();
 
+    /// <summary>Verifies a lone Escape byte retained by a raw-escape-capable key map's fallback
+    /// matcher resolves within the SAME total ambiguity window as a key map with no raw-escape
+    /// bindings at all - a regression test for the raw-escape tier doubling a lone Escape's
+    /// latency by re-arming <see cref="InputDecoder.PendingEscapeDeadline"/> from "now" once the
+    /// fallback matcher's own <see cref="InputOptions.KeyMatcherTimeout"/> already expired, instead
+    /// of anchoring it to the byte's original arrival instant. Both configurations here share the
+    /// same (default, equal) timeouts, so <see cref="InputDecoder.ExpireKeyMatcher"/> alone must
+    /// resolve the Escape in the very same pass that <see cref="InputDecoder.ExpireEscape"/> would
+    /// for a key map that never enters the fallback matcher at all.</summary>
+    [Fact]
+    public void ExpireKeyMatcher_WhenReplayedByteIsLoneEscape_MatchesLatencyWithNoRawEscapeBindings()
+    {
+        var rawOptions = InputOptions.Default.WithKeyMap(CombinedRawAndStructuralKeyMap(), useAnsiKeyGrammar: false);
+        var plainOptions = InputOptions.Default.WithKeyMap(KeyMap.Empty, useAnsiKeyGrammar: false);
+        var longestTimeout = rawOptions.EscapeTimeout > rawOptions.KeyMatcherTimeout
+            ? rawOptions.EscapeTimeout
+            : rawOptions.KeyMatcherTimeout;
+
+        var rawClock = new ManualTimeProvider();
+        var rawSink = new RecordingInputSink();
+        using var rawDecoder = new InputDecoder(rawSink, rawOptions, rawClock);
+
+        rawDecoder.Decode([0x1b]);
+        _ = rawDecoder.PendingKeyMatcherDeadline.ShouldNotBeNull();
+        rawDecoder.PendingEscapeDeadline.ShouldBeNull();
+
+        rawClock.Advance(longestTimeout);
+        rawDecoder.ExpireKeyMatcher().ShouldBeTrue();
+
+        var plainClock = new ManualTimeProvider();
+        var plainSink = new RecordingInputSink();
+        using var plainDecoder = new InputDecoder(plainSink, plainOptions, plainClock);
+
+        plainDecoder.Decode([0x1b]);
+        _ = plainDecoder.PendingEscapeDeadline.ShouldNotBeNull();
+
+        plainClock.Advance(longestTimeout);
+        plainDecoder.ExpireEscape().ShouldBeTrue();
+
+        rawSink.Strokes.ShouldBe([new Stroke(Code.Escape, null, 0, Modifiers.None, KeyAction.Press)]);
+        rawDecoder.PendingEscapeDeadline.ShouldBeNull();
+        rawDecoder.PendingKeyMatcherDeadline.ShouldBeNull();
+
+        plainSink.Strokes.ShouldBe(rawSink.Strokes);
+        plainDecoder.PendingEscapeDeadline.ShouldBeNull();
+    }
+
     private static KeyMap LinuxConsoleFunctionKeyMap() =>
         new(
         [

@@ -31,6 +31,7 @@ public sealed class InputDecoder: IDisposable
     private readonly Utf8TextAccumulator _utf8;
     private DateTimeOffset _escapeDeadline;
     private DateTimeOffset _keyMatcherDeadline;
+    private DateTimeOffset _keyMatcherArrival;
     private DateTimeOffset _ss3Deadline;
     private DateTimeOffset _mouseDeadline;
     private DateTimeOffset _utf8Deadline;
@@ -46,6 +47,13 @@ public sealed class InputDecoder: IDisposable
     private bool _cursorPositionQueryPending;
     private bool _ss3Pending;
     private bool _pendingContinuationJustInterrupted;
+
+    // Set only for the duration of ExpireKeyMatcher's own call into CompleteKeyMatcher, so
+    // BeginEscape can tell a lone Escape replayed because the fallback matcher's own ambiguity
+    // window just expired apart from one replayed because a live byte diverged mid-sequence (the
+    // ordinary Decode/AddToMatcher path, which never sets this). See BeginEscape and
+    // ExpireKeyMatcher for how the distinction is used.
+    private bool _keyMatcherExpiring;
 
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
     /// <param name="sink">The non-null event sink.</param>
@@ -269,7 +277,29 @@ public sealed class InputDecoder: IDisposable
         }
 
         var adapter = new Adapter(this);
-        CompleteKeyMatcher(ref adapter);
+        _keyMatcherExpiring = true;
+
+        try
+        {
+            CompleteKeyMatcher(ref adapter);
+        }
+        finally
+        {
+            _keyMatcherExpiring = false;
+        }
+
+        // A retained lone Escape byte replayed by the completion above (see BeginEscape) carries
+        // an ambiguity deadline anchored to its ORIGINAL arrival instant rather than to now, so it
+        // can already be due - resolving it here, in the same pass, keeps a raw-escape KeyMap's
+        // total lone-Escape latency equal to a KeyMap with no such bindings (which reaches
+        // ExpireEscape directly, with no fallback-matcher window in front of it at all). Entering
+        // this method at all already guarantees no OTHER Escape was pending beforehand: the
+        // fallback matcher only ever starts while _escapePending is false (CanStartMatcher), and
+        // while it remains Pending every subsequent byte is routed to it instead of through
+        // ordinary Escape handling. This call is therefore a no-op whenever the completion above
+        // did not just arm a pending Escape, or its anchored deadline has not yet elapsed - only
+        // possible when EscapeTimeout is configured longer than KeyMatcherTimeout.
+        _ = ExpireEscape();
         return true;
     }
 
@@ -439,7 +469,20 @@ public sealed class InputDecoder: IDisposable
         }
 
         _escapePending = true;
-        _escapeDeadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
+
+        // A raw-escape-capable KeyMap sends a lone Escape byte through the fallback matcher
+        // first (CanStartMatcher), so this call can be reached in two ways: an ordinary Escape
+        // arriving directly in ground state (no matcher involved, or one that never started), and
+        // a replay of exactly the retained byte once the matcher's OWN ambiguity window
+        // (KeyMatcherTimeout) already timed out with nothing to disambiguate it from. The second
+        // case must not re-arm a fresh now-based window on top of the one that already elapsed -
+        // doing so would double a lone Escape's total latency on exactly the terminals this
+        // fallback tier exists to serve. Anchoring to the byte's original arrival instant instead
+        // keeps the total wait equal to EscapeTimeout either way; ExpireKeyMatcher resolves it in
+        // the same pass whenever that anchored deadline is already due.
+        _escapeDeadline = _keyMatcherExpiring
+            ? _keyMatcherArrival.Add(_options.EscapeTimeout)
+            : _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
     }
 
     /// <summary>Routes one byte into the active fallback matcher, arming its ambiguity deadline
@@ -460,7 +503,13 @@ public sealed class InputDecoder: IDisposable
 
         if (status == KeySequenceMatchStatus.Pending && !wasPending)
         {
-            _keyMatcherDeadline = _timeProvider.GetUtcNow().Add(_options.KeyMatcherTimeout);
+            // Stamped alongside the deadline itself so a lone Escape byte that ends up replayed
+            // once this same window expires (see ExpireKeyMatcher and BeginEscape) can anchor its
+            // own ambiguity deadline to this instant instead of to whenever the replay happens to
+            // run.
+            var now = _timeProvider.GetUtcNow();
+            _keyMatcherDeadline = now.Add(_options.KeyMatcherTimeout);
+            _keyMatcherArrival = now;
         }
 
         return status;

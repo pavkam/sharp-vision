@@ -343,14 +343,23 @@ its siblings, a `$` outside the legal CSI final-byte range) - not a general
 relaxation: a string that only exceeds the active parameter or intermediate
 limit, rather than being unrepresentable at every limit, is still rejected. In
 ground state, an Escape byte joins the trie's byte-prefix matching only while
-the active key map owns at least one raw-escape binding; every other Escape
-grammar (`CSI`, SS3, Kitty, Alt-modified text, and the lone-Escape ambiguity
-deadline itself) is unaffected because a byte that does not continue a
-raw-escape binding is replayed through that same ordinary handling one call
-frame later, reusing the trie's own bounded ambiguity deadline rather than a new
-one. Decoder disposal clears pending and rematch bytes, releases the matcher
-binding/trie arrays and replay workspace, and remains idempotent; no
-described-key byte storage survives that ownership boundary.
+the active key map owns at least one raw-escape binding. A byte that then
+diverges mid-sequence is replayed through ordinary handling unchanged, one call
+frame later, and every multi-byte grammar reached that way (`CSI`, SS3, Kitty,
+Alt-modified text) is unaffected. A lone Escape byte is different: retained
+alone, it never diverges, so it can only leave the trie once the trie's own
+bounded ambiguity deadline itself elapses with nothing further to disambiguate
+it. Replaying it into the ordinary lone-Escape deadline at that point, with no
+further care taken, would stack a second, fresh deadline on top of the one that
+just elapsed, doubling a lone Escape's total latency on exactly the terminal
+dialects this trie exists to serve. The ordinary lone-Escape deadline is instead
+anchored to the byte's original arrival instant rather than to the replay
+instant, and resolved in the same expiry pass whenever that anchored deadline is
+already due - keeping a raw-escape key map's total lone-Escape latency equal to
+a key map with no raw-escape bindings at all. Decoder disposal clears pending
+and rematch bytes, releases the matcher binding/trie arrays and replay
+workspace, and remains idempotent; no described-key byte storage survives that
+ownership boundary.
 
 Input precedence is fixed: registered typed replies, paste framing, mouse and
 focus reports, and Kitty keyboard events consume their grammar before a
