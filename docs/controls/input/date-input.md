@@ -150,6 +150,10 @@ a replacement session that the older acceptance or rollback cannot disturb.
 
 ![The DateInput control rendered in the live showcase](../../images/controls/date-input.png)
 
+![The DateInput control with its Calendar popup open in the live showcase](../../images/controls/date-input-open.png)
+
+![The DateInput control with a focused null placeholder in the live showcase](../../images/controls/date-input-nullable-focused.png)
+
 ```csharp
 var dateInput = new DateInput();
 ```

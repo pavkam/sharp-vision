@@ -175,6 +175,10 @@ disturb.
 
 ![The DateTimeInput control rendered in the live showcase](../../images/controls/date-time-input.png)
 
+![The DateTimeInput control with a focused null placeholder in the live showcase](../../images/controls/date-time-input-nullable-focused.png)
+
+![The DateTimeInput control with a focused fractional-second segment in the live showcase](../../images/controls/date-time-input-fractional-focused.png)
+
 ```csharp
 var dateTimeInput = new DateTimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```

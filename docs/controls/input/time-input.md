@@ -110,6 +110,10 @@ scrolls or moves focus in that container. Keys outside the table stay unhandled.
 
 ![The TimeInput control rendered in the live showcase](../../images/controls/time-input.png)
 
+![The TimeInput control with a focused null placeholder in the live showcase](../../images/controls/time-input-nullable-focused.png)
+
+![The TimeInput control with a focused fractional-second segment in the live showcase](../../images/controls/time-input-fractional-focused.png)
+
 ```csharp
 var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };
 ```
