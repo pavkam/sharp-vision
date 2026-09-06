@@ -274,7 +274,7 @@ public sealed class DispatcherTests
         });
         await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
 
-        dispatcher.StoppingToken.Register(() => throw new InvalidOperationException("registration-boom"));
+        _ = dispatcher.StoppingToken.Register(() => throw new InvalidOperationException("registration-boom"));
         var invocationToken = TestContext.Current.CancellationToken;
         var pending = dispatcher.InvokeAsync(static () => 42, invocationToken).AsTask();
 
@@ -634,7 +634,7 @@ public sealed class DispatcherTests
         using ManualResetEventSlim release = new();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         dispatcher.UnhandledException += (_, eventArgs) => observed.Add(eventArgs.Exception);
-        dispatcher.StoppingToken.Register(() => throw registrationFailure);
+        _ = dispatcher.StoppingToken.Register(() => throw registrationFailure);
 
         dispatcher.Post(() =>
         {

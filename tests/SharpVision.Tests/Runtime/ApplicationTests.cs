@@ -3846,7 +3846,7 @@ public sealed class ApplicationTests
         {
             if (eventArgs.Dimensions.Cells == new Size(0, 0))
             {
-                suspended.TrySetResult();
+                _ = suspended.TrySetResult();
             }
         };
         terminal.QueueResize(new Dimensions(new Size(0, 0)));
@@ -3872,7 +3872,7 @@ public sealed class ApplicationTests
         {
             if (eventArgs.Dimensions.Cells == new Size(10, 4))
             {
-                resumed.TrySetResult();
+                _ = resumed.TrySetResult();
             }
         };
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
