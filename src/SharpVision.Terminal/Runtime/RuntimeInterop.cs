@@ -488,6 +488,62 @@ internal static class RuntimeInterop
     [DllImport("kernel32", EntryPoint = "CancelIoEx", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CancelIoEx(nint handle, nint overlapped);
+
+    /// <summary>
+    /// The Win32 error code a blocking native console call reports when it is aborted mid-flight.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TryCancelPendingIo"/> produces this from a call it deliberately aborted, but a
+    /// bare Ctrl+C keystroke the console consumes as a signal under
+    /// <see cref="EnableProcessedInput"/> - rather than delivering it as an input record - also
+    /// unblocks a pending <c>ReadConsoleW</c> with this same error. In that second case nothing
+    /// asked for cancellation at all, so the only correct reaction is to issue the read again, not
+    /// to report end-of-stream or a genuine failure.
+    /// </remarks>
+    public const int ErrorOperationAborted = 995;
+
+    /// <summary>Reads UTF-16 code units directly from a console input handle.</summary>
+    /// <param name="handle">The console input handle.</param>
+    /// <param name="buffer">The buffer receiving the code units read.</param>
+    /// <param name="charsToRead">The buffer's capacity, in <see cref="char"/> units.</param>
+    /// <param name="charsRead">Receives the number of code units actually read.</param>
+    /// <returns>
+    /// True when the call completed, including a call <see cref="TryCancelPendingIo"/> aborted.
+    /// </returns>
+    [SupportedOSPlatform("windows")]
+    public static unsafe bool TryReadConsole(nint handle, char* buffer, uint charsToRead, out uint charsRead) =>
+        ReadConsoleW(handle, buffer, charsToRead, out charsRead, nint.Zero);
+
+    [DllImport("kernel32", EntryPoint = "ReadConsoleW", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern unsafe bool ReadConsoleW(
+        nint handle,
+        char* buffer,
+        uint charsToRead,
+        out uint charsRead,
+        nint inputControl);
+
+    /// <summary>Writes UTF-16 code units directly to a console output handle.</summary>
+    /// <param name="handle">The console output handle.</param>
+    /// <param name="buffer">The code units to write.</param>
+    /// <param name="charsToWrite">The number of code units to write.</param>
+    /// <param name="charsWritten">
+    /// Receives the number of code units actually written, which can be fewer than
+    /// <paramref name="charsToWrite"/> on a successful call.
+    /// </param>
+    /// <returns>True when the call succeeded.</returns>
+    [SupportedOSPlatform("windows")]
+    public static unsafe bool TryWriteConsole(nint handle, char* buffer, uint charsToWrite, out uint charsWritten) =>
+        WriteConsoleW(handle, buffer, charsToWrite, out charsWritten, nint.Zero);
+
+    [DllImport("kernel32", EntryPoint = "WriteConsoleW", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern unsafe bool WriteConsoleW(
+        nint handle,
+        char* buffer,
+        uint charsToWrite,
+        out uint charsWritten,
+        nint reserved);
 }
 
 #pragma warning restore SYSLIB1054

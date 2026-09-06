@@ -88,7 +88,17 @@ public sealed class WindowsConsoleHostConPtyTests
         second.ShouldBe(first);
     }
 
-    /// <summary>Verifies exact bytes cross a real ConPTY-attached console host transport.</summary>
+    /// <summary>
+    /// Verifies exact bytes cross a real ConPTY-attached console host transport, including
+    /// multi-byte-in-UTF-8 characters.
+    /// </summary>
+    /// <remarks>
+    /// The payload deliberately mixes ASCII with U+2500 (3 bytes), U+20AC (3 bytes), and U+4E2D
+    /// (3 bytes) so this test proves the UTF-8-aware <c>ReadConsoleW</c>/<c>WriteConsoleW</c> path
+    /// end to end, on the one lane that can: ConPTY's host side speaks UTF-8 on both directions of
+    /// this pipe, so <see cref="WindowsPseudoterminal.Input"/> and
+    /// <see cref="WindowsPseudoterminal.Output"/> carry exactly the bytes asserted here.
+    /// </remarks>
     [Fact]
     public async Task ReadWriteAsync_WhenAttachedToConPty_TransfersExactBytesAsync()
     {
@@ -96,7 +106,7 @@ public sealed class WindowsConsoleHostConPtyTests
         await using var terminal = WindowsPseudoterminal.Open(["echo"]);
 
         await terminal.Input.WriteAsync(
-            "input"u8.ToArray(),
+            "in─€中"u8.ToArray(),
             TestContext.Current.CancellationToken);
         await terminal.Input.FlushAsync(TestContext.Current.CancellationToken);
 
@@ -120,7 +130,7 @@ public sealed class WindowsConsoleHostConPtyTests
 
             read += chunk;
 
-            if (buffer.AsSpan(0, read).IndexOf("output"u8) >= 0)
+            if (buffer.AsSpan(0, read).IndexOf("out─€中"u8) >= 0)
             {
                 break;
             }
@@ -128,7 +138,7 @@ public sealed class WindowsConsoleHostConPtyTests
 
         _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
 
-        buffer.AsSpan(0, read).IndexOf("output"u8).ShouldBeGreaterThanOrEqualTo(0);
+        buffer.AsSpan(0, read).IndexOf("out─€中"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
     /// <summary>Verifies a ConPTY resize reports only cells, never pixels.</summary>

@@ -99,7 +99,10 @@ internal static class ConPtyProbe
     private static async Task RunEchoAsync()
     {
         await using var connection = ConsoleHost.Open(new ConsoleHostOptions());
-        var buffer = new byte[5];
+
+        // Includes non-ASCII, multi-byte-in-UTF-8 characters so the round trip proves the
+        // console host's UTF-8-aware read and write path, not just its ASCII-only byte plumbing.
+        var buffer = new byte[System.Text.Encoding.UTF8.GetByteCount("in─€中")];
         var read = 0;
 
         while (read < buffer.Length)
@@ -116,7 +119,7 @@ internal static class ConPtyProbe
             read += chunk;
         }
 
-        await connection.Transport.WriteAsync("output"u8.ToArray(), CancellationToken.None)
+        await connection.Transport.WriteAsync("out─€中"u8.ToArray(), CancellationToken.None)
             .ConfigureAwait(false);
         await connection.Transport.FlushAsync(CancellationToken.None).ConfigureAwait(false);
     }

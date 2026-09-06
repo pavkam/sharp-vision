@@ -47,16 +47,14 @@ internal static class WindowsConsoleHost
         Debug.Assert(createResize is not null, "The console host always supplies a resize factory.");
         var mode = WindowsConsoleMode.Enter(options.CaptureControlKeys, options.EnableMouseInput);
         WindowsConsoleInputStream? input = null;
-        Stream? output = null;
+        WindowsConsoleOutputStream? output = null;
         StreamTransport? transport = null;
         IResizeSource? resize = null;
 
         try
         {
-            input = new WindowsConsoleInputStream(
-                Console.OpenStandardInput(bufferSize: 1),
-                RuntimeInterop.GetStandardHandle(RuntimeInterop.StdInputHandle));
-            output = Console.OpenStandardOutput();
+            input = new WindowsConsoleInputStream(RuntimeInterop.GetStandardHandle(RuntimeInterop.StdInputHandle));
+            output = new WindowsConsoleOutputStream(RuntimeInterop.GetStandardHandle(RuntimeInterop.StdOutputHandle));
             transport = new StreamTransport(input, output, leaveOpen: true);
             resize = createResize(transport);
 
