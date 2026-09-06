@@ -1005,6 +1005,25 @@ public sealed class TextInputTests
         }
     }
 
+    /// <summary>Verifies Ctrl+Left's cached fast path agrees with Edit.MovePreviousWord's ground
+    /// truth when a GB9b Prepend mark (which attaches to the following base character) precedes
+    /// a digit run, so the mark is not fragmented off as its own "other" step.</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingControlLeftBeforePrependMarkAndDigitRun_MatchesEditMovePreviousWordAtEveryStep()
+    {
+        var text = "one ؀123 two";
+        var control = new TextInput { Text = text };
+        Key(control, Code.End, Modifiers.None);
+        var expected = new Selection(text.Length, text.Length);
+
+        while (expected.Caret > 0)
+        {
+            expected = Edit.MovePreviousWord(text, expected, extend: false).Selection;
+            Key(control, Code.Left, Modifiers.Control);
+            control.CaretIndex.ShouldBe(expected.Caret);
+        }
+    }
+
     /// <summary>Verifies the boundary cache backing Left rebuilds for a completely replaced Text
     /// value instead of serving offsets computed for the previous string instance - a stale cache
     /// from a combining-mark grapheme would skip a boundary once the text becomes plain ASCII of

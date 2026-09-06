@@ -559,19 +559,37 @@ public static class Edit
     }
 
     /// <summary>Classifies the grapheme starting at <paramref name="position"/> as word (2),
-    /// whitespace (1), or other (0). O(1): decodes only the rune at <paramref name="position"/>.
-    /// Exposed internally so <c>TextInput</c> can replicate <see cref="MovePreviousWord"/>'s
-    /// classification against its own cached boundary offsets instead of this type's O(n)
-    /// <see cref="PreviousBoundary"/> scan.</summary>
+    /// whitespace (1), or other (0). Decodes runes forward from <paramref name="position"/>,
+    /// skipping any leading <see cref="GraphemeBreak.Prepend"/> scalars: per GB9b a Prepend
+    /// scalar attaches to the following base character, so it is never itself the scalar that
+    /// determines the cluster's classification. Falls back to the last scalar examined when
+    /// the cluster is exhausted without a non-Prepend scalar (a base-less Prepend at the end
+    /// of the text), which still yields "other". Exposed internally so <c>TextInput</c> can
+    /// replicate <see cref="MovePreviousWord"/>'s classification against its own cached
+    /// boundary offsets instead of this type's O(n) <see cref="PreviousBoundary"/> scan.</summary>
     [Pure]
     [ValueRange(0, 2)]
     internal static int Kind(string text, int position)
     {
-        var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out _);
+        while (true)
+        {
+            var status = Rune.DecodeFromUtf16(text.AsSpan(position), out var rune, out var consumed);
 
-        return status != OperationStatus.Done ? 0 :
-            Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 :
-            Rune.IsWhiteSpace(rune) ? 1 : 0;
+            if (status != OperationStatus.Done)
+            {
+                return 0;
+            }
+
+            var atEnd = position + consumed >= text.Length;
+
+            if (atEnd || rune.Value.GetGraphemeBreak() != GraphemeBreak.Prepend)
+            {
+                return Rune.IsLetterOrDigit(rune) || rune.Value == '_' ? 2 :
+                    Rune.IsWhiteSpace(rune) ? 1 : 0;
+            }
+
+            position += consumed;
+        }
     }
 
     [Pure]

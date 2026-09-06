@@ -283,6 +283,55 @@ public sealed class EditTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => Edit.SelectWord(value, value.Length + 1));
     }
 
+    /// <summary>Verifies a GB9b Prepend mark (which attaches to the following base character)
+    /// is treated as part of the word it precedes, rather than fragmenting the run into a
+    /// leading "other" grapheme followed by a shorter word.</summary>
+    [Fact]
+    public void MoveNextWord_WhenPrependMarkPrecedesDigitRun_TreatsMarkAsPartOfWord()
+    {
+        const string value = "؀123 ab";
+
+        var next = Edit.MoveNextWord(value, new Selection(0, 0), extend: false);
+
+        next.Selection.Caret.ShouldBe(5);
+        Edit.SelectWord(value, 0).ShouldBe(new Selection(0, 4));
+        Edit.SelectWord(value, 2).ShouldBe(new Selection(0, 4));
+    }
+
+    /// <summary>Verifies a Prepend mark immediately followed by whitespace classifies the whole
+    /// cluster as whitespace, not as a word, since the mark attaches to the space rather than
+    /// standing alone as an "other" grapheme.</summary>
+    [Fact]
+    public void SelectWord_WhenPrependMarkPrecedesWhitespace_ClassifiesAsWhitespaceNotWord()
+    {
+        const string value = "؀ ab";
+
+        Edit.SelectWord(value, 0).ShouldBe(new Selection(0, 2));
+        Edit.MoveNextWord(value, new Selection(0, 0), extend: false)
+            .Selection.Caret.ShouldBe(2);
+    }
+
+    /// <summary>Verifies GB9b's Prepend attachment stacks: multiple consecutive Prepend
+    /// scalars before a base character all belong to the same word as that base character.</summary>
+    [Fact]
+    public void SelectWord_WhenMultiplePrependMarksPrecedeDigit_IncludesEntireRunInWord()
+    {
+        const string value = "؀؀5 xy";
+
+        Edit.SelectWord(value, 0).ShouldBe(new Selection(0, 3));
+    }
+
+    /// <summary>Verifies a Prepend mark with no following base scalar (end of text) falls back
+    /// to classifying on the mark itself as "other", instead of throwing or reading past the
+    /// source span.</summary>
+    [Fact]
+    public void SelectWord_WhenPrependMarkHasNoFollowingBaseAtEnd_ClassifiesAsOtherWithoutThrowing()
+    {
+        const string value = "ab ؀";
+
+        Edit.SelectWord(value, 3).ShouldBe(new Selection(3, 4));
+    }
+
     /// <summary>Verifies password projection emits one caller-selected Rune per grapheme.</summary>
     [Fact]
     public void ProjectPassword_WhenTextIsComplex_MasksWithoutSourceText()
