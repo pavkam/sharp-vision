@@ -70,13 +70,13 @@ internal sealed class MouseDecoder
 
         if (marker == (byte) '<')
         {
-            EmitPointer(code, x, y, release);
+            EmitPointer(code, x, y, release, sgr: true);
             return true;
         }
 
         if (marker == 0 && !release)
         {
-            EmitPointer(code - 32, x, y, release: false);
+            EmitPointer(code - 32, x, y, release: false, sgr: false);
             return true;
         }
 
@@ -107,7 +107,7 @@ internal sealed class MouseDecoder
                 Pending = false;
                 _x10.AsSpan(0, _x10Length).Clear();
                 _x10Length = 0;
-                EmitPointer(code - 32, x - 32, y - 32, release: false);
+                EmitPointer(code - 32, x - 32, y - 32, release: false, sgr: false);
             }
         }
 
@@ -194,7 +194,7 @@ internal sealed class MouseDecoder
         return true;
     }
 
-    private void EmitPointer(int code, int wireX, int wireY, bool release)
+    private void EmitPointer(int code, int wireX, int wireY, bool release, bool sgr)
     {
         if (code is < 0 or > 255)
         {
@@ -294,8 +294,12 @@ internal sealed class MouseDecoder
         {
             action = PointerAction.Move;
         }
-        else if (low == 3 && (code & 128) == 0)
+        else if (!sgr && low == 3 && (code & 128) == 0)
         {
+            // Legacy X10/urxvt reports have no separate final byte to signal release, so button
+            // code 3 is overloaded by convention as "some button was released." SGR's final byte
+            // (M press/motion, m release) already disambiguates unconditionally via `release`
+            // above, so this sentinel must not apply to SGR reports.
             action = PointerAction.Release;
         }
 
@@ -321,6 +325,11 @@ internal sealed class MouseDecoder
     private static Buttons DecodeButtons(int code)
     {
         var selector = code & 3;
+
+        // The `selector == 3 && (code & 128) == 0` half of this guard is functionally redundant:
+        // the non-extended switch below already falls through to `Buttons.None` for selector 3 via
+        // its default arm. It is kept here (harmlessly) for symmetry with the equivalent, and here
+        // load-bearing, `!sgr && low == 3` release-sentinel gate in EmitPointer.
         return (code & 64) != 0 || (selector == 3 && (code & 128) == 0)
             ? Buttons.None
             : (code & 128) != 0

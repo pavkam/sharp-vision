@@ -63,6 +63,7 @@ public sealed class InputDecoderTests
     [InlineData("\u001b[<131;10;5M", Buttons.Extended11, InputAction.Press, 0, 0, Modifiers.None, false)]
     [InlineData("\u001b[<162;10;5M", Buttons.Extended10, InputAction.Move, 0, 0, Modifiers.None, true)]
     [InlineData("\u001b[<163;10;5m", Buttons.Extended11, InputAction.Release, 0, 0, Modifiers.None, true)]
+    [InlineData("\u001b[<7;10;5M", Buttons.None, InputAction.Press, 0, 0, Modifiers.Shift, false)]
     public void Decode_WhenSgrMouseArrives_MapsSemanticPointer(
         string input,
         Buttons buttons,
