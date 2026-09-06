@@ -25,4 +25,16 @@ extern/unicode/**/*.txt text eol=lf working-tree-encoding=UTF-8
 # encoding translation, on every platform.
 *.flf binary
 
+# The audited KDE syntax-highlighting definitions are likewise embedded as
+# manifest resources and read back as raw bytes, pinned to an exact length
+# and SHA-256 in syntax.manifest.json (SyntaxDefinitionCatalog.LoadEmbeddedDefinition).
+# Falling under only the blanket "* text=auto" above left them exposed to the
+# same Windows CRLF-on-checkout inflation as the unpinned files described
+# above, growing every embedded definition by one byte per line and failing
+# the length check for all of them, not just the ones a short CI log happens
+# to print first. Unlike the FIGlet fonts these are genuine UTF-8 XML text
+# meant to stay diffable, so pin the working tree to LF instead of going
+# binary.
+src/SharpVision.SyntaxHighlighting/Resources/Syntax/*.xml text eol=lf working-tree-encoding=UTF-8
+
 **/Snapshots/** linguist-generated=true
