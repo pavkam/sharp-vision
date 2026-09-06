@@ -482,4 +482,39 @@ public sealed class WindowActivationManagerTests
             manager.ActiveWindow.ShouldBeSameAs(inner);
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>Verifies Dispose still completes its own teardown (clearing recency history and
+    /// finishing the disposed-flag transition) even when the deactivation observer it triggers
+    /// throws, matching this domain's exception-complete cleanup convention rather than
+    /// abandoning cleanup partway through the first failure.</summary>
+    [Fact]
+    public async Task Dispose_WhenIsActiveObserverThrows_StillCompletesTeardownAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            var first = new Window();
+            var root = new Overlay { Children = { first } };
+            root.Attach(dispatcher);
+            using var manager = new WindowActivationManager(root);
+            _ = manager.Activate(first);
+
+            var armed = true;
+            first.PropertyChanged += (_, eventArgs) =>
+            {
+                if (armed && eventArgs.PropertyName == nameof(Window.IsActive))
+                {
+                    armed = false;
+                    throw new InvalidOperationException("deactivation observer failed");
+                }
+            };
+
+            _ = Should.Throw<InvalidOperationException>(manager.Dispose);
+
+            manager.ActiveWindow.ShouldBeNull();
+            _ = Should.Throw<ObjectDisposedException>(() => manager.Activate(first));
+            Should.NotThrow(manager.Dispose);
+        }, TestContext.Current.CancellationToken);
+    }
 }

@@ -57,9 +57,12 @@ internal sealed class WindowActivationManager: IDisposable
         }
 
         _root.VerifyMutable();
-        SetActive(null);
+
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => SetActive(null), ref failure);
         _history.Clear();
         _isDisposed = true;
+        failure?.Throw();
     }
 
     private Window? FindWindow(ControlBase? target)
