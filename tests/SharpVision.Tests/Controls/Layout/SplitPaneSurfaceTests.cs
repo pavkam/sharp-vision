@@ -841,8 +841,12 @@ public sealed class SplitPaneSurfaceTests
         else
         {
             await surface.SendAsync(
-                "\u001b[<3;6;1M"u8.ToArray(),
-                "release buttonless pointer over SplitPane divider");
+                // Legacy X10's three-byte report has no per-button release final byte, so
+                // button-code 3 is the protocol's own sentinel for an unqualified release --
+                // unlike SGR, whose release is always the actual button number paired with a
+                // lowercase 'm' final byte, so an SGR "buttonless release" does not exist.
+                "\u001b[M#&!"u8.ToArray(),
+                "release buttonless legacy pointer over SplitPane divider");
         }
 
         // Assert
