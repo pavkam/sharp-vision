@@ -51,6 +51,38 @@ public sealed class NegotiationSinkTests
         destination.Diagnostics.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies a response the negotiator classifies as a duplicate reaches the destination as a
+    /// <see cref="Diagnostic"/> through <see cref="IInputSink.Input(in Diagnostic)"/>. Before this
+    /// forwarding existed, every <c>Response</c> override discarded
+    /// <see cref="Negotiator.Accept(in XtermCapabilitiesResponse)"/>'s result and never consulted
+    /// <see cref="Negotiator.LastDiagnostic"/>, so the entire duplicate/late classification family
+    /// never reached any destination.
+    /// </summary>
+    [Fact]
+    public void Response_WhenNegotiatorClassifiesDuplicateReply_ForwardsClassificationDiagnostic()
+    {
+        var destination = new ClipboardCapableSink();
+        var negotiator = new Negotiator(new NegotiationOptions(new Dictionary<string, string?>()));
+        negotiator.Start(new ArrayBufferWriter<byte>());
+        IProtocolSink sink = new NegotiationSink(destination, negotiator);
+        var synchronizedOutput = Response("?2026;1"u8, "$"u8, (byte) 'y');
+
+        sink.Response(in synchronizedOutput);
+        sink.Response(in synchronizedOutput);
+
+        destination.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.DuplicateResponse);
+    }
+
+    private static XtermCapabilitiesResponse Response(
+        ReadOnlySpan<byte> parameters,
+        ReadOnlySpan<byte> intermediates,
+        byte final)
+    {
+        XtermResponses.TryCsi(parameters, intermediates, final, out var response).ShouldBeTrue();
+        return response;
+    }
+
     private sealed class ClipboardCapableSink: ISink, IClipboardReplySink, IKittyClipboardPacketSink
     {
         internal List<ClipboardReply> ClipboardReplies { get; } = [];

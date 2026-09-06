@@ -60,6 +60,12 @@ internal sealed class NegotiationSink:
     public void Response(in XtermCapabilitiesResponse value)
     {
         _ = _negotiator.Accept(in value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Response(in value);
     }
 
@@ -67,6 +73,12 @@ internal sealed class NegotiationSink:
     public void Response(in PaletteResponse value)
     {
         _ = _negotiator.Accept(in value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(in value);
     }
 
@@ -74,6 +86,12 @@ internal sealed class NegotiationSink:
     public void Response(in MetricsResponse value)
     {
         _ = _negotiator.Accept(in value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(in value);
     }
 
@@ -81,6 +99,12 @@ internal sealed class NegotiationSink:
     public void Response(in StatusResponse value)
     {
         _ = _negotiator.Accept(in value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(in value);
     }
 
@@ -88,6 +112,12 @@ internal sealed class NegotiationSink:
     public void Response(ItermCapabilitiesResponse value)
     {
         _ = _negotiator.Accept(value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(value);
     }
 
@@ -95,6 +125,12 @@ internal sealed class NegotiationSink:
     public void Response(CapabilityResponse value)
     {
         _ = _negotiator.Accept(value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(value);
     }
 
@@ -102,6 +138,12 @@ internal sealed class NegotiationSink:
     public void Response(Kitty.Graphics.KittyGraphicsResponse value)
     {
         _ = _negotiator.Accept(value);
+
+        if (_negotiator.LastDiagnostic is { } diagnostic)
+        {
+            _destination.Input(in diagnostic);
+        }
+
         _destination.Dispatch(value);
     }
 
