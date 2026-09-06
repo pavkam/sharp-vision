@@ -33,6 +33,7 @@ public sealed class InputDecoder: IDisposable
     private DateTimeOffset _keyMatcherDeadline;
     private DateTimeOffset _ss3Deadline;
     private DateTimeOffset _mouseDeadline;
+    private DateTimeOffset _utf8Deadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
@@ -228,6 +229,11 @@ public sealed class InputDecoder: IDisposable
     /// <see cref="ExpireMouse"/> runs even when no further byte ever arrives.</summary>
     public DateTimeOffset? PendingMouseDeadline => _mouseDecoder.Pending ? _mouseDeadline : null;
 
+    /// <summary>Gets the pending UTF-8 continuation ambiguity deadline, or null when no partial
+    /// multi-byte sequence is pending. The read loop mirrors this into a wake-up so
+    /// <see cref="ExpireUtf8"/> runs even when no further byte ever arrives.</summary>
+    public DateTimeOffset? PendingUtf8Deadline => _utf8.HasPending ? _utf8Deadline : null;
+
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
@@ -296,6 +302,22 @@ public sealed class InputDecoder: IDisposable
         }
 
         _mouseDecoder.EndIfPending();
+        return true;
+    }
+
+    /// <summary>Resolves a pending UTF-8 continuation after its ambiguity deadline.</summary>
+    /// <returns>Whether a pending UTF-8 continuation was resolved.</returns>
+    /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
+    public bool ExpireUtf8()
+    {
+        ThrowIfDisposed();
+
+        if (!_utf8.HasPending || _timeProvider.GetUtcNow() < _utf8Deadline)
+        {
+            return false;
+        }
+
+        _utf8.Flush();
         return true;
     }
 
@@ -1709,7 +1731,13 @@ public sealed class InputDecoder: IDisposable
         }
 
         TextAccumulationCallCount++;
+        var wasUtf8Pending = _utf8.HasPending;
         _utf8.Process(value);
+
+        if (!wasUtf8Pending && _utf8.HasPending)
+        {
+            _utf8Deadline = _timeProvider.GetUtcNow().Add(_options.EscapeTimeout);
+        }
     }
 
     /// <summary>Accepts one parser control byte after flushing pending UTF-8.</summary>

@@ -3557,6 +3557,49 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies a pending multi-byte UTF-8 continuation (a lead byte and some, but not all, of
+    /// its continuation bytes) is resolved on its own ambiguity deadline when nothing further
+    /// ever arrives, mirroring <see cref="ExpireMouse_WhenDeadlineIsReachedWithNoFurtherByte_EndsMouse"/>
+    /// for the sibling X10 mouse ambiguity. Without <see cref="InputDecoder.ExpireUtf8"/> being
+    /// wired up, this state would wait forever with nothing scheduled to resolve it unless some
+    /// other decoder's pending state happened to be active at the same time and flushed it as a
+    /// side effect.
+    /// </summary>
+    [Fact]
+    public void ExpireUtf8_WhenDeadlineIsReachedWithNoFurtherByte_FlushesPendingScalar()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(
+            sink,
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(25) },
+            clock);
+
+        // 0xF0 0x9F is the first two bytes of a four-byte UTF-8 sequence (the emoji "👩" encodes
+        // as 0xF0 0x9F 0x91 0xA9); its remaining two continuation bytes never follow.
+        decoder.Decode([0xF0, 0x9F]);
+
+        _ = decoder.PendingUtf8Deadline.ShouldNotBeNull();
+        decoder.ExpireUtf8().ShouldBeFalse();
+        clock.Advance(TimeSpan.FromMilliseconds(24));
+        decoder.ExpireUtf8().ShouldBeFalse();
+
+        clock.Advance(TimeSpan.FromMilliseconds(1));
+        decoder.ExpireUtf8().ShouldBeTrue();
+        decoder.PendingUtf8Deadline.ShouldBeNull();
+
+        // A second call at (or after) the same deadline is a no-op: the ambiguity is already
+        // resolved.
+        decoder.ExpireUtf8().ShouldBeFalse();
+
+        // The abandoned scalar is flushed as a replacement character, exactly like every other
+        // reactive resolution path (an unrelated control byte, another decoder's own expiry, or
+        // stream Complete()).
+        sink.Text.ShouldBe([new TerminalText(Rune.ReplacementChar)]);
+        sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.Character);
+    }
+
+    /// <summary>
     /// Verifies escape-timeout expiry ends a pending X10 mouse continuation along with the lone
     /// Escape, so the following bytes decode as ordinary input instead of being consumed as a
     /// synthetic pointer report.
