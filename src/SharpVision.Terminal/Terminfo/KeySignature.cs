@@ -6,6 +6,17 @@ namespace SharpVision.Terminal.Terminfo;
 /// <summary>Owns the structural parser signature of one described terminal key.</summary>
 internal readonly struct KeySignature: IEquatable<KeySignature>
 {
+    // Removes every configured parameter/intermediate byte ceiling so IsStructurallyRepresentable
+    // can isolate a pure byte-value question ("could any signature ever describe these bytes?")
+    // from a length-limit question ("does the active profile admit this many of them?"). Every
+    // count TryCreate ever compares against these fields is already bounded by the sequence's own
+    // length, so int.MaxValue never changes which sequences pass for a reason other than length.
+    private static readonly ParserLimits _unbounded = ParserLimits.Default with
+    {
+        MaxParameterBytes = int.MaxValue,
+        MaxIntermediateBytes = int.MaxValue
+    };
+
     private readonly byte[]? _parameters;
     private readonly byte[]? _intermediates;
 
@@ -125,6 +136,21 @@ internal readonly struct KeySignature: IEquatable<KeySignature>
         signature = default;
         return false;
     }
+
+    /// <summary>
+    /// Determines whether a sequence could compile into some supported parser signature under the
+    /// most permissive possible parameter and intermediate byte limits. A parser-control-prefixed
+    /// terminal key string that fails here has byte values ECMA-48 structural grammar can never
+    /// describe at any limit - such as the Linux virtual console's <c>ESC [ [ &lt;letter&gt;</c>
+    /// function keys or rxvt-unicode's <c>ESC [ &lt;n&gt; $</c> Shift-modified navigation keys -
+    /// which is a different, permanent failure from one that merely exceeds the active profile's
+    /// configured limit and would succeed under a larger one.
+    /// </summary>
+    /// <param name="sequence">The non-empty terminal bytes.</param>
+    /// <returns>Whether any choice of limits could compile the sequence into a signature.</returns>
+    [Pure]
+    public static bool IsStructurallyRepresentable(ReadOnlySpan<byte> sequence) =>
+        TryCreate(sequence, _unbounded, out _);
 
     /// <inheritdoc/>
     public bool Equals(KeySignature other) =>

@@ -3130,6 +3130,217 @@ public sealed class InputDecoderTests
 
     #endregion
 
+    #region Raw-escape terminal-description bindings
+
+    /// <summary>Verifies the Linux virtual console's <c>kf1</c>..<c>kf5</c> shape
+    /// (<c>ESC [ [ &lt;letter&gt;</c>) decodes as a single press with no text or diagnostics at
+    /// every transport split, including bytes arriving across two separate <see cref="InputDecoder.Decode"/>
+    /// calls.</summary>
+    [Theory]
+    [InlineData((byte) 'A', Code.F1)]
+    [InlineData((byte) 'B', Code.F2)]
+    [InlineData((byte) 'C', Code.F3)]
+    [InlineData((byte) 'D', Code.F4)]
+    [InlineData((byte) 'E', Code.F5)]
+    public void Decode_WhenLinuxConsoleFunctionKeyArrives_EmitsSinglePressWithNoTextOrDiagnostics(
+        byte final,
+        Code code)
+    {
+        var options = InputOptions.Default.WithKeyMap(LinuxConsoleFunctionKeyMap(), useAnsiKeyGrammar: false);
+        byte[] sequence = [0x1b, (byte) '[', (byte) '[', final];
+
+        for (var split = 0; split <= sequence.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, options);
+
+            decoder.Decode(sequence.AsSpan(0, split));
+            decoder.Decode(sequence.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+            [
+                new Stroke(code, null, 0, Modifiers.None, KeyAction.Press)
+            ], $"split {split}");
+            sink.Text.ShouldBeEmpty($"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies rxvt-unicode's Shift+Insert shape (<c>ESC [ 2 $</c>) is emitted as its
+    /// bound key and the following ordinary keystroke is preserved intact, at every transport
+    /// split, instead of the sequence's <c>$</c> byte being misread as an ECMA-48 CSI intermediate
+    /// that swallows the next byte as a bogus final byte.</summary>
+    [Fact]
+    public void Decode_WhenRxvtShiftInsertPrecedesText_EmitsBindingThenCharacterAtEverySplit()
+    {
+        var options = InputOptions.Default.WithKeyMap(
+            new KeyMap([new KeyBinding([0x1b, (byte) '[', (byte) '2', (byte) '$'], Code.Insert, Modifiers.Shift)]),
+            useAnsiKeyGrammar: false);
+        byte[] input = [0x1b, (byte) '[', (byte) '2', (byte) '$', (byte) 'x'];
+
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, options);
+
+            decoder.Decode(input.AsSpan(0, split));
+            decoder.Decode(input.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+            [
+                new Stroke(Code.Insert, null, 0, Modifiers.Shift, KeyAction.Press),
+                new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)
+            ], $"split {split}");
+            sink.Text.ShouldBe([new TerminalText(new Rune('x'))], $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a plain cursor-up CSI (<c>ESC [ A</c>) - which shares its first two bytes
+    /// with the Linux console's raw <c>kf1</c>..<c>kf5</c> shape but then diverges - still decodes
+    /// through the structural signature path as Up instead of being captured by the raw-escape
+    /// matcher.</summary>
+    [Fact]
+    public void Decode_WhenPlainCursorUpSharesPrefixWithRawEscapeBindings_StillDecodesAsUp()
+    {
+        var options = InputOptions.Default.WithKeyMap(CombinedRawAndStructuralKeyMap(), useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+
+        using (InputDecoder decoder = new(sink, options))
+        {
+            decoder.Decode([0x1b, (byte) '[', (byte) 'A']);
+            decoder.Complete();
+        }
+
+        sink.Strokes.ShouldBe([new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Press)]);
+        sink.Text.ShouldBeEmpty();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an SGR mouse report still decodes correctly while a raw-escape-capable
+    /// key map is active, confirming the raw-escape matcher is a pure ground-state pre-filter that
+    /// never shadows registered mouse grammar.</summary>
+    [Fact]
+    public void Decode_WhenSgrMouseArrivesWithRawEscapeBindingsActive_StillDecodesPointer()
+    {
+        var options = InputOptions.Default.WithKeyMap(CombinedRawAndStructuralKeyMap(), useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+
+        using (InputDecoder decoder = new(sink, options))
+        {
+            decoder.Decode([0x1b, .. "[<0;10;5M"u8.ToArray()]);
+            decoder.Complete();
+        }
+
+        var pointer = sink.Pointers.ShouldHaveSingleItem();
+        pointer.Buttons.ShouldBe(Buttons.Primary);
+        pointer.Action.ShouldBe(InputAction.Press);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a lone Escape held by a raw-escape-capable key map exposes the fallback
+    /// matcher's own ambiguity deadline rather than the ordinary lone-Escape deadline, and that
+    /// once that deadline resolves the byte replays through the ordinary Escape path: a letter
+    /// arriving afterward still yields an Alt-modified character, exactly as it would with no
+    /// raw-escape bindings configured at all.</summary>
+    [Fact]
+    public void Decode_WhenLoneEscapeMatcherDeadlineExpiresThenLetterArrives_YieldsAltModifiedCharacter()
+    {
+        var clock = new ManualTimeProvider();
+        var options = new InputOptions { KeyMatcherTimeout = TimeSpan.FromMilliseconds(25) }
+            .WithKeyMap(CombinedRawAndStructuralKeyMap(), useAnsiKeyGrammar: true);
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink, options, clock);
+
+        decoder.Decode([0x1b]);
+        _ = decoder.PendingKeyMatcherDeadline.ShouldNotBeNull();
+        decoder.PendingEscapeDeadline.ShouldBeNull();
+
+        clock.Advance(options.KeyMatcherTimeout);
+        decoder.ExpireKeyMatcher().ShouldBeTrue();
+        _ = decoder.PendingEscapeDeadline.ShouldNotBeNull();
+        decoder.PendingKeyMatcherDeadline.ShouldBeNull();
+
+        decoder.Decode([(byte) 'a']);
+        decoder.Complete();
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Character, new Rune('a'), 0, Modifiers.Alt, KeyAction.Press)
+        ]);
+        sink.Text.ShouldBe([new TerminalText(new Rune('a'))]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a lone Escape immediately followed by an ordinary letter (no divergence
+    /// gap) still yields an Alt-modified character even with a raw-escape-capable key map active,
+    /// mirroring <see cref="Decode_WhenTextIsPlainOrAltModified_EmitsTypedPairs"/> for the default,
+    /// raw-escape-free configuration.</summary>
+    [Fact]
+    public void Decode_WhenLoneEscapeIsImmediatelyFollowedByLetter_YieldsAltModifiedCharacter()
+    {
+        var options = InputOptions.Default.WithKeyMap(CombinedRawAndStructuralKeyMap(), useAnsiKeyGrammar: true);
+        var sink = new RecordingInputSink();
+
+        using (InputDecoder decoder = new(sink, options))
+        {
+            decoder.Decode([0x1b, (byte) 'a']);
+            decoder.Complete();
+        }
+
+        sink.Strokes.ShouldBe(
+        [
+            new Stroke(Code.Character, new Rune('a'), 0, Modifiers.Alt, KeyAction.Press)
+        ]);
+        sink.Text.ShouldBe([new TerminalText(new Rune('a'))]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies <see cref="KeyMap.HasRawEscapeBindings"/> only reports true once a
+    /// fallback binding actually begins with Escape, and that an ordinary eight-bit fallback
+    /// binding does not trip it.</summary>
+    [Fact]
+    public void KeyMap_WhenNoBindingBeginsWithEscape_HasRawEscapeBindingsIsFalse()
+    {
+        var options = InputOptions.Default.WithKeyMap(
+            new KeyMap([new KeyBinding([0xff], Code.F62)]),
+            useAnsiKeyGrammar: false);
+
+        options.KeyMap.HasRawEscapeBindings.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies <see cref="KeyMap.HasRawEscapeBindings"/> reports true once a raw-escape
+    /// binding is present.</summary>
+    [Fact]
+    public void KeyMap_WhenRawEscapeBindingIsPresent_HasRawEscapeBindingsIsTrue() =>
+        CombinedRawAndStructuralKeyMap().HasRawEscapeBindings.ShouldBeTrue();
+
+    private static KeyMap LinuxConsoleFunctionKeyMap() =>
+        new(
+        [
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'A'], Code.F1),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'B'], Code.F2),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'C'], Code.F3),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'D'], Code.F4),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'E'], Code.F5)
+        ]);
+
+    private static KeyMap CombinedRawAndStructuralKeyMap() =>
+        new(
+        [
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'A'], Code.F1),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'B'], Code.F2),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'C'], Code.F3),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'D'], Code.F4),
+            new KeyBinding([0x1b, (byte) '[', (byte) '[', (byte) 'E'], Code.F5),
+            new KeyBinding([0x1b, (byte) '[', (byte) '2', (byte) '$'], Code.Insert, Modifiers.Shift),
+            new KeyBinding([0x1b, (byte) '[', (byte) 'A'], Code.Up)
+        ]);
+
+    #endregion
+
     #region CSI dispatch precedence
 
     /// <summary>Verifies a Kitty enhancement-flags query reply (<c>CSI ? &lt;flags&gt; u</c>) is

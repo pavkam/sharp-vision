@@ -332,10 +332,25 @@ scalar is pending, but an already retained match prefix continues to own its
 remaining bytes. Every matched byte advances absolute input accounting exactly
 once, so later diagnostic offsets include adjacent and completion-time keys.
 Parser-control-prefixed strings that are not one complete structural signature
-are rejected instead of entering that trie. Decoder disposal clears pending and
-rematch bytes, releases the matcher binding/trie arrays and replay workspace,
-and remains idempotent; no described-key byte storage survives that ownership
-boundary.
+are rejected instead of entering that trie, with one exemption: a string of at
+least three bytes that begins with Escape and cannot compile into a signature
+under any parameter or intermediate byte limit enters the trie as a raw-escape
+binding instead. This is a closed exception for real non-ECMA-48 terminal
+dialects - the Linux virtual console's `kf1`-`kf5` (`ESC [ [ A` through
+`ESC [ [ E`, a second literal `[` where a CSI intermediate would need to be) and
+rxvt-unicode's Shift-modified navigation keys (`ESC [ 2 $` for Shift+Insert and
+its siblings, a `$` outside the legal CSI final-byte range) - not a general
+relaxation: a string that only exceeds the active parameter or intermediate
+limit, rather than being unrepresentable at every limit, is still rejected. In
+ground state, an Escape byte joins the trie's byte-prefix matching only while
+the active key map owns at least one raw-escape binding; every other Escape
+grammar (`CSI`, SS3, Kitty, Alt-modified text, and the lone-Escape ambiguity
+deadline itself) is unaffected because a byte that does not continue a
+raw-escape binding is replayed through that same ordinary handling one call
+frame later, reusing the trie's own bounded ambiguity deadline rather than a new
+one. Decoder disposal clears pending and rematch bytes, releases the matcher
+binding/trie arrays and replay workspace, and remains idempotent; no
+described-key byte storage survives that ownership boundary.
 
 Input precedence is fixed: registered typed replies, paste framing, mouse and
 focus reports, and Kitty keyboard events consume their grammar before a

@@ -15,8 +15,10 @@ internal readonly record struct KeyBinding
     /// <param name="code">The logical key produced by the bytes.</param>
     /// <param name="modifiers">The logical modifiers encoded by the bytes.</param>
     /// <exception cref="ArgumentException">
-    /// <paramref name="sequence"/> is empty or begins parser control grammar without
-    /// forming one complete supported signature.
+    /// <paramref name="sequence"/> is empty or begins parser control grammar without forming one
+    /// complete supported signature, unless it is a non-Escape-signature terminal dialect (at
+    /// least three bytes, beginning with Escape, structurally unrepresentable at any limit), which
+    /// is instead retained as a raw byte-sequence binding.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="code"/> is undefined or <paramref name="modifiers"/> contains an unknown flag.
@@ -39,7 +41,9 @@ internal readonly record struct KeyBinding
     /// <param name="limits">The non-null parser limits that must admit structural signatures.</param>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="sequence"/> is empty, unreachable, or exceeds a structural parser limit.
+    /// <paramref name="sequence"/> is empty, unreachable, or exceeds a structural parser limit -
+    /// unless it is a non-Escape-signature terminal dialect that <see cref="IsRawEscapeCandidate"/>
+    /// admits as a raw byte-sequence binding instead.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="code"/> is undefined or <paramref name="modifiers"/> contains an unknown flag.
@@ -63,7 +67,7 @@ internal readonly record struct KeyBinding
 
         var hasSignature = KeySignature.TryCreate(sequence, limits, out var signature);
 
-        if (!hasSignature && IsParserControl(sequence[0]))
+        if (!hasSignature && IsParserControl(sequence[0]) && !IsRawEscapeCandidate(sequence))
         {
             throw new ArgumentException(
                 "A parser-control-prefixed key string must be one complete parser signature.",
@@ -100,4 +104,21 @@ internal readonly record struct KeyBinding
 
     private static bool IsParserControl(byte value) =>
         value is < 0x20 or 0x7f or (>= 0x80 and <= 0x9f);
+
+    // Real terminal dialects encode some keys as Escape-introduced byte sequences ECMA-48 itself
+    // never describes: the Linux virtual console's kf1..kf5 (`ESC [ [ <letter>`, a second literal
+    // '[' where a CSI intermediate would need to be) and rxvt-unicode's Shift-modified navigation
+    // keys (`ESC [ <n> $`, a '$' outside the legal CSI final-byte range). Both are exact, closed,
+    // three-byte-or-longer sequences, so they are retained as raw byte-sequence bindings (no
+    // Signature, matched only by KeySequenceMatcher) instead of being rejected outright. A shorter
+    // Escape-prefixed string is excluded because every two-byte Escape form ECMA-48 admits already
+    // compiles into a signature above, so a two-byte string that still lacks one is genuinely
+    // malformed rather than merely non-conformant. IsStructurallyRepresentable, not just a failed
+    // signature at the active limits, decides eligibility: a sequence that only overflows a
+    // configured parameter or intermediate limit remains an error, since raising the limit would
+    // have described it structurally after all.
+    private static bool IsRawEscapeCandidate(ReadOnlySpan<byte> sequence) =>
+        sequence[0] == ControlBytes.Escape &&
+        sequence.Length >= 3 &&
+        !KeySignature.IsStructurallyRepresentable(sequence);
 }

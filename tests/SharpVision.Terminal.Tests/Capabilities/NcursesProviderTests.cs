@@ -867,6 +867,32 @@ public sealed class NcursesProviderTests
             value.Code == DescriptionDiagnosticCode.InvalidKey && value.Capability == "kcuu1");
     }
 
+    /// <summary>Verifies the Linux virtual console's non-ECMA-48 <c>kf1</c>..<c>kf5</c> shape
+    /// (<c>ESC [ [ &lt;letter&gt;</c>) is published as a raw-escape binding instead of being
+    /// omitted with <see cref="DescriptionDiagnosticCode.InvalidKey"/>: the second literal
+    /// <c>[</c> byte is not a legal CSI intermediate, so no structural signature exists, but the
+    /// exact byte sequence is still retained for bounded byte-prefix matching.</summary>
+    [Fact]
+    public void Load_WhenLinuxConsoleFunctionKeysAreNotEcma48_PublishesRawEscapeBindingsWithoutDiagnostics()
+    {
+        var native = ReadyNative();
+        native.SetString("kf1", NativeString.Present([0x1b, (byte) '[', (byte) '[', (byte) 'A']));
+        native.SetString("kf2", NativeString.Present([0x1b, (byte) '[', (byte) '[', (byte) 'B']));
+        native.SetString("kf3", NativeString.Present([0x1b, (byte) '[', (byte) '[', (byte) 'C']));
+        native.SetString("kf4", NativeString.Present([0x1b, (byte) '[', (byte) '[', (byte) 'D']));
+        native.SetString("kf5", NativeString.Present([0x1b, (byte) '[', (byte) '[', (byte) 'E']));
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
+        var keyMap = result.Profile.ShouldNotBeNull().KeyMap;
+        keyMap.Bindings.Select(static value => value.Code).ShouldBe(
+            [Code.F1, Code.F2, Code.F3, Code.F4, Code.F5], ignoreOrder: true);
+        keyMap.Bindings.ShouldAllBe(static value => value.Signature == null);
+        keyMap.FallbackBindings.Count.ShouldBe(5);
+        result.Diagnostics.ShouldNotContain(value => value.Code == DescriptionDiagnosticCode.InvalidKey);
+    }
+
     /// <summary>Verifies low color counts degrade instead of overclaiming the basic 16-color tier.</summary>
     [Theory]
     [InlineData(1, ColorDepth.Monochrome)]

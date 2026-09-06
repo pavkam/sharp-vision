@@ -85,6 +85,8 @@ internal sealed class KeyMap
         Bindings = Array.AsReadOnly(_bindings);
         FallbackBindings = Array.AsReadOnly(
             _bindings.Where(static binding => !binding.Signature.HasValue).ToArray());
+        HasRawEscapeBindings = FallbackBindings.Any(
+            static binding => binding.Sequence.Span[0] == ControlBytes.Escape);
 
         foreach (var binding in _bindings)
         {
@@ -108,6 +110,15 @@ internal sealed class KeyMap
 
     /// <summary>Gets bindings that require bounded byte-prefix matching.</summary>
     public IReadOnlyList<KeyBinding> FallbackBindings { get; }
+
+    /// <summary>
+    /// Gets whether at least one fallback binding begins with Escape - a non-ECMA-48 terminal
+    /// dialect such as the Linux virtual console's function keys or rxvt-unicode's Shift-modified
+    /// navigation keys. The input decoder consults this to decide whether a lone Escape byte in
+    /// ground state may join bounded byte-prefix matching instead of always beginning ordinary
+    /// lone-Escape ambiguity handling.
+    /// </summary>
+    public bool HasRawEscapeBindings { get; }
 
     /// <summary>Gets whether the map contains a structural eight-bit CSI spelling.</summary>
     public bool RequiresEightBitCsi { get; }

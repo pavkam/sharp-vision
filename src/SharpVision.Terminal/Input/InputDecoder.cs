@@ -606,13 +606,21 @@ public sealed class InputDecoder: IDisposable
         }
     }
 
+    // An Escape byte is otherwise excluded here because it is claimed by BeginEscape's own
+    // ambiguity handling below; a KeyMap can only ever own a genuine Escape-prefixed fallback
+    // binding when it describes a non-ECMA-48 terminal dialect (Linux console function keys,
+    // rxvt-unicode Shift-modified navigation keys - see KeyBinding's raw-escape exemption), so the
+    // exclusion is lifted only while at least one such binding exists. A byte that does not
+    // actually continue one of those bindings still resolves correctly either way: the matcher
+    // immediately reports KeySequenceMatchStatus.Replay and the byte reaches DecodeCoreByte's own
+    // Escape handling unchanged, just one call frame further in.
     private bool CanStartMatcher(byte value) =>
         !_utf8.HasPending &&
         !_escapePending &&
         !_ss3Pending &&
         !_mouseDecoder.Pending &&
         _parser.IsGround &&
-        value != ControlBytes.Escape;
+        (value != ControlBytes.Escape || _options.KeyMap.HasRawEscapeBindings);
 
     /// <summary>
     /// Gets whether one byte can safely join a batched ground-state text run. This mirrors
