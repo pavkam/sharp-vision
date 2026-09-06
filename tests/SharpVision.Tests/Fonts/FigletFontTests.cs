@@ -524,4 +524,55 @@ public sealed class FigletFontTests
 
     private static MemoryStream Stream(string value) =>
         new(Encoding.UTF8.GetBytes(value), writable: false);
+
+    /// <summary>Verifies an <c>old_layout</c> value outside the legal <c>-1..63</c> range - such as
+    /// one with high bits that would otherwise cast directly onto <see cref="FigletLayout.VerticalFitting"/>
+    /// or <see cref="FigletLayout.VerticalSmushing"/> - is rejected as malformed instead of silently
+    /// producing a layout containing bits <c>old_layout</c> has no legitimate way to express.</summary>
+    [Theory]
+    [InlineData("8256")]
+    [InlineData("64")]
+    [InlineData("-2")]
+    public void Load_WhenOldLayoutIsOutOfRange_ThrowsFormatException(string oldLayoutField)
+    {
+        using var stream = Stream(CreateFontWithOldLayout(oldLayoutField));
+
+        _ = Should.Throw<FormatException>(() => FigletFont.Load(stream, "old-layout-out-of-range"));
+    }
+
+    /// <summary>Verifies every legal <c>old_layout</c> boundary value still parses and publishes the
+    /// documented <see cref="FigletLayout"/> translation.</summary>
+    [Theory]
+    [InlineData("-1", FigletLayout.None)]
+    [InlineData("0", FigletLayout.HorizontalFitting)]
+    [InlineData(
+        "63",
+        FigletLayout.Equal | FigletLayout.Underscore | FigletLayout.Hierarchy | FigletLayout.OppositePair |
+        FigletLayout.BigX | FigletLayout.HardBlank | FigletLayout.HorizontalSmushing)]
+    public void Load_WhenOldLayoutIsWithinLegalBoundary_PublishesExpectedLayout(
+        string oldLayoutField,
+        FigletLayout expected)
+    {
+        using var stream = Stream(CreateFontWithOldLayout(oldLayoutField));
+
+        var font = FigletFont.Load(stream, "old-layout-boundary");
+
+        font.Layout.ShouldBe(expected);
+    }
+
+    /// <summary>Builds a minimal height-1 font's header, comment, and 95 required glyphs only - no
+    /// optional legacy German-umlaut block - with a caller-specified <c>old_layout</c> header field,
+    /// mirroring <see cref="CreateFontWithoutGermanBlock()"/> but parameterizing that field instead
+    /// of fixing it at <c>-1</c>.</summary>
+    private static string CreateFontWithOldLayout(string oldLayoutField)
+    {
+        var builder = new StringBuilder($"flf2a$ 1 1 80 {oldLayoutField} 1 0\nTest font by SharpVision\n");
+
+        for (var code = 32; code <= 126; code++)
+        {
+            _ = builder.Append(RuneFor(code)).Append("@@\n");
+        }
+
+        return builder.ToString();
+    }
 }

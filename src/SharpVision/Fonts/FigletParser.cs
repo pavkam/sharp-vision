@@ -54,7 +54,7 @@ internal static class FigletParser
             var height = Positive(header[1], "height");
             var baseline = NonNegative(header[2], "baseline");
             var maxLength = Positive(header[3], "maximum row length");
-            var oldLayout = Integer(header[4], "old layout");
+            var oldLayout = Bounded(header[4], "old layout", -1, 63);
             var comments = NonNegative(header[5], "comment count");
 
             if (height > limits.MaxHeight)
@@ -308,6 +308,19 @@ internal static class FigletParser
     {
         var result = Integer(value, area);
         return result >= 0 ? result : throw new FormatException($"The FIG-font {area} cannot be negative.");
+    }
+
+    [SuppressMessage(
+        "Style",
+        "IDE0051:Remove unused private members",
+        Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    [Pure]
+    private static int Bounded(string value, string area, int min, int max)
+    {
+        var result = Integer(value, area);
+        return result >= min && result <= max
+            ? result
+            : throw new FormatException($"The FIG-font {area} must be between {min} and {max}.");
     }
 
     [Pure]
