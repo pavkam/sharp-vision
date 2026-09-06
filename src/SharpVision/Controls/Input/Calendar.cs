@@ -792,14 +792,14 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         // under this control's live CellPolicy.AmbiguousWidth. Resolve against that policy here,
         // at the point of use, rather than trusting construction-time validation to have covered it.
         row.DrawRune(
-            ActualStyle.PreviousMonthGlyph.Resolve(ControlGlyphs.Calendar.PreviousMonth.Fallback, CellPolicy.AmbiguousWidth),
+            ResolveControlGlyph(new ControlGlyph(ActualStyle.PreviousMonthGlyph, ControlGlyphs.Calendar.PreviousMonth.Fallback)),
             new Point(bounds.X, bounds.Y),
             style);
 
         if (bounds.Width > _headerHeight)
         {
             row.DrawRune(
-                ActualStyle.NextMonthGlyph.Resolve(ControlGlyphs.Calendar.NextMonth.Fallback, CellPolicy.AmbiguousWidth),
+                ResolveControlGlyph(new ControlGlyph(ActualStyle.NextMonthGlyph, ControlGlyphs.Calendar.NextMonth.Fallback)),
                 new Point(bounds.Right - 1, bounds.Y),
                 style);
         }

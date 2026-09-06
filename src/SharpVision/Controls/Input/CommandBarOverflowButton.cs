@@ -47,9 +47,7 @@ internal sealed class CommandBarOverflowButton: InputBase
         var foreground = _owner.Style is null && GetAppearanceState() != VisualState.Normal
             ? ResolvedStyle.Foreground
             : _owner.ResolveOverflowColor(style.OverflowColor);
-        var resolved = style.OverflowGlyph.Value.Resolve(
-            style.OverflowGlyph.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var resolved = ResolveControlGlyph(style.OverflowGlyph);
         var glyphStyle = new TerminalStyle(
             foreground,
             ResolvedStyle.Background,

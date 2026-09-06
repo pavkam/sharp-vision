@@ -509,7 +509,9 @@ namespace SharpVision.Controls
         public void ResetShadow() { }
         protected int ResolveAffixGap() { }
         public SharpVision.Styling.ControlAppearance ResolveAppearance(SharpVision.Styling.Theme? theme, SharpVision.Styling.VisualState visualState = 0) { }
+        protected SharpVision.Styling.BorderGlyphStyle ResolveBorderGlyphs(SharpVision.Styling.BorderGlyphStyle glyphs) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
+        protected System.Text.Rune ResolveControlGlyph(SharpVision.Styling.ControlGlyph glyph) { }
         protected virtual void RevealTextSelectionCaret(int caret) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
         protected virtual bool ScrollTextSelectionViewport(int horizontal, int vertical, out SharpVision.Terminal.Geometry.Point hitAdjustment) { }
@@ -4326,6 +4328,7 @@ namespace SharpVision.Styling
         public ControlGlyph(System.Text.Rune value, System.Text.Rune fallback) { }
         public System.Text.Rune Fallback { get; }
         public System.Text.Rune Value { get; }
+        public System.Text.Rune Resolve(SharpVision.Terminal.Unicode.Ambiguous ambiguousWidth) { }
     }
     public static class ControlGlyphs
     {

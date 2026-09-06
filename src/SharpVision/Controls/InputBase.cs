@@ -1064,11 +1064,8 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     /// </remarks>
     /// <param name="fallback">The code-owned narrow-policy fallback.</param>
     /// <returns>The glyph to draw.</returns>
-    protected Rune ResolveDropDownGlyph(Rune fallback)
-    {
-        return ResolveThemeValue(_dropDownGlyphThemeDependency)
-            .Resolve(fallback, CellPolicy.AmbiguousWidth);
-    }
+    protected Rune ResolveDropDownGlyph(Rune fallback) =>
+        ResolveControlGlyph(new ControlGlyph(ResolveThemeValue(_dropDownGlyphThemeDependency), fallback));
 
     /// <summary>Draws the shared disclosure chevron at the content box's trailing edge.</summary>
     /// <param name="canvas">The canvas to draw into.</param>

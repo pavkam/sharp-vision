@@ -466,20 +466,20 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
     {
         var glyphs = ActualStyle.Glyphs;
         var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalTrackGlyph : glyphs.VerticalTrackGlyph;
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        return ResolveControlGlyph(themed);
     }
 
     private Rune FillRune()
     {
         var glyphs = ActualStyle.Glyphs;
         var themed = Orientation == Orientation.Horizontal ? glyphs.HorizontalFillGlyph : glyphs.VerticalFillGlyph;
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        return ResolveControlGlyph(themed);
     }
 
     private Rune ThumbRune()
     {
         var themed = ActualStyle.Glyphs.ThumbGlyph;
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        return ResolveControlGlyph(themed);
     }
 
 }

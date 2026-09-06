@@ -46,9 +46,8 @@ public sealed class MenuSeparator: ControlBase, IStyled<MenuSeparatorStyle>
 
         if (IsHorizontalMenu)
         {
-            var vertical = ActualStyle.VerticalGlyph.Resolve(
-                ControlGlyphs.Separators.Vertical.Fallback,
-                CellPolicy.AmbiguousWidth);
+            var vertical = ResolveControlGlyph(
+                new ControlGlyph(ActualStyle.VerticalGlyph, ControlGlyphs.Separators.Vertical.Fallback));
             canvas.DrawRune(
                 vertical,
                 new Point(Bounds.X, Bounds.Y),
@@ -57,9 +56,8 @@ public sealed class MenuSeparator: ControlBase, IStyled<MenuSeparatorStyle>
             return;
         }
 
-        var horizontal = ActualStyle.Glyph.Resolve(
-            ControlGlyphs.Separators.Menu.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var horizontal = ResolveControlGlyph(
+            new ControlGlyph(ActualStyle.Glyph, ControlGlyphs.Separators.Menu.Fallback));
         canvas.DrawHorizontalLine(Bounds, horizontal, ResolvedStyle);
     }
 

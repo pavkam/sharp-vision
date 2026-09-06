@@ -226,7 +226,7 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
         if (IsIndeterminate)
         {
             var style = inherited.WithForeground(ResolveColor(actualStyle.IndeterminateColor));
-            var glyph = ResolveConfiguredGlyph(actualStyle.Glyphs.IndeterminateGlyph);
+            var glyph = ResolveControlGlyph(actualStyle.Glyphs.IndeterminateGlyph);
             var visible = canvas.Bounds.Intersect(bounds);
 
             for (var y = visible.Y; y < visible.Bottom; y++)
@@ -317,10 +317,10 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             {
                 var cellIndex = x - bounds.X;
                 var glyph = cellIndex < fullCells
-                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
+                    ? ResolveControlGlyph(glyphs.FillGlyph)
                     : cellIndex == fullCells && remainder > 0
                         ? ResolveControlGlyph(progress.HorizontalFractions.Span[(int) remainder])
-                        : ResolveConfiguredGlyph(glyphs.TrackGlyph);
+                        : ResolveControlGlyph(glyphs.TrackGlyph);
                 var style = cellIndex < fullCells || (cellIndex == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
@@ -334,8 +334,8 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             for (var x = visible.X; x < visible.Right; x++)
             {
                 var glyph = x - bounds.X < filled
-                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
-                    : ResolveConfiguredGlyph(glyphs.TrackGlyph);
+                    ? ResolveControlGlyph(glyphs.FillGlyph)
+                    : ResolveControlGlyph(glyphs.TrackGlyph);
                 var style = x - bounds.X < filled ? fillStyle : trackStyle;
                 canvas.DrawRune(glyph, new Point(x, bounds.Y), style, BackgroundMode.Transparent);
             }
@@ -363,10 +363,10 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             {
                 var cellFromBottom = bounds.Bottom - 1 - y;
                 var glyph = cellFromBottom < fullCells
-                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
+                    ? ResolveControlGlyph(glyphs.FillGlyph)
                     : cellFromBottom == fullCells && remainder > 0
                         ? ResolveControlGlyph(progress.VerticalFractions.Span[(int) remainder])
-                        : ResolveConfiguredGlyph(glyphs.TrackGlyph);
+                        : ResolveControlGlyph(glyphs.TrackGlyph);
                 var style = cellFromBottom < fullCells || (cellFromBottom == fullCells && remainder > 0)
                     ? fillStyle
                     : trackStyle;
@@ -381,17 +381,13 @@ public sealed class ProgressBar: ControlBase, IStyled<ProgressBarStyle>
             for (var y = visible.Y; y < visible.Bottom; y++)
             {
                 var glyph = y >= emptyEnd
-                    ? ResolveConfiguredGlyph(glyphs.FillGlyph)
-                    : ResolveConfiguredGlyph(glyphs.TrackGlyph);
+                    ? ResolveControlGlyph(glyphs.FillGlyph)
+                    : ResolveControlGlyph(glyphs.TrackGlyph);
                 var style = y >= emptyEnd ? fillStyle : trackStyle;
                 canvas.DrawRune(glyph, new Point(bounds.X, y), style, BackgroundMode.Transparent);
             }
         }
     }
-
-    [Pure]
-    private Rune ResolveConfiguredGlyph(ControlGlyph themed) =>
-        themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 
     // Raised for every committed Value transition regardless of which public
     // setter caused it — Value directly, or Minimum/Maximum clamping it — so

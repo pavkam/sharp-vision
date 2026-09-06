@@ -45,9 +45,7 @@ public sealed class CommandBarSeparator: ControlBase, IStyled<CommandBarSeparato
             return;
         }
 
-        var glyph = ActualStyle.Glyph.Value.Resolve(
-            ActualStyle.Glyph.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var glyph = ResolveControlGlyph(ActualStyle.Glyph);
         canvas.DrawRune(glyph, new Point(ContentBounds.X, ContentBounds.Y), ResolvedStyle, BackgroundMode.Transparent);
     }
 }

@@ -45,7 +45,7 @@ public sealed class NavigationViewSeparator: ControlBase, IStyled<NavigationView
             return;
         }
 
-        var glyph = ActualStyle.Glyph.Resolve(ControlGlyphs.Navigation.Separator.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = ResolveControlGlyph(new ControlGlyph(ActualStyle.Glyph, ControlGlyphs.Navigation.Separator.Fallback));
         canvas.DrawHorizontalLine(ContentBounds, glyph, ResolvedStyle);
     }
 }

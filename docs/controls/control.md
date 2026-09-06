@@ -207,19 +207,21 @@ exposes that behavior.
 
 The public and protected chrome surface is:
 
-| Member                                                     | Type     | Default  | Description                                                                                                            |
-| ---------------------------------------------------------- | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `Face`                                                     | `Face`   | Resolved | Public complete local face authoring.                                                                                  |
-| `ResetFace()`                                              | `void`   | —        | Public; returns the local face to Theme ownership.                                                                     |
-| `Border`                                                   | `Border` | Resolved | Public derived-control chrome authoring; throws `InvalidOperationException` until `EnableChromeAuthoring()` is called. |
-| `ResetBorder()`                                            | `void`   | —        | Public; returns the local border to Theme ownership. Throws until chrome authoring is enabled.                         |
-| `Shadow`                                                   | `Shadow` | Resolved | Public derived-control chrome authoring; throws `InvalidOperationException` until `EnableChromeAuthoring()` is called. |
-| `ResetShadow()`                                            | `void`   | —        | Public; returns the local shadow to Theme ownership. Throws until chrome authoring is enabled.                         |
-| `SetAppearance(VisualState state, AppearanceOverlay? set)` | `void`   | —        | Protected derived-control partial state authoring.                                                                     |
-| `ActualFace`                                               | `Face`   | Resolved | Public read-only, fully composed current face.                                                                         |
-| `ActualBorder`                                             | `Border` | Resolved | Public read-only, fully composed current border.                                                                       |
-| `ActualShadow`                                             | `Shadow` | Resolved | Public read-only, fully composed current shadow.                                                                       |
-| `IsAppearanceBoundary`                                     | `bool`   | `false`  | Stops ambient face inheritance for descendants.                                                                        |
+| Member                                                     | Type               | Default  | Description                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------- | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Face`                                                     | `Face`             | Resolved | Public complete local face authoring.                                                                                                                                                                                                                                      |
+| `ResetFace()`                                              | `void`             | —        | Public; returns the local face to Theme ownership.                                                                                                                                                                                                                         |
+| `Border`                                                   | `Border`           | Resolved | Public derived-control chrome authoring; throws `InvalidOperationException` until `EnableChromeAuthoring()` is called.                                                                                                                                                     |
+| `ResetBorder()`                                            | `void`             | —        | Public; returns the local border to Theme ownership. Throws until chrome authoring is enabled.                                                                                                                                                                             |
+| `Shadow`                                                   | `Shadow`           | Resolved | Public derived-control chrome authoring; throws `InvalidOperationException` until `EnableChromeAuthoring()` is called.                                                                                                                                                     |
+| `ResetShadow()`                                            | `void`             | —        | Public; returns the local shadow to Theme ownership. Throws until chrome authoring is enabled.                                                                                                                                                                             |
+| `SetAppearance(VisualState state, AppearanceOverlay? set)` | `void`             | —        | Protected derived-control partial state authoring.                                                                                                                                                                                                                         |
+| `ResolveControlGlyph(ControlGlyph glyph)`                  | `Rune`             | —        | Protected; resolves one themed glyph against this control's own live cell policy, falling back to the portable repair glyph when the preferred glyph cannot render as one cell.                                                                                            |
+| `ResolveBorderGlyphs(BorderGlyphStyle glyphs)`             | `BorderGlyphStyle` | —        | Protected internal; resolves every border segment the same way, falling back per segment to the code-owned chrome glyphs. Internal as well because the framework-owned chrome renderer draws borders on every control's behalf and is not itself a `ControlBase` subclass. |
+| `ActualFace`                                               | `Face`             | Resolved | Public read-only, fully composed current face.                                                                                                                                                                                                                             |
+| `ActualBorder`                                             | `Border`           | Resolved | Public read-only, fully composed current border.                                                                                                                                                                                                                           |
+| `ActualShadow`                                             | `Shadow`           | Resolved | Public read-only, fully composed current shadow.                                                                                                                                                                                                                           |
+| `IsAppearanceBoundary`                                     | `bool`             | `false`  | Stops ambient face inheritance for descendants.                                                                                                                                                                                                                            |
 
 The resolver applies semantic normal states, semantic active states, complete
 local values, and local state sets, in that order, so a value you assign
@@ -234,6 +236,14 @@ background, and terminal attributes. `Shadow` owns visibility, `ShadowMode`,
 offset, glyph, foreground, background, and terminal attributes. Each has a
 matching `*Set` record whose members are all optional, used for partial state
 contributions.
+
+A themed `ControlGlyph` or `BorderGlyphStyle` is only validated against the
+narrow width policy at construction time, so it can still measure two cells
+under the control's live East Asian Ambiguous width policy, which can change
+after construction when the host renegotiates capabilities. Derived controls
+must resolve every themed glyph through `ResolveControlGlyph` or
+`ResolveBorderGlyphs` rather than repeating the glyph-repair expression by hand,
+because only this control's own live cell policy is authoritative.
 
 All complete and partial values are validated before mutation. A transparent
 background is valid because backgrounds compose; the glyph-painting foreground

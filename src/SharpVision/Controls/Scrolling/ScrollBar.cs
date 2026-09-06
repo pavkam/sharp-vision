@@ -556,29 +556,13 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 
     private int ButtonCount(int length) => ActualStyle.Chrome == ScrollBarChrome.Full && length >= 2 ? 1 : 0;
 
-    private Rune DecrementRune()
-    {
-        var themed = DecrementDefaultGlyph();
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
-    }
+    private Rune DecrementRune() => ResolveControlGlyph(DecrementDefaultGlyph());
 
-    private Rune IncrementRune()
-    {
-        var themed = IncrementDefaultGlyph();
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
-    }
+    private Rune IncrementRune() => ResolveControlGlyph(IncrementDefaultGlyph());
 
-    private Rune TrackRune()
-    {
-        var themed = TrackDefaultGlyph();
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
-    }
+    private Rune TrackRune() => ResolveControlGlyph(TrackDefaultGlyph());
 
-    private Rune ThumbRune()
-    {
-        var themed = ThumbDefaultGlyph();
-        return themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
-    }
+    private Rune ThumbRune() => ResolveControlGlyph(ThumbDefaultGlyph());
 
     private ControlGlyph DecrementDefaultGlyph() => Orientation == Orientation.Vertical
         ? ActualStyle.Glyphs.VerticalDecrementGlyph

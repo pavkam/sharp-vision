@@ -124,7 +124,7 @@ internal sealed class TreeViewStatusRow: ControlBase
         }
 
         canvas.DrawRune(
-            StatusGlyph.Resolve(StatusGlyphFallback, CellPolicy.AmbiguousWidth),
+            ResolveControlGlyph(new ControlGlyph(StatusGlyph, StatusGlyphFallback)),
             new Point(x, bounds.Y),
             statusStyle,
             BackgroundMode.Transparent);

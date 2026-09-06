@@ -1226,7 +1226,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     [Pure]
     private Rune DisclosureGlyph(bool expanded) =>
         expanded
-            ? ActualStyle.ExpandedGlyph.Resolve(ControlGlyphs.Disclosure.Expanded.Fallback, CellPolicy.AmbiguousWidth)
-            : ActualStyle.CollapsedGlyph.Resolve(ControlGlyphs.Disclosure.Collapsed.Fallback, CellPolicy.AmbiguousWidth);
+            ? ResolveControlGlyph(new ControlGlyph(ActualStyle.ExpandedGlyph, ControlGlyphs.Disclosure.Expanded.Fallback))
+            : ResolveControlGlyph(new ControlGlyph(ActualStyle.CollapsedGlyph, ControlGlyphs.Disclosure.Collapsed.Fallback));
 
 }

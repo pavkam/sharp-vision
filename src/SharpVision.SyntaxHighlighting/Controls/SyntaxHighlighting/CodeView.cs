@@ -1122,7 +1122,7 @@ public sealed class CodeView:
             if ((long) drawX + 1 <= canvas.Bounds.Right)
             {
                 var ellipsisStyle = ResolvedStyle.WithForeground(ResolveColor(style.NormalColor, Theme));
-                var ellipsisGlyph = ControlGlyphs.Text.Ellipsis.Value.Resolve(ControlGlyphs.Text.Ellipsis.Fallback, CellPolicy.AmbiguousWidth);
+                var ellipsisGlyph = ResolveControlGlyph(ControlGlyphs.Text.Ellipsis);
                 Span<char> buffer = stackalloc char[2];
                 var written = ellipsisGlyph.EncodeToUtf16(buffer);
                 _ = canvas.Draw(buffer[..written], new Point(drawX, y), ellipsisStyle);

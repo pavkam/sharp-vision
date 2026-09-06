@@ -22,4 +22,12 @@ public readonly record struct ControlGlyph
 
     /// <summary>Gets the portable repair scalar.</summary>
     public Rune Fallback { get; }
+
+    /// <summary>Applies the single glyph-repair rule: the preferred glyph when the live cell policy
+    /// can render it as one cell, otherwise the portable fallback.</summary>
+    /// <param name="ambiguousWidth">The live East Asian Ambiguous width policy to resolve against.</param>
+    /// <returns><see cref="Value"/> when it measures one printable cell under
+    /// <paramref name="ambiguousWidth"/>; otherwise <see cref="Fallback"/>.</returns>
+    [Pure]
+    public Rune Resolve(Ambiguous ambiguousWidth) => Value.Resolve(Fallback, ambiguousWidth);
 }

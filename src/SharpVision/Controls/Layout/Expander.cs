@@ -215,7 +215,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         var style = ActualStyle;
         var selected = IsExpanded ? style.ExpandedGlyph : style.CollapsedGlyph;
         canvas.DrawRune(
-            selected.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth),
+            ResolveControlGlyph(new ControlGlyph(selected, themed.Fallback)),
             new Point(content.X, content.Y),
             s,
             BackgroundMode.Transparent);

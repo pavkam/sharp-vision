@@ -1196,7 +1196,7 @@ internal sealed class DocumentLayout
     };
 
     [Pure]
-    private Rune Resolve(ControlGlyph glyph) => glyph.Value.Resolve(glyph.Fallback, _ambiguousWidth);
+    private Rune Resolve(ControlGlyph glyph) => glyph.Resolve(_ambiguousWidth);
 
     [Pure]
     private int MeasureCells(ReadOnlySpan<char> value) => UnicodeWidth.Measure(value, _ambiguousWidth).Cells;

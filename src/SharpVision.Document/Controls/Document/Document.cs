@@ -1734,8 +1734,7 @@ public sealed class Document:
 
     private void RenderQuoteBars(TerminalCanvas canvas, Rect bounds, int first, int last)
     {
-        var glyph = ActualStyle.Glyphs.QuoteBarGlyph;
-        var bar = glyph.Value.Resolve(glyph.Fallback, CellPolicy.AmbiguousWidth);
+        var bar = ResolveControlGlyph(ActualStyle.Glyphs.QuoteBarGlyph);
 
         foreach (var quote in _layout.QuoteBars)
         {

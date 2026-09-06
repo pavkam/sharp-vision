@@ -47,4 +47,20 @@ public sealed class ControlGlyphTests
 
         exception.ParamName.ShouldBe("fallback");
     }
+
+    /// <summary>Verifies Resolve applies the single glyph-repair rule: it returns the preferred
+    /// glyph under a policy where the ambiguous-width value still measures one cell, and the
+    /// portable fallback under a policy where that same value measures two cells.</summary>
+    [Fact]
+    public void Resolve_WhenAmbiguousWidthIsNarrow_ReturnsFallbackOnlyForAmbiguousValue()
+    {
+        // U+00B7 MIDDLE DOT is East Asian Ambiguous: one cell under Narrow, two under Wide.
+        var glyph = new ControlGlyph(new Rune(0x00B7), new Rune('.'));
+
+        var underNarrow = glyph.Resolve(Ambiguous.Narrow);
+        var underWide = glyph.Resolve(Ambiguous.Wide);
+
+        underNarrow.ShouldBe(glyph.Value);
+        underWide.ShouldBe(glyph.Fallback);
+    }
 }

@@ -466,9 +466,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                     lines);
                 var line = lines[0];
                 var truncated = headerText.AsSpan(line.Offset, line.Length);
-                var ellipsisGlyph = ControlGlyphs.Text.Ellipsis.Value.Resolve(
-                    ControlGlyphs.Text.Ellipsis.Fallback,
-                    CellPolicy.AmbiguousWidth);
+                var ellipsisGlyph = ResolveControlGlyph(ControlGlyphs.Text.Ellipsis);
                 headerText = line.HasEllipsis
                     ? string.Concat(truncated, ellipsisGlyph.ToString())
                     : truncated.ToString();
@@ -570,15 +568,15 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             style.ResizeGripDisabledColor.Resolve(theme));
     }
 
-    private Rune ResolveCloseGlyph() =>
-        ResolveThemeValue(_interactionChromeThemeDependency).CloseGlyph.Resolve(
-            ControlGlyphs.Chrome.WindowClose.Fallback,
-            CellPolicy.AmbiguousWidth);
+    private Rune ResolveCloseGlyph() => ResolveControlGlyph(
+        new ControlGlyph(
+            ResolveThemeValue(_interactionChromeThemeDependency).CloseGlyph,
+            ControlGlyphs.Chrome.WindowClose.Fallback));
 
-    private Rune ResolveResizeGripGlyph() =>
-        ResolveThemeValue(_interactionChromeThemeDependency).ResizeGripGlyph.Resolve(
-            ControlGlyphs.Chrome.WindowResize.Fallback,
-            CellPolicy.AmbiguousWidth);
+    private Rune ResolveResizeGripGlyph() => ResolveControlGlyph(
+        new ControlGlyph(
+            ResolveThemeValue(_interactionChromeThemeDependency).ResizeGripGlyph,
+            ControlGlyphs.Chrome.WindowResize.Fallback));
 
     private void DrawFullCloseChrome(
         TerminalCanvas canvas,
@@ -591,12 +589,10 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         Debug.Assert(closeChrome.Width == _closeChromeWidth, "Full close chrome has its fixed width.");
         var style = ResolveThemeValue(_interactionChromeThemeDependency);
         var glyph = ResolveCloseGlyph();
-        var leftBracket = style.CloseLeftBracket.Resolve(
-            ControlGlyphs.Chrome.WindowCloseLeft.Fallback,
-            CellPolicy.AmbiguousWidth);
-        var rightBracket = style.CloseRightBracket.Resolve(
-            ControlGlyphs.Chrome.WindowCloseRight.Fallback,
-            CellPolicy.AmbiguousWidth);
+        var leftBracket = ResolveControlGlyph(
+            new ControlGlyph(style.CloseLeftBracket, ControlGlyphs.Chrome.WindowCloseLeft.Fallback));
+        var rightBracket = ResolveControlGlyph(
+            new ControlGlyph(style.CloseRightBracket, ControlGlyphs.Chrome.WindowCloseRight.Fallback));
         var y = closeChrome.Y;
         canvas.DrawRune(borderGlyphs.Top, new Point(closeChrome.X, y), border, background);
         canvas.DrawRune(borderGlyphs.Top, new Point(closeChrome.X + 1, y), border, background);

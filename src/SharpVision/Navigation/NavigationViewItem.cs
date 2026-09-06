@@ -170,7 +170,8 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
 
         var current = _isSelected || IsPointerOver;
         var themed = current ? ControlGlyphs.Navigation.ItemCurrent : ControlGlyphs.Navigation.ItemIdle;
-        var marker = (current ? ActualStyle.CurrentMarker : ActualStyle.IdleMarker).Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        var marker = ResolveControlGlyph(
+            new ControlGlyph(current ? ActualStyle.CurrentMarker : ActualStyle.IdleMarker, themed.Fallback));
         var prefix = Glyph is not null ? $"{Glyph} " : string.Empty;
         var clipped = canvas.Clip(bounds);
         var leading = clipped.Draw(

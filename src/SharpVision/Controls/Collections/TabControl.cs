@@ -219,8 +219,8 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         var dividerStyle = inherited.WithForeground(ResolveColor(style.DividerColor, Theme));
         var indicatorStyle = inherited.WithForeground(ResolveColor(style.SelectionIndicatorColor, Theme));
         var separators = ControlGlyphs.Separators;
-        var divider = style.DividerGlyph.Resolve(separators.TabDivider.Fallback, CellPolicy.AmbiguousWidth);
-        var underline = style.UnderlineGlyph.Resolve(separators.TabUnderline.Fallback, CellPolicy.AmbiguousWidth);
+        var divider = ResolveControlGlyph(new ControlGlyph(style.DividerGlyph, separators.TabDivider.Fallback));
+        var underline = ResolveControlGlyph(new ControlGlyph(style.UnderlineGlyph, separators.TabUnderline.Fallback));
 
         for (var index = 0; index < _headers.Children.Count; index++)
         {

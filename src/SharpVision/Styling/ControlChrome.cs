@@ -320,7 +320,8 @@ internal static class ControlChrome
                         Debug.Assert(
                             shadow.Mode == ShadowMode.BlockGlyph,
                             "Public validation limits shadow modes.");
-                        var glyph = shadow.Glyph.Resolve(ControlGlyphs.Chrome.Shadow.Fallback, control.CellPolicy.AmbiguousWidth);
+                        var glyph = new ControlGlyph(shadow.Glyph, ControlGlyphs.Chrome.Shadow.Fallback)
+                            .Resolve(control.CellPolicy.AmbiguousWidth);
                         canvas.DrawRune(glyph, point, style, background);
                     }
                 }
@@ -372,9 +373,10 @@ internal static class ControlChrome
         var targetTopHalf = (2L * sourceBounds.Y) + offset.Y;
         var targetBottomHalf = (2L * sourceBounds.Bottom) + offset.Y;
         var chrome = ControlGlyphs.Chrome;
-        var upper = control.ResolveControlGlyph(chrome.FractionalUpper);
-        var lower = control.ResolveControlGlyph(chrome.FractionalLower);
-        var full = control.ResolveControlGlyph(chrome.FractionalFull);
+        var ambiguousWidth = control.CellPolicy.AmbiguousWidth;
+        var upper = chrome.FractionalUpper.Resolve(ambiguousWidth);
+        var lower = chrome.FractionalLower.Resolve(ambiguousWidth);
+        var full = chrome.FractionalFull.Resolve(ambiguousWidth);
         for (var y = target.Y; y < target.Bottom; y++)
         {
             var cellTopHalf = 2L * y;

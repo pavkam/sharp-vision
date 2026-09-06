@@ -1704,10 +1704,10 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         // and are drawn by the same loops, so a glyph that measures two cells under Ambiguous.Wide -
         // which all four do - overruns the row unless it degrades the same way.
         var anchors = ResolvedAnchorGlyphs;
-        var upArrow = ResolveAnchor(anchors.UpGlyph);
-        var downArrow = ResolveAnchor(anchors.DownGlyph);
-        var leftArrow = ResolveAnchor(anchors.LeftGlyph);
-        var rightArrow = ResolveAnchor(anchors.RightGlyph);
+        var upArrow = ResolveControlGlyph(anchors.UpGlyph);
+        var downArrow = ResolveControlGlyph(anchors.DownGlyph);
+        var leftArrow = ResolveControlGlyph(anchors.LeftGlyph);
+        var rightArrow = ResolveControlGlyph(anchors.RightGlyph);
         var frame = SurfaceFrame(ResolvedPlacement);
         var indicatorEdge = ShowAnchorIndicator ? ResolvedPlacement : (PopupPlacement?) null;
         var anchorMid = Anchor is { } anchorCtl
@@ -1957,10 +1957,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     // Read from the style set directly rather than through AppearanceStates: flattening a style to
     // AppearanceStates keeps only the appearance members and drops everything else, so a control
     // that needs a glyph member has to resolve its own style.
-    [Pure]
-    private Rune ResolveAnchor(ControlGlyph themed) =>
-        themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
-
     /// <summary>Gets the resolved anchor family and records its render dependency for Theme swaps.</summary>
     /// <remarks>Internal so tests can prove the dependency is registered at the resolver boundary.</remarks>
     internal PopupAnchorGlyphs ResolvedAnchorGlyphs => ResolveThemeValue(_anchorGlyphsThemeDependency);

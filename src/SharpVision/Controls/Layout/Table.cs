@@ -849,27 +849,27 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     internal VisualState CurrentVisualState => GetAppearanceState();
 
     /// <summary>Gets the terminal-safe horizontal grid glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedHorizontalGridGlyph => ResolveGridGlyph(ActualStyle.Glyphs.HorizontalGlyph);
+    internal Rune ResolvedHorizontalGridGlyph => ResolveControlGlyph(ActualStyle.Glyphs.HorizontalGlyph);
 
     /// <summary>Gets the terminal-safe vertical grid glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedVerticalGridGlyph => ResolveGridGlyph(ActualStyle.Glyphs.VerticalGlyph);
+    internal Rune ResolvedVerticalGridGlyph => ResolveControlGlyph(ActualStyle.Glyphs.VerticalGlyph);
 
     /// <summary>Gets the terminal-safe grid-intersection glyph for the current theme and cell policy.</summary>
-    internal Rune ResolvedCrossGridGlyph => ResolveGridGlyph(ActualStyle.Glyphs.CrossGlyph);
+    internal Rune ResolvedCrossGridGlyph => ResolveControlGlyph(ActualStyle.Glyphs.CrossGlyph);
 
     /// <summary>Gets the terminal-safe ascending sort indicator for the current theme and cell policy.</summary>
-    internal Rune ResolvedSortAscendingGlyph => ResolveGridGlyph(ActualStyle.Glyphs.SortAscendingGlyph);
+    internal Rune ResolvedSortAscendingGlyph => ResolveControlGlyph(ActualStyle.Glyphs.SortAscendingGlyph);
 
     /// <summary>Gets the terminal-safe descending sort indicator for the current theme and cell policy.</summary>
-    internal Rune ResolvedSortDescendingGlyph => ResolveGridGlyph(ActualStyle.Glyphs.SortDescendingGlyph);
+    internal Rune ResolvedSortDescendingGlyph => ResolveControlGlyph(ActualStyle.Glyphs.SortDescendingGlyph);
 
     /// <summary>Gets the terminal-safe progressive-loading placeholder glyph for the current theme
     /// and cell policy.</summary>
-    internal Rune ResolvedPlaceholderGlyph => ResolveGridGlyph(ActualStyle.Glyphs.PlaceholderGlyph);
+    internal Rune ResolvedPlaceholderGlyph => ResolveControlGlyph(ActualStyle.Glyphs.PlaceholderGlyph);
 
     /// <summary>Gets the terminal-safe progressive load-failure placeholder glyph for the current
     /// theme and cell policy.</summary>
-    internal Rune ResolvedPlaceholderErrorGlyph => ResolveGridGlyph(ActualStyle.Glyphs.PlaceholderErrorGlyph);
+    internal Rune ResolvedPlaceholderErrorGlyph => ResolveControlGlyph(ActualStyle.Glyphs.PlaceholderErrorGlyph);
 
     #endregion
 
@@ -2608,10 +2608,5 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     }
 
     #endregion
-    // Only the primary glyph is themable; the ASCII repair value stays code-owned, which is the
-    // split theming-new-controls.md asks for.
-    [Pure]
-    private Rune ResolveGridGlyph(ControlGlyph themed) =>
-        themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
 
 }

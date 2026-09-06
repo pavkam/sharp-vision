@@ -299,5 +299,5 @@ public sealed class RadioButton: InputBase, IStyled<RadioButtonStyle>
 
     [Pure]
     private string Mark(Rune value, Rune fallback) =>
-        value.Resolve(fallback, CellPolicy.AmbiguousWidth).ToString();
+        ResolveControlGlyph(new ControlGlyph(value, fallback)).ToString();
 }

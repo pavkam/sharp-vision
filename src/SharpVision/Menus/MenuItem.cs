@@ -549,7 +549,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         var content = ContentBounds;
 
         var themed = ThemeMenuGlyph(_isChecked);
-        var glyph = themed.Value.Resolve(themed.Fallback, CellPolicy.AmbiguousWidth);
+        var glyph = ResolveControlGlyph(themed);
         var marker = Kind switch
         {
             MenuItemKind.Check => $"[{glyph}] ",
@@ -604,9 +604,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
             if (indicatorX >= content.X)
             {
-                var submenuGlyph = ActualStyle.SubmenuGlyph.Resolve(
-                    ControlGlyphs.Disclosure.Collapsed.Fallback,
-                    CellPolicy.AmbiguousWidth);
+                var submenuGlyph = ResolveControlGlyph(
+                    new ControlGlyph(ActualStyle.SubmenuGlyph, ControlGlyphs.Disclosure.Collapsed.Fallback));
                 canvas.DrawRune(
                     submenuGlyph,
                     new Point(indicatorX, content.Y),

@@ -6183,10 +6183,29 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     [Pure]
     protected Color ResolveColor(ControlColor value) => ResolveColor(value, Theme);
 
-    internal Rune ResolveControlGlyph(ControlGlyph glyph) =>
-        glyph.Value.Resolve(glyph.Fallback, CellPolicy.AmbiguousWidth);
+    /// <summary>Resolves one themed control glyph against this control's live cell policy.</summary>
+    /// <param name="glyph">The preferred glyph and its portable one-cell fallback.</param>
+    /// <returns>The preferred glyph when it renders as one cell under the live
+    /// <see cref="UnicodePolicy.AmbiguousWidth"/>; otherwise the fallback.</returns>
+    /// <remarks>Derived controls must resolve every themed <see cref="ControlGlyph"/> through this
+    /// method rather than repeating the glyph-repair expression by hand: only this control's own live
+    /// <see cref="CellPolicy"/> is authoritative, because the terminal's East Asian Ambiguous width
+    /// policy can change after construction when the host renegotiates capabilities, and a
+    /// hand-rolled copy silently stops tracking that change.</remarks>
+    protected Rune ResolveControlGlyph(ControlGlyph glyph) => glyph.Resolve(CellPolicy.AmbiguousWidth);
 
-    internal BorderGlyphStyle ResolveBorderGlyphs(BorderGlyphStyle glyphs)
+    /// <summary>Resolves a themed border glyph family against this control's live cell policy.</summary>
+    /// <param name="glyphs">The preferred border glyph family.</param>
+    /// <returns>A border glyph family with every segment resolved against the live
+    /// <see cref="UnicodePolicy.AmbiguousWidth"/>, falling back per segment to
+    /// <see cref="ControlGlyphs.Chrome"/> when a preferred segment cannot render as one cell.</returns>
+    /// <remarks>Derived controls must resolve a themed <see cref="BorderGlyphStyle"/> through this
+    /// method rather than repeating the per-segment glyph-repair expression by hand, for the same
+    /// reason as <see cref="ResolveControlGlyph(ControlGlyph)"/>: only this control's own live
+    /// <see cref="CellPolicy"/> is authoritative. Exposed to the framework-owned chrome renderer as
+    /// well as to derived controls, since the chrome renderer draws borders on every control's behalf
+    /// and is not itself a <see cref="ControlBase"/> subclass.</remarks>
+    protected internal BorderGlyphStyle ResolveBorderGlyphs(BorderGlyphStyle glyphs)
     {
         var fallback = ControlGlyphs.Chrome;
         return new BorderGlyphStyle(

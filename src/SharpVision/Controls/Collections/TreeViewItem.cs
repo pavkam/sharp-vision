@@ -620,7 +620,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         if (HasChildren)
         {
             canvas.DrawRune(
-                DisclosureGlyph.Resolve(DisclosureGlyphFallback, CellPolicy.AmbiguousWidth),
+                ResolveControlGlyph(new ControlGlyph(DisclosureGlyph, DisclosureGlyphFallback)),
                 new Point(x, bounds.Y),
                 style,
                 BackgroundMode.Transparent);
