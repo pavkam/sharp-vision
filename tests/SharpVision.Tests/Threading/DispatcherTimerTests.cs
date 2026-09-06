@@ -446,6 +446,52 @@ public sealed class DispatcherTimerTests
         timer.Dispose();
     }
 
+    /// <summary>Verifies the reverse interleaving of the two races above: a stale generation's
+    /// elapsed signal that arrives only after a rearm has already reset the pending latch and
+    /// bumped the generation must not be able to claim that latch and steal it out from under the
+    /// new generation's own first elapsed signal. The freshness check and the latch claim are
+    /// evaluated under the same lock the rearm uses to bump the generation and reset the latch,
+    /// so a generation that is already stale by the time it is evaluated can never win the claim.</summary>
+    [Fact]
+    public async Task Interval_WhenStaleGenerationElapsesAfterResetButBeforeNewGenerationClaims_DoesNotStealNewGenerationsFirstTickAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var ticks = 0;
+        var (timer, staleGeneration) = await dispatcher.InvokeAsync(
+            () =>
+            {
+                var value = new DispatcherTimer(dispatcher, TimeSpan.FromMilliseconds(200));
+                value.Tick += (_, _) => ticks++;
+                value.Start();
+                var generation = value.Generation;
+
+                // Rearm first: this bumps the generation and resets the pending latch to 0 as
+                // part of the same locked block, before either simulated signal below arrives.
+                value.Interval = TimeSpan.FromMilliseconds(50);
+                return (value, generation);
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+
+        // The stale generation's delayed clock callback arrives only now, after the rearm above
+        // already reset the pending latch for the new generation. Under an ungated claim this
+        // would latch `_pending` for the stale generation and steal the slot from the new
+        // generation's own signal below.
+        timer.SimulateElapsedForGeneration(staleGeneration);
+
+        // The new generation's own first elapsed signal, which must not find the latch already
+        // stolen by the stale signal above.
+        timer.SimulateElapsedForGeneration(timer.Generation);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ticks.ShouldBe(1);
+        timer.Dispose();
+    }
+
     /// <summary>Verifies tick handler failures use ordinary dispatcher reporting.</summary>
     [Fact]
     public async Task Tick_WhenHandlerThrows_UsesDispatcherUnhandledPolicyAsync()

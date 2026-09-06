@@ -230,18 +230,21 @@ public sealed class DispatcherTimer: IDisposable
 
     private void OnElapsed(int generation)
     {
-        if (Interlocked.CompareExchange(ref _pending, 1, 0) != 0)
-        {
-            return;
-        }
-
+        // The freshness check and the `_pending` latch claim must be atomic with the arm
+        // points' generation-bump-plus-reset (Interval/Start/Stop/Dispose, all under `_gate`).
+        // Claiming the latch before taking `_gate` let a stale generation's delayed callback
+        // steal the slot right after a rearm reset `_pending` for a new generation, silently
+        // dropping that new generation's first tick. Gating both under the same lock closes
+        // that window: a stale generation can never latch after its own generation has been
+        // superseded, because the rearm that supersedes it holds the same lock to do so.
         lock (_gate)
         {
-            if (_disposed != 0 || !_isRunning)
+            if (_disposed != 0 || !_isRunning || generation != _generation || _pending != 0)
             {
-                _ = Interlocked.Exchange(ref _pending, 0);
                 return;
             }
+
+            _ = Interlocked.Exchange(ref _pending, 1);
         }
 
         try
