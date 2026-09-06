@@ -167,13 +167,16 @@ public sealed class RuntimeInteropTests
     }
 
     /// <summary>
-    /// Verifies the pure termios layout selection returns the exact documented tuple for macOS and
-    /// for Linux, without depending on which platform the test process itself happens to run on.
+    /// Verifies the pure termios/window-size layout selection returns the exact documented tuple
+    /// for macOS, the generic Linux architectures, and Linux PowerPC (ppc64le) - the one Linux
+    /// architecture whose ABI diverges from every other supported target - without depending on
+    /// which architecture the test process itself happens to run on.
     /// </summary>
     [Fact]
-    public void SelectLayout_ForMacOsAndLinux_ReturnsTheDocumentedTuples()
+    public void SelectLayout_ForKnownPlatformsAndArchitectures_ReturnsTheDocumentedTuples()
     {
-        var macOs = RuntimeInterop.SelectLayout(isMacOs: true);
+        var macOs = RuntimeInterop.SelectLayout(isMacOs: true, Architecture.Arm64);
+        ((ulong) macOs.WindowSizeRequest).ShouldBe(0ul);
         macOs.TermiosStateLength.ShouldBe(72);
         macOs.LocalFlagsOffset.ShouldBe(24);
         macOs.LocalFlagsWidth.ShouldBe(8);
@@ -183,15 +186,34 @@ public sealed class RuntimeInteropTests
         macOs.DelayedSuspendCharacterIndex.ShouldBe(11);
         macOs.DisabledControlCharacter.ShouldBe((byte) 0xff);
 
-        var linux = RuntimeInterop.SelectLayout(isMacOs: false);
-        linux.TermiosStateLength.ShouldBe(60);
-        linux.LocalFlagsOffset.ShouldBe(12);
-        linux.LocalFlagsWidth.ShouldBe(4);
-        linux.SignalsEnabledFlag.ShouldBe(0x0000_0001ul);
-        linux.ControlCharactersOffset.ShouldBe(17);
-        linux.SuspendCharacterIndex.ShouldBe(10);
-        linux.DelayedSuspendCharacterIndex.ShouldBeNull();
-        linux.DisabledControlCharacter.ShouldBe((byte) 0);
+        // macOS ships no ppc64/ppc64le runtime, so the same tuple applies regardless of the
+        // architecture argument.
+        RuntimeInterop.SelectLayout(isMacOs: true, Architecture.X64).ShouldBe(macOs);
+
+        var genericLinuxX64 = RuntimeInterop.SelectLayout(isMacOs: false, Architecture.X64);
+        ((ulong) genericLinuxX64.WindowSizeRequest).ShouldBe(0x5413ul);
+        genericLinuxX64.TermiosStateLength.ShouldBe(60);
+        genericLinuxX64.LocalFlagsOffset.ShouldBe(12);
+        genericLinuxX64.LocalFlagsWidth.ShouldBe(4);
+        genericLinuxX64.SignalsEnabledFlag.ShouldBe(0x0000_0001ul);
+        genericLinuxX64.ControlCharactersOffset.ShouldBe(17);
+        genericLinuxX64.SuspendCharacterIndex.ShouldBe(10);
+        genericLinuxX64.DelayedSuspendCharacterIndex.ShouldBeNull();
+        genericLinuxX64.DisabledControlCharacter.ShouldBe((byte) 0);
+
+        // Every non-ppc64le Linux architecture (x64, arm64, and everything else) shares one tuple.
+        RuntimeInterop.SelectLayout(isMacOs: false, Architecture.Arm64).ShouldBe(genericLinuxX64);
+
+        var ppc64Le = RuntimeInterop.SelectLayout(isMacOs: false, Architecture.Ppc64le);
+        ((ulong) ppc64Le.WindowSizeRequest).ShouldBe(0x40087468ul);
+        ppc64Le.TermiosStateLength.ShouldBe(44);
+        ppc64Le.LocalFlagsOffset.ShouldBe(12);
+        ppc64Le.LocalFlagsWidth.ShouldBe(4);
+        ppc64Le.SignalsEnabledFlag.ShouldBe(0x0000_0080ul);
+        ppc64Le.ControlCharactersOffset.ShouldBe(16);
+        ppc64Le.SuspendCharacterIndex.ShouldBe(12);
+        ppc64Le.DelayedSuspendCharacterIndex.ShouldBeNull();
+        ppc64Le.DisabledControlCharacter.ShouldBe((byte) 0);
     }
 
     /// <summary>
@@ -205,7 +227,7 @@ public sealed class RuntimeInteropTests
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
 
-        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS(), RuntimeInformation.ProcessArchitecture);
         var captured = new byte[RuntimeInterop.TermiosStateLength];
         captured[layout.ControlCharactersOffset + layout.SuspendCharacterIndex] = 0x1a;
 
@@ -237,7 +259,7 @@ public sealed class RuntimeInteropTests
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
 
-        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS(), RuntimeInformation.ProcessArchitecture);
         var captured = new byte[RuntimeInterop.TermiosStateLength];
         captured[layout.ControlCharactersOffset + layout.SuspendCharacterIndex] = 0x1a;
 

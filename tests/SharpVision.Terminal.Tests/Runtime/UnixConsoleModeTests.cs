@@ -167,7 +167,7 @@ public sealed class UnixConsoleModeTests
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterEnter).ShouldBeTrue();
         afterEnter.ShouldBe(RuntimeInterop.ComputeRawTerminalAttributes(before, captureControlKeys));
 
-        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS(), RuntimeInformation.ProcessArchitecture);
 
         if (captureControlKeys)
         {

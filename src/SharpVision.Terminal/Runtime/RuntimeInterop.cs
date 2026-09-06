@@ -10,7 +10,6 @@ using System.Buffers.Binary;
 /// <summary>Provides the Unix terminal-size native boundary.</summary>
 internal static class RuntimeInterop
 {
-    private const nuint _linuxGetSize = 0x5413;
     private const int _setAttributesFlush = 2;
     private const int _terminalNameBufferLength = 4096;
 
@@ -25,7 +24,7 @@ internal static class RuntimeInterop
         var result = OperatingSystem.IsMacOS()
             ? GetWindowSize(fileDescriptor, out value)
             : OperatingSystem.IsLinux()
-                ? Ioctl(fileDescriptor, _linuxGetSize, (nint) (&value))
+                ? Ioctl(fileDescriptor, _layout.WindowSizeRequest, (nint) (&value))
                 : throw new PlatformNotSupportedException(
                     "Unix terminal resize is supported only on Linux and macOS.");
 
@@ -129,12 +128,18 @@ internal static class RuntimeInterop
     private const int _setAttributesNow = 0;
 
     /// <summary>
-    /// Describes the platform-specific facts this boundary needs about <c>struct termios</c>. Only
-    /// the ISIG bit inside <c>c_lflag</c> and the SUSP/DSUSP entries inside <c>c_cc</c> are ever
-    /// inspected or mutated; every other byte is captured and replayed as an opaque blob, so the
-    /// full per-field layout never needs modeling. A record so <see cref="SelectLayout"/> stays a
-    /// pure, directly testable function instead of a set of scattered static fields.
+    /// Describes the platform- and architecture-specific facts this boundary needs about
+    /// <c>struct termios</c> and the window-size ioctl. Only the ISIG bit inside <c>c_lflag</c> and
+    /// the SUSP/DSUSP entries inside <c>c_cc</c> are ever inspected or mutated; every other byte is
+    /// captured and replayed as an opaque blob, so the full per-field layout never needs modeling.
+    /// A record so <see cref="SelectLayout"/> stays a pure, directly testable function instead of a
+    /// set of scattered static fields.
     /// </summary>
+    /// <param name="WindowSizeRequest">
+    /// The <c>ioctl(2)</c> request number for <c>TIOCGWINSZ</c>. Unused on macOS, which reads
+    /// dimensions through the runtime's dedicated <c>SystemNative_GetWindowSize</c> shim instead of
+    /// a raw <c>ioctl</c> call.
+    /// </param>
     /// <param name="TermiosStateLength">The exact byte length of a captured termios state.</param>
     /// <param name="LocalFlagsOffset">The byte offset of <c>c_lflag</c> within the captured state.</param>
     /// <param name="LocalFlagsWidth">The width in bytes of <c>c_lflag</c> (its <c>tcflag_t</c>).</param>
@@ -142,11 +147,12 @@ internal static class RuntimeInterop
     /// <param name="ControlCharactersOffset">The byte offset of <c>c_cc[0]</c> within the captured state.</param>
     /// <param name="SuspendCharacterIndex">The index of <c>VSUSP</c> within <c>c_cc</c>.</param>
     /// <param name="DelayedSuspendCharacterIndex">
-    /// The index of <c>VDSUSP</c> within <c>c_cc</c>, or null on Linux, which defines no
-    /// delayed-suspend character (only BSD-derived line disciplines define VDSUSP).
+    /// The index of <c>VDSUSP</c> within <c>c_cc</c>, or null on platforms with no delayed-suspend
+    /// character (every Linux architecture: only BSD-derived line disciplines define VDSUSP).
     /// </param>
     /// <param name="DisabledControlCharacter">The <c>_POSIX_VDISABLE</c> sentinel byte.</param>
     internal readonly record struct UnixTerminalLayout(
+        nuint WindowSizeRequest,
         int TermiosStateLength,
         int LocalFlagsOffset,
         int LocalFlagsWidth,
@@ -157,14 +163,15 @@ internal static class RuntimeInterop
         byte DisabledControlCharacter);
 
     /// <summary>
-    /// Selects the termios layout for one platform. Pure and internal so tests can assert both
-    /// supported tuples directly, without depending on which platform the test process itself
-    /// happens to run on.
+    /// Selects the termios and window-size layout for one platform and processor architecture.
+    /// Pure and internal so tests can assert every supported tuple directly, without depending on
+    /// the architecture the test process itself happens to run on.
     /// </summary>
     /// <param name="isMacOs">Whether the target platform is macOS; false means Linux.</param>
-    /// <returns>The layout facts for that platform.</returns>
+    /// <param name="architecture">The target process architecture.</param>
+    /// <returns>The layout facts for that platform and architecture.</returns>
     [Pure]
-    internal static UnixTerminalLayout SelectLayout(bool isMacOs)
+    internal static UnixTerminalLayout SelectLayout(bool isMacOs, Architecture architecture)
     {
         if (isMacOs)
         {
@@ -175,7 +182,9 @@ internal static class RuntimeInterop
             // 10 and VDSUSP index 11 within c_cc (<sys/termios.h>: "#define VSUSP 10",
             // "#define VDSUSP 11"). _POSIX_VDISABLE is 0xff
             // (<sys/_types/_posix_vdisable.h>: "#define _POSIX_VDISABLE ((unsigned char)'\377')").
+            // Uniform across Apple silicon and Intel - macOS ships no ppc64 or ppc64le runtime.
             return new UnixTerminalLayout(
+                WindowSizeRequest: 0,
                 TermiosStateLength: 72,
                 LocalFlagsOffset: 24,
                 LocalFlagsWidth: 8,
@@ -186,12 +195,37 @@ internal static class RuntimeInterop
                 DisabledControlCharacter: 0xff);
         }
 
-        // glibc's <bits/termios.h>/<bits/termios-c_cc.h> and musl's <bits/termios.h> agree that
+        if (architecture == Architecture.Ppc64le)
+        {
+            // Linux PowerPC carries its own ABI end to end. arch/powerpc/include/uapi/asm/ioctls.h
+            // defines TIOCGWINSZ as the BSD-style encoded _IOR('t', 104, struct winsize), which is
+            // 0x40087468, instead of the generic-architecture 0x5413.
+            // arch/powerpc/include/uapi/asm/termbits.h defines ISIG as 0x00000080 (0x1 is ECHOKE on
+            // this architecture) and lays out struct termios as c_iflag, c_oflag, c_cflag, c_lflag,
+            // c_cc[NCCS=19], c_line, c_ispeed, c_ospeed - so c_cc begins at byte offset 16 (not 17),
+            // VSUSP is index 12 (not 10), and sizeof(struct termios) is 44 (not 60). c_lflag keeps
+            // the same 12-byte offset and 4-byte tcflag_t width as every other Linux architecture.
+            // There is no VDSUSP on any Linux architecture.
+            return new UnixTerminalLayout(
+                WindowSizeRequest: 0x40087468,
+                TermiosStateLength: 44,
+                LocalFlagsOffset: 12,
+                LocalFlagsWidth: 4,
+                SignalsEnabledFlag: 0x0000_0080ul,
+                ControlCharactersOffset: 16,
+                SuspendCharacterIndex: 12,
+                DelayedSuspendCharacterIndex: null,
+                DisabledControlCharacter: 0);
+        }
+
+        // The generic Linux ABI shared by x86, x86-64, arm, arm64, riscv64, s390x and loongarch64.
+        // asm-generic/ioctls.h defines TIOCGWINSZ as 0x5413; asm-generic/termbits.h defines ISIG as
+        // 0x1. glibc's <bits/termios.h>/<bits/termios-c_cc.h> and musl's <bits/termios.h> agree that
         // tcflag_t is a 4-byte unsigned int, so the four flag words occupy 16 bytes, the 1-byte
         // c_line follows at offset 16, and c_cc[NCCS=32] begins at offset 17, giving a struct size
-        // of 60. ISIG is bit 0x1 (POSIX-numbered first, unlike Darwin's BSD numbering). VSUSP is
-        // index 10. _POSIX_VDISABLE is 0 (a NUL byte), unlike macOS's 0xff. There is no VDSUSP.
+        // of 60. VSUSP is index 10. _POSIX_VDISABLE is 0 (a NUL byte), unlike macOS's 0xff.
         return new UnixTerminalLayout(
+            WindowSizeRequest: 0x5413,
             TermiosStateLength: 60,
             LocalFlagsOffset: 12,
             LocalFlagsWidth: 4,
@@ -202,7 +236,9 @@ internal static class RuntimeInterop
             DisabledControlCharacter: 0);
     }
 
-    private static readonly UnixTerminalLayout _layout = SelectLayout(OperatingSystem.IsMacOS());
+    private static readonly UnixTerminalLayout _layout = SelectLayout(
+        OperatingSystem.IsMacOS(),
+        RuntimeInformation.ProcessArchitecture);
 
     /// <summary>
     /// Gets the exact byte length of a captured termios state on this platform. Internal so tests
