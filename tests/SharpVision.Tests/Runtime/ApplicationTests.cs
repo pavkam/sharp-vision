@@ -1444,6 +1444,48 @@ public sealed class ApplicationTests
         static void Veto(object? sender, StoppingEventArgs eventArgs) => eventArgs.Cancel = true;
     }
 
+    /// <summary>Verifies a throw from _lifetime.Cancel() - e.g. a registered CancellationToken
+    /// callback that throws, which CancellationTokenSource.Cancel() rethrows afterward as an
+    /// AggregateException - does not skip the completion signal below it in BeginStopping. Before
+    /// the fix, an unguarded _lifetime.Cancel() call there meant _stoppingRaiseSignal was never
+    /// cleared and raiseSignal.SetResult() never ran, exactly the same hazard the sibling
+    /// Dispatcher.StoppingTokenSource.Cancel() guard was fixed for - StopAsync would hang instead
+    /// of ever reaching the sticky-Failure rethrow that the fixed code now reaches, matching the
+    /// same "Failure surfaces from whichever call completes cleanup" contract already verified
+    /// above for a throwing Stopping handler.</summary>
+    [Fact]
+    public async Task StopAsync_WhenLifetimeCancelThrows_StillCompletesAndSurfacesFailureAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var hostLease = new TrackingLease();
+        await using Application application = new(
+            new ProbeControl(),
+            terminal,
+            terminal,
+            TerminalOptions.Minimal,
+            hostLease);
+
+        var lifetime = (CancellationTokenSource) typeof(Application)
+            .GetField("_lifetime", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(application)!;
+        var cancelFailure = new InvalidOperationException("lifetime-cancel-boom");
+        _ = lifetime.Token.Register(() => throw cancelFailure);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        var thrown = await Should.ThrowAsync<AggregateException>(async () =>
+            await application.StopAsync(TestContext.Current.CancellationToken)
+                .AsTask()
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        thrown.InnerExceptions.ShouldContain(cancelFailure);
+        application.Failure.ShouldBeSameAs(thrown);
+        application.LastCleanupException.ShouldBeSameAs(thrown);
+        application.Completion.IsCompleted.ShouldBeTrue();
+        hostLease.Disposals.ShouldBe(1);
+    }
+
     /// <summary>Verifies an UnhandledException handler that itself throws does not skip
     /// terminal-resource cleanup, and that the original failure - not the handler's own exception -
     /// remains what Failure reports.</summary>

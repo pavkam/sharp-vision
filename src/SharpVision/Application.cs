@@ -1072,7 +1072,19 @@ public sealed class Application:
         _forcedWhileRaising = false;
         _stopping = true;
         Failure ??= exception;
-        _lifetime.Cancel();
+
+        try
+        {
+            _lifetime.Cancel();
+        }
+        catch (Exception lifetimeException)
+        {
+            // A registered _lifetime.Token callback failing here must not skip the signal
+            // below - a concurrent nested BeginStopping call is blocked on _stoppingRaiseSignal
+            // and would otherwise hang forever waiting for a completion that never arrives.
+            Failure ??= lifetimeException;
+            LastCleanupException ??= lifetimeException;
+        }
 
         _stoppingRaiseSignal = null;
         raiseSignal.SetResult();
