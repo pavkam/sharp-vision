@@ -208,9 +208,9 @@ The batch retires outstanding families in two ways:
    trailing `CSI 6n` fence. A terminal answers written queries strictly in
    order, so a DA1 reply proves every family registered before it - the Kitty
    keyboard/graphics prelude, DA2, every still-pending DECRQM mode, geometry,
-   colors, and the iTerm2 capability probe - either already answered or was
-   silently ignored, and DA1 retires all of it immediately instead of waiting
-   for the deadline.
+   colors, the iTerm2 capability probe, XTGETTCAP, and DECRQSS - either already
+   answered or was silently ignored, and DA1 retires all of it immediately
+   instead of waiting for the deadline.
 2. The one shared exclusive deadline retires the batch when no reply arrives for
    a still-outstanding family.
 
