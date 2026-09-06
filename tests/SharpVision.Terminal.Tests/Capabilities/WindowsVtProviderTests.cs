@@ -51,6 +51,7 @@ public sealed class WindowsVtProviderTests
         profile.Description.Suitability.ShouldBe(Suitability.Usable);
         profile.Description.Colors.ShouldBe(16);
         profile.Description.AutomaticMargins.ShouldBeTrue();
+        profile.Description.EatNewlineGlitch.ShouldBeTrue();
         profile.Description.BackColorErase.ShouldBeFalse();
         profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.Basic16);
         profile.Capabilities.SynchronizedOutput.ShouldBe(Feature.Unknown);
@@ -278,6 +279,7 @@ public sealed class WindowsVtProviderTests
     {
         var bytes = Encoding.UTF8.GetByteCount("windows-vt");
         bytes = checked(bytes + Encoding.UTF8.GetByteCount("am") + 1);
+        bytes = checked(bytes + Encoding.UTF8.GetByteCount("xenl") + 1);
         bytes = checked(bytes + Encoding.UTF8.GetByteCount("colors") + sizeof(int));
 
         foreach (var pair in ExpectedPrograms())

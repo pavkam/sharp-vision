@@ -12,11 +12,19 @@ using Discovery.Adapters;
 [PublicAPI]
 public sealed class TerminalProfile
 {
+    // This built-in fallback stands in for "some reasonably modern ANSI-compatible terminal"
+    // whenever no real terminfo description is available. Every terminal emulator that shape
+    // realistically describes today - the xterm family and its many descendants - implements
+    // xterm-style deferred wrap, so eatNewlineGlitch is asserted true here too: without it, the
+    // encoder would have to treat this fallback as the unproven eager-wrap shape and refuse to
+    // write the bottom-right cell of every full-width bottom row rendered through it, which is
+    // far too costly a default for the overwhelmingly common case this profile actually models.
     private static readonly Description _ansiDescription = new(
         "ansi",
         DescriptionOrigin.BuiltIn,
         Suitability.Usable,
-        automaticMargins: true);
+        automaticMargins: true,
+        eatNewlineGlitch: true);
 
     private static readonly Programs _ansiPrograms = new(
         new Dictionary<string, DescriptionProgram>

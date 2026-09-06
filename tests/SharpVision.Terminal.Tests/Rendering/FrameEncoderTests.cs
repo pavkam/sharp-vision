@@ -612,10 +612,12 @@ public sealed class FrameEncoderTests
         screen.ShouldMatch(frame);
     }
 
-    /// <summary>Verifies a wide owner ending in the final column is followed by an absolute wrap-state repair.</summary>
+    /// <summary>Verifies a wide owner ending in the final column of a deferred-wrap (xenl)
+    /// description's bottom row is followed by an absolute wrap-state repair, since the wrap
+    /// there stays pending until another byte arrives and the repair can still preempt it.
+    /// Without "am" at all there is nothing to repair.</summary>
     [Theory]
     [InlineData(false, false)]
-    [InlineData(true, false)]
     [InlineData(true, true)]
     public void Encode_WhenWideOwnerEndsAtMargin_PreservesScreenWithoutWrap(
         bool automaticMargins,
@@ -639,7 +641,8 @@ public sealed class FrameEncoderTests
 
         _ = FrameEncoder.Encode(null, frame, destination, profile);
 
-        (destination.WrittenSpan.IndexOf("界\u001b[1;3H"u8) >= 0).ShouldBe(automaticMargins);
+        (destination.WrittenSpan.IndexOf("界\u001b[1;3H"u8) >= 0)
+            .ShouldBe(automaticMargins && eatNewlineGlitch);
         var screen = new VirtualScreen(frame.Size, automaticMargins, eatNewlineGlitch);
         screen.Apply(destination.WrittenSpan);
         screen.ShouldMatch(frame);
@@ -647,8 +650,8 @@ public sealed class FrameEncoderTests
 
     /// <summary>Verifies a wide owner ending in the final column gets the absolute wrap-state
     /// repair through the built-in ANSI compatibility profile too, not only through a
-    /// terminfo-style described profile - the built-in ANSI description also declares
-    /// automatic margins.</summary>
+    /// terminfo-style described profile - the built-in ANSI description declares both automatic
+    /// margins and deferred wrap, since it stands in for a modern xterm-compatible terminal.</summary>
     [Fact]
     public void Encode_WhenWideOwnerEndsAtMarginOnAnsiCompatibleProfile_PreservesScreenWithoutWrap()
     {
@@ -659,9 +662,76 @@ public sealed class FrameEncoderTests
         _ = FrameEncoder.Encode(null, frame, destination, TerminalCapabilities.Conservative);
 
         destination.WrittenSpan.IndexOf("界\u001b[1;3H"u8).ShouldBeGreaterThanOrEqualTo(0);
-        var screen = new VirtualScreen(frame.Size, automaticMargins: true, eatNewlineGlitch: false);
+        var screen = new VirtualScreen(frame.Size, automaticMargins: true, eatNewlineGlitch: true);
         screen.Apply(destination.WrittenSpan);
         screen.ShouldMatch(frame);
+    }
+
+    /// <summary>Verifies an eager-wrap (am without xenl) description filling its bottom row
+    /// writes only the first width-1 columns and leaves the bottom-right cell completely
+    /// untouched, since printing into it would scroll the screen as part of the write itself -
+    /// too early for any repair sequence to help. No repair "cup" is needed either, because the
+    /// cell was never written.</summary>
+    [Fact]
+    public void Encode_WhenEagerWrapDescriptionFillsBottomRow_SkipsBottomRightCell()
+    {
+        using var frame = CreateFixedWidthFrame("abc");
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            CorePrograms(),
+            automaticMargins: true,
+            eatNewlineGlitch: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, profile);
+
+        destination.WrittenSpan.IndexOf("ab"u8).ShouldBeGreaterThanOrEqualTo(0);
+        destination.WrittenSpan.IndexOf("c"u8).ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("\u001b[1;3H"u8).ShouldBeLessThan(0);
+    }
+
+    /// <summary>Verifies an eager-wrap (am without xenl) description still writes every cell of a
+    /// full-width row that is not the bottom row: an eager wrap there only advances the cursor to
+    /// the next row's column 0, which is harmless because every span repositions with an absolute
+    /// "cup" before writing regardless.</summary>
+    [Fact]
+    public void Encode_WhenEagerWrapDescriptionFillsNonBottomRow_WritesEveryCell()
+    {
+        using var frame = CreateRows("abc", "def");
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            CorePrograms(),
+            automaticMargins: true,
+            eatNewlineGlitch: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, profile);
+
+        destination.WrittenSpan.IndexOf("abc"u8).ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    /// <summary>Verifies a wide owner one column short of the margin on an eager-wrap (am without
+    /// xenl) bottom row is skipped as a whole cluster, not just its trailing column: printing even
+    /// the lead column would still land the glyph's second cell in the untouchable bottom-right
+    /// position, defeating the point of the truncation. Only the single-width cell ahead of the
+    /// wide owner is written.</summary>
+    [Fact]
+    public void Encode_WhenEagerWrapDescriptionEndsWithWideOwnerAtMargin_SkipsWholeCluster()
+    {
+        using Frame frame = new(new Size(3, 1));
+        _ = frame.Canvas.Draw("a界", default);
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            CorePrograms(),
+            automaticMargins: true,
+            eatNewlineGlitch: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, profile);
+
+        destination.WrittenSpan.IndexOf("a"u8).ShouldBeGreaterThanOrEqualTo(0);
+        destination.WrittenSpan.IndexOf("界"u8).ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("\u001b[1;3H"u8).ShouldBeLessThan(0);
     }
 
     /// <summary>Verifies the continuation-cell check runs before the overlay branch, so a cell

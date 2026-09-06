@@ -223,7 +223,23 @@ public static class FrameEncoder
                 continue;
             }
 
-            for (var column = span.Start; column < end; column++)
+            // terminfo(5) distinguishes two shapes of "am" (automatic margins). A deferred-wrap
+            // (xenl) terminal - the xterm family, kitty, tmux, conhost, and Windows Terminal -
+            // leaves the wrap pending until the next byte arrives, so writing the final column
+            // and then repositioning below still lands correctly: nothing after the write can
+            // race the repair. An eager-wrap terminal (am without xenl, the classic vt100 shape)
+            // wraps, and on the bottom row scrolls the whole screen, as part of the write itself:
+            // no repair sequence can run early enough to prevent it. ncurses' own answer is to
+            // never print into the bottom-right cell at all on such a terminal, and this mirrors
+            // that: the row's write is truncated one column short of the margin so the cell is
+            // left showing whatever was already there instead of ever being touched.
+            var eagerBottomRow =
+                profile.Description.AutomaticMargins &&
+                !profile.Description.EatNewlineGlitch &&
+                span.Row == back.Size.Height - 1;
+            var writeEnd = eagerBottomRow ? Math.Min(end, back.Size.Width - 1) : end;
+
+            for (var column = span.Start; column < writeEnd; column++)
             {
                 var index = checked((span.Row * back.Size.Width) + column);
                 var cell = back.GetCellByIndex(index);
@@ -238,6 +254,16 @@ public static class FrameEncoder
                 // count from the frame width even though CanUsePlaceholder is meant to reject
                 // such placements upstream.
                 if (cell.IsContinuation)
+                {
+                    placeholderStyle = default;
+                    continue;
+                }
+
+                // A wide lead one column short of the margin still visually occupies the
+                // untouchable bottom-right cell once printed - printing it would defeat the
+                // whole point of truncating writeEnd. Leave the entire cluster unwritten instead
+                // of only its trailing column, the same as the plain single-width case above.
+                if (eagerBottomRow && column + cell.Width > writeEnd)
                 {
                     placeholderStyle = default;
                     continue;
@@ -275,15 +301,30 @@ public static class FrameEncoder
                 destination.Write(grapheme.IsEmpty ? " "u8 : grapheme);
             }
 
-            // Writing the final column can leave an automatic-margin terminal in
-            // delayed-wrap state. An immediate absolute position clears that state
-            // before another byte can wrap or scroll, including xenl terminals.
+            // Writing the final column can leave a deferred-wrap (xenl) terminal in delayed-wrap
+            // state. An immediate absolute position clears that state before another byte can
+            // wrap or scroll. This repair only applies when EatNewlineGlitch is proven true: an
+            // eager-wrap terminal already never reached the final column of its bottom row above,
+            // so no repair is needed there, and on its non-bottom rows an eager wrap merely moves
+            // the cursor to the next row's column 0 - harmless, since every span below still
+            // repositions with an absolute "cup" before writing, so it can never inherit a stale
+            // cursor column left by an earlier row's wrap.
             if (profile.Description.AutomaticMargins &&
+                profile.Description.EatNewlineGlitch &&
                 end == back.Size.Width &&
                 end > 0)
             {
                 WriteRequired(profile, interpreter, destination, "cup", span.Row, end - 1);
             }
+
+            // The bottom-right cell an eager-wrap terminal skips above is never revisited by a
+            // later frame's damage detection: Renderer.CommitFront copies every cell of "back"
+            // into the retained "front" model wholesale (Frame.CopyFrom), not only the cells this
+            // call actually wrote. So the in-memory model already agrees with "back" for that
+            // cell once this call returns, and DamageEnumerator's front-vs-back comparison finds
+            // no difference there next frame - the skip does not turn into a repeated retry. The
+            // real terminal glyph at that position can lag by one generation until it changes
+            // again, which is the same trade-off ncurses makes for this terminal shape.
         }
 
         ResetStyle(destination, style, profile, interpreter);

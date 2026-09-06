@@ -121,13 +121,22 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
                 ColorDepth = ColorDepth.Basic16,
                 ColorOrigin = Origin.Default
             };
+            // Both conhost's own VT parser and Windows Terminal implement xterm-style
+            // deferred wrap: the cursor only actually advances past the margin once another
+            // byte is written, exactly the shape terminfo(5) calls "xenl". ncurses' own
+            // "ms-terminal" entry for this platform declares both "am" and "xenl" for the
+            // same reason, so leaving eatNewlineGlitch at its default false here would
+            // misreport this description as the eager-wrap ("am" without "xenl") shape that
+            // scrolls the screen as part of writing the final column - a shape modern Windows
+            // terminals do not actually have.
             var description = new Description(
                 _descriptionName,
                 DescriptionOrigin.BuiltIn,
                 Suitability.Usable,
                 colors: _colors,
                 automaticMargins: true,
-                backColorErase: false);
+                backColorErase: false,
+                eatNewlineGlitch: true);
             var profile = new TerminalProfile(description, capabilities, programs, keyMap);
 
             return DescriptionResult.Loaded(profile, Array.Empty<DescriptionDiagnostic>());
@@ -145,6 +154,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
     {
         var bytes = Encoding.UTF8.GetByteCount(_descriptionName);
         bytes = checked(bytes + Encoding.UTF8.GetByteCount("am") + 1);
+        bytes = checked(bytes + Encoding.UTF8.GetByteCount("xenl") + 1);
         bytes = checked(bytes + Encoding.UTF8.GetByteCount("colors") + sizeof(int));
 
         foreach (var specification in ProgramSpecifications)

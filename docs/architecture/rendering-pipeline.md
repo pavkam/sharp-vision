@@ -447,12 +447,21 @@ transport, so a failed frame publishes no bytes and no projected state.
 
 When `bce` is absent, blank damage is emitted as explicit spaces. With `bce`, a
 uniform erase-safe trailing blank run may use exact `el`; styled, non-trailing,
-wide-owner, or otherwise unsafe damage still uses explicit cells. On an `am`
-description, a run ending in the final column is followed immediately by
-absolute positioning, clearing delayed-wrap state before another byte can wrap
-or scroll, including the `xenl` case. A size or ambiguous-width-policy mismatch,
-a missing front frame, or a changed profile snapshot is always a full redraw and
-graphics reconstruction.
+wide-owner, or otherwise unsafe damage still uses explicit cells. An `am`
+description that also declares `xenl` (deferred wrap: the xterm family, kitty,
+tmux, conhost, and Windows Terminal) defers the wrap until the next byte is
+written, so a run ending in the final column is followed immediately by absolute
+positioning, clearing that delayed-wrap state before another byte can wrap or
+scroll. An `am` description without `xenl` (eager wrap, the classic `vt100`
+shape) wraps - and on the bottom row, scrolls - as part of writing the final
+column itself, too early for any repair sequence to help; the encoder instead
+never writes into the bottom row's final column at all, leaving that cell
+showing whatever was already there, the same choice ncurses makes for this
+terminal shape. Non-bottom rows still write their final column freely: an eager
+wrap there only advances to the next row's column 0, and every following span
+repositions with an absolute `cup` before writing regardless. A size or
+ambiguous-width-policy mismatch, a missing front frame, or a changed profile
+snapshot is always a full redraw and graphics reconstruction.
 
 ## Correctness oracle
 
