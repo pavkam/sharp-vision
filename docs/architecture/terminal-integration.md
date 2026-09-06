@@ -131,7 +131,7 @@ flowchart TD
     Decode --> ValueKind{"Value kind?"}
     ValueKind -->|"Response (capabilities, palette, metrics, status, Kitty graphics)"| SinkPresent{"Session wrapped the destination in a NegotiationSink? (decided once, at session start)"}
     ValueKind -->|"Key, text, pointer, paste, focus, or diagnostic"| Forward
-    SinkPresent -->|Yes| Correlate["Negotiator.Accept(value) feeds the discovery baseline; result discarded"]
+    SinkPresent -->|Yes| Correlate["Negotiator.Accept(value) feeds the discovery baseline; a classification diagnostic is forwarded to the destination"]
     SinkPresent -->|No| Forward
     Correlate --> Forward["Publish the observable value onward without duplicating ownership"]
     Forward --> Enqueue["Application.Input(...) enqueues a Record"]
