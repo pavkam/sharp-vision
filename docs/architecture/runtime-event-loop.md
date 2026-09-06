@@ -181,9 +181,12 @@ and profile records, and posts a drain to the dispatcher.
 The drain reuses the renderer's single-writer discipline: it shares the
 `IsRendering` flag with frame rendering, so at most one of a frame render or an
 out-of-band flush is ever writing to the transport. If a frame render is already
-in flight, the bytes stay buffered and `CompleteRender` drains them immediately
-after that frame's write completes, before servicing any deferred render
-request. If no render is in flight, the drain itself starts an out-of-band
+in flight, the bytes stay buffered until that frame's write completes; at that
+point `CompleteRender` flushes them, gated behind the same `Suspended()` check
+as `DrainOutOfBand` and `PumpAfterWrite`, before servicing any deferred render
+request. A resize that commits a zero-cell size while the frame's write is still
+outstanding therefore leaves the bytes buffered instead of letting them reach
+the transport. If no render is in flight, the drain itself starts an out-of-band
 flush: it sets `IsRendering`, writes and flushes the buffered bytes through the
 transport under a dispatcher hold, and on completion clears `IsRendering` and
 resumes normal invalidation (a pending render, or another out-of-band write
@@ -197,14 +200,14 @@ land only after that frame's bytes are on the wire.
 flowchart TD
     Post["PostOutOfBand appends bytes; wakes DrainOutOfBand"] --> Rendering{"IsRendering already true?"}
     Rendering -->|Yes| Buffered["Bytes stay buffered; the frame render owns the writer"]
-    Buffered --> CompleteRender["CompleteRender drains the buffer once that frame's write completes"]
+    Buffered --> CompleteRender["CompleteRender re-checks once that frame's write completes"]
     Rendering -->|No| Stopping{"Stopping?"}
     Stopping -->|Yes| FlushOnStop["FlushOutOfBandOnStop: last bounded write during shutdown"]
     Stopping -->|No| Suspended{"Suspended layout?"}
+    CompleteRender --> Suspended
     Suspended -->|Yes| Wait["Return; bytes stay buffered until resumed"]
     Suspended -->|No| Flush["FlushOutOfBand: set IsRendering, write and flush under a dispatcher hold"]
     Flush --> Complete["CompleteOutOfBand: clear IsRendering, resume any pending render or queued out-of-band write"]
-    CompleteRender --> Complete
 ```
 
 An authorized tmux clipboard route preserves the same ordering while wrapping
