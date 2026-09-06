@@ -957,6 +957,51 @@ public sealed class NcursesProviderTests
         result.Profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.Indexed256);
     }
 
+    /// <summary>Verifies a colors#256 entry that never defines setrgbf/setrgbb — the shape of the
+    /// shared xterm-256color, tmux-256color, and screen-256color entries — still reaches the wire
+    /// in true color once Tc proves the terminal supports it: declaring TrueColor is worthless if
+    /// the renderer-facing effective depth silently falls back to indexed color for want of a
+    /// program to write direct color with.</summary>
+    [Fact]
+    public void Load_WhenColorsAre256AndTcFlagIsSetWithoutRgbPrograms_SynthesizesDirectColorPrograms()
+    {
+        var native = ReadyNative();
+        native.SetNumber("colors", 256);
+        native.SetFlag("Tc", 1);
+        native.SetString("setaf", NativeString.Present("[38;5;%p1%dm"u8));
+        native.SetString("setab", NativeString.Present("[48;5;%p1%dm"u8));
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        var profile = result.Profile.ShouldNotBeNull();
+        profile.Capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+        profile.RenderingColorDepth.ShouldBe(ColorDepth.TrueColor);
+        profile.Programs.Has("setrgbf").ShouldBeTrue();
+        profile.Programs.Has("setrgbb").ShouldBeTrue();
+    }
+
+    /// <summary>Verifies an entry that defines its own setrgbf/setrgbb — such as xterm-direct's
+    /// colon-form encoding — keeps those exact compiled bytes instead of being replaced by the
+    /// synthesized semicolon-form fallback.</summary>
+    [Fact]
+    public void Load_WhenEntryDefinesItsOwnDirectColorPrograms_KeepsThem()
+    {
+        var native = ReadyNative();
+        native.SetNumber("colors", 16_777_216);
+        native.SetString("setrgbf", NativeString.Present("\u001b[38:2::%p1%d:%p2%d:%p3%dm"u8));
+        native.SetString("setrgbb", NativeString.Present("\u001b[48:2::%p1%d:%p2%d:%p3%dm"u8));
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        var profile = result.Profile.ShouldNotBeNull();
+        profile.Programs.TryGet("setrgbf", out var setrgbf).ShouldBeTrue();
+        profile.Programs.TryGet("setrgbb", out var setrgbb).ShouldBeTrue();
+        setrgbf.Builtin.ShouldBeFalse();
+        setrgbb.Builtin.ShouldBeFalse();
+        setrgbf.Representation.Span.SequenceEqual("\u001b[38:2::%p1%d:%p2%d:%p3%dm"u8).ShouldBeTrue();
+        setrgbb.Representation.Span.SequenceEqual("\u001b[48:2::%p1%d:%p2%d:%p3%dm"u8).ShouldBeTrue();
+    }
+
     /// <summary>Verifies relevant environment snapshot bounds include names even when values are absent.</summary>
     [Fact]
     public void Load_WhenLiveEnvironmentSnapshotExceedsLimit_RejectsBeforeSetup()

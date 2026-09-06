@@ -1061,20 +1061,22 @@ internal sealed class ActiveQueryDiscoveryStrategy
     {
         var term = _planningTerminalName;
         return IsXtermLikeHint(term) &&
-               _baseline.ColorOrigin is Origin.Default or Origin.Environment &&
+               // Database is included alongside Default and Environment because a terminfo entry
+               // such as xterm-256color only proves indexed support: it says nothing about direct
+               // color one way or the other, so a live XTGETTCAP reply is still free to raise it,
+               // the same way QueryEvidenceAdapter.RefineColor already treats Database evidence as
+               // upgradable rather than settled.
+               _baseline.ColorOrigin is Origin.Default or Origin.Environment or Origin.Database &&
                _options.Overrides?.ColorDepth is null &&
                !_options.Environment.ContainsKey(EvidenceEnvironmentVars.NoColor);
     }
-
-    private static bool Contains(string? value, string fragment) =>
-        value?.Contains(fragment, StringComparison.OrdinalIgnoreCase) == true;
 
     // "windows-vt" is SharpVision's own built-in description name, selected only after
     // confirming ENABLE_VIRTUAL_TERMINAL_PROCESSING succeeded (see WindowsVtProvider). It never
     // contains "xterm", so it needs its own explicit carve-out alongside the environment-hint
     // test rather than being folded into it - see the related handling in TryStart above.
     private static bool IsXtermLikeHint(string? term) =>
-        (TerminalNames.IsXtermFamily(term) && !Contains(term, "kitty")) ||
+        TerminalNames.IsXtermFamily(term) ||
         string.Equals(term, "windows-vt", StringComparison.Ordinal);
 
     private static bool HasPositive(Size? value) =>

@@ -1502,6 +1502,29 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             .ShouldBe(expectsStatus);
     }
 
+    /// <summary>Verifies a Database-origin color baseline on an xterm-family TERM still registers
+    /// the XTGETTCAP RGB probe: a terminfo entry such as xterm-256color only proves indexed
+    /// support, so a live reply must remain free to raise it the same way it would from a Default
+    /// or Environment baseline.</summary>
+    [Fact]
+    public void TryStart_WhenColorEvidenceIsDatabaseOnXtermFamily_RegistersRgbQuery()
+    {
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            ColorDepth = ColorDepth.Indexed256,
+            ColorOrigin = Origin.Database
+        };
+        var options = new NegotiationOptions(new Dictionary<string, string?> { ["TERM"] = "xterm-256color" });
+        var negotiator = new ActiveQueryDiscoveryStrategy(options, baseline, new ManualTimeProvider());
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = negotiator.TryStart(destination, null, null);
+
+        Encoding.ASCII.GetString(destination.WrittenSpan)
+            .Contains("\u001bP+q524742\u001b\\", StringComparison.Ordinal)
+            .ShouldBeTrue();
+    }
+
     /// <summary>Verifies suppressed RGB work neither consumes capacity nor delays publication.</summary>
     [Fact]
     public void Accept_WhenColorDepthIsExplicit_CompletesWithoutRgbReply()

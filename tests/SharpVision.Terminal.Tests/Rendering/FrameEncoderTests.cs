@@ -498,6 +498,41 @@ public sealed class FrameEncoderTests
         screen.ShouldMatch(frame);
     }
 
+    /// <summary>
+    /// Verifies a terminfo-shaped profile whose direct-color programs were filled in the way
+    /// <see cref="Provider"/> fills them in for an entry that never defined
+    /// setrgbf/setrgbb actually reaches the wire in the ISO 8613-6 semicolon form once evidence
+    /// declares true color, and still degrades to the indexed SGR form when it has not.
+    /// </summary>
+    [Fact]
+    public void Encode_WhenDirectColorProgramsAreSynthesized_EmitsSemicolonFormOnlyWhenDeclaredTrueColor()
+    {
+        using Frame frame = new(new Size(1, 1));
+        _ = frame.Canvas.Draw("x", default, new CellStyle(Color.Rgb(10, 20, 30), Color.Default));
+        var programs = CorePrograms();
+        programs["setaf"] = new DescriptionProgram("\u001b[38;5;%p1%dm"u8);
+        programs["setab"] = new DescriptionProgram("\u001b[48;5;%p1%dm"u8);
+        programs["setdf"] = new DescriptionProgram("\u001b[39m"u8);
+        programs["setdb"] = new DescriptionProgram("\u001b[49m"u8);
+        // Intrinsic is exactly what Provider.SynthesizeDirectColorPrograms fills in for a
+        // terminfo entry that never defined its own setrgbf/setrgbb.
+        programs["setrgbf"] = DescriptionProgram.Intrinsic;
+        programs["setrgbb"] = DescriptionProgram.Intrinsic;
+        var trueColorProfile = CreateProfile(ColorDepth.TrueColor, programs);
+        var indexedProfile = CreateProfile(ColorDepth.Indexed256, programs);
+
+        var trueColorDestination = new ArrayBufferWriter<byte>();
+        _ = FrameEncoder.Encode(null, frame, trueColorDestination, trueColorProfile);
+        var indexedDestination = new ArrayBufferWriter<byte>();
+        _ = FrameEncoder.Encode(null, frame, indexedDestination, indexedProfile);
+
+        trueColorProfile.RenderingColorDepth.ShouldBe(ColorDepth.TrueColor);
+        trueColorDestination.WrittenSpan.IndexOf("\u001b[38;2;10;20;30m"u8).ShouldBeGreaterThanOrEqualTo(0);
+        indexedProfile.RenderingColorDepth.ShouldBe(ColorDepth.Indexed256);
+        indexedDestination.WrittenSpan.IndexOf("38;2;"u8).ShouldBe(-1);
+        indexedDestination.WrittenSpan.IndexOf("38;5;"u8).ShouldBeGreaterThanOrEqualTo(0);
+    }
+
     /// <summary>Verifies non-canonical compiled cursor, rendition, and color programs drive observable state.</summary>
     [Fact]
     public void Encode_WhenDescriptionProgramsAreNonCanonical_AppliesTheirTerminalSemantics()

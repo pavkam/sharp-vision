@@ -203,6 +203,7 @@ internal sealed class Provider: IDescriptionProvider
             throw new ArgumentException("The accepted terminal-description snapshot exceeds its byte limit.");
         }
         var programs = CompilePrograms(strings, diagnostics, out var paddedRequired);
+        SynthesizeDirectColorPrograms(programs);
         var keyMap = CreateKeyMap(strings, request.Limits, request.ParserLimits, diagnostics);
         var programSet = new Programs(programs);
         var suitability = flags.GetValueOrDefault("gn")
@@ -363,6 +364,36 @@ internal sealed class Provider: IDescriptionProvider
         }
 
         return programs;
+    }
+
+    /// <summary>
+    /// Fills in the ISO 8613-6 semicolon-form direct-color programs when the loaded terminfo entry
+    /// omits them.
+    /// </summary>
+    /// <remarks>
+    /// This does not loosen the evidence that decides whether a session may emit direct color: it
+    /// only fills in the byte form. <see cref="CreateCapabilities"/> still requires the "Tc" flag, a
+    /// validated "RGB" descriptor, or a later environment or query upgrade before it declares
+    /// <see cref="ColorDepth.TrueColor"/>, and <see cref="Programs.EffectiveColorDepth"/> still keys
+    /// off that declared value before it will honor these two programs at all. The gap this closes
+    /// is that the shared "xterm-256color", "tmux-256color", and "screen-256color" entries advertise
+    /// "colors#256" and never define "setrgbf"/"setrgbb" themselves — that omission is exactly why
+    /// "Tc" and COLORTERM exist as a workaround — so a terminal whose only fault is an incomplete
+    /// database entry would otherwise have true color declared for it and then silently discarded at
+    /// render time for want of a program to write it with. "ESC[38;2;%p1%d;%p2%d;%p3%dm" and its
+    /// background counterpart are the one direct-color form every terminal that advertises true
+    /// color (xterm, kitty, foot, WezTerm, Alacritty, iTerm2, Apple Terminal, tmux, conhost/Windows
+    /// Terminal, VTE, Konsole) accepts, and using the same built-in intrinsic the ANSI compatibility
+    /// profile already relies on for these two names keeps rendering to the single existing
+    /// intrinsic emission path instead of adding a second, parallel one. An entry that defines its
+    /// own programs for one or both names — for example xterm-direct's colon-form "setrgbf"/
+    /// "setrgbb" — is left exactly as loaded.
+    /// </remarks>
+    /// <param name="programs">The mutable compiled-program map to fill in, keyed by ordinal name.</param>
+    private static void SynthesizeDirectColorPrograms(Dictionary<string, DescriptionProgram> programs)
+    {
+        _ = programs.TryAdd("setrgbf", DescriptionProgram.Intrinsic);
+        _ = programs.TryAdd("setrgbb", DescriptionProgram.Intrinsic);
     }
 
     private static KeyMap CreateKeyMap(
