@@ -9,6 +9,7 @@ using SharpVision.Terminal.Runtime;
 using Terminal.Capabilities;
 using Terminal.Clipboard;
 using Terminal.Kitty.Keyboard;
+using Terminal.Protocols;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 using MustUseReturnValue = JetBrains.Annotations.MustUseReturnValueAttribute;
@@ -323,6 +324,18 @@ public sealed class ConsoleApplicationBuilder
     {
         ArgumentNullException.ThrowIfNull(limits);
         Options = Options with { TransferLimits = limits };
+        return this;
+    }
+
+    /// <summary>Sets the control-sequence parser limits bounding OSC/DCS/APC/PM/SOS wire buffers.</summary>
+    /// <param name="limits">The non-null parser limits.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="limits"/> is null.</exception>
+    [MustUseReturnValue(IsFluentBuilderMethod = true)]
+    public ConsoleApplicationBuilder UseParserLimits(ParserLimits limits)
+    {
+        ArgumentNullException.ThrowIfNull(limits);
+        Options = Options with { ParserLimits = limits };
         return this;
     }
 

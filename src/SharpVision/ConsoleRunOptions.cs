@@ -7,6 +7,7 @@ using Terminal.Capabilities;
 using Terminal.Clipboard;
 using Terminal.Input;
 using Terminal.Kitty.Keyboard;
+using Terminal.Protocols;
 using Terminal.Runtime;
 
 /// <summary>Configures one interactive console screen run and the terminal policy it produces.</summary>
@@ -242,6 +243,18 @@ public sealed record ConsoleRunOptions
         }
     } = TransferLimits.Default;
 
+    /// <summary>Gets the control-sequence parser limits bounding OSC/DCS/APC/PM/SOS wire buffers.</summary>
+    /// <exception cref="ArgumentNullException">The value is null.</exception>
+    public ParserLimits ParserLimits
+    {
+        get;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            field = value;
+        }
+    } = ParserLimits.Default;
+
     /// <summary>Gets the positive finite resize poll interval. Default is 100 ms.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
     public TimeSpan ResizeInterval
@@ -361,7 +374,13 @@ public sealed record ConsoleRunOptions
             ModifyOtherKeys = ModifyOtherKeys,
             CleanupTimeout = CleanupTimeout,
             ReadBufferSize = ReadBufferSize,
-            Input = InputOptions.Default with { EscapeTimeout = EscapeTimeout, MaxPasteBytes = MaxPasteBytes, TransferLimits = TransferLimits },
+            Input = InputOptions.Default with
+            {
+                EscapeTimeout = EscapeTimeout,
+                MaxPasteBytes = MaxPasteBytes,
+                TransferLimits = TransferLimits,
+                ParserLimits = ParserLimits,
+            },
         };
     }
 

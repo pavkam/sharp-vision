@@ -7,6 +7,7 @@ using System.Reflection;
 
 using Terminal.Backends;
 using Terminal.Clipboard;
+using Terminal.Protocols;
 
 /// <summary>Verifies <see cref="ConsoleApplicationBuilder"/> fluent setters accumulate onto <see cref="ConsoleRunOptions"/>.</summary>
 public sealed class ConsoleApplicationBuilderTests
@@ -193,6 +194,31 @@ public sealed class ConsoleApplicationBuilderTests
         var before = builder.Options;
 
         _ = Should.Throw<ArgumentNullException>(() => builder.UseTransferLimits(limits: null!));
+
+        builder.Options.ShouldBeSameAs(before);
+    }
+
+    /// <summary>Verifies UseParserLimits sets the value that reaches the built terminal's input
+    /// decoder policy.</summary>
+    [Fact]
+    public void UseParserLimits_WhenCalled_ReachesTerminalInput()
+    {
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 * 1024 * 1024 };
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen())
+            .UseParserLimits(limits);
+
+        builder.Options.ParserLimits.ShouldBeSameAs(limits);
+        builder.Options.ToTerminalOptions().Input.ParserLimits.ShouldBeSameAs(limits);
+    }
+
+    /// <summary>Verifies a null parser limits override is rejected without changing accumulated options.</summary>
+    [Fact]
+    public void UseParserLimits_WhenLimitsNull_ThrowsWithoutChangingOptions()
+    {
+        var builder = new ConsoleApplicationBuilder(new ProbeScreen());
+        var before = builder.Options;
+
+        _ = Should.Throw<ArgumentNullException>(() => builder.UseParserLimits(limits: null!));
 
         builder.Options.ShouldBeSameAs(before);
     }

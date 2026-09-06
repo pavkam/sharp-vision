@@ -23,6 +23,16 @@ public sealed record TransferLimits
     public static TransferLimits Default { get; } = new();
 
     /// <summary>Gets the maximum decoded clipboard bytes retained by one transaction.</summary>
+    /// <remarks>
+    /// This bounds the decoded payload, but the raw base64-encoded OSC 52 / Kitty
+    /// OSC 5522 sequence must first fit within <c>ParserLimits.MaxStringBytes</c>
+    /// (default 1 MiB), which bounds every OSC/DCS/APC/PM/SOS wire buffer before
+    /// decoding ever happens. Because base64 inflates the payload by roughly 4/3,
+    /// raising <see cref="MaxClipboardBytes"/> alone has no effect above
+    /// approximately 768 KiB unless the parser limit is raised as well — for
+    /// example via <c>ConsoleApplicationBuilder.UseParserLimits</c> on the
+    /// high-level builder API.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
     [NonNegativeValue]
     public int MaxClipboardBytes
