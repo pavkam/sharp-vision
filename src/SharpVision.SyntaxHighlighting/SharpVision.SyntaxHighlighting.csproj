@@ -12,7 +12,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;syntax-highlighting;code;kate</PackageTags>
     <Description>Read-only, selectable, foldable syntax-highlighted code display for SharpVision, driven by Kate/KSyntaxHighlighting-format definitions.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.SyntaxHighlighting 1.4.0-beta.1 prerelease with chromatic token colors, tokenization fixes, closed-vocabulary theming, and CodeView selection and clipboard-copy support.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.SyntaxHighlighting 1.5.0-beta.1 prerelease: version-aligned with the other SharpVision packages; the only change since 1.4.0-beta.1 is the internal reference update from the Document control naming and visibility unification.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

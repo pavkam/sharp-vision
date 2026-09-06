@@ -12,7 +12,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;document;markdown;commonmark</PackageTags>
     <Description>Rich flowing documents, interactive forms, and Markdown for SharpVision.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.Document 1.4.0-beta.1 prerelease with cross-content selection, semantic-color document defaults, closed-vocabulary theming, and Markdown reader fixes for underscore strong emphasis, bracketed link labels, and the thematic-break indent limit.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.Document 1.5.0-beta.1 prerelease: version-aligned with the other SharpVision packages; the only change since 1.4.0-beta.1 is the internal reference update from the Document control naming and visibility unification (SharpVision.Controls.Documents renamed to SharpVision.Controls.Document).</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
