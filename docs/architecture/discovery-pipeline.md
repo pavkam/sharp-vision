@@ -204,21 +204,26 @@ deadline work. A route never changes backend identity.
 
 The batch retires outstanding families in two ways:
 
-1. `Keyboard` and `KittyGraphics` piggyback on primary device attributes (DA1).
-   If DA1 arrives without their reply, they retire immediately instead of
-   waiting for the deadline.
+1. DA1 is written last among the standard queries, immediately before the
+   trailing `CSI 6n` fence. A terminal answers written queries strictly in
+   order, so a DA1 reply proves every family registered before it - the Kitty
+   keyboard/graphics prelude, DA2, every still-pending DECRQM mode, geometry,
+   colors, and the iTerm2 capability probe - either already answered or was
+   silently ignored, and DA1 retires all of it immediately instead of waiting
+   for the deadline.
 2. The one shared exclusive deadline retires the batch when no reply arrives for
    a still-outstanding family.
 
-The last standard query is `CSI 6n`, a cursor-position request used as a
-completion fence, but its reply resolves only its own tracked family. It
-deliberately does not retire any other still-outstanding family: the reply
-grammar is byte-identical to a modified F3 keystroke, which a user or replayed
-typeahead can deliver at any point in the shared deadline window, so a match is
-never trustworthy proof that every other family stayed silent. The batch still
-publishes once every family has resolved — through its own matching reply, DA1
-piggyback, or the fence's own resolution when it happens to be the last
-outstanding family — or once the shared deadline expires.
+The very last query is `CSI 6n`, a cursor-position request written after DA1
+specifically so it can never be retired by DA1's own reply. Its reply resolves
+only its own tracked family and deliberately does not retire any other
+still-outstanding family: the reply grammar is byte-identical to a modified F3
+keystroke, which a user or replayed typeahead can deliver at any point in the
+shared deadline window, so a match is never trustworthy proof that every other
+family stayed silent. The batch still publishes once every family has resolved —
+through its own matching reply, the DA1 fence, or the trailing fence's own
+resolution when it happens to be the last outstanding family — or once the
+shared deadline expires.
 
 Silence never means unsupported. A family retired by the deadline stays absent
 because that alone never proves what that feature can do.

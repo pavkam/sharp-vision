@@ -927,13 +927,15 @@ public sealed class MultiplexerRouteTests
 
         inner.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
-                "\u001b[?u\u001b[c\u001b[>c" +
+                "\u001b[?u\u001b[>c" +
                 "\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p" +
                 "\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
                 "\u001b[14t\u001b[16t\u001b[18t" +
-                // The terminating fence: CSI 6n is not string-terminated, so
+                // DA1 now writes last among the standard queries, immediately before the
+                // terminating fence: CSI 6n is not string-terminated, so
                 // Screen still carries it even though the OSC/DCS families above are
                 // omitted here.
+                "\u001b[c" +
                 "\u001b[6n"));
 
         var keyboard = Csi("?3"u8, [], (byte) 'u');
@@ -1058,6 +1060,55 @@ public sealed class MultiplexerRouteTests
 
         negotiator.Completed.ShouldBeFalse();
         negotiator.HasPendingWork.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the DA1 fence still holds when its reply, and every other still-pending reply, all
+    /// travel through the real router unwrap path instead of being handed to the negotiator
+    /// directly. A multiplexer route wraps the whole outgoing query batch as one write, so an
+    /// in-order terminal answers every wrapped query in the same order it was written; a routed
+    /// DA1 reply therefore proves the same thing an unrouted one does - every family written
+    /// before it either already answered or was silently ignored - and retires all of it, leaving
+    /// only the trailing CPR fence (written after DA1) still pending. Completion follows through
+    /// the router the same way it does when calling Accept directly, without ever reaching the
+    /// shared deadline. <see cref="ProtocolRouter.EnableCursorPositionQuery"/> is armed exactly the
+    /// way <c>Session</c> arms it once the fence was actually queried, so the wrapped CSI 1;1R
+    /// reply below is trusted as the genuine cursor-position reply instead of a modified F3
+    /// keystroke.
+    /// </summary>
+    [Fact]
+    public void Route_WhenDa1ReplyArrivesWrapped_RetiresEveryOtherPendingFamily()
+    {
+        var policy = ActivePolicy([MultiplexerKind.Tmux]);
+        var route = new MultiplexerRoute(policy);
+        var options = new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
+            overrides: null,
+            limits: QueryLimits.Default,
+            multiplexing: policy);
+        var negotiator = new Negotiator(options);
+        var destination = new ArrayBufferWriter<byte>();
+        negotiator.Start(destination, localCells: null, localPixels: null, route);
+
+        var sink = new NegotiationSink(new DiscardingSink(), negotiator);
+        using var router = new ProtocolRouter(sink, route: route);
+        negotiator.FenceQueried.ShouldBeTrue();
+        router.EnableCursorPositionQuery();
+
+        var wrappedDa1 = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrappedDa1, "\u001b[?1;2c"u8);
+        router.Route(wrappedDa1.WrittenSpan);
+
+        // Every family the DA1 fence retires (Kitty prelude, DA2, DECRQM modes, metrics, colors,
+        // XTGETTCAP) is gone; only the trailing CPR fence, written after DA1, is still pending.
+        negotiator.Completed.ShouldBeFalse();
+        negotiator.HasPendingWork.ShouldBeTrue();
+
+        var wrappedCpr = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrappedCpr, "\u001b[1;1R"u8);
+        router.Route(wrappedCpr.WrittenSpan);
+
+        negotiator.Completed.ShouldBeTrue();
     }
 
     /// <summary>Creates one query-only explicit outer-terminal route.</summary>

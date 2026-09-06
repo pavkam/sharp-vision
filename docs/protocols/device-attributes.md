@@ -121,17 +121,25 @@ sequenceDiagram
     Session->>Session: Enable authorized optional modes
 ```
 
-The runtime emits one description-first bounded batch. DA1 is always admitted.
-When Kitty status is still unknown and the limit has at least two slots, its
-status query appears before DA1, with the Kitty graphics probe between the two
-when that family is also unknown. DA2 follows DA1 when another slot is
-available. Later slots refine only unknown or tentative DECRQM modes 2026, 1004,
-2004, 1006, and 1016; definitive database evidence and explicit overrides
-suppress their corresponding probes. When `ItermImages` is unknown or tentative
-with no override and no multiplexer, the batch also carries the
-`OSC 1337 ; Capabilities` probe. The batch ends with a `CSI 6 n` cursor-position
-fence: its reply retires every still-unanswered family without granting it
-query-origin evidence, so silence never outlives the batch.
+The runtime emits one description-first bounded batch. DA1's tracker slot is
+always admitted up front, but its bytes are written last among the standard
+queries, immediately before the trailing `CSI 6 n` fence - not first. A terminal
+answers written queries strictly in order, so an in-order terminal's DA1 reply
+proves every earlier probe in the batch already answered or was silently
+ignored, and DA1's reply retires all of it immediately without granting it
+query-origin evidence, so silence never outlives the batch. When Kitty status is
+still unknown and the limit has at least two slots, its status query leads the
+whole batch, with the Kitty graphics probe between it and the standard queries
+when that family is also unknown. DA2 follows in the standard batch when another
+slot is available. Later slots refine only unknown or tentative DECRQM modes
+2026, 1004, 2004, 1006, and 1016; definitive database evidence and explicit
+overrides suppress their corresponding probes. When `ItermImages` is unknown or
+tentative with no override and no multiplexer, the batch also carries the
+`OSC 1337 ; Capabilities` probe, ahead of DA1. The trailing `CSI 6 n`
+cursor-position fence is written after DA1 specifically so it can never be
+retired by DA1's own reply: its reply resolves only its own tracked family,
+because the reply grammar is byte-identical to a modified F3 keystroke and
+cannot be trusted as proof every other family stayed silent.
 
 Local host geometry has precedence over terminal replies. On Unix the session
 samples `TIOCGWINSZ` before constructing the batch; the portable console path

@@ -191,13 +191,13 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     [Theory]
     [InlineData(1, "\u001b[c")]
     [InlineData(2, "\u001b[?u\u001b[c")]
-    [InlineData(3, "\u001b[?u\u001b[c\u001b[>c")]
-    [InlineData(4, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p")]
-    [InlineData(5, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p")]
-    [InlineData(6, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p")]
-    [InlineData(7, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p")]
-    [InlineData(8, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p")]
-    [InlineData(9, "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p")]
+    [InlineData(3, "\u001b[?u\u001b[>c\u001b[c")]
+    [InlineData(4, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[c")]
+    [InlineData(5, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[c")]
+    [InlineData(6, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[c")]
+    [InlineData(7, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[c")]
+    [InlineData(8, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[c")]
+    [InlineData(9, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p\u001b[c")]
     public void TryStart_WhenCapacityVaries_TruncatesByPriority(
         int capacity,
         string expected)
@@ -233,11 +233,15 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         // Assert
         Encoding.ASCII.GetString(output.WrittenSpan).ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
-            "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
             "\u001b]1337;Capabilities\u001b\\" +
+            // DA1 is now written last among the standard queries, immediately before the
+            // terminating CSI 6n fence, so an in-order terminal's DA1 reply proves every
+            // probe above it was answered or silently ignored.
+            "\u001b[c" +
             // The terminating fence: a trailing CSI 6n, so an in-order terminal
             // answers it only after every other reply it is going to send at all.
             "\u001b[6n");
@@ -271,9 +275,10 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         // Act
         _ = negotiator.TryStart(output, null, null);
 
-        // Assert
+        // Assert: DA1 now writes last, immediately before where a CPR fence would sit had
+        // capacity allowed one.
         Encoding.ASCII.GetString(output.WrittenSpan).ShouldBe(
-            "\u001b[c\u001b[>c\u001b[14t");
+            "\u001b[>c\u001b[14t\u001b[c");
     }
 
     /// <summary>Verifies local cell/pixel geometry suppresses lower-confidence window probes.</summary>
@@ -327,19 +332,22 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var secondary = Response(">41;410;0"u8, [], (byte) 'c');
         var primary = Response("?1;2"u8, [], (byte) 'c');
 
-        // Act / Assert
+        // Act / Assert: primary (DA1) is accepted last, matching real wire order (DA1 is written
+        // last among the standard queries), so its arrival is ordinary completion rather than the
+        // DA1 fence retiring the still-pending foreground/palette families below.
         negotiator.Accept(in background).ShouldBe(QueryMatch.Matched);
         negotiator.Accept(in window).ShouldBe(QueryMatch.Matched);
         negotiator.Accept(in cell).ShouldBe(QueryMatch.Matched);
         negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
-        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
         negotiator.Completed.ShouldBeFalse();
 
         var foreground = Palette("10;rgb:ffff/eeee/0000"u8);
         var palette = Palette("4;0;rgb:1111/2222/3333"u8);
         negotiator.Accept(in foreground).ShouldBe(QueryMatch.Matched);
         negotiator.Accept(in palette).ShouldBe(QueryMatch.Matched);
+        negotiator.Completed.ShouldBeFalse();
 
+        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
         negotiator.Completed.ShouldBeTrue();
         negotiator.Capabilities.ColorDepth.ShouldBe(baseline.ColorDepth);
         negotiator.Results.BackgroundColor.ShouldBe(background);
@@ -440,10 +448,14 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
         var secondary = Response(">41;410;0"u8, [], (byte) 'c');
         negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
-        var primary = Response("?1;2"u8, [], (byte) 'c');
-        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
         _ = XtermResponses.TryOscItermCapabilities("1337;Capabilities=F"u8, out var capabilities);
         negotiator.Accept(capabilities).ShouldBe(QueryMatch.Matched);
+
+        // DA1 (primary) is accepted last among the standard families, matching real wire order:
+        // it is written last, immediately before the trailing CPR fence, so every other family
+        // above has already answered by the time an in-order terminal would send this reply.
+        var primary = Response("?1;2"u8, [], (byte) 'c');
+        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
 
         // The terminating fence: every other family already answered above, so this
         // reply is redundant here, but the batch still writes and tracks it and it must still be
@@ -513,10 +525,15 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
         var secondary = Response(">41;410;0"u8, [], (byte) 'c');
         negotiator.Accept(in secondary).ShouldBe(QueryMatch.Matched);
-        var primary = Response("?1;2"u8, [], (byte) 'c');
-        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
         _ = XtermResponses.TryOscItermCapabilities("1337;Capabilities=F"u8, out var capabilities);
         negotiator.Accept(capabilities).ShouldBe(QueryMatch.Matched);
+
+        // DA1 (primary) is accepted last among the standard families, matching real wire order:
+        // it is written last, immediately before the trailing CPR fence already consumed above.
+        // Every other standard family has already answered by this point, so this is ordinary
+        // completion rather than the DA1 fence retiring anything.
+        var primary = Response("?1;2"u8, [], (byte) 'c');
+        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
 
         // Only once every genuine family has actually answered does negotiation complete, and it
         // carries real query evidence rather than the absent fields a blind retirement would have
@@ -527,6 +544,105 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         negotiator.Capabilities.KittyKeyboard.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Query));
         _ = negotiator.Results.WindowPixels.ShouldNotBeNull();
+    }
+
+    /// <summary>
+    /// Verifies DA1 is written last among the standard queries: after every other standard probe
+    /// (DA2, DECRQM modes, geometry, colors, iTerm2 capabilities) and immediately before the
+    /// trailing CSI 6n fence. Only the Kitty prelude (keyboard status and the graphics APC) comes
+    /// before it, since those are a separate leading probe an in-order terminal answers first.
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenDefaultCapacityIsAvailable_WritesDa1ImmediatelyBeforeCprFence()
+    {
+        // Arrange
+        var options = new NegotiationOptions(new Dictionary<string, string?>());
+        var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
+        var output = new ArrayBufferWriter<byte>();
+
+        // Act
+        _ = negotiator.TryStart(output, null, null);
+
+        // Assert
+        var written = Encoding.ASCII.GetString(output.WrittenSpan);
+        var da1Index = written.IndexOf("[c", StringComparison.Ordinal);
+        var fenceIndex = written.IndexOf("[6n", StringComparison.Ordinal);
+        da1Index.ShouldBeGreaterThan(0);
+        fenceIndex.ShouldBe(da1Index + "[c".Length);
+        written[(da1Index + "[c".Length + "[6n".Length)..].ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a DA1 reply alone cannot complete negotiation: the trailing CPR fence is written
+    /// after DA1 specifically so it can never be proven silent by DA1's reply, and it must still
+    /// answer (or time out) through its own separate path.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenOnlyPrimaryAttributesReply_DoesNotRetireCursorPositionFence()
+    {
+        // Arrange
+        var negotiator = new ActiveQueryDiscoveryStrategy(
+            new NegotiationOptions(new Dictionary<string, string?>()));
+        _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
+        var primary = Response("?1;2"u8, [], (byte) 'c');
+
+        // Act
+        negotiator.Accept(in primary).ShouldBe(QueryMatch.Matched);
+
+        // Assert: every other standard family the DA1 fence retired is gone, but CPR is not.
+        negotiator.Completed.ShouldBeFalse();
+        negotiator.HasPendingWork.ShouldBeTrue();
+
+        // Act: only once CPR itself answers does negotiation complete.
+        var cursorPosition = Response("24;80"u8, [], (byte) 'R');
+        negotiator.Accept(in cursorPosition).ShouldBe(QueryMatch.Matched);
+
+        // Assert
+        negotiator.Completed.ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Verifies the DA1 fence publishes the exact same evidence the shared deadline would have
+    /// published for every family DA1 retires, without ever advancing the fake clock. Two
+    /// identically configured negotiators receive the same DA1 reply (so DA1's own evidence -
+    /// sixel, Kitty keyboard/graphics inference - matches in both); one then answers CPR to
+    /// complete immediately, and the other reaches the shared deadline instead of ever answering
+    /// CPR. Because the DA1 fence already silently retired every other family at the same instant
+    /// in both runs, the two published snapshots must be identical.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenOnlyDa1AndCprReply_PublishesSameEvidenceAsDeadlineExpiry()
+    {
+        // Arrange: a plan wide enough to admit DA2, several DECRQM modes, and the OSC colors.
+        var options = new NegotiationOptions(new Dictionary<string, string?>());
+        var primary = Response("?1;2"u8, [], (byte) 'c');
+        var cursorPosition = Response("24;80"u8, [], (byte) 'R');
+
+        // Act: only DA1 then CPR reply, and the fake clock never advances toward the deadline.
+        var repliedClock = new ManualTimeProvider();
+        var replied = new ActiveQueryDiscoveryStrategy(options, repliedClock);
+        _ = replied.TryStart(new ArrayBufferWriter<byte>(), null, null);
+        replied.Accept(in primary).ShouldBe(QueryMatch.Matched);
+        replied.Completed.ShouldBeFalse();
+        replied.Accept(in cursorPosition).ShouldBe(QueryMatch.Matched);
+
+        // Assert: negotiation completed without the clock ever reaching the deadline.
+        replied.Completed.ShouldBeTrue();
+        repliedClock.Current.ShouldBeLessThan(replied.Deadline);
+
+        // Arrange / Act: an otherwise identical run that gets the same DA1 reply, but instead of
+        // a CPR reply, reaches the shared deadline - which is exactly the resolution the DA1
+        // fence already silently applied to every other family in the run above.
+        var expiredClock = new ManualTimeProvider();
+        var expired = new ActiveQueryDiscoveryStrategy(options, expiredClock);
+        _ = expired.TryStart(new ArrayBufferWriter<byte>(), null, null);
+        expired.Accept(in primary).ShouldBe(QueryMatch.Matched);
+        expiredClock.AdvanceTo(expired.Deadline);
+        expired.Expire().ShouldBeTrue();
+
+        // Assert: identical published evidence either way.
+        replied.Capabilities.ShouldBe(expired.Capabilities);
+        replied.Results.ShouldBe(expired.Results);
     }
 
     /// <summary>Verifies a read winning at or after the deadline atomically rejects the whole batch.</summary>
@@ -814,7 +930,13 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             tracker.TryRegister(QueryKind.KittyGraphics, value, out _));
     }
 
-    /// <summary>Verifies the official direct-data query is emitted before the DA barrier.</summary>
+    /// <summary>
+    /// Verifies the official direct-data query is emitted before DA1. DA1 itself is now written
+    /// last among the standard queries (immediately before the trailing CPR fence) so its reply
+    /// can prove every earlier probe, including this one, was answered or silently ignored - but
+    /// the graphics probe must still precede it in the wire, or an in-order terminal could answer
+    /// DA1 before ever seeing the graphics query at all.
+    /// </summary>
     [Fact]
     public void TryStart_WhenGraphicsIsUnresolved_EmitsOfficialQueryBeforeDa()
     {
@@ -823,8 +945,13 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
         _ = negotiator.TryStart(output, null, null);
 
-        Encoding.ASCII.GetString(output.WrittenSpan).ShouldStartWith(
-            "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\\u001b[c");
+        const string graphicsQuery = "\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\";
+        var written = Encoding.ASCII.GetString(output.WrittenSpan);
+        written.ShouldStartWith("\u001b[?u" + graphicsQuery);
+        var graphicsEnd = written.IndexOf(graphicsQuery, StringComparison.Ordinal) +
+                           graphicsQuery.Length;
+        var da1Index = written.IndexOf("\u001b[c", StringComparison.Ordinal);
+        da1Index.ShouldBeGreaterThanOrEqualTo(graphicsEnd);
     }
 
     /// <summary>Verifies repeated warmed startup always emits the explicit three-zero query pixel.</summary>
@@ -1046,7 +1173,11 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         _ = negotiator.TryStart(destination, null, null);
 
         var bytes = Encoding.ASCII.GetString(destination.WrittenSpan);
-        bytes.ShouldEndWith("\u001bP+q524742\u001b\\\u001bP$q>4m\u001b\\");
+
+        // DA1 is written last among the standard queries (immediately before a CPR fence that
+        // this bounded capacity crowds out entirely), so it now trails these xterm refinements
+        // instead of preceding them.
+        bytes.ShouldEndWith("\u001bP+q524742\u001b\\\u001bP$q>4m\u001b\\\u001b[c");
     }
 
     /// <summary>Verifies an xterm-compatible terminal that ships its own terminfo name rather than

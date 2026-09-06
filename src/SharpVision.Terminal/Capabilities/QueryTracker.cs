@@ -389,18 +389,49 @@ public sealed class QueryTracker
     /// <returns>The number of active queries retired by this call.</returns>
     internal int ExpireAll(DateTimeOffset now)
     {
-        Key[] expired = [.. _active.Keys];
+        var retired = RetireKeys(_active.Keys, Outcome.TimedOut, now);
+        PruneHistory(now);
+        return retired;
+    }
 
-        foreach (var key in expired)
+    /// <summary>
+    /// Retires every still-active family except <paramref name="exceptKind"/> with the same
+    /// silent <see cref="Outcome.TimedOut"/> resolution the shared deadline applies in
+    /// <see cref="ExpireAll(DateTimeOffset)"/> - no diagnostic is raised and no evidence field
+    /// is set, so a fenced family stays absent rather than becoming
+    /// <see cref="Origin.Query"/> evidence it never actually received. This is the trustworthy
+    /// half of the DA1 fence: because a terminal answers written queries strictly in order, a
+    /// DA1 reply proves every family registered before it either answered already or was
+    /// silently ignored. <paramref name="exceptKind"/> exists so a caller can protect one
+    /// family that is written after DA1 (the trailing cursor-position fence) and therefore
+    /// cannot be proven silent by a DA1 reply at all.
+    /// </summary>
+    /// <param name="exceptKind">The one family this call must never retire.</param>
+    /// <param name="now">The exact response-observation instant.</param>
+    /// <returns>The number of active queries retired by this call.</returns>
+    internal int RetireActiveFamiliesExcept(QueryKind exceptKind, DateTimeOffset now)
+    {
+        var retired = RetireKeys(
+            _active.Keys.Where(key => key.Kind != exceptKind),
+            Outcome.TimedOut,
+            now);
+        PruneHistory(now);
+        return retired;
+    }
+
+    private int RetireKeys(IEnumerable<Key> keys, Outcome outcome, DateTimeOffset now)
+    {
+        Key[] retiring = [.. keys];
+
+        foreach (var key in retiring)
         {
             var active = _active[key];
             _ = _active.Remove(key);
             _ = _tokens.Remove(active.Token.Value);
-            AddHistory(key, Outcome.TimedOut, now);
+            AddHistory(key, outcome, now);
         }
 
-        PruneHistory(now);
-        return expired.Length;
+        return retiring.Length;
     }
 
     private void AddHistory(Key key, Outcome outcome, DateTimeOffset now)
@@ -443,25 +474,13 @@ public sealed class QueryTracker
         return true;
     }
 
-    private int ExpireCore(DateTimeOffset now)
-    {
-        Key[] expired =
-        [
-            .. _active
+    private int ExpireCore(DateTimeOffset now) =>
+        RetireKeys(
+            _active
                 .Where(pair => pair.Value.Deadline <= now)
-                .Select(static pair => pair.Key)
-        ];
-
-        foreach (var key in expired)
-        {
-            var active = _active[key];
-            _ = _active.Remove(key);
-            _ = _tokens.Remove(active.Token.Value);
-            AddHistory(key, Outcome.TimedOut, now);
-        }
-
-        return expired.Length;
-    }
+                .Select(static pair => pair.Key),
+            Outcome.TimedOut,
+            now);
 
     private void PruneHistory(DateTimeOffset now)
     {

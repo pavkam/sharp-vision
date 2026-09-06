@@ -859,12 +859,14 @@ public sealed class SessionTests
         sink.Order.ShouldBe(["diagnostics", "profile", "closed"]);
         transport.JoinedWrites.ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
-            "\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
             "\u001b]1337;Capabilities\u001b\\" +
-            // The terminating fence: a trailing CSI 6n.
+            // DA1 now writes last among the standard queries, immediately before the
+            // terminating CSI 6n fence.
+            "\u001b[c" +
             "\u001b[6n");
     }
 
@@ -1061,8 +1063,10 @@ public sealed class SessionTests
         sink.Order.IndexOf("diagnostics").ShouldBeLessThan(sink.Order.IndexOf("profile"));
         sink.Order.IndexOf("profile").ShouldBeLessThan(sink.Order.IndexOf("resize"));
         sink.Resizes.ShouldBe([dimensions]);
+        // DA1 is written last among the standard queries, so this bounded batch's prefix -
+        // everything up to the point capacity ran out - no longer includes it.
         transport.JoinedWrites.ShouldStartWith(
-            "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p");
     }
 
@@ -1096,9 +1100,11 @@ public sealed class SessionTests
 
         // Assert
         _ = sink.Profiles.ShouldHaveSingleItem();
+        // DA1 now writes last among the standard queries, right before the point capacity
+        // ran out (no room remained for the trailing CPR fence here).
         transport.JoinedWrites.ShouldBe(
-            "\u001b[?u\u001b[c\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
-            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p" +
+            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[c" +
             "\u001b[?1004h\u001b[?2004h\u001b[?1006h\u001b[?1000h\u001b[>3u" +
             "\u001b[<u\u001b[?1000l\u001b[?1006l\u001b[?2004l\u001b[?1004l");
     }
@@ -1276,9 +1282,12 @@ public sealed class SessionTests
 
         // Assert
         sink.Profiles.ShouldBeEmpty();
+
+        // DA1 no longer immediately follows the Kitty prelude: it is written last among the
+        // standard queries, immediately before the trailing CPR fence.
         transport.JoinedWrites.ShouldStartWith(
             "\u001b[?1049h\u001b[?25l\u001b[?u" +
-            "\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\\u001b[c");
+            "\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\");
         transport.JoinedWrites.ShouldEndWith("\u001b[?25h\u001b[?1049l");
     }
 

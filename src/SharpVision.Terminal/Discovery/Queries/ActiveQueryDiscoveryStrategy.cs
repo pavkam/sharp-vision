@@ -224,7 +224,13 @@ internal sealed class ActiveQueryDiscoveryStrategy
             remaining--;
         }
 
-        Csi.PrimaryDeviceAttributes(writer);
+        // DA1 is registered - and its budget slot spent - here, up front, exactly as before:
+        // every optional probe below must still see the same shrunken "remaining" count it saw
+        // previously, so the finite MaxConcurrentQueries budget admits the same set of optional
+        // families regardless of when DA1's own bytes are written. Only the byte-level write
+        // moves: it happens last among the standard queries, immediately before the trailing
+        // CSI 6n fence below, so an in-order terminal's DA1 reply proves every probe written
+        // between here and there was either answered already or silently ignored.
         remaining--;
 
         if (TryRegister(QueryKind.SecondaryAttributes, ref remaining))
@@ -356,14 +362,26 @@ internal sealed class ActiveQueryDiscoveryStrategy
             _graphicsQueried = true;
         }
 
-        // A trailing probe, written last so an in-order terminal answers it only after every
-        // other standard query - but CSI 6n (DSR cursor position) shares its exact reply grammar
-        // with a modified F3 keystroke (CSI 1;<mod>R), which a user, tty typeahead, or a
-        // multiplexer replaying buffered input can deliver at any point in the shared deadline
-        // window with no way to tell it apart from a genuine answer. Accept below therefore only
-        // resolves this query's own family from a match; it never treats the match as proof that
-        // every other still-outstanding family stayed silent, because an unsolicited keystroke
-        // would then falsely retire all of them. Every other silent family still resolves,
+        // DA1 is written here, last among the standard queries, even though it was registered
+        // and budgeted up front (see the comment above). A terminal answers written queries
+        // strictly in order, so placing DA1 immediately before the trailing CPR fence below
+        // means its reply proves every standard probe written between the prelude and here was
+        // either already answered or silently ignored by an in-order terminal. Accept below
+        // acts on that proof by retiring every other still-active family - the same silent
+        // resolution the shared deadline applies - so a responsive terminal that only implements
+        // DA1 and a few probes still completes negotiation without paying the full timeout.
+        Csi.PrimaryDeviceAttributes(writer);
+
+        // A trailing probe, written last of all so an in-order terminal answers it only after
+        // DA1 - but unlike DA1, CSI 6n (DSR cursor position) shares its exact reply grammar with
+        // a modified F3 keystroke (CSI 1;<mod>R), which a user, tty typeahead, or a multiplexer
+        // replaying buffered input can deliver at any point in the shared deadline window with
+        // no way to tell it apart from a genuine answer. Accept below therefore only resolves
+        // this query's own family from a match; it never treats the match as proof that DA1 or
+        // any other still-outstanding family stayed silent, because an unsolicited keystroke
+        // would then falsely retire all of them. Conversely, a DA1 match never retires this
+        // family either: CPR is written after DA1 specifically so an in-order terminal answers
+        // it last, which means a DA1 reply cannot yet prove CPR's own silence. CPR resolves only
         // through its own matching reply or the shared deadline below.
         FenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
 
@@ -451,12 +469,27 @@ internal sealed class ActiveQueryDiscoveryStrategy
                 _kittyGraphics = false;
             }
 
+            if (response.Kind == ResponseKind.PrimaryAttributes)
+            {
+                // DA1 is written last among the standard queries (see TryStart), so a terminal
+                // that answers in order has already answered or silently ignored every other
+                // standard probe, the Kitty prelude, and every still-pending DECRQM mode by the
+                // time this reply arrives. Retire all of it now with the same silent resolution
+                // the shared deadline applies below, rather than waiting out the rest of
+                // QueryLimits.QueryTimeout for terminals that only implement DA1 and a handful
+                // of probes. CursorPosition is excluded on purpose: it is written after DA1
+                // specifically so an in-order terminal answers it last, so this DA1 reply cannot
+                // yet prove CPR stayed silent - CPR keeps its own separate resolution path below.
+                RetireFencedFamilies(now);
+            }
+
             // A CSI 6n reply only ever resolves its own tracked family here (via the _tracker.Match
             // call above). It deliberately does not retire any other still-outstanding family: the
             // reply grammar is byte-identical to a modified F3 keystroke, which a user or replayed
             // typeahead can deliver at any point in the shared deadline window, so a match here is
             // never trustworthy proof that every other family stayed silent. Every other family
-            // still resolves through its own matching reply or the shared deadline.
+            // still resolves through its own matching reply, the DA1 fence above, or the shared
+            // deadline.
             TryPublish();
         }
 
@@ -864,7 +897,27 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private void RetireOutstandingFamilies(DateTimeOffset now)
     {
         _ = _tracker.ExpireAll(now);
+        RetirePendingModes();
+    }
 
+    /// <summary>
+    /// Retires every still-active query family except <see cref="QueryKind.CursorPosition"/>
+    /// with the exact same silent resolution <see cref="RetireOutstandingFamilies"/> applies at
+    /// the shared deadline - no diagnostic and no evidence field is set, so a fenced family
+    /// stays absent rather than becoming <see cref="Origin.Query"/> evidence it never actually
+    /// received. This is the DA1 fence: a terminal answers written queries strictly in order, so
+    /// a DA1 reply proves every family registered before it either already answered or was
+    /// silently ignored. CursorPosition is written after DA1 specifically so it can never be
+    /// proven silent by this reply, and keeps its own separate resolution path.
+    /// </summary>
+    private void RetireFencedFamilies(DateTimeOffset now)
+    {
+        _ = _tracker.RetireActiveFamiliesExcept(QueryKind.CursorPosition, now);
+        RetirePendingModes();
+    }
+
+    private void RetirePendingModes()
+    {
         foreach (var mode in _pendingModes)
         {
             _ = _expiredModes.Add(mode);
