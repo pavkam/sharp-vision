@@ -85,8 +85,8 @@ public sealed class InputDecoder: IDisposable
             TryHandleFocusCsi,
             TryHandlePasteBeginCsi,
             TryHandleMouseCsi,
-            TryHandleKeyMapCsi,
             TryHandleLegacyCsiKey,
+            TryHandleKeyMapCsi,
             TryHandleAnsiGrammarCsi
         ];
         _sequenceHandlers =

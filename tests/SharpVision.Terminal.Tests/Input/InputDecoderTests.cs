@@ -2516,6 +2516,31 @@ public sealed class InputDecoderTests
             .ShouldBeGreaterThan(0);
     }
 
+    /// <summary>Verifies a described KeyMap binding for a bare cursor-key CSI final byte does not
+    /// shadow the enhanced/legacy cursor-key mapping once the Kitty keyboard disambiguation lease
+    /// is active, per the documented terminal-description precedence contract: Kitty CSI u events
+    /// and cursor/function-key forms such as <c>CSI B</c> are consumed before terminal-description
+    /// key lookup, so a database string cannot shadow enhanced keyboard input.</summary>
+    [Fact]
+    public void Decode_WhenKittyDisambiguationIsActiveAndDescriptionBindsCursorKey_LegacyCursorKeyWins()
+    {
+        var bytes = "[B"u8.ToArray();
+        var options = InputOptions.Default.WithKeyMap(
+            new KeyMap([new KeyBinding(bytes, Code.F63)]),
+            useAnsiKeyGrammar: false);
+        var sink = new RecordingInputSink();
+
+        using (InputDecoder decoder = new(sink, options))
+        {
+            decoder.EnableKittyKeyboardDisambiguation();
+            decoder.Decode(bytes);
+            decoder.Complete();
+        }
+
+        sink.Strokes.ShouldBe(
+            [new Stroke(Code.Down, null, 0, Modifiers.None, KeyAction.Press)]);
+    }
+
     /// <summary>Verifies an active paste consumes its terminator before described-key matching.</summary>
     [Fact]
     public void Decode_WhenPasteTerminatorIsAlsoDescribed_PasteTerminatorWins()
