@@ -18,10 +18,17 @@ namespace SharpVision.Terminal.Runtime;
 /// A native <c>ReadConsoleW</c> call blocks synchronously for however long it takes for a key or
 /// paste to arrive, often for the remainder of the process's lifetime, and console handles have
 /// no overlapped/IOCP-based asynchronous variant the way a Unix tty's <see cref="FileStream"/>
-/// does. Every <c>ReadAsync</c> call therefore runs the blocking call on a dedicated background
-/// thread via <see cref="TaskCreationOptions.LongRunning"/> rather than a pooled
-/// <see cref="ThreadPool"/> thread, so a session that spends most of its life waiting on input
-/// does not tie up a shared pool worker for that entire time.
+/// does. Every <c>ReadAsync</c> call therefore runs the blocking call on a pooled
+/// <see cref="ThreadPool"/> thread rather than a dedicated
+/// <see cref="TaskCreationOptions.LongRunning"/> thread - the model .NET's own console stream used
+/// before it grew a dedicated reader thread. A dedicated thread only pays for itself when it is
+/// created once and reused for the input's entire lifetime; this stream instead issues one native
+/// call per <c>ReadAsync</c>, so a <see cref="TaskCreationOptions.LongRunning"/> task would spin up
+/// and tear down a whole OS thread for every keystroke, mouse report, and
+/// aborted-and-retried Ctrl+C read. A pooled thread is safe here because only one native read is
+/// ever outstanding at a time - callers await each <c>ReadAsync</c> before issuing the next - so at
+/// most one pool worker blocks, and cancellation unblocks it almost immediately via
+/// <c>CancelIoEx</c> rather than parking it for however long the next key takes to arrive.
 /// </para>
 /// <para>
 /// Because the blocking call cannot be interrupted by cancelling a <see cref="CancellationToken"/>
@@ -99,12 +106,11 @@ internal sealed class WindowsConsoleInputStream: Stream
         {
             // CancellationToken.None: cancellation is handled entirely by the registration above
             // asking the OS to abort the pending native read, not by the framework's own
-            // before-the-fact check, which cannot interrupt a read already in flight.
-            var (succeeded, charsRead, error) = await Task.Factory.StartNew(
+            // before-the-fact check, which cannot interrupt a read already in flight. A pooled
+            // Task.Run is deliberate, not an oversight - see the class remarks.
+            var (succeeded, charsRead, error) = await Task.Run(
                 ReadConsoleOnce,
-                CancellationToken.None,
-                TaskCreationOptions.LongRunning,
-                TaskScheduler.Default).ConfigureAwait(false);
+                CancellationToken.None).ConfigureAwait(false);
 
             if (!succeeded)
             {
@@ -159,7 +165,7 @@ internal sealed class WindowsConsoleInputStream: Stream
     [DoesNotReturn]
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
-    /// <summary>Issues one blocking native read on the calling (dedicated, long-running) thread.</summary>
+    /// <summary>Issues one blocking native read on the calling (pooled) thread.</summary>
     /// <returns>
     /// Whether the call succeeded, the number of code units read on success, and the Win32 error
     /// captured immediately on failure - captured here, rather than after crossing back onto the
