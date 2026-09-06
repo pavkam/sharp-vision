@@ -3,6 +3,8 @@
 
 namespace SharpVision.Terminal.Tests.Runtime;
 
+using System.Buffers.Binary;
+
 using SharpVision.Terminal.Tests.Support;
 
 /// <summary>Verifies the Unix raw-input lease and its restoration reporting.</summary>
@@ -165,11 +167,52 @@ public sealed class UnixConsoleModeTests
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterEnter).ShouldBeTrue();
         afterEnter.ShouldBe(RuntimeInterop.ComputeRawTerminalAttributes(before, captureControlKeys));
 
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+
+        if (captureControlKeys)
+        {
+            // ISIG stays cleared, and cfmakeraw() never touches c_cc[VSUSP], so the pseudoterminal's
+            // SUSP byte is whatever the kernel initialized it to (already inert with ISIG off).
+            (ReadLocalFlags(afterEnter, layout) & layout.SignalsEnabledFlag).ShouldBe(0ul);
+        }
+        else
+        {
+            // ISIG is restored so Ctrl+C keeps raising SIGINT, which also re-arms SUSP unless it is
+            // explicitly disabled - assert both halves of that fix directly against the real kernel
+            // state, not merely against this test's own expectation of what Enter should have done.
+            (ReadLocalFlags(afterEnter, layout) & layout.SignalsEnabledFlag).ShouldNotBe(0ul);
+            afterEnter[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
+                .ShouldBe(layout.DisabledControlCharacter);
+
+            if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
+            {
+                afterEnter[layout.ControlCharactersOffset + delayedSuspendCharacterIndex]
+                    .ShouldBe(layout.DisabledControlCharacter);
+            }
+        }
+
         mode.Dispose();
 
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterRestore).ShouldBeTrue();
         afterRestore.ShouldBe(before);
+
+        // The whole-buffer comparison above already proves this, but restoring exactly the
+        // captured c_cc bytes - undoing the SUSP/DSUSP disablement from Enter - is the specific
+        // claim this fix makes, so assert it directly too.
+        afterRestore[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
+            .ShouldBe(before[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]);
+
+        if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndexForRestore)
+        {
+            afterRestore[layout.ControlCharactersOffset + delayedSuspendCharacterIndexForRestore]
+                .ShouldBe(before[layout.ControlCharactersOffset + delayedSuspendCharacterIndexForRestore]);
+        }
     }
+
+    private static ulong ReadLocalFlags(byte[] termios, RuntimeInterop.UnixTerminalLayout layout) =>
+        layout.LocalFlagsWidth == 8
+            ? BinaryPrimitives.ReadUInt64LittleEndian(termios.AsSpan(layout.LocalFlagsOffset))
+            : BinaryPrimitives.ReadUInt32LittleEndian(termios.AsSpan(layout.LocalFlagsOffset));
 
     /// <summary>
     /// Verifies restoration discards an unread mouse-report tail before echo and canonical input

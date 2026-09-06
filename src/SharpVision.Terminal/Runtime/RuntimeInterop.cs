@@ -128,24 +128,92 @@ internal static class RuntimeInterop
     // TCSANOW: apply attribute changes immediately (identical value on Linux and Darwin).
     private const int _setAttributesNow = 0;
 
-    // Layout constants for struct termios. Only the ISIG bit inside c_lflag is ever inspected or
-    // mutated; every other byte is captured and replayed as an opaque blob, so the full per-field
-    // layout never needs modeling. Sourced from Apple's <sys/termios.h> (Darwin is
-    // LP64, so tcflag_t is an 8-byte unsigned long; c_iflag, c_oflag, c_cflag, c_lflag precede
-    // c_cc/c_ispeed/c_ospeed, giving c_lflag a 24-byte offset and a measured sizeof of 72) and
-    // glibc's <bits/termios.h> (tcflag_t is a 4-byte unsigned int, giving c_lflag a 12-byte offset
-    // and a struct size of 60 on both x86-64 and arm64). ISIG is bit 0x80 on Darwin (POSIX-set,
-    // BSD-numbered) and bit 0x1 on Linux (POSIX-numbered first).
+    /// <summary>
+    /// Describes the platform-specific facts this boundary needs about <c>struct termios</c>. Only
+    /// the ISIG bit inside <c>c_lflag</c> and the SUSP/DSUSP entries inside <c>c_cc</c> are ever
+    /// inspected or mutated; every other byte is captured and replayed as an opaque blob, so the
+    /// full per-field layout never needs modeling. A record so <see cref="SelectLayout"/> stays a
+    /// pure, directly testable function instead of a set of scattered static fields.
+    /// </summary>
+    /// <param name="TermiosStateLength">The exact byte length of a captured termios state.</param>
+    /// <param name="LocalFlagsOffset">The byte offset of <c>c_lflag</c> within the captured state.</param>
+    /// <param name="LocalFlagsWidth">The width in bytes of <c>c_lflag</c> (its <c>tcflag_t</c>).</param>
+    /// <param name="SignalsEnabledFlag">The <c>ISIG</c> bit within <c>c_lflag</c>.</param>
+    /// <param name="ControlCharactersOffset">The byte offset of <c>c_cc[0]</c> within the captured state.</param>
+    /// <param name="SuspendCharacterIndex">The index of <c>VSUSP</c> within <c>c_cc</c>.</param>
+    /// <param name="DelayedSuspendCharacterIndex">
+    /// The index of <c>VDSUSP</c> within <c>c_cc</c>, or null on Linux, which defines no
+    /// delayed-suspend character (only BSD-derived line disciplines define VDSUSP).
+    /// </param>
+    /// <param name="DisabledControlCharacter">The <c>_POSIX_VDISABLE</c> sentinel byte.</param>
+    internal readonly record struct UnixTerminalLayout(
+        int TermiosStateLength,
+        int LocalFlagsOffset,
+        int LocalFlagsWidth,
+        ulong SignalsEnabledFlag,
+        int ControlCharactersOffset,
+        int SuspendCharacterIndex,
+        int? DelayedSuspendCharacterIndex,
+        byte DisabledControlCharacter);
+
+    /// <summary>
+    /// Selects the termios layout for one platform. Pure and internal so tests can assert both
+    /// supported tuples directly, without depending on which platform the test process itself
+    /// happens to run on.
+    /// </summary>
+    /// <param name="isMacOs">Whether the target platform is macOS; false means Linux.</param>
+    /// <returns>The layout facts for that platform.</returns>
+    [Pure]
+    internal static UnixTerminalLayout SelectLayout(bool isMacOs)
+    {
+        if (isMacOs)
+        {
+            // Apple's <sys/termios.h>: Darwin is LP64, so tcflag_t and speed_t are 8-byte unsigned
+            // longs; c_iflag, c_oflag, c_cflag and c_lflag precede c_cc, giving c_lflag a 24-byte
+            // offset, c_cc a 32-byte offset, and a measured sizeof of 72 (c_cc[NCCS=20] plus the two
+            // 8-byte speed fields). ISIG is bit 0x80 (BSD-numbered, POSIX-set first). VSUSP is index
+            // 10 and VDSUSP index 11 within c_cc (<sys/termios.h>: "#define VSUSP 10",
+            // "#define VDSUSP 11"). _POSIX_VDISABLE is 0xff
+            // (<sys/_types/_posix_vdisable.h>: "#define _POSIX_VDISABLE ((unsigned char)'\377')").
+            return new UnixTerminalLayout(
+                TermiosStateLength: 72,
+                LocalFlagsOffset: 24,
+                LocalFlagsWidth: 8,
+                SignalsEnabledFlag: 0x0000_0080ul,
+                ControlCharactersOffset: 32,
+                SuspendCharacterIndex: 10,
+                DelayedSuspendCharacterIndex: 11,
+                DisabledControlCharacter: 0xff);
+        }
+
+        // glibc's <bits/termios.h>/<bits/termios-c_cc.h> and musl's <bits/termios.h> agree that
+        // tcflag_t is a 4-byte unsigned int, so the four flag words occupy 16 bytes, the 1-byte
+        // c_line follows at offset 16, and c_cc[NCCS=32] begins at offset 17, giving a struct size
+        // of 60. ISIG is bit 0x1 (POSIX-numbered first, unlike Darwin's BSD numbering). VSUSP is
+        // index 10. _POSIX_VDISABLE is 0 (a NUL byte), unlike macOS's 0xff. There is no VDSUSP.
+        return new UnixTerminalLayout(
+            TermiosStateLength: 60,
+            LocalFlagsOffset: 12,
+            LocalFlagsWidth: 4,
+            SignalsEnabledFlag: 0x0000_0001ul,
+            ControlCharactersOffset: 17,
+            SuspendCharacterIndex: 10,
+            DelayedSuspendCharacterIndex: null,
+            DisabledControlCharacter: 0);
+    }
+
+    private static readonly UnixTerminalLayout _layout = SelectLayout(OperatingSystem.IsMacOS());
+
     /// <summary>
     /// Gets the exact byte length of a captured termios state on this platform. Internal so tests
     /// can build a correctly sized synthetic state without ever calling <c>tcgetattr</c>; passing
     /// an undersized buffer into the native boundary would corrupt memory rather than merely fail.
     /// </summary>
-    internal static int TermiosStateLength { get; } = OperatingSystem.IsMacOS() ? 72 : 60;
+    internal static int TermiosStateLength { get; } = _layout.TermiosStateLength;
 
-    private static readonly int _localFlagsOffset = OperatingSystem.IsMacOS() ? 24 : 12;
-    private static readonly int _localFlagsWidth = OperatingSystem.IsMacOS() ? 8 : 4;
-    private static readonly ulong _signalsEnabledFlag = OperatingSystem.IsMacOS() ? 0x0000_0080ul : 0x0000_0001ul;
+    private static readonly int _localFlagsOffset = _layout.LocalFlagsOffset;
+    private static readonly int _localFlagsWidth = _layout.LocalFlagsWidth;
+    private static readonly ulong _signalsEnabledFlag = _layout.SignalsEnabledFlag;
 
     /// <summary>Captures the current termios state of a Unix file descriptor as an opaque, platform-sized blob.</summary>
     /// <param name="fileDescriptor">The non-negative terminal descriptor.</param>
@@ -213,7 +281,36 @@ internal static class RuntimeInterop
         // cfmakeraw() always clears ISIG. Restore it unless the caller wants Ctrl-key
         // combinations delivered as ordinary input bytes instead of raising signals.
         var flags = ReadLocalFlags(raw);
-        flags = captureControlKeys ? flags & ~_signalsEnabledFlag : flags | _signalsEnabledFlag;
+
+        if (captureControlKeys)
+        {
+            // ISIG is already cleared by cfmakeraw(), which leaves the SUSP character inert -
+            // the line discipline only raises a signal from c_cc when ISIG is set.
+            flags &= ~_signalsEnabledFlag;
+        }
+        else
+        {
+            flags |= _signalsEnabledFlag;
+
+            // ISIG governs INTR, QUIT and SUSP together, so restoring it to keep Ctrl+C raising
+            // SIGINT for cooperative shutdown also re-arms the tty's SUSP character (and, on
+            // macOS, DSUSP). Nothing in this process installs a SIGTSTP handler, so left alone the
+            // default disposition would stop the process while the terminal is still raw, still on
+            // the alternate screen, with the cursor hidden and mouse, focus, paste and Kitty
+            // keyboard modes still enabled - `fg` would then resume it without any of that undone.
+            // Disabling the SUSP (and DSUSP) character themselves keeps ISIG live for Ctrl+C while
+            // making Ctrl+Z (and Ctrl+Y on macOS) arrive as an ordinary 0x1a input byte instead of
+            // stopping the process.
+            raw[_layout.ControlCharactersOffset + _layout.SuspendCharacterIndex] =
+                _layout.DisabledControlCharacter;
+
+            if (_layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
+            {
+                raw[_layout.ControlCharactersOffset + delayedSuspendCharacterIndex] =
+                    _layout.DisabledControlCharacter;
+            }
+        }
+
         WriteLocalFlags(raw, flags);
 
         return raw;

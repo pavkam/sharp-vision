@@ -49,7 +49,12 @@ internal sealed class UnixConsoleMode: IDisposable
     /// `ISIG` is restored after `cfmakeraw` clears it, so Ctrl+C continues to raise the host's
     /// cancellation event while individual key, pointer, paste, and focus bytes arrive without
     /// canonical line buffering. When <paramref name="captureControlKeys"/> is true, `ISIG` is
-    /// left disabled so Ctrl-key combinations arrive as input bytes.
+    /// left disabled so Ctrl-key combinations arrive as input bytes. Restoring `ISIG` also arms
+    /// the tty's SUSP character (and, on macOS, DSUSP), which would otherwise let the line
+    /// discipline raise `SIGTSTP` and stop the process while the terminal is still raw and on the
+    /// alternate screen - nothing here installs a `SIGTSTP` handler to undo that before stopping, so
+    /// `ComputeRawTerminalAttributes` disables the SUSP character(s) whenever it restores `ISIG`,
+    /// making Ctrl+Z (and Ctrl+Y on macOS) arrive as an ordinary input byte instead.
     /// </remarks>
     [MustDisposeResource]
     public static UnixConsoleMode Enter(

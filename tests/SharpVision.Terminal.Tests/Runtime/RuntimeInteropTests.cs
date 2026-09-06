@@ -165,4 +165,94 @@ public sealed class RuntimeInteropTests
         (result & RuntimeInterop.DisableNewlineAutoReturn).ShouldNotBe(0u);
         (result & unrelatedSavedMode).ShouldBe(unrelatedSavedMode);
     }
+
+    /// <summary>
+    /// Verifies the pure termios layout selection returns the exact documented tuple for macOS and
+    /// for Linux, without depending on which platform the test process itself happens to run on.
+    /// </summary>
+    [Fact]
+    public void SelectLayout_ForMacOsAndLinux_ReturnsTheDocumentedTuples()
+    {
+        var macOs = RuntimeInterop.SelectLayout(isMacOs: true);
+        macOs.TermiosStateLength.ShouldBe(72);
+        macOs.LocalFlagsOffset.ShouldBe(24);
+        macOs.LocalFlagsWidth.ShouldBe(8);
+        macOs.SignalsEnabledFlag.ShouldBe(0x0000_0080ul);
+        macOs.ControlCharactersOffset.ShouldBe(32);
+        macOs.SuspendCharacterIndex.ShouldBe(10);
+        macOs.DelayedSuspendCharacterIndex.ShouldBe(11);
+        macOs.DisabledControlCharacter.ShouldBe((byte) 0xff);
+
+        var linux = RuntimeInterop.SelectLayout(isMacOs: false);
+        linux.TermiosStateLength.ShouldBe(60);
+        linux.LocalFlagsOffset.ShouldBe(12);
+        linux.LocalFlagsWidth.ShouldBe(4);
+        linux.SignalsEnabledFlag.ShouldBe(0x0000_0001ul);
+        linux.ControlCharactersOffset.ShouldBe(17);
+        linux.SuspendCharacterIndex.ShouldBe(10);
+        linux.DelayedSuspendCharacterIndex.ShouldBeNull();
+        linux.DisabledControlCharacter.ShouldBe((byte) 0);
+    }
+
+    /// <summary>
+    /// Verifies that restoring ISIG (the default <c>captureControlKeys: false</c> raw-mode shape)
+    /// also disables the SUSP character (and DSUSP on macOS) at the exact byte offsets the current
+    /// platform's layout declares, so Ctrl+Z arrives as an ordinary input byte instead of stopping
+    /// the process while it is still raw and on the alternate screen.
+    /// </summary>
+    [Fact]
+    public void ComputeRawTerminalAttributes_WhenCaptureControlKeysIsFalse_DisablesTheSuspendCharacters()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+        var captured = new byte[RuntimeInterop.TermiosStateLength];
+        captured[layout.ControlCharactersOffset + layout.SuspendCharacterIndex] = 0x1a;
+
+        if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
+        {
+            captured[layout.ControlCharactersOffset + delayedSuspendCharacterIndex] = 0x19;
+        }
+
+        var raw = RuntimeInterop.ComputeRawTerminalAttributes(captured, captureControlKeys: false);
+
+        raw[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
+            .ShouldBe(layout.DisabledControlCharacter);
+
+        if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndexAssertion)
+        {
+            raw[layout.ControlCharactersOffset + delayedSuspendCharacterIndexAssertion]
+                .ShouldBe(layout.DisabledControlCharacter);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that when the caller wants Ctrl-key combinations delivered as ordinary input bytes
+    /// (<c>captureControlKeys: true</c>), the SUSP/DSUSP bytes are left exactly as captured - ISIG
+    /// is already cleared in that shape, which already leaves the SUSP character inert, so nothing
+    /// needs to touch it.
+    /// </summary>
+    [Fact]
+    public void ComputeRawTerminalAttributes_WhenCaptureControlKeysIsTrue_LeavesTheSuspendCharactersUntouched()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
+        var layout = RuntimeInterop.SelectLayout(OperatingSystem.IsMacOS());
+        var captured = new byte[RuntimeInterop.TermiosStateLength];
+        captured[layout.ControlCharactersOffset + layout.SuspendCharacterIndex] = 0x1a;
+
+        if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
+        {
+            captured[layout.ControlCharactersOffset + delayedSuspendCharacterIndex] = 0x19;
+        }
+
+        var raw = RuntimeInterop.ComputeRawTerminalAttributes(captured, captureControlKeys: true);
+
+        raw[layout.ControlCharactersOffset + layout.SuspendCharacterIndex].ShouldBe((byte) 0x1a);
+
+        if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndexAssertion)
+        {
+            raw[layout.ControlCharactersOffset + delayedSuspendCharacterIndexAssertion].ShouldBe((byte) 0x19);
+        }
+    }
 }
