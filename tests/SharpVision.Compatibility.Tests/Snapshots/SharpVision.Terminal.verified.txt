@@ -1263,8 +1263,10 @@ namespace SharpVision.Terminal.Protocols
         public static void InsertCharacters(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
         public static void InsertLines(SharpVision.Terminal.Protocols.ProtocolWriter writer, int count = 1) { }
         public static void Move(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.Movement direction, int count = 1) { }
+        public static void PopTitle(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void Position(SharpVision.Terminal.Protocols.ProtocolWriter writer, int row, int column) { }
         public static void PrimaryDeviceAttributes(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
+        public static void PushTitle(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void QueryPrivateMode(SharpVision.Terminal.Protocols.ProtocolWriter writer, int mode) { }
         public static void ReportCellPixels(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
         public static void ReportCursorPosition(SharpVision.Terminal.Protocols.ProtocolWriter writer) { }
