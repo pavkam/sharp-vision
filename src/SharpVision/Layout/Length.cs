@@ -119,13 +119,14 @@ public readonly record struct Length
     /// <summary>Gets the validated numeric payload for the strategy.</summary>
     public double Value { get; }
 
-    /// <inheritdoc />
+    /// <summary>Formats a diagnostic length with invariant decimal separators and a unit suffix.</summary>
+    /// <returns>Auto, a whole cell count, or a percentage or star weight with at most two decimal places.</returns>
     public override string ToString() => Kind switch
     {
         LengthKind.Auto => "Auto",
-        LengthKind.Cells => $"{Value:0}cells",
-        LengthKind.Percent => $"{Value:0.##}%",
-        LengthKind.Star => $"{Value:0.##}*",
-        _ => $"{Kind}({Value})"
+        LengthKind.Cells => string.Create(CultureInfo.InvariantCulture, $"{Value:0}cells"),
+        LengthKind.Percent => string.Create(CultureInfo.InvariantCulture, $"{Value:0.##}%"),
+        LengthKind.Star => string.Create(CultureInfo.InvariantCulture, $"{Value:0.##}*"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{Kind}({Value})")
     };
 }

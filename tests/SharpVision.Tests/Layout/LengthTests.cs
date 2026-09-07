@@ -6,6 +6,35 @@ namespace SharpVision.Tests.Layout;
 /// <summary>Verifies immutable length values and their factories.</summary>
 public sealed class LengthTests
 {
+    /// <summary>Verifies diagnostic lengths retain invariant decimal separators and unit
+    /// suffixes under both dot-decimal and comma-decimal cultures.</summary>
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("pt-PT")]
+    [InlineData("fr-FR")]
+    public void ToString_WhenCultureVaries_UsesInvariantUnits(string culture)
+    {
+        // Arrange
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+
+            // Act and assert
+            Length.Auto.ToString().ShouldBe("Auto");
+            Length.Cells(3).ToString().ShouldBe("3cells");
+            Length.Percent(12.5).ToString().ShouldBe("12.5%");
+            Length.Percent(50).ToString().ShouldBe("50%");
+            Length.Star(2).ToString().ShouldBe("2*");
+            Length.Star(1.25).ToString().ShouldBe("1.25*");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     /// <summary>Verifies every supported length factory preserves its exact value.</summary>
     [Fact]
     public void Factory_WhenLengthIsValid_PreservesKindAndValue()

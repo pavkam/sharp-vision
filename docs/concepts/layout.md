@@ -43,6 +43,11 @@ and proportional weights must be finite and positive. The public
 `Length(LengthKind, double)` constructor applies the same validation, so callers
 cannot bypass the factory invariants.
 
+`Length.ToString()` produces culture-independent diagnostic text: `Auto`,
+`3cells`, `12.5%`, or `1.25*`. Percentages and star weights use at most two
+decimal places and always use a decimal point, regardless of the current
+culture.
+
 `Constraint` describes one measure axis as a nullable non-negative integer: null
 means the axis is unbounded, and zero is a real bound. `Thickness` stores
 physical left/top/right/bottom cell edges, rejects negative edges and

@@ -6,7 +6,7 @@ namespace SharpVision.Tests.Layout;
 using SharpVision.Controls.Scrolling;
 
 /// <summary>Verifies small layout and scrolling primitives: saturating enumeration, constraint
-/// and length formatting, attached-property invalidation mapping, scroll event argument
+/// formatting, attached-property invalidation mapping, scroll event argument
 /// validation, track-resolution input validation, and viewport coordinator reentrancy.</summary>
 public sealed class LayoutPrimitiveConditionTests
 {
@@ -39,19 +39,6 @@ public sealed class LayoutPrimitiveConditionTests
 
         // Assert
         text.ShouldBe(expected);
-    }
-
-    /// <summary>Verifies every length kind formats with its own unit suffix.</summary>
-    [Fact]
-    public void Length_ToString_WhenKindVaries_UsesTheKindSuffix()
-    {
-        // Assert
-        Length.Auto.ToString().ShouldBe("Auto");
-        Length.Cells(3).ToString().ShouldBe("3cells");
-        Length.Percent(12.5).ToString().ShouldBe("12.5%");
-        Length.Percent(50).ToString().ShouldBe("50%");
-        Length.Star(2).ToString().ShouldBe("2*");
-        Length.Star(1.25).ToString().ShouldBe("1.25*");
     }
 
     /// <summary>Verifies an attached layout property maps None, Render, and Arrange impacts onto
