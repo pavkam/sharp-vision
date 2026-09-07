@@ -557,6 +557,14 @@ public sealed class TableDataControllerTests
         // have issued a fresh, genuinely functioning fetch for the now-empty cache.
         source.Ungate();
         var reissuedStart = source.Requests[^1].StartIndex;
+
+        // Bumping the generation left the original held fetch stuck open (this fake source
+        // doesn't honor cancellation, so it never completes or drops out of the held set on its
+        // own), and the rewindow's own fresh fetch for the same range was issued while the
+        // source was still gated - so two held requests now share reissuedStart. Release
+        // resolves the oldest one first (the stale pre-reload fetch, which the controller's
+        // generation guard correctly drops) before the fresh one that actually matters here.
+        await surface.UpdateAsync(() => source.Release(reissuedStart), "resolve the stale pre-reload fetch");
         await surface.UpdateAsync(() => source.Release(reissuedStart), "resolve the post-reload fetch");
 
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();

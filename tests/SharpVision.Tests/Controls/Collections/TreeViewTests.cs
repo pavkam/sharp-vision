@@ -3831,7 +3831,7 @@ public sealed class TreeViewTests
         // Collapsing cancels the in-flight load; the request's own registered cancellation callback
         // throws, which must not escape this call and must not skip restoring ChildState below.
         await Should.NotThrowAsync(
-            () => dispatcher.InvokeAsync(() => { item.IsExpanded = false; }, TestContext.Current.CancellationToken));
+            () => dispatcher.InvokeAsync(() => { item.IsExpanded = false; }, TestContext.Current.CancellationToken).AsTask());
 
         item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
         item.Children.ShouldBeEmpty();

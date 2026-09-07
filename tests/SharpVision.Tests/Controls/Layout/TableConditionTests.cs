@@ -96,7 +96,11 @@ public sealed class TableConditionTests
         var exception = Should.Throw<ArgumentOutOfRangeException>(() => table.SetSort(columnIndex, TableSortDirection.Ascending));
 
         // Assert
-        exception.ParamName.ShouldBe("columnIndex");
+        // A negative columnIndex fails ThrowIfNegative(columnIndex), which reports the plain
+        // parameter name; a too-large one falls through to ThrowIfGreaterThanOrEqual((uint)
+        // columnIndex, ...), whose CallerArgumentExpression captures the cast expression itself -
+        // this is the same pre-existing cast pattern SortBy and BeginEdit already use.
+        exception.ParamName.ShouldBe(columnIndex < 0 ? "columnIndex" : "(uint) columnIndex");
         table.IsEditing.ShouldBeTrue();
         input.Text.ShouldBe("changed");
     }

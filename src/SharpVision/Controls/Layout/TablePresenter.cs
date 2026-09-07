@@ -743,7 +743,7 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         // (see the two call sites); minimum/maximum spans stay empty, matching the 3-arg overload
         // this replaces.
         ColumnWidths = new int[_owner.Columns.Count];
-        Tracks.Resolve(available, lengths, automatic, ReadOnlySpan<int>.Empty, ReadOnlySpan<int>.Empty, ColumnWidths, percentBase);
+        Tracks.Resolve(available, lengths, automatic, (ReadOnlySpan<int>) [], [], ColumnWidths, percentBase);
         RowHeights = new int[_owner.Rows.Count];
 
         for (var rowIndex = 0; rowIndex < _owner.Rows.Count; rowIndex++)

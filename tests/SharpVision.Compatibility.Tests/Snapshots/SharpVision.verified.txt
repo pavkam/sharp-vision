@@ -324,6 +324,8 @@ namespace SharpVision.Controls
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        protected bool ScrollsHorizontally() { }
+        protected bool ScrollsVertically() { }
     }
     public abstract class ContentControl : SharpVision.Controls.ControlBase
     {
