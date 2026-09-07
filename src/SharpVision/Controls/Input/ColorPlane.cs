@@ -125,7 +125,14 @@ internal sealed class ColorPlane: ControlBase
             ? 0
             : (int) Math.Round((1 - Value) * (bounds.Height - 1), MidpointRounding.AwayFromZero);
         var themedMarker = ControlGlyphs.ColorPlane.SelectedMarker;
-        var marker = ResolveControlGlyph(new ControlGlyph(SelectedMarker ?? themedMarker.Value, themedMarker.Fallback));
+
+        // SelectedMarker is a freely-settable public property with no validation at assignment
+        // (unlike the pre-validated themed glyphs ControlBase.ResolveControlGlyph's callers pass
+        // elsewhere), and its own doc comment promises a graceful repair-glyph fallback for a
+        // value that cannot occupy exactly one cell. ControlGlyph's constructor validates eagerly
+        // and throws in that case, so it cannot carry this call - Resolve is the non-throwing path
+        // that keeps the documented contract.
+        var marker = (SelectedMarker ?? themedMarker.Value).Resolve(themedMarker.Fallback, CellPolicy.AmbiguousWidth);
         var visible = canvas.Bounds.Intersect(bounds);
 
         for (var absoluteY = visible.Y; absoluteY < visible.Bottom; absoluteY++)

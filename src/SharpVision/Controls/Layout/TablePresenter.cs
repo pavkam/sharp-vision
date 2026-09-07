@@ -41,6 +41,7 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     private readonly Table _owner;
     private int? _measuredWidth;
     private bool _hasMeasuredWidth;
+    private int? _measuredPercentBase;
 
     /// <summary>Initializes a private presenter for one non-null table owner.</summary>
     /// <param name="owner">The table whose row and column definitions drive this presenter.</param>
@@ -233,17 +234,23 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     {
         ContentSlot = bounds;
 
-        // A scroll or focus transition invalidates arrangement without
-        // invalidating measurement. Repeating the unbounded/bounded cell probes
-        // in that path would make each child measurement re-invalidate this
-        // presenter while it is arranging, producing an endless frame loop.
-        // Resize can supply a genuinely different final width, so only that
-        // width transition earns one final constrained measurement pass.
-        if (!_hasMeasuredWidth || _measuredWidth != bounds.Width)
+        // Arrange resolves the final, committed Viewport - unlike the measure pass above, which
+        // must use its own ScrollMeasureViewport candidate instead.
+        int? percentBase = ScrollsHorizontally() ? Viewport.Width : null;
+
+        // A scroll or focus transition invalidates arrangement without invalidating measurement.
+        // Repeating the unbounded/bounded cell probes in that path would make each child
+        // measurement re-invalidate this presenter while it is arranging, producing an endless
+        // frame loop. Resize can supply a genuinely different final width, so only that width
+        // transition earns one final constrained measurement pass - except Viewport (unlike
+        // Extent) commits with InvalidationImpact.None, so a scrollbar toggling on Height alone
+        // can shrink or grow it without ever changing bounds.Width when Extent already exceeds
+        // it; percentBase must be compared too or a Percent/Star column would keep resolving
+        // against a stale viewport across such a transition.
+        if (!_hasMeasuredWidth || _measuredWidth != bounds.Width || _measuredPercentBase != percentBase)
         {
-            // Arrange resolves the final, committed Viewport - unlike the measure pass above,
-            // which must use its own ScrollMeasureViewport candidate instead.
-            MeasureCells(bounds.Width, ScrollsHorizontally() ? Viewport.Width : null);
+            MeasureCells(bounds.Width, percentBase);
+            _measuredPercentBase = percentBase;
         }
 
         if (_owner.IsProgressive)

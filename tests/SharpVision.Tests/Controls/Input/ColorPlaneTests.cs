@@ -382,6 +382,22 @@ public sealed class ColorPlaneTests
         frame.GetCell(new Point(1, 1)).Style.Background.ShouldNotBe(Color.Default);
     }
 
+    /// <summary>Verifies a SelectedMarker that cannot occupy exactly one cell under the active
+    /// width policy renders using the code-owned repair glyph instead of throwing, honoring the
+    /// property's own documented fallback contract.</summary>
+    [Fact]
+    public void Render_WhenSelectedMarkerIsNotSingleCell_FallsBackWithoutThrowing()
+    {
+        var plane = new ColorPlane
+        {
+            Bounds = new Rect(0, 0, 8, 4),
+            SelectedMarker = new Rune(0x4E2D) // '中' - two cells wide, not a valid single-cell glyph.
+        };
+        using var frame = new Frame(new Size(8, 4));
+
+        Should.NotThrow(() => plane.Render(frame.Canvas));
+    }
+
     private static KeyEventArgs Key(ColorPlane plane, Code code, KeyAction action = KeyAction.Press)
     {
         var eventArgs = new KeyEventArgs(new Stroke(code, character: null, nativeCode: 0, Modifiers.None, action));
