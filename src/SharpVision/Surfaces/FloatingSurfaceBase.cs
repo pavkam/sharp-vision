@@ -23,7 +23,6 @@ public abstract class FloatingSurfaceBase: ContentControl
     private static readonly TimeSpan _fadeRefreshInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly ModalSession _modalSession;
-    private PressBehavior? _surfaceCloseInteraction;
     private Action? _deferredCloseAbandonment;
     private Action? _deferredCloseCompletion;
     private Action? _deferredUnavailableCommit;
@@ -66,22 +65,13 @@ public abstract class FloatingSurfaceBase: ContentControl
         Func<bool> isAvailable,
         Func<bool> canCompleteSpace,
         Action<bool> setPressed,
-        Action<ActivationCause> activate)
-    {
-        Debug.Assert(_surfaceCloseInteraction is null, "A floating surface owns at most one close interaction.");
-        _surfaceCloseInteraction = new PressBehavior(
-            bounds,
-            isAvailable,
-            canCompleteSpace,
-            RequestFocus,
-            CapturePointer,
-            () => HasPointerCapture,
-            ReleasePointerCapture,
-            setPressed,
-            activate,
-            () => Capabilities.KeyReleaseEvents.Authoritative);
-        RegisterLifecycleParticipant(_surfaceCloseInteraction);
-    }
+        Action<ActivationCause> activate) =>
+        EnablePressActivation(
+            bounds: bounds,
+            activate: activate,
+            isAvailable: isAvailable,
+            canCompleteSpace: canCompleteSpace,
+            setPressed: setPressed);
 
     /// <summary>Routes one event through the initialized capture-aware close affordance.</summary>
     /// <param name="eventArgs">The non-null routed event.</param>
@@ -89,16 +79,11 @@ public abstract class FloatingSurfaceBase: ContentControl
     private protected void HandleSurfaceCloseInteraction(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
-        Debug.Assert(_surfaceCloseInteraction is not null, "The surface close interaction must be initialized.");
-        _surfaceCloseInteraction?.Handle(eventArgs);
+        HandlePressActivation(eventArgs);
     }
 
     /// <summary>Cancels any held key or pointer state in the initialized close affordance.</summary>
-    private protected void CancelSurfaceCloseInteraction()
-    {
-        Debug.Assert(_surfaceCloseInteraction is not null, "The surface close interaction must be initialized.");
-        _surfaceCloseInteraction?.Unavailable();
-    }
+    private protected void CancelSurfaceCloseInteraction() => CancelPressActivation(releaseCapture: false);
 
     /// <summary>Handles one eligible initial Escape stroke through a family-provided close policy.</summary>
     /// <param name="eventArgs">The non-null routed event.</param>

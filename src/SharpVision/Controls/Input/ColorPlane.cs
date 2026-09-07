@@ -125,7 +125,7 @@ internal sealed class ColorPlane: ControlBase
             ? 0
             : (int) Math.Round((1 - Value) * (bounds.Height - 1), MidpointRounding.AwayFromZero);
         var themedMarker = ControlGlyphs.ColorPlane.SelectedMarker;
-        var marker = (SelectedMarker ?? themedMarker.Value).Resolve(themedMarker.Fallback, CellPolicy.AmbiguousWidth);
+        var marker = ResolveControlGlyph(new ControlGlyph(SelectedMarker ?? themedMarker.Value, themedMarker.Fallback));
         var visible = canvas.Bounds.Intersect(bounds);
 
         for (var absoluteY = visible.Y; absoluteY < visible.Bottom; absoluteY++)

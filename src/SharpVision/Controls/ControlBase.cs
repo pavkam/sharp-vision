@@ -7014,6 +7014,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="requestFocus">Requests focus for the interaction. Defaults to
     /// <see cref="RequestFocus"/>; supply this only when a concrete control's press must focus a
     /// different owner than itself.</param>
+    /// <param name="setPressed">Commits the pressed appearance. Defaults to
+    /// <see cref="SetPressed"/>; supply this only when a concrete control's pressed visual differs
+    /// from the whole-control pressed state, such as a composed affordance that presses only part
+    /// of its owner's face.</param>
     /// <exception cref="InvalidOperationException">Press activation is already enabled, or the
     /// attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
@@ -7022,7 +7026,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Action<ActivationCause>? activate = null,
         Func<bool>? isAvailable = null,
         Func<bool>? canCompleteSpace = null,
-        Func<bool>? requestFocus = null)
+        Func<bool>? requestFocus = null,
+        Action<bool>? setPressed = null)
     {
         VerifyMutable();
 
@@ -7039,7 +7044,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             CapturePointer,
             () => HasPointerCapture,
             ReleasePointerCapture,
-            SetPressed,
+            setPressed ?? SetPressed,
             activate ?? Activate,
             () => Capabilities.KeyReleaseEvents.Authoritative);
         RegisterLifecycleParticipant(_press);

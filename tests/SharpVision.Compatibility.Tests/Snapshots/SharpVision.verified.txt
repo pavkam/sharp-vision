@@ -451,7 +451,7 @@ namespace SharpVision.Controls
         protected void EnableChromeAuthoring() { }
         protected void EnableDrag(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Func<bool>? tryCapture = null, System.Func<bool>? isAvailable = null) { }
         protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null, SharpVision.Controls.ControlBase? anchor = null, SharpVision.Controls.ControlBase? ownerInitialFocus = null, System.Func<bool>? requestFocus = null, SharpVision.Layout.Length? contentHeightLimit = default, bool connectsToAnchor = true, string partKey = "drop-down") { }
-        protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null) { }
+        protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null, System.Action<bool>? setPressed = null) { }
         protected void EstablishTextSelectionCaret() { }
         protected T? FindAncestor<T>()
             where T : SharpVision.Controls.ControlBase { }
