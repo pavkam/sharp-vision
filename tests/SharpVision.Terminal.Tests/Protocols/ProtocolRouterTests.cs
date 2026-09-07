@@ -45,7 +45,7 @@ public sealed class ProtocolRouterTests
 
             negotiator.Completed.ShouldBeFalse();
             negotiator.HasPendingWork.ShouldBeTrue();
-            router.Route("\u001b[?3u\u001b[?2026;1$y\u001b[?1004;1$y\u001b[?2004;1$y\u001b[?1006;1$y\u001b[?1016;1$y"u8);
+            router.Route("\u001b[?3u\u001b[?2026;1$y\u001b[?2027;1$y\u001b[?1004;1$y\u001b[?2004;1$y\u001b[?1006;1$y\u001b[?1016;1$y"u8);
 
             negotiator.Completed.ShouldBeTrue();
             negotiator.Capabilities.KittyKeyboard.ShouldBe(new Feature(CapabilitySupport.Supported, Origin.Query));

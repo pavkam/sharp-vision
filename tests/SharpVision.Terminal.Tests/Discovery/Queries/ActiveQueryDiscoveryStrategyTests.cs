@@ -26,7 +26,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     public void TryStart_WhenGraphicsFillsCapacity_OmitsCursorPosition()
     {
         var strategy = new ActiveQueryDiscoveryStrategy(new NegotiationOptions(
-            new Dictionary<string, string?>(), limits: QueryLimits.Default with { MaxConcurrentQueries = 17 }), new ManualTimeProvider());
+            new Dictionary<string, string?>(), limits: QueryLimits.Default with { MaxConcurrentQueries = 18 }), new ManualTimeProvider());
         var written = new ArrayBufferWriter<byte>();
 
         _ = strategy.TryStart(written, null, null);
@@ -61,7 +61,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var unwrapped = new ArrayBufferWriter<byte>();
         TmuxWriter.TryUnwrap(written.WrittenSpan[(envelope + 2)..^2], unwrapped).ShouldBeTrue();
         var outer = Encoding.ASCII.GetString(unwrapped.WrittenSpan);
-        local.ShouldBe("\u001b[?u\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p" +
+        local.ShouldBe("\u001b[?u\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p" +
                        "\u001b[?1016$p\u001b[14t\u001b[16t\u001b[18t" +
                        (localName == "xterm-256color" ? "\u001bP$q>4m\u001b\\" : "") + "\u001b[6n");
         outer.ShouldContain("\u001b[>c");
@@ -70,6 +70,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         outer.ShouldEndWith("\u001b[c");
         outer.ShouldNotContain("\u001b[?u");
         outer.ShouldNotContain("\u001b[?2026$p");
+        outer.ShouldNotContain("\u001b[?2027$p");
         outer.ShouldNotContain("\u001b[?1004$p");
         outer.ShouldNotContain("\u001b[?2004$p");
         outer.ShouldNotContain("\u001b[?1006$p");
