@@ -1176,7 +1176,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
             return !extend && !selection.IsEmpty
                 ? selection.End
                 : word
-                    ? Edit.MoveNextWord(Text, selection, extend).Selection.Caret
+                    ? MoveNextWordFast(selection.Caret)
                     : NextBoundaryFast(selection.Caret);
         }
 
@@ -1232,6 +1232,29 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
         while (index > 0 && Edit.Kind(Text, offsets[index - 1]) == 2)
         {
             index--;
+        }
+
+        return offsets[index];
+    }
+
+    /// <summary>Walks cached grapheme boundaries to the following Unicode word start, mirroring
+    /// <see cref="MovePreviousWordFast"/> (and, in turn, <see cref="Edit.MoveNextWord"/>) in the
+    /// forward direction: skip the word run the caret is already inside, if any, then skip the
+    /// non-word run that follows it, landing on the word start past it (or the source end).</summary>
+    private int MoveNextWordFast(int caret)
+    {
+        var (offsets, _, _) = BoundaryCache();
+        var index = Array.BinarySearch(offsets, caret);
+        Debug.Assert(index >= 0, "The caret is always a valid cached boundary.");
+
+        while (index < offsets.Length - 1 && Edit.Kind(Text, offsets[index]) == 2)
+        {
+            index++;
+        }
+
+        while (index < offsets.Length - 1 && Edit.Kind(Text, offsets[index]) != 2)
+        {
+            index++;
         }
 
         return offsets[index];
@@ -1919,6 +1942,19 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
                 // grapheme that itself overflowed above). Skip all of it here so the new line
                 // never opens with a stray leading whitespace character — mirroring the
                 // invariant Layout.SkipBreakWhitespace enforces for the display-only formatter.
+                //
+                // That invariant only makes sense when real content remains afterward to open a
+                // line with. If every remaining grapheme is whitespace, skipping "all of it"
+                // would silently discard the source's own trailing run instead of merely
+                // repositioning where the next line starts - the loop below would drain lineStart
+                // all the way to Text.Length with nothing left to place, and the unconditional
+                // final VisualLine appended after this loop would report an empty line instead of
+                // the whitespace the source actually contains. Remember where the skip started so
+                // a full drain can be undone, leaving that trailing whitespace as ordinary content
+                // for the outer loop (and, ultimately, the final VisualLine) to place instead.
+                var preSkipLineStart = lineStart;
+                var preSkipIndex = i;
+
                 while (i < graphemes.Count)
                 {
                     var candidate = graphemes[i];
@@ -1931,6 +1967,12 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
 
                     lineStart = candidate.Offset + candidate.Length;
                     i++;
+                }
+
+                if (i == graphemes.Count)
+                {
+                    lineStart = preSkipLineStart;
+                    i = preSkipIndex;
                 }
 
                 continue;

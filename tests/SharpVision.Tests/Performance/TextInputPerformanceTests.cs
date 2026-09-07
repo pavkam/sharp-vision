@@ -35,6 +35,54 @@ public sealed class TextInputPerformanceTests
         ReferenceEquals(control.BoundaryOffsets, cache).ShouldBeTrue();
     }
 
+    /// <summary>Verifies repeated Ctrl+Right word navigation reuses the same cached boundary array
+    /// instead of rebuilding it on every keystroke, exactly as plain Left navigation does.
+    /// MoveNextWordFast's cached binary-search boundary lookup replaced
+    /// Edit.MoveNextWord's O(distance-from-document-start) <c>Edit.Validate</c>/<c>IsBoundaryCore</c>
+    /// prefix scan that previously ran on every Ctrl+Right keystroke - the asymmetric cost Ctrl+Left
+    /// (already backed by MovePreviousWordFast) never paid. A deterministic array-identity check,
+    /// not a wall-clock threshold, since the aim is to avoid noisy ordinary-CI timing gates.</summary>
+    [Fact]
+    public void ControlRight_WhenPressedRepeatedly_ReusesTheSameCachedBoundaryArrayInstead()
+    {
+        var text = string.Concat(Enumerable.Repeat("a ", 2_500));
+        var control = new TextInput { Text = text };
+        Key(control, Code.Home, Modifiers.None);
+        Key(control, Code.Right, Modifiers.Control);
+        var cache = control.BoundaryOffsets.ShouldNotBeNull();
+
+        for (var index = 0; index < 2_499; index++)
+        {
+            Key(control, Code.Right, Modifiers.Control);
+        }
+
+        control.CaretIndex.ShouldBe(text.Length);
+        ReferenceEquals(control.BoundaryOffsets, cache).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies repeated Ctrl+Left word navigation reuses the same cached boundary array
+    /// instead of rebuilding it on every keystroke - the companion of
+    /// <see cref="ControlRight_WhenPressedRepeatedly_ReusesTheSameCachedBoundaryArrayInstead"/>,
+    /// kept alongside it so a future regression in either direction's fast path is caught the same
+    /// way.</summary>
+    [Fact]
+    public void ControlLeft_WhenPressedRepeatedly_ReusesTheSameCachedBoundaryArrayInstead()
+    {
+        var text = string.Concat(Enumerable.Repeat("a ", 2_500));
+        var control = new TextInput { Text = text };
+        Key(control, Code.End, Modifiers.None);
+        Key(control, Code.Left, Modifiers.Control);
+        var cache = control.BoundaryOffsets.ShouldNotBeNull();
+
+        for (var index = 0; index < 2_499; index++)
+        {
+            Key(control, Code.Left, Modifiers.Control);
+        }
+
+        control.CaretIndex.ShouldBe(0);
+        ReferenceEquals(control.BoundaryOffsets, cache).ShouldBeTrue();
+    }
+
     /// <summary>Verifies walking a large non-word-wrap multi-row document upward reuses the same
     /// cached boundary array across every keystroke, exactly as horizontal navigation does. Each Up
     /// press previously scanned every row from the document start to find the target row's column -

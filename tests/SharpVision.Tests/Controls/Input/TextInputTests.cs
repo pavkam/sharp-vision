@@ -498,6 +498,47 @@ public sealed class TextInputTests
         lines.ShouldBe([new VisualLineSnapshot(0, 3, 3), new VisualLineSnapshot(4, 3, 3)]);
     }
 
+    /// <summary>Verifies a word-wrapped value made entirely of whitespace that overflows the
+    /// viewport still places every grapheme on some visual line: at a 2-cell viewport, four spaces
+    /// fill the first line exactly and the remaining two must form a second line of their own -
+    /// not vanish into a leading-whitespace skip that has no further content left to protect,
+    /// which previously left BuildVisualLines emitting a phantom empty trailing VisualLine while
+    /// silently dropping the two real trailing spaces.</summary>
+    [Fact]
+    public void Measure_WhenWordWrapTextIsAllTrailingWhitespace_DoesNotDropTheTrailingSpacesOrEmitAPhantomLine()
+    {
+        // Arrange
+        var control = new TextInput { Text = "    ", WordWrap = true };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(2, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldBe([new VisualLineSnapshot(0, 2, 2), new VisualLineSnapshot(2, 2, 2)]);
+    }
+
+    /// <summary>Regression guard for <see cref="Measure_WhenWordWrapTextIsAllTrailingWhitespace_DoesNotDropTheTrailingSpacesOrEmitAPhantomLine"/>:
+    /// a genuine trailing newline must still produce its own trailing empty VisualLine, since that
+    /// one really is an empty logical line - unlike the all-whitespace-overflow case above, this
+    /// does not go through the wrap-overflow whitespace-skip path at all, so a fix scoped to that
+    /// path must not disturb it.</summary>
+    [Fact]
+    public void Measure_WhenWordWrapTextEndsWithANewline_StillEmitsTheTrailingEmptyVisualLine()
+    {
+        // Arrange
+        var control = new TextInput { AcceptsReturn = true, WordWrap = true, Text = "abc\n" };
+        control.SetTheme(TestThemes.BorderlessInput);
+
+        // Act
+        new LayoutEngine().Layout(control, new Size(10, 10));
+
+        // Assert
+        var lines = GetVisualLines(control);
+        lines.ShouldBe([new VisualLineSnapshot(0, 3, 3), new VisualLineSnapshot(4, 0, 0)]);
+    }
+
     /// <summary>The overflow guard's escape hatch for a first-on-line grapheme exists so a
     /// genuinely atomic wide cluster (CJK, emoji) that can never fit a narrow viewport still
     /// gets placed instead of looping forever. A tab is not such a cluster - its width is
@@ -1020,6 +1061,47 @@ public sealed class TextInputTests
         {
             expected = Edit.MovePreviousWord(text, expected, extend: false).Selection;
             Key(control, Code.Left, Modifiers.Control);
+            control.CaretIndex.ShouldBe(expected.Caret);
+        }
+    }
+
+    /// <summary>Verifies Ctrl+Right's cached fast path (MoveNextWordFast) lands on exactly the
+    /// same caret index as Edit.MoveNextWord's own ground truth at every step across mixed
+    /// word/whitespace/punctuation/emoji graphemes - the forward-direction counterpart of
+    /// <see cref="Dispatch_WhenHoldingControlLeftAcrossMixedGraphemeKinds_MatchesEditMovePreviousWordAtEveryStep"/>.</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingControlRightAcrossMixedGraphemeKinds_MatchesEditMoveNextWordAtEveryStep()
+    {
+        var text = "one  two_3 👩‍💻! four";
+        var control = new TextInput { Text = text };
+        Key(control, Code.Home, Modifiers.None);
+        var expected = new Selection(0, 0);
+
+        while (expected.Caret < text.Length)
+        {
+            expected = Edit.MoveNextWord(text, expected, extend: false).Selection;
+            Key(control, Code.Right, Modifiers.Control);
+            control.CaretIndex.ShouldBe(expected.Caret);
+        }
+    }
+
+    /// <summary>Verifies Ctrl+Right's cached fast path agrees with Edit.MoveNextWord's ground
+    /// truth when a GB9b Prepend mark (which attaches to the following base character) precedes
+    /// a digit run, so the mark is not fragmented off as its own "other" step - the
+    /// forward-direction counterpart of
+    /// <see cref="Dispatch_WhenHoldingControlLeftBeforePrependMarkAndDigitRun_MatchesEditMovePreviousWordAtEveryStep"/>.</summary>
+    [Fact]
+    public void Dispatch_WhenHoldingControlRightBeforePrependMarkAndDigitRun_MatchesEditMoveNextWordAtEveryStep()
+    {
+        var text = "one ؀123 two";
+        var control = new TextInput { Text = text };
+        Key(control, Code.Home, Modifiers.None);
+        var expected = new Selection(0, 0);
+
+        while (expected.Caret < text.Length)
+        {
+            expected = Edit.MoveNextWord(text, expected, extend: false).Selection;
+            Key(control, Code.Right, Modifiers.Control);
             control.CaretIndex.ShouldBe(expected.Caret);
         }
     }
