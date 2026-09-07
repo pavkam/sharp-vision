@@ -1927,10 +1927,12 @@ public sealed class ApplicationTests
         terminal.QueueResize(new Dimensions(new Size(10, 4)));
         await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
         List<Exception> reported = [];
+        var failureReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         application.UnhandledException += (_, eventArgs) =>
         {
             reported.Add(eventArgs.Exception);
             eventArgs.IsHandled = true;
+            _ = failureReported.TrySetResult();
         };
         var failure = new InvalidOperationException("diagnostic-boom");
         var secondRan = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1949,6 +1951,10 @@ public sealed class ApplicationTests
         // Bounded explicitly rather than trusting only TestContext's own cancellation: without
         // the fix, the second subscriber never runs and this hangs instead of failing fast.
         await secondRan.Task.WaitAsync(timeout.Token);
+
+        // Sibling notification completes before RaiseIsolated returns the failure for reporting.
+        // Wait for that separate event before reading the dispatcher-owned result list.
+        await failureReported.Task.WaitAsync(timeout.Token);
 
         reported.OfType<InvalidOperationException>().ShouldContain(
             exception => exception.Message == "diagnostic-boom");

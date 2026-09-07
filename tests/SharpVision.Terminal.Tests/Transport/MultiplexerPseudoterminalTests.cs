@@ -82,7 +82,8 @@ public sealed class MultiplexerPseudoterminalTests
                                $"/usr/bin/head -c 9 > {capture}; /bin/sleep 2";
             await RunTmuxAsync(
                 executable,
-                ["-L", socket, "new-session", "-d", "-x", "80", "-y", "24", "-s", "sv-target", paneCommand]);
+                ["-L", socket, "-f", "/dev/null", "new-session", "-d", "-x", "80", "-y", "24", "-s", "sv-target",
+                    "/bin/sh", "-c", paneCommand]);
 
             try
             {
