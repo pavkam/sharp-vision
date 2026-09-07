@@ -222,7 +222,12 @@ intersection of their requested clip, the parent clip, and the frame.
 The encoder minimizes cursor moves and style transitions only after correctness
 is established. When synchronized output is available, one complete frame is
 wrapped according to the
-[mode 2026 contract](../protocols/synchronized-output.md#overview).
+[mode 2026 contract](../protocols/synchronized-output.md#overview). When
+grapheme clustering is available, `Renderer` separately negotiates and enables
+DEC private mode 2027 once (not per frame) so the terminal's own
+grapheme-cluster width interpretation matches this library's Unicode 17 tables
+instead of the other way around; see the
+[mode 2027 contract](../protocols/grapheme-clustering.md#overview).
 
 ## Control rendering
 
@@ -393,6 +398,14 @@ the renderer wraps only non-empty batches in mode 2026. If that batch fails, it
 attempts a separate disable-and-flush with a finite independent timeout.
 `LastCleanupException` exposes the cleanup diagnostic without replacing the
 original write, flush, or cancellation exception.
+
+When
+[grapheme clustering is proven](../protocols/grapheme-clustering.md#overview),
+the renderer instead enables mode 2027 exactly once - even ahead of the "did
+anything change" check that decides whether a frame produces any output at
+all, so a frame with no cell damage still carries the pending enable rather
+than silently deferring negotiation - and disables it again during
+`ShutdownAsync` if it was ever enabled.
 
 `Damage.Enumerate` compares semantic cells row-major and returns merged
 `DamageSpan` values expanded through grapheme ownership in both frames. A

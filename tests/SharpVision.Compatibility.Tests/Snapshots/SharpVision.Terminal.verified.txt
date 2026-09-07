@@ -90,6 +90,7 @@ namespace SharpVision.Terminal.Capabilities
         public bool? CellMouse { get; init; }
         public SharpVision.Terminal.Capabilities.ColorDepth? ColorDepth { get; init; }
         public bool? FocusReporting { get; init; }
+        public bool? GraphemeClustering { get; init; }
         public bool? ItermImages { get; init; }
         public bool? KittyClipboard { get; init; }
         public bool? KittyGraphics { get; init; }
@@ -282,6 +283,7 @@ namespace SharpVision.Terminal.Capabilities
         public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; init; }
         public bool? FocusReporting { get; init; }
         public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; init; }
+        public bool? GraphemeClustering { get; init; }
         public bool? ItermImages { get; init; }
         public bool? KittyClipboard { get; init; }
         public bool? KittyGraphics { get; init; }
@@ -338,6 +340,7 @@ namespace SharpVision.Terminal.Capabilities
         public SharpVision.Terminal.Capabilities.Origin ColorOrigin { get; init; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Terminal.Capabilities.ProtocolSupport> Features { get; }
         public SharpVision.Terminal.Capabilities.Feature FocusReporting { get; init; }
+        public SharpVision.Terminal.Capabilities.Feature GraphemeClustering { get; init; }
         public SharpVision.Terminal.Capabilities.Feature ItermImages { get; init; }
         public SharpVision.Terminal.Capabilities.Feature KeyReleaseEvents { get; }
         public SharpVision.Terminal.Capabilities.Feature KittyClipboard { get; init; }
@@ -370,21 +373,22 @@ namespace SharpVision.Terminal.Capabilities
     public enum TerminalProtocol
     {
         SynchronizedOutput = 0,
-        FocusReporting = 1,
-        BracketedPaste = 2,
-        PixelMouse = 3,
-        CellMouse = 4,
-        KittyKeyboard = 5,
-        Osc52 = 6,
-        KittyClipboard = 7,
-        KittyGraphics = 8,
-        Sixel = 9,
-        ItermImages = 10,
-        StyledUnderlines = 11,
-        UnderlineColor = 12,
-        Overline = 13,
-        XtermKeyboard = 14,
-        Notifications = 15,
+        GraphemeClustering = 1,
+        FocusReporting = 2,
+        BracketedPaste = 3,
+        PixelMouse = 4,
+        CellMouse = 5,
+        KittyKeyboard = 6,
+        Osc52 = 7,
+        KittyClipboard = 8,
+        KittyGraphics = 9,
+        Sixel = 10,
+        ItermImages = 11,
+        StyledUnderlines = 12,
+        UnderlineColor = 13,
+        Overline = 14,
+        XtermKeyboard = 15,
+        Notifications = 16,
     }
 }
 namespace SharpVision.Terminal.Clipboard
@@ -520,6 +524,7 @@ namespace SharpVision.Terminal.Diagnostics
         public SharpVision.Terminal.Xterm.MetricsResponse? CellPixels { get; }
         public bool? FocusReporting { get; }
         public SharpVision.Terminal.Xterm.PaletteResponse? ForegroundColor { get; }
+        public bool? GraphemeClustering { get; }
         public bool? ItermImages { get; }
         public bool? KittyClipboard { get; }
         public bool? KittyGraphics { get; }
@@ -1389,6 +1394,7 @@ namespace SharpVision.Terminal.Protocols
         public static void ClipboardPasteEvents(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
         public static void CursorVisible(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool visible) { }
         public static void FocusReporting(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
+        public static void GraphemeClustering(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }
         public static void Mouse(SharpVision.Terminal.Protocols.ProtocolWriter writer, SharpVision.Terminal.Protocols.MouseTracking tracking, SharpVision.Terminal.Protocols.MouseCoordinates coordinates, bool enabled) { }
         public static void SetPrivate(SharpVision.Terminal.Protocols.ProtocolWriter writer, int mode, bool enabled) { }
         public static void SynchronizedOutput(SharpVision.Terminal.Protocols.ProtocolWriter writer, bool enabled) { }

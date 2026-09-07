@@ -63,6 +63,12 @@ public static class ProtocolModes
     public static void SynchronizedOutput(ProtocolWriter writer, bool enabled) =>
         SetPrivate(writer, DecPrivateMode.SynchronizedOutput, enabled);
 
+    /// <summary>Enables or disables grapheme-cluster width reporting using mode 2027.</summary>
+    /// <param name="writer">The validated protocol writer.</param>
+    /// <param name="enabled">Whether the terminal should measure grapheme clusters like this library.</param>
+    public static void GraphemeClustering(ProtocolWriter writer, bool enabled) =>
+        SetPrivate(writer, DecPrivateMode.GraphemeClustering, enabled);
+
     /// <summary>Enables or disables Kitty clipboard paste events using mode 5522.</summary>
     /// <param name="writer">The validated protocol writer.</param>
     /// <param name="enabled">Whether clipboard paste events are active.</param>

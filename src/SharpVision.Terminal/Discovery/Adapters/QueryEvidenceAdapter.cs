@@ -34,6 +34,7 @@ internal static class QueryEvidenceAdapter
             var refined = RefineColor(capabilities with
             {
                 SynchronizedOutput = Apply(capabilities.SynchronizedOutput, queries.SynchronizedOutput, Origin.Query),
+                GraphemeClustering = Apply(capabilities.GraphemeClustering, queries.GraphemeClustering, Origin.Query),
                 FocusReporting = Apply(capabilities.FocusReporting, queries.FocusReporting, Origin.Query),
                 BracketedPaste = Apply(capabilities.BracketedPaste, queries.BracketedPaste, Origin.Query),
                 PixelMouse = Apply(capabilities.PixelMouse, queries.PixelMouse, Origin.Query),

@@ -44,6 +44,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool? _pixelMouse;
     private bool? _sixel;
     private bool? _synchronizedOutput;
+    private bool? _graphemeClustering;
     private bool? _kittyClipboard;
     private bool? _itermImages;
     private bool _keyboardQueried;
@@ -234,6 +235,12 @@ internal sealed class ActiveQueryDiscoveryStrategy
             DecPrivateMode.SynchronizedOutput,
             _baseline.SynchronizedOutput,
             _options.Overrides?.SynchronizedOutput,
+            ref remaining);
+        AddModeQuery(
+            localWriter,
+            DecPrivateMode.GraphemeClustering,
+            _baseline.GraphemeClustering,
+            _options.Overrides?.GraphemeClustering,
             ref remaining);
         AddModeQuery(
             localWriter,
@@ -786,6 +793,9 @@ internal sealed class ActiveQueryDiscoveryStrategy
             case DecPrivateMode.SynchronizedOutput:
                 _synchronizedOutput = supported;
                 break;
+            case DecPrivateMode.GraphemeClustering:
+                _graphemeClustering = supported;
+                break;
             case DecPrivateMode.FocusReporting:
                 _focusReporting = supported;
                 break;
@@ -840,6 +850,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             CellPixels = _cellPixels,
             WindowCells = _windowCells,
             SynchronizedOutput = _synchronizedOutput,
+            GraphemeClustering = _graphemeClustering,
             FocusReporting = _focusReporting,
             BracketedPaste = _bracketedPaste,
             PixelMouse = _pixelMouse,
@@ -865,6 +876,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
             Published = Published with
             {
                 SynchronizedOutput = local.SynchronizedOutput,
+                GraphemeClustering = local.GraphemeClustering,
                 FocusReporting = local.FocusReporting,
                 BracketedPaste = local.BracketedPaste,
                 CellMouse = local.CellMouse,

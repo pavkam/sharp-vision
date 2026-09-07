@@ -22,6 +22,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
     private readonly Text _rgbState;
     private readonly Text _rgbExpected;
     private readonly Text _synchronizedOutputState;
+    private readonly Text _graphemeClusteringState;
     private readonly Text _styledUnderlinesState;
     private readonly Text _underlineColorState;
     private readonly Text _overlineState;
@@ -63,6 +64,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         _rgbState = WaitingState();
         _rgbExpected = new Text("Waiting for the active color policy…") { Overflow = Overflow.Wrap };
         _synchronizedOutputState = WaitingState();
+        _graphemeClusteringState = WaitingState();
         _styledUnderlinesState = WaitingState();
         _underlineColorState = WaitingState();
         _overlineState = WaitingState();
@@ -138,6 +140,7 @@ internal sealed class TerminalProbePanel: CompositeControlBase
         SetMode("xterm modifyOtherKeys", modes.ModifyOtherKeysActive);
 
         _synchronizedOutputState.Content = SupportMarkup(application.Capabilities.SynchronizedOutput);
+        _graphemeClusteringState.Content = SupportMarkup(application.Capabilities.GraphemeClustering);
         _styledUnderlinesState.Content = SupportMarkup(application.Capabilities.StyledUnderlines);
         _underlineColorState.Content = SupportMarkup(application.Capabilities.UnderlineColor);
         _overlineState.Content = SupportMarkup(application.Capabilities.Overline);
@@ -253,6 +256,11 @@ internal sealed class TerminalProbePanel: CompositeControlBase
             _synchronizedOutputState,
             "Resize and switch tabs",
             "Frames remain whole without partial-frame tearing."));
+        table.Rows.Add(SpecimenRow(
+            "Grapheme clustering",
+            _graphemeClusteringState,
+            "👨‍👩‍👧‍👦 🏳️‍🌈",
+            "Each cluster occupies the width this library's tables predict, with no cursor drift after it."));
         table.Rows.Add(SpecimenRow(
             "Underline styles",
             _styledUnderlinesState,

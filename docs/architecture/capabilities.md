@@ -38,9 +38,10 @@ authoritative origin — database, bounded query, or explicit override — which
 `Feature.Authoritative` reports as one predicate. Default and environment
 origins never authorize output, even if a caller constructs the otherwise
 inconsistent `Supported` state. Session mode leases, `Renderer` synchronized
-output, and both encoder paths gate on that predicate, so environment-only
-evidence emits no mode-2026 wrapping, no overline, no typed underline, and no
-underline color. Environment evidence remains observable, but it cannot silently
+output, `Renderer` grapheme-clustering enablement, and both encoder paths gate
+on that predicate, so environment-only evidence emits no mode-2026 wrapping, no
+mode-2027 enable, no overline, no typed underline, and no underline color.
+Environment evidence remains observable, but it cannot silently
 enable a feature. `ColorDepth` separately records monochrome, 16-color,
 indexed-256, or true-color fidelity together with its origin, but it follows a
 different rule than every other feature: color evidence forms a lattice in which
@@ -314,7 +315,7 @@ local queries from the wrapped outer group, as the discovery pipeline specifies.
 |        1 | Primary device attributes (DA1)                  | Always; one slot is reserved before optional probes.                                  |
 |        2 | Kitty keyboard status                            | Support is unknown or tentative and at least two slots exist.                         |
 |        3 | Secondary device attributes (DA2)                | Capacity remains.                                                                     |
-|        4 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                                    |
+|        4 | Private modes 2026, 2027, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                                    |
 |        5 | Geometry                                         | Local host geometry is incomplete.                                                    |
 |        6 | Palette and default colors                       | Capacity remains and the destination admits string queries.                           |
 |        7 | iTerm2 capability query (OSC 1337)               | Support is unknown or tentative; the destination and policy admit the probe.          |

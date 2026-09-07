@@ -30,6 +30,9 @@ internal static class DecPrivateMode
     /// <summary>Mode 2026, synchronized output.</summary>
     public const int SynchronizedOutput = 2026;
 
+    /// <summary>Mode 2027, grapheme-cluster width reporting (Unicode core/grapheme clustering).</summary>
+    public const int GraphemeClustering = 2027;
+
     /// <summary>Mode 5522, Kitty clipboard paste events.</summary>
     public const int ClipboardPasteEvents = 5522;
 }

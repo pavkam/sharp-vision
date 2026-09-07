@@ -24,6 +24,7 @@ public sealed class TerminalQueryDiagnostics
         CellPixels = results.CellPixels;
         WindowCells = results.WindowCells;
         SynchronizedOutput = results.SynchronizedOutput;
+        GraphemeClustering = results.GraphemeClustering;
         FocusReporting = results.FocusReporting;
         BracketedPaste = results.BracketedPaste;
         PixelMouse = results.PixelMouse;
@@ -62,6 +63,9 @@ public sealed class TerminalQueryDiagnostics
 
     /// <summary>Gets the synchronized-output query result.</summary>
     public bool? SynchronizedOutput { get; }
+
+    /// <summary>Gets the grapheme-clustering (DEC private mode 2027) query result.</summary>
+    public bool? GraphemeClustering { get; }
 
     /// <summary>Gets the focus-reporting query result.</summary>
     public bool? FocusReporting { get; }

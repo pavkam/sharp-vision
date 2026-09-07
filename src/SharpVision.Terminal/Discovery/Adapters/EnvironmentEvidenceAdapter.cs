@@ -62,6 +62,7 @@ internal static class EnvironmentEvidenceAdapter
                 capabilities = capabilities with
                 {
                     SynchronizedOutput = ApplyHint(capabilities.SynchronizedOutput, hint),
+                    GraphemeClustering = ApplyHint(capabilities.GraphemeClustering, hint),
                     FocusReporting = ApplyHint(capabilities.FocusReporting, hint),
                     BracketedPaste = ApplyHint(capabilities.BracketedPaste, hint),
                     PixelMouse = ApplyHint(capabilities.PixelMouse, hint),

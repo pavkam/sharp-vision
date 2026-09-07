@@ -21,6 +21,7 @@ internal sealed class DiscoveryPanel: CompositeControlBase
 
         var privateModes = CreateTable(
             "Synchronized output",
+            "Grapheme clustering",
             "Focus reporting",
             "Bracketed paste",
             "Cell mouse",
@@ -85,6 +86,7 @@ internal sealed class DiscoveryPanel: CompositeControlBase
             "<success>✓ Startup negotiation complete.</success> " +
             "<d>A dash means no correlated reply—not unsupported.</d>";
         Set("Synchronized output", Format(results.SynchronizedOutput));
+        Set("Grapheme clustering", Format(results.GraphemeClustering));
         Set("Focus reporting", Format(results.FocusReporting));
         Set("Bracketed paste", Format(results.BracketedPaste));
         Set("Cell mouse", Format(results.CellMouse));

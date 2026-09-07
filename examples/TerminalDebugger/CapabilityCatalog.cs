@@ -34,6 +34,7 @@ internal static class CapabilityCatalog
         new(TerminalProtocol.KittyKeyboard, "Input", "Kitty keyboard", "Reports unambiguous keys, modifiers, repeats, and key releases."),
         new(TerminalProtocol.XtermKeyboard, "Input", "xterm keyboard", "Enhances modified-key reporting through modifyOtherKeys."),
         new(TerminalProtocol.SynchronizedOutput, "Output", "Synchronized output", "Batches frame updates so intermediate screen states stay hidden."),
+        new(TerminalProtocol.GraphemeClustering, "Output", "Grapheme clustering", "Negotiates DEC mode 2027 so the terminal measures grapheme clusters the same way this library's Unicode tables do."),
         new(TerminalProtocol.Notifications, "Output", "Desktop notifications", "Sends an OSC 9 or OSC 777 desktop notification when explicitly enabled."),
         new(TerminalProtocol.Osc52, "Clipboard", "OSC 52 clipboard", "Reads or writes terminal clipboard text through OSC 52."),
         new(TerminalProtocol.KittyClipboard, "Clipboard", "Kitty clipboard", "Transfers typed clipboard data through Kitty OSC 5522."),

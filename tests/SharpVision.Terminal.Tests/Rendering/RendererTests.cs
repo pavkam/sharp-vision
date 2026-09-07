@@ -700,6 +700,100 @@ public sealed class RendererTests
     }
 
     /// <summary>
+    /// Verifies grapheme-clustering (mode 2027) is enabled once rather than re-asserted on every
+    /// frame the way synchronized output's begin/end pair is: the second render of an unchanged
+    /// frame produces no output at all, because there is neither cell damage nor a pending enable
+    /// left to send.
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenGraphemeClusteringIsSupported_EnablesOnceAsync()
+    {
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
+        using var frame = Create("x");
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            GraphemeClustering = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            capabilities,
+            TestContext.Current.CancellationToken);
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            capabilities,
+            TestContext.Current.CancellationToken);
+
+        transport.Writes.Count.ShouldBe(1);
+
+        // The framing must be byte-identical to ProtocolModes.GraphemeClustering's own encoding
+        // rather than a hand-typed literal that happens to agree with it today.
+        var expectedEnable = new ArrayBufferWriter<byte>();
+        ProtocolModes.GraphemeClustering(new ProtocolWriter(expectedEnable), enabled: true);
+        transport.Writes[0].AsSpan()[..expectedEnable.WrittenCount].ToArray().ShouldBe(expectedEnable.WrittenSpan.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies non-authoritative grapheme-clustering evidence (environment-only) never puts the
+    /// enable sequence on the wire, matching every other optional protocol's authoritative gate.
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_WhenGraphemeClusteringIsNotAuthoritative_NeverEnablesAsync()
+    {
+        using Renderer renderer = new();
+        await using FakeTransport transport = new();
+        using var frame = Create("x");
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            GraphemeClustering = new Feature(CapabilitySupport.Supported, Origin.Environment)
+        };
+
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            capabilities,
+            TestContext.Current.CancellationToken);
+
+        var written = transport.Writes.ShouldHaveSingleItem();
+        var enableBytes = new ArrayBufferWriter<byte>();
+        ProtocolModes.GraphemeClustering(new ProtocolWriter(enableBytes), enabled: true);
+        written.AsSpan().IndexOf(enableBytes.WrittenSpan).ShouldBe(-1);
+    }
+
+    /// <summary>
+    /// Verifies a renderer that enabled grapheme clustering disables it again during shutdown, the
+    /// same restoration this library applies to other global terminal-emulator state (such as
+    /// DECSCUSR cursor shape) that has no session-lease owner of its own.
+    /// </summary>
+    [Fact]
+    public async Task ShutdownAsync_WhenGraphemeClusteringWasEnabled_DisablesItAsync()
+    {
+        using var renderer = new Renderer();
+        await using var transport = new FakeTransport();
+        using var frame = Create("x");
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            GraphemeClustering = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+        _ = await renderer.RenderAsync(
+            frame,
+            transport,
+            capabilities,
+            TestContext.Current.CancellationToken);
+        transport.Writes.Clear();
+
+        await renderer.ShutdownAsync(transport, TestContext.Current.CancellationToken);
+
+        var expectedDisable = new ArrayBufferWriter<byte>();
+        ProtocolModes.GraphemeClustering(new ProtocolWriter(expectedDisable), enabled: false);
+        var written = transport.Writes.ShouldHaveSingleItem();
+        written.ShouldBe(expectedDisable.WrittenSpan.ToArray());
+    }
+
+    /// <summary>
     /// Verifies write failure leaves front state unknown and the next frame full.
     /// </summary>
     [Fact]

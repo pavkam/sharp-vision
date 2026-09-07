@@ -514,6 +514,7 @@ public sealed class TerminalProfileTests
         {
             Osc52 = new Feature(CapabilitySupport.Supported, Origin.Database),
             SynchronizedOutput = new Feature(CapabilitySupport.Supported, Origin.Database),
+            GraphemeClustering = new Feature(CapabilitySupport.Supported, Origin.Database),
             KittyGraphics = new Feature(CapabilitySupport.Supported, Origin.Database)
         };
 
@@ -527,6 +528,7 @@ public sealed class TerminalProfileTests
         // Assert
         profile.Capabilities.Osc52.ShouldBe(Feature.Unknown);
         profile.Capabilities.SynchronizedOutput.ShouldBe(Feature.Unknown);
+        profile.Capabilities.GraphemeClustering.ShouldBe(Feature.Unknown);
         profile.Capabilities.KittyGraphics.ShouldBe(Feature.Unknown);
     }
 

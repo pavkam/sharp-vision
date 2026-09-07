@@ -10,6 +10,9 @@ public enum TerminalProtocol
     /// <summary>DEC private mode 2026 synchronized output.</summary>
     SynchronizedOutput,
 
+    /// <summary>DEC private mode 2027 grapheme-cluster width reporting.</summary>
+    GraphemeClustering,
+
     /// <summary>Focus in/out reporting.</summary>
     FocusReporting,
 

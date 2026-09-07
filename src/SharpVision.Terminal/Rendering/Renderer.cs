@@ -26,6 +26,8 @@ public sealed class Renderer: IDisposable
 {
     private static readonly byte[] _synchronizedBegin = EncodeSynchronizedOutput(enabled: true);
     private static readonly byte[] _synchronizedEnd = EncodeSynchronizedOutput(enabled: false);
+    private static readonly byte[] _graphemeClusteringBegin = EncodeGraphemeClustering(enabled: true);
+    private static readonly byte[] _graphemeClusteringEnd = EncodeGraphemeClustering(enabled: false);
 
     private readonly BoundedBufferWriter _buffer;
     private IGraphicsBackend? _backend;
@@ -41,6 +43,7 @@ public sealed class Renderer: IDisposable
     private int _rendering;
     private bool _invalidated = true;
     private bool _scrollRegionUncertain;
+    private bool _graphemeClusteringEnabled;
 
     /// <summary>Initializes a renderer with finite reusable output storage.</summary>
     /// <param name="maxOutputBytes">The positive maximum encoded batch size.</param>
@@ -343,6 +346,14 @@ public sealed class Renderer: IDisposable
         IGraphicsBackend? retiredBackend = null;
         var retiredCleanupCount = 0;
         var synchronized = profile.Capabilities.SynchronizedOutput.Authoritative;
+
+        // Unlike synchronized output, grapheme clustering is not a per-frame atomicity wrapper:
+        // once an authoritative terminal is told to measure extended grapheme clusters the way
+        // this library's own Unicode 17 tables do, that agreement should hold for the rest of the
+        // session rather than being asserted and retracted around every frame. So this enable is
+        // sent at most once (tracked by _graphemeClusteringEnabled) instead of being re-emitted on
+        // every render the way the synchronized-output begin/end pair is.
+        var graphemeClustering = profile.Capabilities.GraphemeClustering.Authoritative;
         var started = _timeProvider.GetTimestamp();
         try
         {
@@ -406,6 +417,17 @@ public sealed class Renderer: IDisposable
                 : _interpreter;
             transactionInterpreter.BeginTransaction();
 
+            // Written unconditionally as soon as it is pending, even ahead of the "did anything
+            // change" check below: this is the only place this one-time enable is emitted, so a
+            // frame with no cell damage must still carry it rather than silently deferring
+            // negotiation to whenever content next changes.
+            var enablesGraphemeClustering = graphemeClustering && !_graphemeClusteringEnabled;
+
+            if (enablesGraphemeClustering)
+            {
+                _buffer.Write(_graphemeClusteringBegin);
+            }
+
             if (retiredCleanupCount != 0)
             {
                 retiredBackend!.WriteCleanup(_buffer);
@@ -468,6 +490,7 @@ public sealed class Renderer: IDisposable
                 _profile = profile;
                 _cellMetrics = cellMetrics;
                 _invalidated = false;
+                _graphemeClusteringEnabled |= graphemeClustering;
                 Volatile.Write(ref _rendering, 0);
                 return ValueTask.FromResult(new RenderMetrics(
                     0,
@@ -498,6 +521,7 @@ public sealed class Renderer: IDisposable
                 backendPrepared,
                 retiredBackend,
                 synchronized,
+                graphemeClustering,
                 started,
                 cancellationToken);
         }
@@ -639,7 +663,16 @@ public sealed class Renderer: IDisposable
                 profile.Programs.Has("Se") &&
                 profile.Programs.TryWrite("Se", [], _interpreter, _buffer);
 
-            if (cleanupCount != 0 || resetsCursorShape)
+            // Grapheme clustering (mode 2027) is likewise global terminal-emulator state with no
+            // session-lease owner of its own (see the enable comment in RenderAsync). Once this
+            // renderer has told an authoritative terminal to turn it on, disable it here so it does
+            // not leak into the user's shell after the session ends.
+            if (_graphemeClusteringEnabled)
+            {
+                _buffer.Write(_graphemeClusteringEnd);
+            }
+
+            if (cleanupCount != 0 || resetsCursorShape || _graphemeClusteringEnabled)
             {
                 await transport.WriteAsync(_buffer.WrittenMemory, cancellationToken).ConfigureAwait(false);
                 await transport.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -681,6 +714,7 @@ public sealed class Renderer: IDisposable
         bool backendPrepared,
         IGraphicsBackend? retiredBackend,
         bool synchronized,
+        bool graphemeClustering,
         long started,
         CancellationToken cancellationToken)
     {
@@ -709,6 +743,7 @@ public sealed class Renderer: IDisposable
             _interpreter = transactionInterpreter;
             _invalidated = false;
             _scrollRegionUncertain = false;
+            _graphemeClusteringEnabled |= graphemeClustering;
             var metrics = new RenderMetrics(
                 _buffer.WrittenCount,
                 1,
@@ -928,6 +963,13 @@ public sealed class Renderer: IDisposable
     {
         var scratch = new ArrayBufferWriter<byte>();
         ProtocolModes.SynchronizedOutput(new ProtocolWriter(scratch), enabled);
+        return scratch.WrittenSpan.ToArray();
+    }
+
+    private static byte[] EncodeGraphemeClustering(bool enabled)
+    {
+        var scratch = new ArrayBufferWriter<byte>();
+        ProtocolModes.GraphemeClustering(new ProtocolWriter(scratch), enabled);
         return scratch.WrittenSpan.ToArray();
     }
 }

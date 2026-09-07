@@ -60,6 +60,9 @@ public sealed record QueryResults
     /// <summary>Gets a synchronized-output query result.</summary>
     public bool? SynchronizedOutput { get; init; }
 
+    /// <summary>Gets a grapheme-clustering (DEC private mode 2027) query result.</summary>
+    public bool? GraphemeClustering { get; init; }
+
     /// <summary>Gets a focus-reporting query result.</summary>
     public bool? FocusReporting { get; init; }
 

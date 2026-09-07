@@ -23,13 +23,16 @@ public sealed class ProtocolModesTests
         ProtocolModes.BracketedPaste(writer, true);
         ProtocolModes.FocusReporting(writer, true);
         ProtocolModes.SynchronizedOutput(writer, true);
+        ProtocolModes.GraphemeClustering(writer, true);
+        ProtocolModes.GraphemeClustering(writer, false);
         ProtocolModes.ClipboardPasteEvents(writer, true);
         ProtocolModes.ClipboardPasteEvents(writer, false);
 
         destination.WrittenSpan.ToArray().ShouldBe(
             Encoding.ASCII.GetBytes(
                 "\u001b[?25h\u001b[?25l\u001b[?1049h\u001b[?2004h" +
-                "\u001b[?1004h\u001b[?2026h\u001b[?5522h\u001b[?5522l"));
+                "\u001b[?1004h\u001b[?2026h\u001b[?2027h\u001b[?2027l" +
+                "\u001b[?5522h\u001b[?5522l"));
     }
 
     /// <summary>Verifies each typed helper encodes exactly the DecPrivateMode constant carrying
@@ -43,6 +46,7 @@ public sealed class ProtocolModesTests
         AssertEncodesMode(DecPrivateMode.BracketedPaste, static (writer, enabled) => ProtocolModes.BracketedPaste(writer, enabled));
         AssertEncodesMode(DecPrivateMode.FocusReporting, static (writer, enabled) => ProtocolModes.FocusReporting(writer, enabled));
         AssertEncodesMode(DecPrivateMode.SynchronizedOutput, static (writer, enabled) => ProtocolModes.SynchronizedOutput(writer, enabled));
+        AssertEncodesMode(DecPrivateMode.GraphemeClustering, static (writer, enabled) => ProtocolModes.GraphemeClustering(writer, enabled));
         AssertEncodesMode(DecPrivateMode.ClipboardPasteEvents, static (writer, enabled) => ProtocolModes.ClipboardPasteEvents(writer, enabled));
 
         static void AssertEncodesMode(int mode, Action<ProtocolWriter, bool> encode)
@@ -69,6 +73,7 @@ public sealed class ProtocolModesTests
         DecPrivateMode.AlternateScreen.ShouldBe(1049);
         DecPrivateMode.BracketedPaste.ShouldBe(2004);
         DecPrivateMode.SynchronizedOutput.ShouldBe(2026);
+        DecPrivateMode.GraphemeClustering.ShouldBe(2027);
         DecPrivateMode.ClipboardPasteEvents.ShouldBe(5522);
     }
 

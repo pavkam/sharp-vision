@@ -241,6 +241,10 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         published.SynchronizedOutput.ShouldBe(
             new Feature(CapabilitySupport.Unsupported, Origin.Override));
+        // Unlike SynchronizedOutput, GraphemeClustering carries no override here, so the
+        // never-answered query falls back to the tentative Kitty environment hint instead.
+        published.GraphemeClustering.ShouldBe(
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
         negotiator.Expire().ShouldBeFalse();
         negotiator.Capabilities.ShouldBeSameAs(published);
 
@@ -253,8 +257,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     [Fact]
     public void Accept_WhenRepliesArriveOutOfOrder_PublishesCompleteProfile()
     {
-        // Arrange
-        var limits = QueryLimits.Default with { MaxConcurrentQueries = 8 };
+        // Arrange: capacity 9 rather than 8 leaves room for the new grapheme-clustering (2027)
+        // probe ahead of these five modes in priority order, so all five still register.
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 9 };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits));
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -299,8 +304,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     [Fact]
     public void Accept_WhenPrivateModeIsPermanentlySet_SupportsEveryModeExceptSynchronizedOutput()
     {
-        // Arrange
-        var limits = QueryLimits.Default with { MaxConcurrentQueries = 8 };
+        // Arrange: capacity 9 rather than 8 leaves room for the new grapheme-clustering (2027)
+        // probe ahead of these five modes in priority order, so all five still register.
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 9 };
         var negotiator = new ActiveQueryDiscoveryStrategy(
             new NegotiationOptions(new Dictionary<string, string?>(), limits: limits));
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
@@ -335,6 +341,30 @@ public sealed class ActiveQueryDiscoveryStrategyTests
             new Feature(CapabilitySupport.Supported, Origin.Query));
     }
 
+    /// <summary>
+    /// Verifies DECRPM value 3 ("permanently set") publishes support for grapheme clustering
+    /// (mode 2027) same as every other probed mode. Unlike synchronized output, this mode's value
+    /// does not encode an in-progress update - a terminal claiming it is permanently set is simply
+    /// always measuring grapheme clusters the way this library does - so no carve-out applies here.
+    /// </summary>
+    [Fact]
+    public void Accept_WhenGraphemeClusteringIsPermanentlySet_PublishesSupported()
+    {
+        // Arrange
+        var negotiator = new ActiveQueryDiscoveryStrategy(
+            new NegotiationOptions(new Dictionary<string, string?>()));
+        _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
+        var response = PrivateMode(2027, state: 3);
+
+        // Act
+        negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
+        _ = negotiator.Complete();
+
+        // Assert
+        negotiator.Capabilities.GraphemeClustering.ShouldBe(
+            new Feature(CapabilitySupport.Supported, Origin.Query));
+    }
+
     /// <summary>Verifies the configured query limit truncates by fixed priority.</summary>
     /// <param name="capacity">The maximum concurrent query count.</param>
     /// <param name="expected">The exact expected startup bytes.</param>
@@ -343,11 +373,12 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     [InlineData(2, "\u001b[?u\u001b[c")]
     [InlineData(3, "\u001b[?u\u001b[>c\u001b[c")]
     [InlineData(4, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[c")]
-    [InlineData(5, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[c")]
-    [InlineData(6, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[c")]
-    [InlineData(7, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[c")]
-    [InlineData(8, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[c")]
-    [InlineData(9, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p\u001b[c")]
+    [InlineData(5, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[c")]
+    [InlineData(6, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[c")]
+    [InlineData(7, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[?2004$p\u001b[c")]
+    [InlineData(8, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[c")]
+    [InlineData(9, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[c")]
+    [InlineData(10, "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p\u001b[c")]
     public void TryStart_WhenCapacityVaries_TruncatesByPriority(
         int capacity,
         string expected)
@@ -383,7 +414,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         // Assert
         Encoding.ASCII.GetString(output.WrittenSpan).ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
-            "\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
@@ -408,6 +439,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         {
             KittyKeyboard = database,
             SynchronizedOutput = database,
+            GraphemeClustering = database,
             FocusReporting = database,
             BracketedPaste = database,
             CellMouse = database,
@@ -465,6 +497,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         {
             KittyKeyboard = new Feature(CapabilitySupport.Supported, Origin.Database),
             SynchronizedOutput = new Feature(CapabilitySupport.Supported, Origin.Database),
+            GraphemeClustering = new Feature(CapabilitySupport.Supported, Origin.Database),
             FocusReporting = new Feature(CapabilitySupport.Supported, Origin.Database),
             BracketedPaste = new Feature(CapabilitySupport.Supported, Origin.Database),
             CellMouse = new Feature(CapabilitySupport.Supported, Origin.Database),
@@ -566,7 +599,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var keyboard = Response("?3"u8, [], (byte) 'u');
         negotiator.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
 
-        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026, 5522 })
+        foreach (var mode in new[] { 1016, 1006, 2004, 1004, 2026, 2027, 5522 })
         {
             var response = PrivateMode(mode, state: 1);
             negotiator.Accept(in response).ShouldBe(QueryMatch.Matched);
@@ -645,7 +678,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         var synchronizedOutput = PrivateMode(2026, state: 1);
         negotiator.Accept(in synchronizedOutput).ShouldBe(QueryMatch.Matched);
 
-        foreach (var mode in new[] { 1004, 2004, 1006, 1016, 5522 })
+        foreach (var mode in new[] { 1004, 2004, 1006, 1016, 2027, 5522 })
         {
             var privateMode = PrivateMode(mode, state: 1);
             negotiator.Accept(in privateMode).ShouldBe(QueryMatch.Matched);
@@ -1124,9 +1157,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     /// <param name="capacity">The bounded concurrent query capacity.</param>
     /// <param name="expected">Whether the graphics query is expected.</param>
     [Theory]
-    [InlineData(15, false)]
     [InlineData(16, false)]
-    [InlineData(17, true)]
+    [InlineData(17, false)]
+    [InlineData(18, true)]
     public void TryStart_WhenQueryCapacityCrossesGraphicsSlot_EmitsExpectedProbe(
         int capacity,
         bool expected)
@@ -1316,7 +1349,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm-256color" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 19 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -1338,7 +1371,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "alacritty" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 19 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         var destination = new ArrayBufferWriter<byte>();
 
@@ -1354,7 +1387,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 19 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', ">4;2m"u8, out var status)
@@ -1379,7 +1412,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     {
         var options = new NegotiationOptions(
             new Dictionary<string, string?> { ["TERM"] = "xterm" },
-            limits: QueryLimits.Default with { MaxConcurrentQueries = 18 });
+            limits: QueryLimits.Default with { MaxConcurrentQueries = 19 });
         var negotiator = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
         _ = negotiator.TryStart(new ArrayBufferWriter<byte>(), null, null);
         XtermDecrqss.TryParse("1"u8, "$"u8, (byte) 'r', "0m"u8, out var otherStatus)
@@ -1580,9 +1613,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     /// <param name="capacity">The bounded startup capacity.</param>
     /// <param name="expectsStatus">Whether the next-priority status query fits.</param>
     [Theory]
-    [InlineData(16, false)]
-    [InlineData(17, true)]
+    [InlineData(17, false)]
     [InlineData(18, true)]
+    [InlineData(19, true)]
     public void TryStart_WhenColorDepthIsExplicit_DoesNotRegisterRgbQuery(
         int capacity,
         bool expectsStatus)
@@ -1607,9 +1640,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
     /// <param name="capacity">The bounded startup capacity.</param>
     /// <param name="expectsStatus">Whether the next-priority status query fits.</param>
     [Theory]
-    [InlineData(16, false)]
-    [InlineData(17, true)]
+    [InlineData(17, false)]
     [InlineData(18, true)]
+    [InlineData(19, true)]
     public void TryStart_WhenNoColorIsPresent_DoesNotRegisterRgbQuery(
         int capacity,
         bool expectsStatus)
@@ -1630,8 +1663,8 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 
     /// <summary>Verifies the final slot normally belongs to RGB before the following status query.</summary>
     [Theory]
-    [InlineData(17, true, false)]
-    [InlineData(18, true, true)]
+    [InlineData(18, true, false)]
+    [InlineData(19, true, true)]
     public void TryStart_WhenColorDepthIsNotExplicit_PreservesRgbThenStatusPriority(
         int capacity,
         bool expectsRgb,
@@ -1684,6 +1717,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         {
             KittyKeyboard = database,
             SynchronizedOutput = database,
+            GraphemeClustering = database,
             FocusReporting = database,
             BracketedPaste = database,
             CellMouse = database,

@@ -30,6 +30,7 @@ internal static class OverrideEvidenceAdapter
                     ColorOrigin = overrides.ColorDepth.HasValue ? Origin.Override : capabilities.ColorOrigin,
                     AmbiguousWidth = overrides.AmbiguousWidth ?? capabilities.AmbiguousWidth,
                     SynchronizedOutput = Apply(capabilities.SynchronizedOutput, overrides.SynchronizedOutput),
+                    GraphemeClustering = Apply(capabilities.GraphemeClustering, overrides.GraphemeClustering),
                     FocusReporting = Apply(capabilities.FocusReporting, overrides.FocusReporting),
                     BracketedPaste = Apply(capabilities.BracketedPaste, overrides.BracketedPaste),
                     PixelMouse = Apply(capabilities.PixelMouse, overrides.PixelMouse),

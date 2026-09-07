@@ -47,6 +47,8 @@ public sealed class DiscoveryPipelineTests
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
         capabilities.StyledUnderlines.ShouldBe(
             new Feature(CapabilitySupport.Tentative, Origin.Environment));
+        capabilities.GraphemeClustering.ShouldBe(
+            new Feature(CapabilitySupport.Tentative, Origin.Environment));
         capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
         capabilities.ColorOrigin.ShouldBe(Origin.Environment);
     }
@@ -125,6 +127,7 @@ public sealed class DiscoveryPipelineTests
         {
             KittyClipboard = true,
             SynchronizedOutput = true,
+            GraphemeClustering = true,
             StyledUnderlines = true,
             UnderlineColor = false,
             Overline = false
@@ -133,6 +136,7 @@ public sealed class DiscoveryPipelineTests
         {
             KittyClipboard = false,
             SynchronizedOutput = false,
+            GraphemeClustering = false,
             Osc52 = true,
             ColorDepth = ColorDepth.Monochrome,
             StyledUnderlines = false,
@@ -147,6 +151,8 @@ public sealed class DiscoveryPipelineTests
         capabilities.KittyClipboard.ShouldBe(
             new Feature(CapabilitySupport.Unsupported, Origin.Override));
         capabilities.SynchronizedOutput.ShouldBe(
+            new Feature(CapabilitySupport.Unsupported, Origin.Override));
+        capabilities.GraphemeClustering.ShouldBe(
             new Feature(CapabilitySupport.Unsupported, Origin.Override));
         capabilities.Osc52.ShouldBe(
             new Feature(CapabilitySupport.Supported, Origin.Override));

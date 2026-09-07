@@ -41,6 +41,9 @@ internal static class DescriptionEvidenceAdapter
             var synchronizedOutput = ApplyDatabaseEvidence(
                 capabilities.SynchronizedOutput,
                 hasBackingProgram: false);
+            var graphemeClustering = ApplyDatabaseEvidence(
+                capabilities.GraphemeClustering,
+                hasBackingProgram: false);
             var focusReporting = ApplyDatabaseEvidence(
                 capabilities.FocusReporting,
                 acceptsDatabaseEvidence &&
@@ -95,6 +98,7 @@ internal static class DescriptionEvidenceAdapter
                 acceptsDatabaseEvidence && programs.Has("Smol") && programs.Has("Rmol"));
 
             return synchronizedOutput == capabilities.SynchronizedOutput &&
+                   graphemeClustering == capabilities.GraphemeClustering &&
                    focusReporting == capabilities.FocusReporting &&
                    bracketedPaste == capabilities.BracketedPaste &&
                    pixelMouse == capabilities.PixelMouse &&
@@ -113,6 +117,7 @@ internal static class DescriptionEvidenceAdapter
                 : capabilities with
                 {
                     SynchronizedOutput = synchronizedOutput,
+                    GraphemeClustering = graphemeClustering,
                     FocusReporting = focusReporting,
                     BracketedPaste = bracketedPaste,
                     PixelMouse = pixelMouse,

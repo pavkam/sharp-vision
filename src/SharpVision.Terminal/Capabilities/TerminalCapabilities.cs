@@ -57,6 +57,14 @@ public sealed record TerminalCapabilities
     /// <summary>Gets synchronized-output support.</summary>
     public Feature SynchronizedOutput { get; init; } = Feature.Unknown;
 
+    /// <summary>
+    /// Gets DEC private mode 2027 grapheme-cluster width reporting support. When authoritative,
+    /// the terminal interprets extended grapheme clusters (emoji with variation selectors, ZWJ
+    /// sequences, flags, and similar) the same way this library's own Unicode 17 tables do, so the
+    /// renderer negotiates and enables it instead of changing how widths are computed.
+    /// </summary>
+    public Feature GraphemeClustering { get; init; } = Feature.Unknown;
+
     /// <summary>Gets focus-reporting support.</summary>
     public Feature FocusReporting { get; init; } = Feature.Unknown;
 
@@ -129,6 +137,7 @@ public sealed record TerminalCapabilities
     public Feature Support(TerminalProtocol protocol) => protocol switch
     {
         TerminalProtocol.SynchronizedOutput => SynchronizedOutput,
+        TerminalProtocol.GraphemeClustering => GraphemeClustering,
         TerminalProtocol.FocusReporting => FocusReporting,
         TerminalProtocol.BracketedPaste => BracketedPaste,
         TerminalProtocol.PixelMouse => PixelMouse,
@@ -151,6 +160,7 @@ public sealed record TerminalCapabilities
     public IReadOnlyList<ProtocolSupport> Features =>
     [
         new(TerminalProtocol.SynchronizedOutput, SynchronizedOutput),
+        new(TerminalProtocol.GraphemeClustering, GraphemeClustering),
         new(TerminalProtocol.FocusReporting, FocusReporting),
         new(TerminalProtocol.BracketedPaste, BracketedPaste),
         new(TerminalProtocol.PixelMouse, PixelMouse),

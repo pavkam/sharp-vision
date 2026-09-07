@@ -1012,7 +1012,7 @@ public sealed class SessionTests
         sink.Order.ShouldBe(["diagnostics", "profile", "closed"]);
         transport.JoinedWrites.ShouldBe(
             "\u001b[?u\u001b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\u001b\\" +
-            "\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
+            "\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p" +
             "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[?5522$p" +
             "\u001b[14t\u001b[16t\u001b[18t" +
             "\u001b]4;0;?\u001b\\\u001b]10;?\u001b\\\u001b]11;?\u001b\\" +
@@ -1219,8 +1219,8 @@ public sealed class SessionTests
         // DA1 is written last among the standard queries, so this bounded batch's prefix -
         // everything up to the point capacity ran out - no longer includes it.
         transport.JoinedWrites.ShouldStartWith(
-            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
-            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p");
+            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p");
     }
 
     /// <summary>Verifies negotiated modes enable after publication and unwind in reverse.</summary>
@@ -1256,8 +1256,8 @@ public sealed class SessionTests
         // DA1 now writes last among the standard queries, right before the point capacity
         // ran out (no room remained for the trailing CPR fence here).
         transport.JoinedWrites.ShouldBe(
-            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?1004$p" +
-            "\u001b[?2004$p\u001b[?1006$p\u001b[?1016$p\u001b[c" +
+            "\u001b[?u\u001b[>c\u001b[?2026$p\u001b[?2027$p\u001b[?1004$p" +
+            "\u001b[?2004$p\u001b[?1006$p\u001b[c" +
             "\u001b[?1004h\u001b[?2004h\u001b[?1006h\u001b[?1000h\u001b[>3u" +
             "\u001b[<u\u001b[?1000l\u001b[?1006l\u001b[?2004l\u001b[?1004l");
     }

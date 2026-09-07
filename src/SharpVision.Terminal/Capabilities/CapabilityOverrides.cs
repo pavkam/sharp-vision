@@ -42,6 +42,9 @@ public sealed record CapabilityOverrides
     /// <summary>Gets an optional synchronized-output override.</summary>
     public bool? SynchronizedOutput { get; init; }
 
+    /// <summary>Gets an optional grapheme-clustering (DEC private mode 2027) override.</summary>
+    public bool? GraphemeClustering { get; init; }
+
     /// <summary>Gets an optional focus-reporting override.</summary>
     public bool? FocusReporting { get; init; }
 

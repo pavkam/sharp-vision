@@ -43,6 +43,7 @@ public sealed class FeatureTests
 
         emitted.ShouldNotContain("\u001b[?2026h");
         emitted.ShouldNotContain("\u001b[?2026l");
+        emitted.ShouldNotContain("\u001b[?2027h");
         emitted.ShouldNotContain("\u001b[53m");
         emitted.ShouldNotContain("\u001b[4:3m");
         emitted.ShouldNotContain("\u001b[58;2;");
@@ -59,6 +60,7 @@ public sealed class FeatureTests
 
         emitted.ShouldContain("\u001b[?2026h");
         emitted.ShouldContain("\u001b[?2026l");
+        emitted.ShouldContain("\u001b[?2027h");
         emitted.ShouldContain("\u001b[53m");
         emitted.ShouldContain("\u001b[4:3m");
         emitted.ShouldContain("\u001b[58;2;");
@@ -71,6 +73,7 @@ public sealed class FeatureTests
         {
             ColorDepth = ColorDepth.TrueColor,
             SynchronizedOutput = supported,
+            GraphemeClustering = supported,
             Overline = supported,
             StyledUnderlines = supported,
             UnderlineColor = supported
