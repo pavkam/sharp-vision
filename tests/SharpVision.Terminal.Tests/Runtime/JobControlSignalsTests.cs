@@ -10,6 +10,8 @@ namespace SharpVision.Terminal.Tests.Runtime;
 /// process-stopping signal. Real signal delivery is left to manual verification: raising an actual
 /// SIGSTOP against a test process is not something a unit test can safely do.
 /// </summary>
+[SupportedOSPlatform("linux")]
+[SupportedOSPlatform("macos")]
 public sealed class JobControlSignalsTests
 {
     /// <summary>

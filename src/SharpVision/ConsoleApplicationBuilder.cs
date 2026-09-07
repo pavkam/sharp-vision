@@ -471,7 +471,8 @@ public sealed class ConsoleApplicationBuilder
             // point (the Application constructor above builds it), which is what lets this wire
             // straight into Session.SuspendAsync()/ResumeAsync() instead of needing its own copy of
             // the lease-walk logic.
-            if (connection.UnixMode is { } unixMode)
+            if ((OperatingSystem.IsLinux() || OperatingSystem.IsMacOS()) &&
+                connection.UnixMode is { } unixMode)
             {
                 var jobControl = JobControlSignals.Register(
                     onSuspend: () =>
@@ -493,7 +494,16 @@ public sealed class ConsoleApplicationBuilder
                 // Mirrors _processSignals' own disposal inside Application - Stopped is the one
                 // funnel every terminal path crosses, including a preflight failure after this
                 // point that routes through the catch block's application.DisposeAsync() call below.
-                application.Stopped += (_, _) => jobControl.Dispose();
+                // The platform check is repeated here (rather than relying on the outer one) only
+                // because this lambda is its own reachable-on-all-platforms call site as far as the
+                // platform-compatibility analyzer is concerned.
+                application.Stopped += (_, _) =>
+                {
+                    if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                    {
+                        jobControl.Dispose();
+                    }
+                };
             }
 
             // Attach (which runs the screen's OnAttach - the documented place for theme

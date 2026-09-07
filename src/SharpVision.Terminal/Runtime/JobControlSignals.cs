@@ -47,6 +47,8 @@ using System.Runtime.InteropServices;
 /// happens to invoke this type's <c>SIGTSTP</c> callback on.
 /// </para>
 /// </remarks>
+[SupportedOSPlatform("linux")]
+[SupportedOSPlatform("macos")]
 internal sealed class JobControlSignals: IDisposable
 {
     private PosixSignalRegistration? _suspend;
@@ -90,22 +92,23 @@ internal sealed class JobControlSignals: IDisposable
         ArgumentNullException.ThrowIfNull(onResume);
         ArgumentNullException.ThrowIfNull(raiseStop);
 
-        var scope = new JobControlSignals();
-
-        scope._suspend = PosixSignalRegistration.Create(PosixSignal.SIGTSTP, context =>
+        var scope = new JobControlSignals
         {
-            // See the type remarks: SIGTSTP's default disposition is a no-op in the runtime's own
-            // native handler once any managed handler is registered, so Cancel here is purely
-            // documentation of intent, not what actually stops the process - RaiseStop is.
-            context.Cancel = true;
-            InvokeSuspend(onSuspend, raiseStop);
-        });
-
-        scope._resume = PosixSignalRegistration.Create(PosixSignal.SIGCONT, context =>
-        {
-            context.Cancel = true;
-            InvokeResume(onResume);
-        });
+            _suspend = PosixSignalRegistration.Create(PosixSignal.SIGTSTP, context =>
+            {
+                // See the type remarks: SIGTSTP's default disposition is a no-op in the runtime's
+                // own native handler once any managed handler is registered, so Cancel here is
+                // purely documentation of intent, not what actually stops the process - RaiseStop
+                // is.
+                context.Cancel = true;
+                InvokeSuspend(onSuspend, raiseStop);
+            }),
+            _resume = PosixSignalRegistration.Create(PosixSignal.SIGCONT, context =>
+            {
+                context.Cancel = true;
+                InvokeResume(onResume);
+            })
+        };
 
         return scope;
     }
@@ -165,7 +168,7 @@ internal sealed class JobControlSignals: IDisposable
     private const int _linuxSigStop = 19;
     private const int _macOsSigStop = 17;
 
-    private static void RaiseStop() => Kill(GetPid(), OperatingSystem.IsMacOS() ? _macOsSigStop : _linuxSigStop);
+    private static void RaiseStop() => _ = Kill(GetPid(), OperatingSystem.IsMacOS() ? _macOsSigStop : _linuxSigStop);
 
     [DllImport("libc", EntryPoint = "kill", ExactSpelling = true, SetLastError = true)]
     private static extern int Kill(int processId, int signal);

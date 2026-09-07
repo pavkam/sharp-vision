@@ -1813,6 +1813,9 @@ namespace SharpVision.Terminal.Runtime
         public Session(SharpVision.Terminal.Abstractions.ITransport transport, SharpVision.Terminal.Abstractions.IResizeSource resize, SharpVision.Terminal.Abstractions.ISink sink, SharpVision.Terminal.Runtime.TerminalOptions? options = null, System.TimeProvider? timeProvider = null) { }
         public SharpVision.Terminal.Diagnostics.TerminalDiagnostics Diagnostics { get; }
         public System.Exception? LastCleanupException { get; }
+        public System.Exception? LastResumeException { get; }
+        public System.Exception? LastSuspendException { get; }
+        public event System.EventHandler? Resumed;
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
         public System.Threading.Tasks.ValueTask RunAsync(System.Threading.CancellationToken cancellationToken) { }
     }
