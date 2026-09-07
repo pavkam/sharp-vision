@@ -19,6 +19,15 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private static readonly IReadOnlyDictionary<string, string?> _emptyEnvironment =
         new Dictionary<string, string?>();
+    private static readonly IReadOnlySet<QueryKind> _cursorFenceExclusions = new HashSet<QueryKind>
+    {
+        QueryKind.CursorPosition
+    };
+    private static readonly IReadOnlySet<QueryKind> _localFenceExclusions = new HashSet<QueryKind>
+    {
+        QueryKind.Keyboard, QueryKind.CursorPosition, QueryKind.WindowPixels,
+        QueryKind.CellPixels, QueryKind.WindowCells, QueryKind.StatusString
+    };
     private readonly NegotiationOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly QueryTracker _tracker;
@@ -41,6 +50,8 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private bool _graphicsQueried;
     private bool _usesExplicitOuterProfile;
     private string? _planningTerminalName;
+    private string? _localTerminalName;
+    private TerminalCapabilities? _outerBaseline;
     private PaletteResponse? _paletteColor;
     private PaletteResponse? _foregroundColor;
     private PaletteResponse? _backgroundColor;
@@ -48,6 +59,9 @@ internal sealed class ActiveQueryDiscoveryStrategy
     private MetricsResponse? _cellPixels;
     private MetricsResponse? _windowCells;
     private CapabilityResponse? _capabilityString;
+
+    /// <summary>Gets the baseline for output families that follow the optional outer route.</summary>
+    private TerminalCapabilities OutputBaseline => _outerBaseline ?? _baseline;
 
     private TerminalCapabilities? Published { get; set; }
 
@@ -68,7 +82,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     /// <summary>Initializes one bounded strategy over an already-resolved description baseline.</summary>
     /// <param name="options">The non-null owned negotiation policy.</param>
-    /// <param name="baseline">The non-null description-derived semantic baseline.</param>
+    /// <param name="baseline">The non-null nearest-connection description baseline for raw modes, keys, and geometry.</param>
     /// <param name="timeProvider">The deadline clock, or null for system time.</param>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> or <paramref name="baseline"/> is null.</exception>
     public ActiveQueryDiscoveryStrategy(
@@ -88,7 +102,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
     public bool Started { get; private set; }
 
     /// <summary>
-    /// Gets whether the written batch included the CSI 6n cursor-position completion fence. A
+    /// Gets whether the written batch included the CSI 6n cursor-position request. A
     /// low caller-supplied <see cref="QueryLimits.MaxConcurrentQueries"/> budget can crowd the
     /// fence out of the batch entirely; callers that gate CSI 1;&lt;mod&gt;R disambiguation on the
     /// negotiation window must also gate on this, or a modified F3 keystroke arriving during that
@@ -154,41 +168,21 @@ internal sealed class ActiveQueryDiscoveryStrategy
         Deadline = _timeProvider.GetUtcNow() + _options.Limits.QueryTimeout;
         _usesExplicitOuterProfile = route?.CanRouteCapabilityQueries == true;
 
-        // The xterm-proprietary probe gates below must test the identity the baseline
-        // capabilities actually came from, not the inner pane's TERM: on an approved outer
-        // route, the outer terminal's own name is known and authoritative, while the inner
-        // environment is exactly the hint the route exists to route around.
-        //
-        // Native Windows connections almost never set TERM at all - not under classic conhost,
-        // and not under modern Windows Terminal either (which sets WT_SESSION, not TERM). Falling
-        // back to the connection's own "windows-vt" description name here - which SharpVision
-        // only selects after confirming ENABLE_VIRTUAL_TERMINAL_PROCESSING succeeded - lets the
-        // two DEC/xterm-proprietary probes below reach real VT-capable Windows terminals instead
-        // of being permanently withheld by an environment variable Windows structurally never
-        // sets. This is safe on a terminal that doesn't understand them: both probes are DCS
-        // forms conhost's own parser either answers with a conformant negative reply (DECRQSS,
-        // confirmed via its current AdaptDispatch::RequestSetting implementation) or consumes and
-        // discards unrecognized (XTGETTCAP, the same "unknown DCS" path every other unsupported
-        // terminal already takes) - see docs/protocols/xterm.md for the citation.
+        _outerBaseline = _usesExplicitOuterProfile ? route!.Policy.OuterProfile!.Capabilities : null;
+        _localTerminalName = _options.Environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term) &&
+                             !string.IsNullOrEmpty(term)
+            ? term
+            : describedTerminalName;
         _planningTerminalName = _usesExplicitOuterProfile
-            ? route!.Policy.OuterProfile?.Description.Name
-            : _options.Environment.TryGetValue(EvidenceEnvironmentVars.Term, out var term) && !string.IsNullOrEmpty(term)
-                ? term
-                : describedTerminalName;
+            ? route!.Policy.OuterProfile!.Description.Name
+            : _localTerminalName;
         var supportsStringQueries = route?.SupportsStringTerminatedQueries != false;
         var remaining = _options.Limits.MaxConcurrentQueries;
 
-        // Planning-only environment projection: probes a multiplexer or SSH hop can never carry
-        // an answer for should not be written at all, rather than written and then narrowed to
-        // Unsupported moments after the round trip is already spent. This never
-        // touches _baseline and is never passed to CapabilityDetector.Detect — Publish still
-        // folds _options.Environment through the normal discovery pipeline once, in phase order,
-        // so a suppressed probe still ends up Unsupported/Origin.Environment there, not
-        // Origin.Query. Skipped when the route can carry capability queries: Publish deliberately
-        // uses an empty environment in that case so an inner multiplexer's variables cannot
-        // narrow or augment explicit outer evidence, and this projection must respect the same
-        // carve-out.
-        var planning = _usesExplicitOuterProfile ? _baseline : _baseline.Apply(_options.Environment);
+        // Routed clipboard and image queries consult outer evidence. Raw modes, keyboard, and
+        // geometry keep the nearest connection's baseline and identity, including the built-in
+        // windows-vt fallback when native Windows has no TERM environment variable.
+        var planning = _usesExplicitOuterProfile ? OutputBaseline : _baseline.Apply(_options.Environment);
 
         var queryKeyboard = remaining >= 2 &&
                             ShouldQuery(
@@ -215,22 +209,19 @@ internal sealed class ActiveQueryDiscoveryStrategy
         Started = true;
         var preludeQueries = new ArrayBufferWriter<byte>();
         var standardQueries = new ArrayBufferWriter<byte>();
+        var localQueries = new ArrayBufferWriter<byte>();
         var preludeWriter = new ProtocolWriter(preludeQueries);
         var writer = new ProtocolWriter(standardQueries);
+        var localWriter = _usesExplicitOuterProfile ? new ProtocolWriter(localQueries) : writer;
 
         if (queryKeyboard)
         {
-            Kitty.Keyboard.KittyKeyboard.Query(preludeWriter);
+            Kitty.Keyboard.KittyKeyboard.Query(_usesExplicitOuterProfile ? localWriter : preludeWriter);
             remaining--;
         }
 
-        // DA1 is registered - and its budget slot spent - here, up front, exactly as before:
-        // every optional probe below must still see the same shrunken "remaining" count it saw
-        // previously, so the finite MaxConcurrentQueries budget admits the same set of optional
-        // families regardless of when DA1's own bytes are written. Only the byte-level write
-        // moves: it happens last among the standard queries, immediately before the trailing
-        // CSI 6n fence below, so an in-order terminal's DA1 reply proves every probe written
-        // between here and there was either answered already or silently ignored.
+        // Reserve DA1 before optional families spend the remaining capacity. Its bytes follow
+        // the other queries addressed to the same terminal, making its reply their fence.
         remaining--;
 
         if (TryRegister(QueryKind.SecondaryAttributes, ref remaining))
@@ -239,31 +230,31 @@ internal sealed class ActiveQueryDiscoveryStrategy
         }
 
         AddModeQuery(
-            writer,
+            localWriter,
             DecPrivateMode.SynchronizedOutput,
             _baseline.SynchronizedOutput,
             _options.Overrides?.SynchronizedOutput,
             ref remaining);
         AddModeQuery(
-            writer,
+            localWriter,
             DecPrivateMode.FocusReporting,
             _baseline.FocusReporting,
             _options.Overrides?.FocusReporting,
             ref remaining);
         AddModeQuery(
-            writer,
+            localWriter,
             DecPrivateMode.BracketedPaste,
             _baseline.BracketedPaste,
             _options.Overrides?.BracketedPaste,
             ref remaining);
         AddModeQuery(
-            writer,
+            localWriter,
             DecPrivateMode.CellMouse,
             _baseline.CellMouse,
             _options.Overrides?.CellMouse,
             ref remaining);
         AddModeQuery(
-            writer,
+            localWriter,
             DecPrivateMode.PixelMouse,
             _baseline.PixelMouse,
             _options.Overrides?.PixelMouse,
@@ -281,18 +272,18 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         if (!HasPositive(pixels) && TryRegister(QueryKind.WindowPixels, ref remaining))
         {
-            Csi.ReportWindowPixels(writer);
+            Csi.ReportWindowPixels(localWriter);
         }
 
         if (!HasCellMetrics(cells, pixels) &&
             TryRegister(QueryKind.CellPixels, ref remaining))
         {
-            Csi.ReportCellPixels(writer);
+            Csi.ReportCellPixels(localWriter);
         }
 
         if (!HasPositive(cells) && TryRegister(QueryKind.WindowCells, ref remaining))
         {
-            Csi.ReportWindowCells(writer);
+            Csi.ReportWindowCells(localWriter);
         }
 
         if (supportsStringQueries && TryRegister(QueryKind.PaletteColor, ref remaining))
@@ -328,11 +319,11 @@ internal sealed class ActiveQueryDiscoveryStrategy
             XtermGetCap.Query(writer, names);
         }
 
-        if (supportsStringQueries &&
+        if ((_usesExplicitOuterProfile || supportsStringQueries) &&
             ShouldQueryXtermKeyboard() &&
             TryRegister(StatusName.ModifyOtherKeys, ref remaining))
         {
-            XtermDecrqss.Query(writer, StatusName.ModifyOtherKeys);
+            XtermDecrqss.Query(localWriter, StatusName.ModifyOtherKeys);
         }
 
         // Only an approved route can carry an APC probe across a multiplexer. A detected but
@@ -343,7 +334,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
         var graphics = supportsStringQueries &&
                        canDeliverApc &&
                        remaining != 0 &&
-                       ShouldQuery(_baseline.KittyGraphics, _options.Overrides?.KittyGraphics);
+                       ShouldQuery(OutputBaseline.KittyGraphics, _options.Overrides?.KittyGraphics);
 
         if (graphics)
         {
@@ -360,34 +351,21 @@ internal sealed class ActiveQueryDiscoveryStrategy
             }
 
             _graphicsQueried = true;
+            remaining--;
         }
 
-        // DA1 is written here, last among the standard queries, even though it was registered
-        // and budgeted up front (see the comment above). A terminal answers written queries
-        // strictly in order, so placing DA1 immediately before the trailing CPR fence below
-        // means its reply proves every standard probe written between the prelude and here was
-        // either already answered or silently ignored by an in-order terminal. Accept below
-        // acts on that proof by retiring every other still-active family - the same silent
-        // resolution the shared deadline applies - so a responsive terminal that only implements
-        // DA1 and a few probes still completes negotiation without paying the full timeout.
+        // DA1 fences this terminal's standard queries and graphics prelude. On a route it
+        // says nothing about raw queries sent to the nearest layer, which remain independent.
         Csi.PrimaryDeviceAttributes(writer);
 
-        // A trailing probe, written last of all so an in-order terminal answers it only after
-        // DA1 - but unlike DA1, CSI 6n (DSR cursor position) shares its exact reply grammar with
-        // a modified F3 keystroke (CSI 1;<mod>R), which a user, tty typeahead, or a multiplexer
-        // replaying buffered input can deliver at any point in the shared deadline window with
-        // no way to tell it apart from a genuine answer. Accept below therefore only resolves
-        // this query's own family from a match; it never treats the match as proof that DA1 or
-        // any other still-outstanding family stayed silent, because an unsolicited keystroke
-        // would then falsely retire all of them. Conversely, a DA1 match never retires this
-        // family either: CPR is written after DA1 specifically so an in-order terminal answers
-        // it last, which means a DA1 reply cannot yet prove CPR's own silence. CPR resolves only
-        // through its own matching reply or the shared deadline below.
+        // Cursor position is last on a direct connection, or last in the local group before
+        // an outer batch. Its reply is byte-identical to modified F3, so it only resolves itself
+        // and can never prove another query stayed silent. DA1 also never retires this family.
         FenceQueried = TryRegister(QueryKind.CursorPosition, ref remaining);
 
         if (FenceQueried)
         {
-            Csi.ReportCursorPosition(writer);
+            Csi.ReportCursorPosition(localWriter);
         }
 
         var queryBatch = new ArrayBufferWriter<byte>();
@@ -406,11 +384,18 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
         if (route?.CanRouteCapabilityQueries == true)
         {
-            if (!route.TryWriteCapabilityQueries(destination, queryBatch.WrittenSpan))
+            // Encode both destinations before writing anything. An outer-envelope limit must
+            // not leave a partial local query batch on the transport.
+            var routedQueries = new ArrayBufferWriter<byte>();
+
+            if (!route.TryWriteCapabilityQueries(routedQueries, queryBatch.WrittenSpan))
             {
                 CompletePendingWork(_timeProvider.GetUtcNow());
                 return false;
             }
+
+            destination.Write(localQueries.WrittenSpan);
+            destination.Write(routedQueries.WrittenSpan);
         }
         else
         {
@@ -443,7 +428,11 @@ internal sealed class ActiveQueryDiscoveryStrategy
         }
 
         _ = ExpireIfDeadlineReached(now);
-        var match = _tracker.Match(response, now);
+        // QueryTracker's typed DA1 shortcut also resolves a same-terminal keyboard prelude.
+        // An outer DA1 has no authority over the local keyboard query; fence it explicitly below.
+        var match = _usesExplicitOuterProfile && response.Kind == ResponseKind.PrimaryAttributes
+            ? _tracker.Match(QueryKind.PrimaryAttributes, now)
+            : _tracker.Match(response, now);
         LastDiagnostic = _tracker.LastDiagnostic;
 
         if (match == QueryMatch.Matched)
@@ -453,7 +442,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
                 _kittyKeyboard = true;
             }
             else if (response.Kind == ResponseKind.PrimaryAttributes &&
-                     _keyboardQueried && !_kittyKeyboard.HasValue)
+                     !_usesExplicitOuterProfile && _keyboardQueried && !_kittyKeyboard.HasValue)
             {
                 _kittyKeyboard = false;
             }
@@ -471,15 +460,8 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
             if (response.Kind == ResponseKind.PrimaryAttributes)
             {
-                // DA1 is written last among the standard queries (see TryStart), so a terminal
-                // that answers in order has already answered or silently ignored every other
-                // standard probe, the Kitty prelude, and every still-pending DECRQM mode by the
-                // time this reply arrives. Retire all of it now with the same silent resolution
-                // the shared deadline applies below, rather than waiting out the rest of
-                // QueryLimits.QueryTimeout for terminals that only implement DA1 and a handful
-                // of probes. CursorPosition is excluded on purpose: it is written after DA1
-                // specifically so an in-order terminal answers it last, so this DA1 reply cannot
-                // yet prove CPR stayed silent - CPR keeps its own separate resolution path below.
+                // Retire only families addressed to the terminal that answered DA1. Local
+                // mode, keyboard, and geometry replies can still be in flight on an outer route.
                 RetireFencedFamilies(now);
             }
 
@@ -871,10 +853,27 @@ internal sealed class ActiveQueryDiscoveryStrategy
             CapabilityString = _capabilityString
         };
         Published = CapabilityDetector.Detect(
-            _baseline,
+            OutputBaseline,
             _usesExplicitOuterProfile ? _emptyEnvironment : _options.Environment,
             queries,
             _options.Overrides);
+        if (_usesExplicitOuterProfile)
+        {
+            // Evidence must follow delivery: these operations are always written raw to the
+            // nearest layer, so the outer profile cannot authorize them or suppress local support.
+            var local = CapabilityDetector.Detect(_baseline, _options.Environment, queries, _options.Overrides);
+            Published = Published with
+            {
+                SynchronizedOutput = local.SynchronizedOutput,
+                FocusReporting = local.FocusReporting,
+                BracketedPaste = local.BracketedPaste,
+                CellMouse = local.CellMouse,
+                PixelMouse = local.PixelMouse,
+                KittyKeyboard = local.KittyKeyboard,
+                XtermKeyboard = local.XtermKeyboard
+            };
+        }
+
         PublishedResults = queries;
         Completed = true;
     }
@@ -901,19 +900,26 @@ internal sealed class ActiveQueryDiscoveryStrategy
     }
 
     /// <summary>
-    /// Retires every still-active query family except <see cref="QueryKind.CursorPosition"/>
-    /// with the exact same silent resolution <see cref="RetireOutstandingFamilies"/> applies at
-    /// the shared deadline - no diagnostic and no evidence field is set, so a fenced family
-    /// stays absent rather than becoming <see cref="Origin.Query"/> evidence it never actually
-    /// received. This is the DA1 fence: a terminal answers written queries strictly in order, so
-    /// a DA1 reply proves every family registered before it either already answered or was
-    /// silently ignored. CursorPosition is written after DA1 specifically so it can never be
-    /// proven silent by this reply, and keeps its own separate resolution path.
+    /// Retires unanswered queries fenced by this terminal's DA1, without inventing evidence.
+    /// Local families survive an outer fence; cursor position always resolves independently.
     /// </summary>
     private void RetireFencedFamilies(DateTimeOffset now)
     {
-        _ = _tracker.RetireActiveFamiliesExcept(QueryKind.CursorPosition, now);
-        RetirePendingModes();
+        _ = _tracker.RetireActiveFamiliesExcept(
+            _usesExplicitOuterProfile ? _localFenceExclusions : _cursorFenceExclusions, now);
+
+        if (_usesExplicitOuterProfile)
+        {
+            // Mode 5522 follows the outer clipboard route; every other mode stays local.
+            if (_pendingModes.Remove(DecPrivateMode.ClipboardPasteEvents))
+            {
+                _ = _expiredModes.Add(DecPrivateMode.ClipboardPasteEvents);
+            }
+        }
+        else
+        {
+            RetirePendingModes();
+        }
     }
 
     private void RetirePendingModes()
@@ -1052,7 +1058,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
 
     private bool ShouldQueryXtermKeyboard()
     {
-        var term = _planningTerminalName;
+        var term = _localTerminalName;
         return IsXtermLikeHint(term) &&
                ShouldQuery(_baseline.XtermKeyboard, _options.Overrides?.XtermKeyboard);
     }
@@ -1066,7 +1072,7 @@ internal sealed class ActiveQueryDiscoveryStrategy
                // color one way or the other, so a live XTGETTCAP reply is still free to raise it,
                // the same way QueryEvidenceAdapter.RefineColor already treats Database evidence as
                // upgradable rather than settled.
-               _baseline.ColorOrigin is Origin.Default or Origin.Environment or Origin.Database &&
+               OutputBaseline.ColorOrigin is Origin.Default or Origin.Environment or Origin.Database &&
                _options.Overrides?.ColorDepth is null &&
                !_options.Environment.ContainsKey(EvidenceEnvironmentVars.NoColor);
     }

@@ -870,13 +870,11 @@ public sealed class Session: IAsyncDisposable
                          (candidateRoute.CanRouteCapabilityQueries || candidateRoute.CanRouteClipboard)
             ? candidateRoute
             : null;
-        var negotiationBaseline = queryRoute?.Policy.OuterProfile?.Capabilities ??
-                                  _context.Profile.Capabilities;
         var negotiator = _options.Negotiation is null
             ? null
             : new Negotiator(
                 _options.Negotiation,
-                negotiationBaseline,
+                _context.Profile.Capabilities,
                 _timeProvider);
         IProtocolSink routeSink = negotiator is null
             ? _sink

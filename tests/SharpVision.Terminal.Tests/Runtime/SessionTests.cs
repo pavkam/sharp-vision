@@ -19,6 +19,67 @@ using SharpVision.Terminal.Multiplexing;
 /// </summary>
 public sealed class SessionTests
 {
+    /// <summary>Verifies local mode leases use the nearest profile independently of outer support.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RunAsync_WhenOuterModeSupportDiffers_UsesNearestProfileForRawLeasesAsync(bool localSupported)
+    {
+        var local = new Feature(localSupported ? CapabilitySupport.Supported : CapabilitySupport.Unsupported, Origin.Database);
+        var outer = new Feature(localSupported ? CapabilitySupport.Unsupported : CapabilitySupport.Supported, Origin.Database);
+        var localProfile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            FocusReporting = local,
+            BracketedPaste = local,
+            CellMouse = local,
+            KittyKeyboard = local,
+            SynchronizedOutput = local
+        });
+        var outerProfile = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            FocusReporting = outer,
+            BracketedPaste = outer,
+            CellMouse = outer,
+            KittyKeyboard = outer,
+            SynchronizedOutput = outer
+        });
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], outerProfile, PassthroughMode.All, paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var options = TerminalOptions.Minimal with
+        {
+            Profile = localProfile,
+            Focus = true,
+            Paste = true,
+            Tracking = MouseTracking.Press,
+            Keyboard = KittyKeyboardEnhancement.Disambiguate | KittyKeyboardEnhancement.EventTypes,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?> { ["TERM"] = "tmux-256color" },
+                overrides: null, limits: QueryLimits.Default with { MaxConcurrentQueries = 1 }, multiplexing: policy)
+        };
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        transport.Input("\u001b[?1;2c"u8.ToArray());
+        transport.Close();
+        await using Session session = new(transport, resize, sink, options);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        var capabilities = sink.Profiles.ShouldHaveSingleItem();
+        capabilities.FocusReporting.ShouldBe(local);
+        capabilities.BracketedPaste.ShouldBe(local);
+        capabilities.CellMouse.ShouldBe(local);
+        capabilities.KittyKeyboard.ShouldBe(local);
+        capabilities.SynchronizedOutput.ShouldBe(local);
+
+        foreach (var mode in new[] { 1004, 2004, 1000 })
+        {
+            transport.JoinedWrites.Contains($"\u001b[?{mode}h", StringComparison.Ordinal).ShouldBe(localSupported);
+            transport.JoinedWrites.Contains($"\u001b[?{mode}l", StringComparison.Ordinal).ShouldBe(localSupported);
+        }
+    }
+
     /// <summary>Verifies queued paste bytes win over an elapsed inactivity timer.</summary>
     [Fact]
     public async Task RunAsync_WhenPasteReadAndExpiryAreReady_PreservesQueuedPayloadAsync()

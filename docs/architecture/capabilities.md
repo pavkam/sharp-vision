@@ -244,37 +244,44 @@ the terminal backend identity, and never enables passthrough.
 `Multiplexing.MultiplexingPolicy` keeps the active inner profile and an explicit
 outer profile separate, owns a nearest-to-farthest route with finite depth and
 byte budget, and approves only the typed capability-query, clipboard, and
-graphics families. The runtime routes its implemented startup-query batch, OSC
-52 clipboard writes and requests, and graphics transactions through those typed
-paths. Kitty OSC 5522 clipboard transactions travel the same typed paths, as its
-[protocol page](../protocols/kitty-clipboard.md#supported-features) describes.
-Graphics selection receives the complete detected route even when passthrough is
-unauthorized, which prevents a direct-output fallback around multiplexer policy.
+graphics families. The runtime routes the outer group of its startup queries,
+OSC 52 clipboard writes and requests, and graphics transactions through those
+typed paths. Kitty OSC 5522 clipboard transactions travel the same typed paths,
+as its [protocol page](../protocols/kitty-clipboard.md#supported-features)
+describes. Graphics selection receives the complete detected route even when
+passthrough is unauthorized, which prevents a direct-output fallback around
+multiplexer policy.
 
 tmux may carry the complete approved query set. A route containing GNU screen
 permits one farthest Screen layer with surrounding tmux layers, and carries CSI
-queries only. OSC palette/default-color queries plus XTGETTCAP and DECRQSS are
-omitted before registration, because Screen's first ST terminator ends its DCS
-relay. Unsafe topologies and batches are rejected atomically rather than
-partially written.
+queries only. Routed OSC palette/default-color queries and XTGETTCAP are omitted
+before registration; no string query is wrapped through Screen, because Screen's
+first ST terminator ends its DCS relay. Unsafe topologies and batches are
+rejected atomically rather than partially written.
 
-An active query route uses the outer profile only as negotiation's semantic
-baseline. It does not replace the description programs or key strings used to
-drive the inner multiplexer terminal, and inner environment names do not narrow
-or augment that explicit outer evidence. Replies are unwrapped through every
-configured layer before ordinary typed parsing and exact `QueryTracker`
-correlation. Unwrapping admits exactly one recognized query-response value:
-text, input controls, unrecognized strings, trailing bytes, and concatenated
-responses reject the complete envelope. A structurally valid reply with the
-wrong identity remains observable for correlation diagnostics. Screen-wrapped
-CSI is accepted, and string-terminated Screen envelopes recover through the full
-outer boundary without leaking control bytes. Raw diagnostic offsets include
-accepted wrapper overhead and every byte of rejected or oversized envelopes. An
-atomic outbound encoding failure retires the registered batch and publishes
-absent evidence immediately — without bytes, a flush, active modes, or a
-deadline. Disabled or visibility-ineligible passthrough, missing explicit outer
-evidence, malformed or oversized envelopes, and the shared exclusive timeout all
-leave the inner profile conservatively narrowed.
+An active query route uses the outer profile for routed output evidence, and the
+nearest profile plus real environment for raw mode and keyboard evidence. Mode
+5522 follows clipboard routing; focus, bracketed paste, mouse, synchronized
+output, Kitty keyboard, and modifyOtherKeys stay local. Geometry and cursor
+queries also stay local. The
+[discovery pipeline](discovery-pipeline.md#active-query-strategy) defines the
+query groups and their independent response handling. Neither group replaces the
+description programs or key strings used to drive the inner multiplexer. Inner
+terminal names do not narrow or augment explicit outer output evidence. Replies
+are unwrapped through every configured layer before ordinary typed parsing and
+exact `QueryTracker` correlation. Unwrapping admits exactly one recognized
+query-response value: text, input controls, unrecognized strings, trailing
+bytes, and concatenated responses reject the complete envelope. A structurally
+valid reply with the wrong identity remains observable for correlation
+diagnostics. Screen-wrapped CSI is accepted, and string-terminated Screen
+envelopes recover through the full outer boundary without leaking control bytes.
+Raw diagnostic offsets include accepted wrapper overhead and every byte of
+rejected or oversized envelopes. An atomic outbound encoding failure retires the
+registered batch and publishes absent evidence immediately — without bytes, a
+flush, active modes, or a deadline. Disabled or visibility-ineligible
+passthrough, missing explicit outer evidence, malformed or oversized envelopes,
+and the shared exclusive timeout all leave the inner profile conservatively
+narrowed.
 
 ## Queries and publication
 
@@ -298,21 +305,22 @@ programs.
 ### Runtime negotiator
 
 `Negotiator` is the compatibility facade over `ActiveQueryDiscoveryStrategy`.
-The strategy snapshots caller-supplied environment values and fills one bounded
-startup batch in priority order:
+The strategy snapshots caller-supplied environment values and reserves slots in
+this order. Wire order also places graphics before the DA1 fence and separates
+local queries from the wrapped outer group, as the discovery pipeline specifies.
 
-| Priority | Query family                                     | When it is included                                                   |
-| -------: | ------------------------------------------------ | --------------------------------------------------------------------- |
-|        1 | Kitty keyboard status                            | Support is unknown and at least two query slots exist.                |
-|        2 | Kitty graphics query                             | Support is unknown; emitted before DA1 so DA1 stays its barrier.      |
-|        3 | Primary device attributes (DA1)                  | Always.                                                               |
-|        4 | Secondary device attributes (DA2)                | Capacity remains.                                                     |
-|        5 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                    |
-|        6 | Geometry                                         | Local host geometry is incomplete.                                    |
-|        7 | Palette and default colors                       | Capacity remains; results remain diagnostic or caller-consumed facts. |
-|        8 | iTerm2 capability query (OSC 1337)               | `ItermImages` is unknown or tentative, no override, no multiplexer.   |
-|        9 | Finite xterm refinements                         | An xterm-like hint exists and stronger evidence has not settled it.   |
-|       10 | Cursor-position fence (`CSI 6 n`)                | Always last; its reply retires every still-unanswered family.         |
+| Priority | Query family                                     | When it is included                                                                   |
+| -------: | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+|        1 | Primary device attributes (DA1)                  | Always; one slot is reserved before optional probes.                                  |
+|        2 | Kitty keyboard status                            | Support is unknown or tentative and at least two slots exist.                         |
+|        3 | Secondary device attributes (DA2)                | Capacity remains.                                                                     |
+|        4 | Private modes 2026, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                                    |
+|        5 | Geometry                                         | Local host geometry is incomplete.                                                    |
+|        6 | Palette and default colors                       | Capacity remains and the destination admits string queries.                           |
+|        7 | iTerm2 capability query (OSC 1337)               | Support is unknown or tentative; the destination and policy admit the probe.          |
+|        8 | Finite xterm refinements                         | The destination has an xterm-like hint and stronger evidence has not settled support. |
+|        9 | Kitty graphics query                             | Support is unknown or tentative and capacity remains; this consumes a slot.           |
+|       10 | Cursor-position request (CSI 6 n)                | Capacity remains; last in the local group, and its reply resolves only itself.        |
 
 Definitive database evidence and explicit overrides suppress redundant feature
 probes. The
@@ -322,35 +330,33 @@ this section owns the capability-specific query order.
 
 When `TERM` is an xterm hint but not a Kitty hint, the remaining slots append
 the finite XTGETTCAP `RGB` refinement followed by the DECRQSS modifyOtherKeys
-status. On an approved outer route, that hint is read from the route's own
-explicit outer-terminal identity rather than the inner pane's `TERM`, matching
-the routed carve-out already applied to publication and query planning below —
-otherwise the inner pane's `TERM` would decide whether the outer terminal's own
-DCS probes are written. A native Windows connection carries the same risk from
-the opposite direction: `TERM` is essentially never set there, under either
-classic conhost or modern Windows Terminal (which sets `WT_SESSION`, not
-`TERM`), so an unrouted connection whose resolved description is the built-in
-`windows-vt` profile is also accepted as an xterm-like hint for these two
-probes. That description is only selected after
-`ENABLE_VIRTUAL_TERMINAL_PROCESSING` is confirmed active, and both probes
-degrade safely on a terminal that does not understand them: conhost's own DCS
-parser answers an unrecognized DECRQSS status with a conformant `DCS 0 $ r ST`
-negative reply and consumes an unrecognized XTGETTCAP request the same way it
-discards any other unknown DCS. That status may publish query-origin
-`XtermKeyboard` support. Color evidence is the one family where the query phase
-may raise, rather than merely narrow, a lower-precedence result: RGB can refine
-a default, environment, or database color depth, since a live direct-color reply
-is stronger evidence than any of the three, but prior-query and override origins
-remain authoritative. `NO_COLOR` with a non-empty value is the one carve-out
-that runs the other way: once it has forced `Monochrome`/`Origin.Environment`,
-the RGB query must not refine that evidence even though its origin is otherwise
-refinable, so a live terminal that answers the direct-color probe can never
-silently override the caller's request to disable color. An explicit
-`Settings.ColorDepth`, or `NO_COLOR` itself, prevents the RGB query from
-registering or writing at all, which preserves its capacity slot for another
-probe. `Session` prefers proven Kitty keyboard support; otherwise it leases the
-configured xterm level and restores xterm's initial resource value during
-reverse cleanup.
+status. On an approved outer route, RGB uses the explicit outer identity;
+modifyOtherKeys uses the nearest connection's identity because its query and
+mode changes are sent raw. Neither identity authorizes the other destination. A
+native Windows connection carries the same risk from the opposite direction:
+`TERM` is essentially never set there, under either classic conhost or modern
+Windows Terminal (which sets `WT_SESSION`, not `TERM`), so an unrouted
+connection whose resolved description is the built-in `windows-vt` profile is
+also accepted as an xterm-like hint for these two probes. That description is
+only selected after `ENABLE_VIRTUAL_TERMINAL_PROCESSING` is confirmed active,
+and both probes degrade safely on a terminal that does not understand them:
+conhost's own DCS parser answers an unrecognized DECRQSS status with a
+conformant `DCS 0 $ r ST` negative reply and consumes an unrecognized XTGETTCAP
+request the same way it discards any other unknown DCS. That status may publish
+query-origin `XtermKeyboard` support. Color evidence is the one family where the
+query phase may raise, rather than merely narrow, a lower-precedence result: RGB
+can refine a default, environment, or database color depth, since a live
+direct-color reply is stronger evidence than any of the three, but prior-query
+and override origins remain authoritative. `NO_COLOR` with a non-empty value is
+the one carve-out that runs the other way: once it has forced
+`Monochrome`/`Origin.Environment`, the RGB query must not refine that evidence
+even though its origin is otherwise refinable, so a live terminal that answers
+the direct-color probe can never silently override the caller's request to
+disable color. An explicit `Settings.ColorDepth`, or `NO_COLOR` itself, prevents
+the RGB query from registering or writing at all, which preserves its capacity
+slot for another probe. `Session` prefers proven Kitty keyboard support;
+otherwise it leases the configured xterm level and restores xterm's initial
+resource value during reverse cleanup.
 
 Synchronous host dimensions are the highest-confidence geometry evidence.
 `TIOCGWINSZ` cells and pixels suppress the corresponding window queries before

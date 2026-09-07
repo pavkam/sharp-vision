@@ -196,34 +196,45 @@ typed response event owned by the
 [runtime routing contract](../protocols/runtime-routing.md#inbound-consumption-surface).
 
 Active-query output uses the
-[multiplexer boundary](capabilities.md#multiplexer-boundary). An approved route
-wraps the complete typed batch and unwraps replies before correlation. If route
-encoding fails, the batch is retired and absent evidence is published atomically
-— no partial bytes, no flush, no active optional modes, and no scheduled
-deadline work. A route never changes backend identity.
+[multiplexer boundary](capabilities.md#multiplexer-boundary). With an approved
+outer route, probes follow the operation's destination:
 
-The batch retires outstanding families in two ways:
+| Destination                      | Query families                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Nearest terminal, raw            | Kitty keyboard; private modes 2026, 1004, 2004, 1006, 1016; window/cell geometry; DECRQSS modifyOtherKeys; cursor position. |
+| Explicit outer terminal, wrapped | DA1/DA2; clipboard mode 5522; palette/default colors; iTerm2 capabilities; XTGETTCAP RGB; Kitty graphics.                   |
 
-1. DA1 is written last among the standard queries, immediately before the
-   trailing `CSI 6n` fence. A terminal answers written queries strictly in
-   order, so a DA1 reply proves every family registered before it - the Kitty
-   keyboard/graphics prelude, DA2, every still-pending DECRQM mode, geometry,
-   colors, the iTerm2 capability probe, XTGETTCAP, and DECRQSS - either already
-   answered or was silently ignored, and DA1 retires all of it immediately
-   instead of waiting for the deadline.
-2. The one shared exclusive deadline retires the batch when no reply arrives for
-   a still-outstanding family.
+The local group is written first, followed by one wrapped outer group. Both
+share one finite capacity and exclusive deadline; the graphics probe consumes
+its slot before cursor position can be admitted. Both groups are prepared before
+any destination write. If route encoding fails, all registered work is retired
+and absent evidence is published atomically: no partial local bytes, flush,
+optional-mode activation, or scheduled deadline. A route never changes backend
+identity, description programs, or key mappings.
 
-The very last query is `CSI 6n`, a cursor-position request written after DA1
-specifically so it can never be retired by DA1's own reply. Its reply resolves
-only its own tracked family and deliberately does not retire any other
-still-outstanding family: the reply grammar is byte-identical to a modified F3
-keystroke, which a user or replayed typeahead can deliver at any point in the
-shared deadline window, so a match is never trustworthy proof that every other
-family stayed silent. The batch still publishes once every family has resolved —
-through its own matching reply, the DA1 fence, or the trailing fence's own
-resolution when it happens to be the last outstanding family — or once the
-shared deadline expires.
+Publication uses the nearest profile and real environment for raw mode and
+keyboard families. Routed output families use the explicit outer baseline
+without inner terminal-name hints. Outer support therefore cannot authorize a
+raw mode that the nearest layer does not support, or suppress a locally
+supported mode.
+
+DA1 is the completion fence only for queries sent to the terminal that answers
+it. On a direct connection it follows the keyboard/graphics prelude and standard
+queries, immediately before cursor position. On an outer route it follows the
+outer probes and retires only those families, including clipboard mode 5522.
+Local keyboard, modes, geometry, and status remain pending for their own replies
+or the shared deadline. An outer DA1 never supplies negative local keyboard
+evidence.
+
+Cursor position is last on a direct connection and last in the local group on an
+outer route. Its reply resolves only its own family: the grammar is
+byte-identical to modified F3, so it cannot prove any other query stayed silent.
+DA1 never retires cursor position. Unsolicited, duplicate, and late DA1 replies
+also cannot retire active keyboard or graphics queries.
+
+The batch publishes once every family resolves through its own reply, its
+same-terminal DA1 fence, or the shared exclusive deadline. Replies remain typed
+and observable regardless of whether they contributed capability evidence.
 
 Silence never means unsupported. A family retired by the deadline stays absent
 because that alone never proves what that feature can do.

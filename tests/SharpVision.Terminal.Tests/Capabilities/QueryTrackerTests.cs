@@ -10,6 +10,41 @@ using SharpVision.Terminal.Capabilities;
 /// </summary>
 public sealed class QueryTrackerTests
 {
+    /// <summary>Verifies an unmatched DA1 cannot retire independently active query families.</summary>
+    [Theory]
+    [InlineData(QueryMatch.Unknown)]
+    [InlineData(QueryMatch.Duplicate)]
+    [InlineData(QueryMatch.Late)]
+    public void Match_WhenPrimaryAttributesIsNotActive_PreservesKeyboardAndGraphics(QueryMatch expected)
+    {
+        var clock = new ManualTimeProvider();
+        var tracker = new QueryTracker(timeProvider: clock);
+        XtermResponses.TryCsi("?1;2"u8, [], (byte) 'c', out var attributes).ShouldBeTrue();
+
+        if (expected != QueryMatch.Unknown)
+        {
+            tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _).ShouldBeTrue();
+
+            if (expected == QueryMatch.Duplicate)
+            {
+                tracker.Match(attributes).ShouldBe(QueryMatch.Matched);
+            }
+            else
+            {
+                clock.Advance(QueryLimits.Default.QueryTimeout);
+            }
+        }
+
+        tracker.TryRegister(QueryKind.Keyboard, null, out _).ShouldBeTrue();
+        tracker.TryRegister(QueryKind.KittyGraphics, "31", out _).ShouldBeTrue();
+
+        tracker.Match(attributes).ShouldBe(expected);
+
+        tracker.ActiveCount.ShouldBe(2);
+        tracker.Match(QueryKind.Keyboard).ShouldBe(QueryMatch.Matched);
+        tracker.Match(QueryKind.KittyGraphics, "31").ShouldBe(QueryMatch.Matched);
+    }
+
     /// <summary>Gets every uncorrelated standard startup response family.</summary>
     public static TheoryData<QueryKind> StandardFamilies { get; } =
     [

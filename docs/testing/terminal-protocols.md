@@ -144,9 +144,10 @@ repeated assignment, caller mutation, and failed evaluation. Warmed numeric
 stay within the relative CSI-write budget.
 
 Capability-negotiation tests assert the complete startup batch byte for byte at
-every supported query capacity. They begin with database and override evidence,
-prove DA2 follows DA1, and prove complete local `TIOCGWINSZ` geometry suppresses
-the 14/16/18 queries. They deliver DA, mode, OSC 4/10/11, and window and cell
+every supported query capacity, including a graphics probe that fills the last
+slot. They begin with database and override evidence, prove DA1 follows the
+probes it fences, and prove complete local `TIOCGWINSZ` geometry suppresses the
+14/16/18 queries. They deliver DA, mode, OSC 4/10/11, and window and cell
 responses out of order and across every split, advance an injected clock to the
 shared exclusive deadline, and test every family one tick before, exactly at,
 and one tick after it. Registration tests move the clock between families to
@@ -180,13 +181,17 @@ once all CSI replies arrive. Complete and oversized fabricated Screen DCS
 replies produce one redacted diagnostic and no stray key, text, typed response,
 or raw sequence at every split. Runtime oracles send routed DA1 through real
 sessions and prove unwrapping precedes originating-query correlation and profile
-publication for tmux and Screen. A fake clock proves unanswered routed queries
-retain conservative evidence at the original exclusive deadline. Installed tmux
-and GNU screen executables run under a real `script`-owned pseudoterminal;
-Screen evidence freezes the exact CSI relay and the missing XTGETTCAP/DECRQSS ST
-bytes. Their absence is an explicit platform skip. Enhanced-key tests cover
-exact query, set, and restore bytes, legacy `CSI 27;modifier;key~`, compatible
-CSI-u, malformed recovery, Kitty precedence, and session reverse cleanup.
+publication for tmux and Screen. Exact-byte tests separate local modes,
+keyboard, and geometry from wrapped outer probes; opposing inner/outer profiles
+prove raw leases use local support. Outer DA1 and local replies arrive in both
+orders, and unmatched DA1 never retires independent keyboard or graphics work. A
+fake clock proves unanswered routed queries retain conservative evidence at the
+original exclusive deadline. Installed tmux and GNU screen executables run under
+a real `script`-owned pseudoterminal; Screen evidence freezes the exact CSI
+relay and the missing XTGETTCAP/DECRQSS ST bytes. Their absence is an explicit
+platform skip. Enhanced-key tests cover exact query, set, and restore bytes,
+legacy `CSI 27;modifier;key~`, compatible CSI-u, malformed recovery, Kitty
+precedence, and session reverse cleanup.
 
 Color-precedence tests begin with the default, `TERM=*-256color`, and
 `COLORTERM` heuristics, then prove a validated `RGB=24` publishes true color

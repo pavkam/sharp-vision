@@ -15,6 +15,45 @@ using TerminalInputOptions = InputOptions;
 /// </summary>
 public sealed class ProtocolRouterTests
 {
+    /// <summary>Verifies fragmented outer DA1 and local CPR replies cannot finish pending local queries.</summary>
+    [Fact]
+    public void Route_WhenOuterDa1ArrivesWrapped_PreservesLocalNegotiation()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All, paneVisible: true, MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+        var options = new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "tmux-256color" },
+            overrides: null, limits: QueryLimits.Default, multiplexing: policy);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
+
+        for (var split = 0; split <= wrapped.WrittenCount; split++)
+        {
+            var negotiator = new Negotiator(options, new Capabilities.ManualTimeProvider());
+            negotiator.Start(new ArrayBufferWriter<byte>(), new Size(80, 24), new Size(800, 480), route);
+            var forwarded = new Runtime.RuntimeSink();
+            var sink = new NegotiationSink(forwarded, negotiator);
+            using ProtocolRouter router = new(sink, route);
+            negotiator.FenceQueried.ShouldBeTrue();
+            router.EnableCursorPositionQuery();
+
+            router.Route(wrapped.WrittenSpan[..split]);
+            router.Route(wrapped.WrittenSpan[split..]);
+            router.Route("\u001b[1;1R"u8);
+
+            negotiator.Completed.ShouldBeFalse();
+            negotiator.HasPendingWork.ShouldBeTrue();
+            router.Route("\u001b[?3u\u001b[?2026;1$y\u001b[?1004;1$y\u001b[?2004;1$y\u001b[?1006;1$y\u001b[?1016;1$y"u8);
+
+            negotiator.Completed.ShouldBeTrue();
+            negotiator.Capabilities.KittyKeyboard.ShouldBe(new Feature(CapabilitySupport.Supported, Origin.Query));
+            forwarded.Strokes.ShouldBeEmpty();
+            forwarded.Text.ShouldBeEmpty();
+        }
+    }
+
     /// <summary>Verifies router deadline forwarding resumes live keys after dropping a paste.</summary>
     [Fact]
     public void ExpirePaste_WhenDeadlineIsReached_ReportsTruncationAndResumesKeys()

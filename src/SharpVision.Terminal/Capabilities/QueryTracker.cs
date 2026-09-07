@@ -269,11 +269,15 @@ public sealed class QueryTracker
         };
         _ = ExpireCore(now);
         PruneHistory(now);
-        var keyboardUnsupported = kind == QueryKind.PrimaryAttributes &&
-                                  CompleteUnsupported(QueryKind.Keyboard, now);
-        var graphicsUnsupported = kind == QueryKind.PrimaryAttributes &&
-                                  CompleteUnsupportedFamily(QueryKind.KittyGraphics, now);
         var result = MatchCore(kind, new Key(kind, null), now);
+
+        // Only a reply to an active DA1 can fence its earlier prelude. Unsolicited, duplicate,
+        // or late attributes must not cancel unrelated work registered in the meantime.
+        var fencesPrelude = result == QueryMatch.Matched && kind == QueryKind.PrimaryAttributes;
+        var keyboardUnsupported = fencesPrelude &&
+                                  CompleteUnsupported(QueryKind.Keyboard, now);
+        var graphicsUnsupported = fencesPrelude &&
+                                  CompleteUnsupportedFamily(QueryKind.KittyGraphics, now);
 
         if (graphicsUnsupported)
         {
@@ -395,24 +399,19 @@ public sealed class QueryTracker
     }
 
     /// <summary>
-    /// Retires every still-active family except <paramref name="exceptKind"/> with the same
-    /// silent <see cref="Outcome.TimedOut"/> resolution the shared deadline applies in
-    /// <see cref="ExpireAll(DateTimeOffset)"/> - no diagnostic is raised and no evidence field
-    /// is set, so a fenced family stays absent rather than becoming
-    /// <see cref="Origin.Query"/> evidence it never actually received. This is the trustworthy
-    /// half of the DA1 fence: because a terminal answers written queries strictly in order, a
-    /// DA1 reply proves every family registered before it either answered already or was
-    /// silently ignored. <paramref name="exceptKind"/> exists so a caller can protect one
-    /// family that is written after DA1 (the trailing cursor-position fence) and therefore
-    /// cannot be proven silent by a DA1 reply at all.
+    /// Retires active families except those whose replies this fence cannot prove silent.
+    /// A family sent to another terminal layer, or written after the fence, must remain active
+    /// until its own response or deadline. Retired families receive bounded late-reply guards.
     /// </summary>
-    /// <param name="exceptKind">The one family this call must never retire.</param>
+    /// <param name="exceptKinds">The non-null set of families this call must never retire.</param>
     /// <param name="now">The exact response-observation instant.</param>
     /// <returns>The number of active queries retired by this call.</returns>
-    internal int RetireActiveFamiliesExcept(QueryKind exceptKind, DateTimeOffset now)
+    /// <exception cref="ArgumentNullException"><paramref name="exceptKinds"/> is null.</exception>
+    internal int RetireActiveFamiliesExcept(IReadOnlySet<QueryKind> exceptKinds, DateTimeOffset now)
     {
+        ArgumentNullException.ThrowIfNull(exceptKinds);
         var retired = RetireKeys(
-            _active.Keys.Where(key => key.Kind != exceptKind),
+            _active.Keys.Where(key => !exceptKinds.Contains(key.Kind)),
             Outcome.TimedOut,
             now);
         PruneHistory(now);

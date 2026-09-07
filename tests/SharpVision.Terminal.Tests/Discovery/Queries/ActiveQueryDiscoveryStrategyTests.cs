@@ -21,6 +21,156 @@ public sealed class ActiveQueryDiscoveryStrategyTests
 {
     #region Core query batch and DECRPM/DA negotiation
 
+    /// <summary>Verifies the graphics probe consumes its slot before admitting a trailing query.</summary>
+    [Fact]
+    public void TryStart_WhenGraphicsFillsCapacity_OmitsCursorPosition()
+    {
+        var strategy = new ActiveQueryDiscoveryStrategy(new NegotiationOptions(
+            new Dictionary<string, string?>(), limits: QueryLimits.Default with { MaxConcurrentQueries = 17 }), new ManualTimeProvider());
+        var written = new ArrayBufferWriter<byte>();
+
+        _ = strategy.TryStart(written, null, null);
+
+        var bytes = Encoding.ASCII.GetString(written.WrittenSpan);
+        bytes.ShouldContain("\u001b_G");
+        bytes.ShouldNotContain("\u001b[6n");
+        strategy.FenceQueried.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies raw operations query the nearest layer while routed output queries the outer terminal.</summary>
+    [Theory]
+    [InlineData("tmux-256color")]
+    [InlineData("xterm-256color")]
+    public void TryStart_WhenOuterRouteIsActive_TargetsOperationOwner(string localName)
+    {
+        var options = new NegotiationOptions(new Dictionary<string, string?> { ["TERM"] = localName });
+        var strategy = new ActiveQueryDiscoveryStrategy(options, new ManualTimeProvider());
+        var outerProfile = new TerminalProfile(
+            new Description("xterm-256color", DescriptionOrigin.BuiltIn, Suitability.Usable),
+            TerminalCapabilities.Conservative);
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], outerProfile, PassthroughMode.All, paneVisible: true,
+            MultiplexingOperation.CapabilityQueries));
+        var written = new ArrayBufferWriter<byte>();
+
+        strategy.TryStart(written, null, null, route).ShouldBeTrue();
+
+        var envelope = written.WrittenSpan.IndexOf("\u001bPtmux;"u8);
+        envelope.ShouldBeGreaterThan(0);
+        var local = Encoding.ASCII.GetString(written.WrittenSpan[..envelope]);
+        var unwrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.TryUnwrap(written.WrittenSpan[(envelope + 2)..^2], unwrapped).ShouldBeTrue();
+        var outer = Encoding.ASCII.GetString(unwrapped.WrittenSpan);
+        local.ShouldBe("\u001b[?u\u001b[?2026$p\u001b[?1004$p\u001b[?2004$p\u001b[?1006$p" +
+                       "\u001b[?1016$p\u001b[14t\u001b[16t\u001b[18t" +
+                       (localName == "xterm-256color" ? "\u001bP$q>4m\u001b\\" : "") + "\u001b[6n");
+        outer.ShouldContain("\u001b[>c");
+        outer.ShouldContain("\u001b[?5522$p");
+        outer.ShouldContain("\u001bP+q524742\u001b\\");
+        outer.ShouldEndWith("\u001b[c");
+        outer.ShouldNotContain("\u001b[?u");
+        outer.ShouldNotContain("\u001b[?2026$p");
+        outer.ShouldNotContain("\u001b[?1004$p");
+        outer.ShouldNotContain("\u001b[?2004$p");
+        outer.ShouldNotContain("\u001b[?1006$p");
+        outer.ShouldNotContain("\u001b[?1016$p");
+        outer.ShouldNotContain("\u001b[14t");
+        outer.ShouldNotContain("\u001b[16t");
+        outer.ShouldNotContain("\u001b[18t");
+        outer.ShouldNotContain("\u001b[6n");
+        outer.ShouldNotContain("\u001bP$q>4m\u001b\\");
+    }
+
+    /// <summary>Verifies an outer DA1 fence cannot retire local modes or keyboard queries.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Accept_WhenOuterDaPrecedesLocalReplies_KeepsLocalQueriesPending(bool cursorFirst)
+    {
+        var strategy = new ActiveQueryDiscoveryStrategy(new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "tmux-256color" }), new ManualTimeProvider());
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All, paneVisible: true, MultiplexingOperation.CapabilityQueries));
+        _ = strategy.TryStart(new ArrayBufferWriter<byte>(), null, null, route);
+
+        if (cursorFirst)
+        {
+            var cursor = Response("1;2"u8, [], (byte) 'R');
+            strategy.Accept(in cursor).ShouldBe(QueryMatch.Matched);
+        }
+
+        var attributes = Response("?1;2;4"u8, [], (byte) 'c');
+        strategy.Accept(in attributes).ShouldBe(QueryMatch.Matched);
+        strategy.Completed.ShouldBeFalse();
+        var keyboard = Response("?3"u8, [], (byte) 'u');
+        strategy.Accept(in keyboard).ShouldBe(QueryMatch.Matched);
+
+        foreach (var mode in new[] { 2026, 1004, 2004, 1006, 1016 })
+        {
+            var response = PrivateMode(mode, 1);
+            strategy.Accept(in response).ShouldBe(QueryMatch.Matched);
+        }
+
+        _ = strategy.Complete();
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Query);
+        strategy.Capabilities.KittyKeyboard.ShouldBe(supported);
+        strategy.Capabilities.SynchronizedOutput.ShouldBe(supported);
+        strategy.Capabilities.FocusReporting.ShouldBe(supported);
+        strategy.Capabilities.BracketedPaste.ShouldBe(supported);
+        strategy.Capabilities.CellMouse.ShouldBe(supported);
+        strategy.Capabilities.PixelMouse.ShouldBe(supported);
+        strategy.Capabilities.Sixel.ShouldBe(supported);
+    }
+
+    /// <summary>Verifies outer support cannot settle unanswered local operation families.</summary>
+    [Theory]
+    [InlineData(CapabilitySupport.Unknown)]
+    [InlineData(CapabilitySupport.Unsupported)]
+    public void Complete_WhenOuterProfileSupportsLocalModes_PreservesNearestBaseline(CapabilitySupport localState)
+    {
+        var local = new Feature(localState, localState == CapabilitySupport.Unknown ? Origin.Default : Origin.Database);
+        var supported = new Feature(CapabilitySupport.Supported, Origin.Database);
+        var baseline = TerminalCapabilities.Conservative with
+        {
+            SynchronizedOutput = local,
+            FocusReporting = local,
+            BracketedPaste = local,
+            CellMouse = local,
+            PixelMouse = local,
+            KittyKeyboard = local,
+            XtermKeyboard = local
+        };
+        var outer = TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative with
+        {
+            SynchronizedOutput = supported,
+            FocusReporting = supported,
+            BracketedPaste = supported,
+            CellMouse = supported,
+            PixelMouse = supported,
+            KittyKeyboard = supported,
+            XtermKeyboard = supported,
+            KittyGraphics = supported
+        });
+        var strategy = new ActiveQueryDiscoveryStrategy(new NegotiationOptions(
+            new Dictionary<string, string?> { ["TERM"] = "tmux-256color" }), baseline, new ManualTimeProvider());
+        var route = new MultiplexerRoute(new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], outer, PassthroughMode.All, paneVisible: true,
+            MultiplexingOperation.CapabilityQueries));
+        _ = strategy.TryStart(new ArrayBufferWriter<byte>(), null, null, route);
+
+        _ = strategy.Complete();
+
+        strategy.Capabilities.KittyGraphics.ShouldBe(supported);
+        strategy.Capabilities.SynchronizedOutput.ShouldBe(local);
+        strategy.Capabilities.FocusReporting.ShouldBe(local);
+        strategy.Capabilities.BracketedPaste.ShouldBe(local);
+        strategy.Capabilities.CellMouse.ShouldBe(local);
+        strategy.Capabilities.PixelMouse.ShouldBe(local);
+        strategy.Capabilities.KittyKeyboard.ShouldBe(local);
+        strategy.Capabilities.XtermKeyboard.ShouldBe(local);
+    }
+
     /// <summary>Verifies DA closes an unanswered ordered Kitty probe.</summary>
     [Fact]
     public void Accept_WhenDaPrecedesKeyboard_PublishesUnsupportedKeyboard()
@@ -1726,15 +1876,9 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         written.ShouldContain("?5522$p");
     }
 
-    /// <summary>
-    /// Verifies the routed-outer-profile carve-out extends to the xterm-proprietary DCS probe
-    /// gates: an approved route's own outer terminal identity decides whether the XTGETTCAP RGB
-    /// and DECRQSS modifyOtherKeys probes are written, not the inner pane's TERM. tmux's own
-    /// defaults (tmux-256color, screen-256color) must not suppress these probes when the outer
-    /// terminal is explicitly known to be xterm.
-    /// </summary>
+    /// <summary>Verifies an outer xterm hint admits RGB without authorizing a local keyboard probe.</summary>
     [Fact]
-    public void TryStart_WhenRouteHasExplicitXtermOuterProfile_WritesBothDcsProbesRegardlessOfInnerTerm()
+    public void TryStart_WhenRouteHasExplicitXtermOuterProfile_WritesOuterColorProbeOnly()
     {
         var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -1762,16 +1906,12 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         started.ShouldBeTrue();
         var written = Encoding.ASCII.GetString(destination.WrittenSpan);
         written.ShouldContain("+q524742");
-        written.ShouldContain("$q>4m");
+        written.ShouldNotContain("$q>4m");
     }
 
-    /// <summary>
-    /// Verifies the negative of the test above: a declared non-xterm outer profile (here, plain
-    /// ANSI) still withholds the xterm-proprietary probes even though the route is approved,
-    /// because the outer terminal genuinely is not xterm.
-    /// </summary>
+    /// <summary>Verifies a local xterm hint admits keyboard status independently of outer color support.</summary>
     [Fact]
-    public void TryStart_WhenRouteHasExplicitNonXtermOuterProfile_WithholdsBothDcsProbes()
+    public void TryStart_WhenRouteHasExplicitNonXtermOuterProfile_WritesLocalKeyboardProbeOnly()
     {
         var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
         {
@@ -1796,7 +1936,7 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         started.ShouldBeTrue();
         var written = Encoding.ASCII.GetString(destination.WrittenSpan);
         written.ShouldNotContain("+q524742");
-        written.ShouldNotContain("$q>4m");
+        written.ShouldContain("$q>4m");
     }
 
     /// <summary>

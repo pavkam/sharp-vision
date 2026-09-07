@@ -115,6 +115,11 @@ reports from legacy X10 or urxvt cell reports; a legacy extended-button press
 keeps its cell coordinates and button identity even while SGR pixel mode is
 active.
 
+Inside tmux with an explicit outer route, compare local focus, paste, mouse, and
+keyboard activation against the pane's support. An outer terminal's support must
+not change which raw mode leases are activated. Query output should show local
+mode/keyboard/geometry requests followed by a wrapped outer group.
+
 For paste recovery, feed an opening bracketed-paste marker and payload without
 the closing marker, then leave input idle for ten seconds. Expect one truncation
 diagnostic, no partial paste event, and normal decoding of the next key. A paste

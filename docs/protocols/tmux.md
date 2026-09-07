@@ -78,7 +78,9 @@ sequenceDiagram
     participant Tmux as Nearest tmux layer
     participant Outer as Explicit outer terminal
 
-    Discovery->>Policy: Typed bounded query batch
+    Discovery->>Tmux: Raw local mode, keyboard, geometry, and cursor queries
+    Tmux-->>Discovery: Local typed replies
+    Discovery->>Policy: Typed bounded outer query group
     Policy->>Policy: Check operation, visibility, depth, and byte limits
     Policy->>Tmux: Complete wrapped envelope
     Tmux->>Outer: Unwrapped query bytes
@@ -88,10 +90,21 @@ sequenceDiagram
     Policy-->>Discovery: Typed reply for exact correlation
 ```
 
-Startup negotiation uses the explicit outer profile as its semantic baseline
-without replacing the active inner description, programs, or key map. Its
-capability evidence is not reinterpreted through inner `TERM`, `TMUX`, or
-`TERM_PROGRAM` hints. Its complete typed batch crosses the selected route once.
+Startup negotiation sends mode 2026, focus, paste, mouse, keyboard, and geometry
+probes raw to the nearest terminal, which also receives their enable/disable
+operations. Their evidence comes from the nearest profile and real environment.
+DA1/DA2, clipboard mode 5522, colors, XTGETTCAP, iTerm2, and graphics probes
+follow the explicit outer route. These families use the outer baseline without
+inner terminal-name hints. DECRQSS modifyOtherKeys stays local because its
+keyboard enable is also raw.
+
+The local group precedes one wrapped outer group, with atomic preparation and a
+shared capacity and deadline. An outer DA1 reply fences only outer probes; it
+cannot retire local queries or infer that local Kitty keyboard is unsupported.
+Cursor-position replies resolve only themselves. The
+[discovery pipeline](../architecture/discovery-pipeline.md#active-query-strategy)
+defines the exact ownership and completion rules.
+
 The bounded input seam recognizes only the configured outer prefix, retains at
 most the envelope limit across arbitrary fragmentation, peels each configured
 layer, and accepts only one complete recognized DA, mode, Kitty keyboard, Kitty
@@ -148,8 +161,11 @@ executable is an explicit platform skip.
 
 - [tmux 3.7a manual](https://man7.org/linux/man-pages/man1/tmux.1.html)
 - [tmux FAQ](https://github.com/tmux/tmux/wiki/FAQ)
+- [tmux 3.7 input parser](https://github.com/tmux/tmux/blob/3.7/input.c) defines
+  pane-local mode queries and mode changes, including focus, paste, mouse, and
+  synchronized output.
 
-Sources accessed 2026-08-29.
+Sources accessed 2026-09-07.
 
 ## Expected behavior
 
