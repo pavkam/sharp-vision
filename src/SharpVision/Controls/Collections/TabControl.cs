@@ -838,8 +838,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
                     -1,
                     previousSelectedIndex,
                     previousSelectedItem,
-                    ActivationCause.Programmatic,
-                    force: true),
+                    ActivationCause.Programmatic),
                 ref failure);
         }
 

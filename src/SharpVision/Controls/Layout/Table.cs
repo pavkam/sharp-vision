@@ -471,6 +471,22 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         RequireNotProgressive("Sorting is unavailable while the table is progressive; the data source owns sort order.");
         ArgumentOutOfRangeException.ThrowIfNotDefined(direction, nameof(direction), "The enum value is unknown.");
 
+        // Validate columnIndex before CommitEdit below mutates any in-flight edit: an invalid
+        // argument must throw without side effects, matching InsertRow/ReplaceRow's precedent of
+        // validating arguments before touching state.
+        if (direction == TableSortDirection.None)
+        {
+            if (columnIndex is not -1 && (columnIndex < 0 || columnIndex >= Columns.Count))
+            {
+                throw new ArgumentOutOfRangeException(nameof(columnIndex));
+            }
+        }
+        else
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
+        }
+
         // ReorderRows below unconditionally detaches and reattaches every row's cells when the
         // order changes, including a cell currently being edited; detaching a control that holds
         // real keyboard focus nulls FocusManager.Focused with nothing to restore it on reattach.
@@ -481,11 +497,6 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
 
         if (direction == TableSortDirection.None)
         {
-            if (columnIndex is not -1 && (columnIndex < 0 || columnIndex >= Columns.Count))
-            {
-                throw new ArgumentOutOfRangeException(nameof(columnIndex));
-            }
-
             var resetColumnChanged = SortColumnIndex != -1;
             var resetDirectionChanged = SortDirection != TableSortDirection.None;
             var resetSortVersion = resetColumnChanged || resetDirectionChanged
@@ -529,8 +540,6 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
             return;
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
         var columnChanged = SortColumnIndex != columnIndex;
         var directionChanged = SortDirection != direction;
         var sortVersion = columnChanged || directionChanged ? ++_sortVersion : _sortVersion;
@@ -1221,25 +1230,29 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     private void OnControllerSelectionChanged(object? sender, TableSelectionChangedEventArgs eventArgs)
     {
         _ = sender;
+        var selectionVersion = ++_selectionVersion;
         SelectionChanged?.Invoke(this, eventArgs);
 
         // SelectionChanged (and each NotifyPropertyChanged call below) can synchronously reach a
-        // subscriber that disposes the table - re-check before every further disposed-guarded call.
-        if (IsDisposed)
+        // subscriber that disposes the table, or reentrantly triggers another progressive
+        // selection change - the version check alone only catches the reentrant case, not
+        // disposal, so both must be checked before every further guarded call, matching the
+        // eager CommitSelection(IEnumerable, IEnumerable) overload above.
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(ActiveIndex), InvalidationImpact.None);
 
-        if (IsDisposed)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return;
         }
 
         NotifyPropertyChanged(nameof(ActiveKey), InvalidationImpact.None);
 
-        if (IsDisposed)
+        if (IsDisposed || _selectionVersion != selectionVersion)
         {
             return;
         }

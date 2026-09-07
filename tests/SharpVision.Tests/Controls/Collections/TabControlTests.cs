@@ -475,6 +475,21 @@ public sealed class TabControlTests
         tabs.SelectedItem.ShouldBeNull();
     }
 
+    /// <summary>Verifies clearing pages while none was selected does not raise a spurious SelectionChanged.</summary>
+    [Fact]
+    public void SelectionChanged_WhenClearedWithNoPriorSelection_DoesNotRaiseEvent()
+    {
+        var tabs = Create(Create("First", "One"), Create("Second", "Two"));
+        tabs.SelectedIndex = -1;
+        var changes = new List<TabSelectionChangedEventArgs>();
+        tabs.SelectionChanged += (_, args) => changes.Add(args);
+
+        tabs.Items.Clear();
+
+        changes.ShouldBeEmpty();
+        tabs.SelectedItem.ShouldBeNull();
+    }
+
     /// <summary>Verifies a close request can be cancelled or accepted before removal.</summary>
     [Fact]
     public void Close_WhenRequested_RaisesCancellableEventBeforeRemoval()

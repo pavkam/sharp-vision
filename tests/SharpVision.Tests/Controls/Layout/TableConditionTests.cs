@@ -51,6 +51,56 @@ public sealed class TableConditionTests
         changes.ShouldBe(0);
     }
 
+    /// <summary>Verifies resetting through an out-of-range column index throws before committing
+    /// an in-flight edit, so the edit transaction remains open.</summary>
+    [Theory]
+    [InlineData(-2)]
+    [InlineData(1)]
+    public void SetSort_WhenResettingWithAnOutOfRangeColumnDuringAnEdit_ThrowsBeforeCommittingTheEdit(int columnIndex)
+    {
+        // Arrange
+        var input = new TextInput { Text = "one" };
+        var table = new Table();
+        table.Columns.Add(TableColumn.Fixed("Name", 6));
+        var row = new TableRow([input]);
+        table.Rows.Add(row);
+        table.BeginEdit(row, 0).ShouldBeTrue();
+        input.Text = "changed";
+
+        // Act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => table.SetSort(columnIndex, TableSortDirection.None));
+
+        // Assert
+        exception.ParamName.ShouldBe("columnIndex");
+        table.IsEditing.ShouldBeTrue();
+        input.Text.ShouldBe("changed");
+    }
+
+    /// <summary>Verifies applying an explicit sort with an out-of-range column index throws
+    /// before committing an in-flight edit, so the edit transaction remains open.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void SetSort_WhenApplyingAnOutOfRangeColumnDuringAnEdit_ThrowsBeforeCommittingTheEdit(int columnIndex)
+    {
+        // Arrange
+        var input = new TextInput { Text = "one" };
+        var table = new Table();
+        table.Columns.Add(TableColumn.Fixed("Name", 6));
+        var row = new TableRow([input]);
+        table.Rows.Add(row);
+        table.BeginEdit(row, 0).ShouldBeTrue();
+        input.Text = "changed";
+
+        // Act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() => table.SetSort(columnIndex, TableSortDirection.Ascending));
+
+        // Assert
+        exception.ParamName.ShouldBe("columnIndex");
+        table.IsEditing.ShouldBeTrue();
+        input.Text.ShouldBe("changed");
+    }
+
     /// <summary>Verifies a SortDirection observer that commits a newer sort on the same column
     /// suppresses the superseded transaction's SortChanged, publishing only the newer one.</summary>
     [Fact]

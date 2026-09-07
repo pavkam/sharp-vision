@@ -1006,6 +1006,46 @@ public sealed class TableDataControllerTests
         table.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a SelectionChanged subscriber that reentrantly commits another progressive
+    /// selection does not leave the outer call's frame re-firing ActiveIndex/ActiveKey/SelectedKeys
+    /// PropertyChanged after the nested call already published the fresh state - each property must
+    /// change exactly once for the final selection, not once per frame.</summary>
+    [Fact]
+    public async Task SelectIndex_WhenSelectionChangedSubscriberReentrantlySelectsAnotherIndex_DoesNotDuplicateNotificationsAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(20);
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 10), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+        var reentered = false;
+        var selectionChangedCount = 0;
+        List<string?> propertyNotifications = [];
+        table.SelectionChanged += (_, _) =>
+        {
+            selectionChangedCount++;
+
+            if (!reentered)
+            {
+                reentered = true;
+                table.SelectIndex(3);
+            }
+        };
+        table.PropertyChanged += (_, eventArgs) => propertyNotifications.Add(eventArgs.PropertyName);
+
+        await surface.UpdateAsync(
+            () => table.SelectIndex(2), "select index 2, reentrantly overridden by index 3");
+
+        reentered.ShouldBeTrue();
+        selectionChangedCount.ShouldBe(2);
+        propertyNotifications.Count(name => name == nameof(Table.ActiveIndex)).ShouldBe(1);
+        propertyNotifications.Count(name => name == nameof(Table.ActiveKey)).ShouldBe(1);
+        propertyNotifications.Count(name => name == nameof(Table.SelectedKeys)).ShouldBe(1);
+        table.ActiveIndex.ShouldBe(3);
+        table.ActiveKey.ShouldBe(3);
+        table.SelectedKeys.ShouldBe([3]);
+    }
+
     /// <summary>Verifies SelectAll respects SelectionMode instead of always selecting every cached
     /// key (regression for defect d).</summary>
     [Theory]
