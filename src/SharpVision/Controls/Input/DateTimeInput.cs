@@ -398,7 +398,6 @@ public sealed class DateTimeInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = _fieldBorderWidth + affixes.StartCells + affixes.EndCells;
 
@@ -409,10 +408,6 @@ public sealed class DateTimeInput: InputBase
 
         return new Size(width, _fieldContentHeight);
     }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
 
     /// <summary>Resolves the box editable segment text is drawn into: the content box with the
     /// drop-down indicator's own reserved columns (<see cref="_fieldBorderWidth"/>) subtracted

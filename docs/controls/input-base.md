@@ -25,16 +25,22 @@ those cells. A concrete typed Style still supersedes that fallback. Calling an
 capability is meant to be wired exactly once.
 
 Press/keyboard activation (`EnablePressActivation`, `HandlePressActivation`,
-`Activate`, `TryActivate`, `InteractionBounds`) and pointer-driven drag
-(`EnableDrag`, `TryStartDrag`, `CancelDrag`, `IsDragging`) are inherited
-straight from [`ControlBase`](control.md#api): every capability on this page
-builds on top of a focusable `ControlBase`, but press activation itself is not
-InputBase-specific, so a control that needs it without any of InputBase's
-caption, command, or popup machinery - `Expander`, `ListItem`, `Pager`, the
-internal `InfoBarDismissButton`, and `NavigationViewGroup` - calls it directly
-without deriving `InputBase` at all. See
-[the pressable capabilities page](pressable.md#overview) for the shared state
-machine and interaction contract.
+`Activate`, `TryActivate`, `InteractionBounds`), pointer-driven drag
+(`EnableDrag`, `TryStartDrag`, `CancelDrag`, `IsDragging`), and the owned popup
+with its open/close lifecycle and modal composition (`EnablePopup`,
+`IsPopupOpen`, `AcceptPopupAndClose`, `OnDropDownOpened`/`OnDropDownClosed`,
+`OnPopupArranged`) are inherited straight from [`ControlBase`](control.md#api);
+`InputBase` adds only the family's public `IsOpen` name for that open state.
+Every capability on this page builds on top of a focusable `ControlBase`, but
+none of press activation, drag, or the popup capability is InputBase-specific,
+so a control that needs one without any of InputBase's caption or command
+machinery - `Expander`, `ListItem`, `Pager`, the internal
+`InfoBarDismissButton`, `NavigationViewGroup`, `SuggestionInput`,
+`CommandPalette`, and `CommandBar` - calls it directly without deriving
+`InputBase` at all. See [the pressable capabilities page](pressable.md#overview)
+for the shared press/drag state machine and interaction contract, and
+[Owned popups](control.md#owned-popups) for the popup capability's complete
+authoring contract.
 
 See [the caption and command capabilities page](pressable.md#overview) for the
 single-text-caption authoring role (`EnableCaption`, `Text`, `TextControl`) and
@@ -65,30 +71,26 @@ classDiagram
 
 ## API
 
-| Member                                                       | Type                     | Default | Description                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------ | ------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GetDefaultAppearanceStates(Theme?)`                         | `AppearanceStates`       | Input   | Protected override; supplies the shared `InputStyle` appearance fallback for every derivative, including a capability-free one.                                                                                                                                                                                       |
-| `StartAffix`                                                 | `Affix?`                 | `null`  | Public; optional leading edge-pinned application decoration. The concrete input owns its cell reservation.                                                                                                                                                                                                            |
-| `EndAffix`                                                   | `Affix?`                 | `null`  | Public; optional trailing edge-pinned application decoration. The concrete input owns its cell reservation.                                                                                                                                                                                                           |
-| `IsOpen`                                                     | `bool`                   | —       | Public; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs.                                                                                                                                                                                                     |
-| `DropDownIndicatorWidth` (constant)                          | `int`                    | `1`     | Protected; the cell width every drop-down field reserves for its disclosure indicator.                                                                                                                                                                                                                                |
-| `GetSelectableTextSnapshot()`                                | `SelectableTextSnapshot` | —       | Override; includes the owned caption in the semantic text and visible grapheme geometry it returns as an owned snapshot.                                                                                                                                                                                              |
-| `EnableCaption()`                                            | `void`                   | —       | Opts into the single-text-caption authoring role: a lazily materialized owned caption child, ambient appearance tracking, and contract-based shared access-key ownership.                                                                                                                                             |
-| `Text`                                                       | `string`                 | `""`    | The non-null caption string. The getter never throws; the setter throws `InvalidOperationException` before `EnableCaption` runs.                                                                                                                                                                                      |
-| `TextControl`                                                | `Display.Text?`          | `null`  | Protected, read-only; the lazily materialized owned caption child, or null before `Text` is first assigned.                                                                                                                                                                                                           |
-| `EnableCommand()`                                            | `void`                   | —       | Opts into an optional command a concrete control invokes on activation.                                                                                                                                                                                                                                               |
-| `Command`                                                    | `ICommand?`              | `null`  | Both accessors throw `InvalidOperationException` before `EnableCommand` runs.                                                                                                                                                                                                                                         |
-| `CommandParameter`                                           | `object?`                | `null`  | Borrowed parameter passed to `Command` queries and execution; gated the same way as `Command`.                                                                                                                                                                                                                        |
-| `ExecuteCommandIfAny()`                                      | `void`                   | —       | Protected; invokes `Command` with `CommandParameter` when a command is bound and allows execution.                                                                                                                                                                                                                    |
-| `EnableSegmentEditing(...)` (in-assembly)                    | `SegmentFieldBehavior`   | —       | Private protected; opts into shared routed key classification, active-segment navigation, digit-entry buffering, pointer hit testing, active/null rendering, and focus-safe continuation. In-assembly derivatives only.                                                                                               |
-| `EnableNumericEditing(...)` (in-assembly)                    | `void`                   | —       | Private protected; opts into the shared transient numeric buffer's routed keys, focus lifecycle, selection, placeholder, affix-aware rendering, and cursor replay. In-assembly derivatives only.                                                                                                                      |
-| `TryGetStepDelta(KeyEventArgs, out int)`                     | `bool`                   | —       | Protected static; translates scalar-eligible Up to `+1` and Down to `-1`; command-modified arrows return `false`.                                                                                                                                                                                                     |
-| `ResolveDropDownGlyph(Rune)`                                 | `Rune`                   | —       | Resolves the shared disclosure chevron from the active theme's `InputStyle`, falling back to the supplied code-owned glyph.                                                                                                                                                                                           |
-| `DrawDropDownIndicator(TerminalCanvas, Rect, TerminalStyle)` | `void`                   | —       | Protected; draws the shared disclosure chevron via `ResolveDropDownGlyph`, right-aligned within `DropDownIndicatorWidth` at the content box's top row.                                                                                                                                                                |
-| `EnablePopup(...)`                                           | `Popup`                  | —       | Protected; opts into an owner-managed popup that preserves unrelated popup planes and open state across temporary ancestor unavailability, cancels an active session when the owner itself becomes unavailable, registers its framework-part slot, and composes the shared open/close coordinator. Returns the popup. |
-| `AcceptPopupAndClose()`                                      | `void`                   | —       | Protected; closes an active owned popup through its accepted-session path; a no-op when no popup session is active and open.                                                                                                                                                                                          |
-| `OnDropDownOpened()`, `OnDropDownClosed()`                   | `void`                   | —       | Protected virtual, no-op by default; a control that enables the popup overrides these to raise its own public events.                                                                                                                                                                                                 |
-| `VerifyMutable()`                                            | `void`                   | —       | Exposes `ControlBase`'s internal off-dispatcher/disposed guard under a protected name a third-party derivative can call directly.                                                                                                                                                                                     |
+| Member                                                       | Type                     | Default | Description                                                                                                                                                                                                             |
+| ------------------------------------------------------------ | ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GetDefaultAppearanceStates(Theme?)`                         | `AppearanceStates`       | Input   | Protected override; supplies the shared `InputStyle` appearance fallback for every derivative, including a capability-free one.                                                                                         |
+| `StartAffix`                                                 | `Affix?`                 | `null`  | Public; optional leading edge-pinned application decoration. The concrete input owns its cell reservation.                                                                                                              |
+| `EndAffix`                                                   | `Affix?`                 | `null`  | Public; optional trailing edge-pinned application decoration. The concrete input owns its cell reservation.                                                                                                             |
+| `DropDownIndicatorWidth` (constant)                          | `int`                    | `1`     | Protected; the cell width every drop-down field reserves for its disclosure indicator.                                                                                                                                  |
+| `GetSelectableTextSnapshot()`                                | `SelectableTextSnapshot` | —       | Override; includes the owned caption in the semantic text and visible grapheme geometry it returns as an owned snapshot.                                                                                                |
+| `EnableCaption()`                                            | `void`                   | —       | Opts into the single-text-caption authoring role: a lazily materialized owned caption child, ambient appearance tracking, and contract-based shared access-key ownership.                                               |
+| `Text`                                                       | `string`                 | `""`    | The non-null caption string. The getter never throws; the setter throws `InvalidOperationException` before `EnableCaption` runs.                                                                                        |
+| `TextControl`                                                | `Display.Text?`          | `null`  | Protected, read-only; the lazily materialized owned caption child, or null before `Text` is first assigned.                                                                                                             |
+| `EnableCommand()`                                            | `void`                   | —       | Opts into an optional command a concrete control invokes on activation.                                                                                                                                                 |
+| `Command`                                                    | `ICommand?`              | `null`  | Both accessors throw `InvalidOperationException` before `EnableCommand` runs.                                                                                                                                           |
+| `CommandParameter`                                           | `object?`                | `null`  | Borrowed parameter passed to `Command` queries and execution; gated the same way as `Command`.                                                                                                                          |
+| `ExecuteCommandIfAny()`                                      | `void`                   | —       | Protected; invokes `Command` with `CommandParameter` when a command is bound and allows execution.                                                                                                                      |
+| `EnableSegmentEditing(...)` (in-assembly)                    | `SegmentFieldBehavior`   | —       | Private protected; opts into shared routed key classification, active-segment navigation, digit-entry buffering, pointer hit testing, active/null rendering, and focus-safe continuation. In-assembly derivatives only. |
+| `EnableNumericEditing(...)` (in-assembly)                    | `void`                   | —       | Private protected; opts into the shared transient numeric buffer's routed keys, focus lifecycle, selection, placeholder, affix-aware rendering, and cursor replay. In-assembly derivatives only.                        |
+| `TryGetStepDelta(KeyEventArgs, out int)`                     | `bool`                   | —       | Protected static; translates scalar-eligible Up to `+1` and Down to `-1`; command-modified arrows return `false`.                                                                                                       |
+| `ResolveDropDownGlyph(Rune)`                                 | `Rune`                   | —       | Resolves the shared disclosure chevron from the active theme's `InputStyle`, falling back to the supplied code-owned glyph.                                                                                             |
+| `DrawDropDownIndicator(TerminalCanvas, Rect, TerminalStyle)` | `void`                   | —       | Protected; draws the shared disclosure chevron via `ResolveDropDownGlyph`, right-aligned within `DropDownIndicatorWidth` at the content box's top row.                                                                  |
+| `VerifyMutable()`                                            | `void`                   | —       | Exposes `ControlBase`'s internal off-dispatcher/disposed guard under a protected name a third-party derivative can call directly.                                                                                       |
 
 `CanExecuteChanged` may arrive from any thread. While attached, command-driven
 render invalidation is marshaled to the owning dispatcher and is valid only for
@@ -117,26 +119,6 @@ only while the complete ancestor chain is effectively enabled and visible. The
 concrete `Activate` override still owns state, event, and command ordering; the
 base does not continue after that override returns, so callbacks may hide,
 disable, detach, or dispose the control without a stale framework action.
-
-`EnablePopup` accepts the popup's content control, its preferred
-`PopupPlacement` (default `Below`), whether opening transfers focus to the first
-eligible descendant of the content (`focusOnOpen`, default `false`), the popup's
-own Tab-traversal boundary (`popupTabNavigation`, default `TabNavigation.None`),
-and optional `beforeOpen`/`beforeCloseFocusRestore` hooks. These six parameters
-are the complete public/protected authoring contract; provisional navigation
-callbacks used by first-party controls are not exposed to external derivatives.
-A derived control calls `AcceptPopupAndClose()` only after a semantic keyboard
-or pointer activation accepts its popup content. Calling it without an enabled
-popup, off the owning dispatcher, or after disposal throws through the
-documented mutation guards. Calling it when the enabled popup has no active open
-session is a no-op.
-
-The constructed popup always anchors to the owning control, omits the frame edge
-adjoining it (`ConnectsToAnchor`), and never tracks the anchor's own reflow
-independently - the owner re-arranges its popup child from its own layout pass
-every time instead. Its ownership and close lifetime follow the
-[popup navigation session contract](../concepts/floating-surfaces.md#popup-navigation-sessions),
-while first-party provisional state remains an internal implementation detail.
 
 ## Keyboard
 
@@ -172,6 +154,12 @@ public sealed class TagField : InputBase
 }
 ```
 
+`EnablePopup`, `AcceptPopupAndClose`, and the `OnDropDownOpened`/
+`OnDropDownClosed`/`OnPopupArranged` hooks used above are inherited from
+`ControlBase`, and `IsOpen` is this family's name for the inherited
+`IsPopupOpen`; see [Owned popups](control.md#owned-popups) for their complete
+authoring contract, including base-owned layout and lifecycle forwarding.
+
 ## Expected behavior
 
 | Scope                 | Observable evidence                                                                                                                                                                                                    |
@@ -180,10 +168,7 @@ public sealed class TagField : InputBase
 | Integrated behavior   | Composed capabilities (press activation driving an owned popup, segment editing alongside a popup, or transient numeric editing) operate without collision, matching the concrete controls that ship with the library. |
 | Complete runtime path | Attachment, focus restoration on popup close, and disposal complete without leaked subscriptions, whether zero, one, or every capability is enabled.                                                                   |
 
-A derived control that never calls `EnablePopup` owns no popup framework-part
-slot at all - `OwnedControlCount` and `FindOwnedSlot("drop-down")` reflect that
-directly. A derived control that never calls `EnableSegmentEditing` never
-constructs the shared segment engine, and one that never calls
-`EnableNumericEditing` never constructs the transient numeric behavior. The
-unconditional `IsFocusable`/`IsTabStop` default is the only cost every
-`InputBase` pays.
+A derived control that never calls `EnableSegmentEditing` never constructs the
+shared segment engine, and one that never calls `EnableNumericEditing` never
+constructs the transient numeric behavior. The unconditional
+`IsFocusable`/`IsTabStop` default is the only cost every `InputBase` pays.

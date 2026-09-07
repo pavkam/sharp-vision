@@ -24,7 +24,6 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly TextInput _input;
     private readonly ListView _list;
     private readonly Popup _popup;
-    private readonly PopupDropDownCoordinator _popupCoordinator;
     private readonly CallbackTransitionStream _minimumPrefixLengthTransitions = new();
     private readonly CallbackTransitionStream _resolverTransitions = new();
     private readonly LatestControlOperation _resolutionOperation = new();
@@ -60,46 +59,22 @@ public sealed class SuggestionInput: CompositeControlBase
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
-        _popup = new Popup
-        {
-            Anchor = _input,
-            ConnectsToAnchor = true,
-            Content = _list,
-            FocusOnOpen = false,
-            ModalBehavior = PopupModalBehavior.None,
-            Placement = PopupPlacement.Below,
-            SuppressCloseOtherPopups = true,
-            TabNavigation = TabNavigation.None,
-            TracksAnchorReflow = false,
-            ContentHeightLimit = Length.Cells(8)
-        };
-        var popupSlot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Popup,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "suggestions",
-                InvalidationImpact.Measure),
-            capacity: 1);
-        popupSlot.Add(_popup);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
-        _popupCoordinator = new PopupDropDownCoordinator(
-            this,
-            _popup,
+        _popup = EnablePopupNavigationSession(
             _list,
-            _input.Focus,
-            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
-            OnOpened,
-            OnClosed,
+            focusOnOpen: false,
+            anchor: _input,
             ownerInitialFocus: _input,
+            requestFocus: _input.Focus,
+            contentHeightLimit: Length.Cells(8),
+            partKey: "suggestions",
             beginSession: BeginNavigationSession,
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession,
             acceptSession: AcceptNavigationSession);
+        _scrollBarStyle = InitializePartStyle(
+            ScrollBarStyle.ForwardingDefinition,
+            nameof(ScrollBarStyle));
+        BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
         InitializeContent(_input);
     }
 
@@ -452,7 +427,19 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public bool IsOpen
     {
-        get => _popupCoordinator.IsOpen;
+        get => IsPopupOpen;
+        set => IsPopupOpen = value;
+    }
+
+    /// <inheritdoc/>
+    protected override string PopupOpenPropertyName => nameof(IsOpen);
+
+    /// <inheritdoc/>
+    /// <remarks>Opening is deferred while a resolution is pending or the current snapshot is
+    /// empty; the request is remembered and honored once eligible suggestions arrive.</remarks>
+    public override bool IsPopupOpen
+    {
+        get => base.IsPopupOpen;
         set
         {
             VerifyMutable();
@@ -461,7 +448,7 @@ public sealed class SuggestionInput: CompositeControlBase
             {
                 _wantsOpen = false;
                 CancelPendingAcceptance();
-                _popupCoordinator.SetOpen(false);
+                base.IsPopupOpen = false;
                 return;
             }
 
@@ -476,7 +463,7 @@ public sealed class SuggestionInput: CompositeControlBase
                 return;
             }
 
-            _popupCoordinator.SetOpen(true);
+            base.IsPopupOpen = true;
         }
     }
 
@@ -495,7 +482,7 @@ public sealed class SuggestionInput: CompositeControlBase
         }
         else if (EffectiveIsEnabled && EffectiveIsVisible && Suggestions.Count > 0)
         {
-            _popupCoordinator.SetOpen(true);
+            base.IsPopupOpen = true;
         }
 
         return _input.Focus();
@@ -529,7 +516,7 @@ public sealed class SuggestionInput: CompositeControlBase
             // Mark Escape before closing because ending the session makes the coordinator's
             // post-callback guard intentionally refuse to mutate the old routed record.
             eventArgs.IsHandled = true;
-            _popupCoordinator.SetOpen(false);
+            base.IsPopupOpen = false;
             return true;
         }
 
@@ -537,7 +524,7 @@ public sealed class SuggestionInput: CompositeControlBase
             stroke.Code == Code.Tab &&
             KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
         {
-            _popupCoordinator.SetOpen(false);
+            base.IsPopupOpen = false;
             return false;
         }
 
@@ -613,8 +600,8 @@ public sealed class SuggestionInput: CompositeControlBase
         var identity = new PopupItemActivationIdentity(
             eventArgs.ActivationGeneration,
             eventArgs.Index,
-            _popupCoordinator.TransitionVersion,
-            _popupCoordinator.SessionGeneration);
+            PopupTransitionVersion,
+            PopupSessionGeneration);
         var acceptanceGeneration = _acceptanceGeneration;
         var selector = TextSelector;
         var acceptedText = selector is null
@@ -664,7 +651,7 @@ public sealed class SuggestionInput: CompositeControlBase
         }
 
         ExceptionDispatchInfo? failure = null;
-        CaptureFailure(_popupCoordinator.AcceptAndClose, ref failure);
+        CaptureFailure(AcceptPopupAndClose, ref failure);
 
         if (IsCurrentAcceptance(prepared))
         {
@@ -702,8 +689,8 @@ public sealed class SuggestionInput: CompositeControlBase
         eventArgs.Index == _list.SelectedIndex &&
         eventArgs.Index == _list.ActiveIndex &&
         IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
-        _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
-        _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+        PopupTransitionVersion == identity.PopupTransitionVersion &&
+        PopupSessionGeneration == identity.PopupSessionGeneration;
 
     [Pure]
     private bool IsCurrentActivationStarting(
@@ -718,8 +705,8 @@ public sealed class SuggestionInput: CompositeControlBase
         eventArgs.ActivationGeneration == identity.ItemGeneration &&
         eventArgs.Index == identity.ItemIndex &&
         IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
-        _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
-        _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+        PopupTransitionVersion == identity.PopupTransitionVersion &&
+        PopupSessionGeneration == identity.PopupSessionGeneration;
 
     [Pure]
     private bool CanAcceptCurrentSnapshot() =>
@@ -728,7 +715,7 @@ public sealed class SuggestionInput: CompositeControlBase
         Dispatcher is not null &&
         EffectiveIsEnabled &&
         EffectiveIsVisible &&
-        _popupCoordinator.IsOpen &&
+        IsOpen &&
         !IsResolving &&
         !_resolutionOperation.HasCurrent &&
         _currentSnapshotGeneration == _resolutionGeneration;
@@ -751,9 +738,9 @@ public sealed class SuggestionInput: CompositeControlBase
         _acceptanceGeneration == transaction.Generation &&
         _acceptanceAttachment is { } attachment &&
         IsCurrent(attachment) &&
-        _popupCoordinator.IsOpen &&
-        _popupCoordinator.TransitionVersion == transaction.Activation.PopupTransitionVersion &&
-        _popupCoordinator.SessionGeneration == transaction.Activation.PopupSessionGeneration;
+        IsOpen &&
+        PopupTransitionVersion == transaction.Activation.PopupTransitionVersion &&
+        PopupSessionGeneration == transaction.Activation.PopupSessionGeneration;
 
     [Pure]
     private bool IsCurrentAcceptance(SuggestionInputAcceptanceTransaction transaction) =>
@@ -765,7 +752,7 @@ public sealed class SuggestionInput: CompositeControlBase
         _acceptanceAttachment is { } attachment &&
         IsCurrent(attachment) &&
         string.Equals(Text, transaction.AcceptedText, StringComparison.Ordinal) &&
-        !_popupCoordinator.IsOpen;
+        !IsOpen;
 
     private ulong AdvanceAcceptanceGeneration()
     {
@@ -801,7 +788,7 @@ public sealed class SuggestionInput: CompositeControlBase
     private void RequestFirstSuggestionSelection(int resolutionGeneration)
     {
         _pendingFirstSelectionResolutionGeneration = resolutionGeneration;
-        _pendingFirstSelectionSessionGeneration = _popupCoordinator.SessionGeneration;
+        _pendingFirstSelectionSessionGeneration = PopupSessionGeneration;
         SchedulePendingFirstSuggestionSelection();
     }
 
@@ -842,8 +829,8 @@ public sealed class SuggestionInput: CompositeControlBase
             !IsResolving &&
             resolutionGeneration == _resolutionGeneration &&
             _currentSnapshotGeneration == resolutionGeneration &&
-            _popupCoordinator.IsOpen &&
-            _popupCoordinator.SessionGeneration == sessionGeneration &&
+            IsOpen &&
+            PopupSessionGeneration == sessionGeneration &&
             _list.ActiveIndex < 0)
         {
             SelectFirstAvailableSuggestion(commitCurrent: true);
@@ -1362,23 +1349,23 @@ public sealed class SuggestionInput: CompositeControlBase
                         {
                             if (!shouldOpen ||
                                 (EffectiveIsEnabled && EffectiveIsVisible) ||
-                                _popupCoordinator.IsOpen)
+                                IsOpen)
                             {
-                                _popupCoordinator.SetOpen(shouldOpen);
+                                base.IsPopupOpen = shouldOpen;
                             }
                         },
                         ref failure);
                 }
 
                 if (IsCurrentResolution(lease, generation) &&
-                    _popupCoordinator.IsOpen &&
+                    IsOpen &&
                     _list.SelectedIndex < 0)
                 {
                     SelectFirstAvailableSuggestion(commitCurrent: false);
                 }
 
                 if (IsCurrentResolution(lease, generation) &&
-                    _popupCoordinator.IsOpen &&
+                    IsOpen &&
                     _list.ActiveIndex != _list.SelectedIndex)
                 {
                     CaptureFailure(
@@ -1407,7 +1394,7 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
             {
-                CaptureFailure(() => _popupCoordinator.SetOpen(false), ref failure);
+                CaptureFailure(() => base.IsPopupOpen = false, ref failure);
 
                 if (changed && IsCurrentResolution(lease, generation))
                 {
@@ -1442,7 +1429,7 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             if (CommitResultState(lease, generation, [], markCurrent: false, out var changed, ref failure))
             {
-                CaptureFailure(() => _popupCoordinator.SetOpen(false), ref failure);
+                CaptureFailure(() => base.IsPopupOpen = false, ref failure);
 
                 if (changed && IsCurrentResolution(lease, generation))
                 {
@@ -1598,26 +1585,12 @@ public sealed class SuggestionInput: CompositeControlBase
     #region Layout and lifetime
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
-        return base.MeasureOverride(constraint);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        base.ArrangeOverride(bounds);
-        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
-    }
-
-    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         base.OnEvent(eventArgs);
 
         if (!eventArgs.IsHandled &&
-            _popupCoordinator.IsOpen &&
+            IsOpen &&
             eventArgs is PointerEventArgs { Pointer.Action: PointerAction.Wheel } &&
             OriginatesInSuggestionList(eventArgs.OriginalSource))
         {
@@ -1645,7 +1618,6 @@ public sealed class SuggestionInput: CompositeControlBase
             }
         }
 
-        CaptureFailure(_popupCoordinator.OnOwnerAttached, ref failure);
         CaptureFailure(SchedulePendingFirstSuggestionSelection, ref failure);
         failure?.Throw();
     }
@@ -1678,14 +1650,12 @@ public sealed class SuggestionInput: CompositeControlBase
             }
 
             CaptureFailure(() => base.OnUnavailable(reason), ref failure);
-            CaptureFailure(() => _popupCoordinator.OnOwnerUnavailable(reason), ref failure);
 
             if (reason == ReleaseReason.Disposed)
             {
                 _input.TextChanged -= OnTextChanged;
                 _list.ItemActivationStarting -= OnItemActivationStarting;
                 _list.ItemInvoked -= OnItemInvoked;
-                CaptureFailure(_popupCoordinator.Detach, ref failure);
                 BeforeDetachedResolutionPublication = null;
                 SuggestionsChanged = null;
                 ResolutionFailed = null;
@@ -1707,7 +1677,8 @@ public sealed class SuggestionInput: CompositeControlBase
         failure?.Throw();
     }
 
-    private void OnOpened()
+    /// <inheritdoc/>
+    protected override void OnDropDownOpened()
     {
         SelectFirstAvailableSuggestion(commitCurrent: false);
 
@@ -1718,7 +1689,8 @@ public sealed class SuggestionInput: CompositeControlBase
         }
     }
 
-    private void OnClosed()
+    /// <inheritdoc/>
+    protected override void OnDropDownClosed()
     {
         _wantsOpen = false;
         ClearPendingFirstSuggestionSelection();

@@ -76,6 +76,12 @@ authoring-role diagram.
 | `CanContinueAfterFocus(Dispatcher?)`                                                                      | `bool`                                        | —                 | Protected; reports whether lifetime, attachment, visibility, and enabled state remain current relative to a dispatcher captured before a synchronous focus request.                                                                                                                                                                                             |
 | `SetPressed(bool)`                                                                                        | `void`                                        | —                 | Protected internal; commits `IsPressed` on the owning dispatcher. `EnablePressActivation` and `EnableDrag` call this internally; the protected internal accessibility exists only for a small number of core sibling owners that still commit pressed state for another control they own directly, cross-type within this assembly.                             |
 | `ContextMenu`                                                                                             | `ContextMenu?`                                | `null`            | Optional context menu shown on a secondary pointer press. A menu's presentation control may belong to only one owner at a time; assigning an already-presented menu throws `ArgumentException`.                                                                                                                                                                 |
+| `EnablePopup(...)`                                                                                        | `Popup`                                       | —                 | Protected; opts into an owner-managed popup whose layout and attach/unavailable lifecycle the base class owns. See [Owned popups](#owned-popups).                                                                                                                                                                                                               |
+| `IsPopupOpen`                                                                                             | `bool`                                        | —                 | Public virtual; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs. `InputBase` exposes it as `IsOpen`.                                                                                                                                                                                                   |
+| `PopupOpenPropertyName`                                                                                   | `string`                                      | `"IsPopupOpen"`   | Protected virtual; the `PropertyChanged` name published on every open-state transition. A family that publishes its own name (`IsOpen`, `IsOverflowOpen`) overrides it.                                                                                                                                                                                         |
+| `AcceptPopupAndClose()`                                                                                   | `void`                                        | —                 | Protected; closes an active owned popup through its accepted-session path; a no-op when no popup session is active and open.                                                                                                                                                                                                                                    |
+| `OnDropDownOpened()`, `OnDropDownClosed()`                                                                | `void`                                        | —                 | Protected virtual, no-op by default; a control that enables the popup overrides these to raise its own public events.                                                                                                                                                                                                                                           |
+| `OnPopupArranged()`                                                                                       | `void`                                        | —                 | Protected virtual, no-op by default; runs immediately after the owned popup is arranged for the current pass. See [Owned popups](#owned-popups).                                                                                                                                                                                                                |
 | `IsTextSelectionEnabled`                                                                                  | `bool`                                        | `false`           | Enables inherited semantic text selection over this control and its retained descendants. Disabling clears the range and cancels an active drag.                                                                                                                                                                                                                |
 | `TextSelection`                                                                                           | `Selection`                                   | Empty at `0`      | Read-only directional UTF-16 range over the current semantic text projection.                                                                                                                                                                                                                                                                                   |
 | `SelectedText`                                                                                            | `string`                                      | `""`              | Read-only owned copy of the selected semantic substring.                                                                                                                                                                                                                                                                                                        |
@@ -568,6 +574,75 @@ ordinary children outside its own `Bounds`, while the owner itself remains a
 target only inside that box. Popup-layer roots restart from the root frame
 canvas during their elevated pass; an ordinary owner's clip neither truncates
 them nor admits them into the normal pass.
+
+## Owned popups
+
+`EnablePopup` opts any `ControlBase` into an owner-managed popup that preserves
+unrelated popup planes and open state across temporary ancestor unavailability,
+cancels an active session when the owner itself becomes unavailable, registers
+its framework-part slot, and composes the shared open/close coordinator. It
+accepts the popup's content control, its preferred `PopupPlacement` (default
+`Below`), whether opening transfers focus to the first eligible descendant of
+the content (`focusOnOpen`, default `false`), the popup's own Tab-traversal
+boundary (`popupTabNavigation`, default `TabNavigation.None`), optional
+`beforeOpen`/`beforeCloseFocusRestore` hooks, an optional `anchor` (null anchors
+the popup to the owner itself), an optional `ownerInitialFocus` for a composite
+whose public owner is not itself focusable, an optional `requestFocus` override
+for restoring focus after close (null requests focus back onto the owner), an
+optional `contentHeightLimit` applied to `Popup.ContentHeightLimit`, an optional
+`connectsToAnchor` (default `true`), and the framework-part `partKey` (default
+`"drop-down"`). Calling `EnablePopup` a second time throws
+`InvalidOperationException`. Every open-state transition publishes
+`PropertyChanged` under `PopupOpenPropertyName`, which defaults to
+`IsPopupOpen`; a family that exposes the same state under its own public name
+overrides it (`InputBase` publishes `IsOpen`, `CommandBar` publishes
+`IsOverflowOpen`).
+
+A derived control calls `AcceptPopupAndClose()` only after a semantic keyboard
+or pointer activation accepts its popup content. Calling it without an enabled
+popup, off the owning dispatcher, or after disposal throws through the
+documented mutation guards. Calling it when the enabled popup has no active open
+session is a no-op. `IsPopupOpen` is `public virtual`: a control whose own
+open-state concept applies extra gating - deferring open until a resolver
+finishes, for example - overrides it, calling the base setter once its own
+gating resolves to an actual coordinator transition. The name is deliberately
+capability-specific so it never collides with a control's own notion of being
+open (a `Popup`, `Window`, `Toast`, or `InfoBar` has an unrelated `IsOpen`);
+`InputBase` forwards it as `IsOpen` because a value editor's popup is the only
+thing it can open.
+
+The constructed popup omits the frame edge adjoining its anchor
+(`ConnectsToAnchor`, unless `connectsToAnchor: false` is supplied) and never
+tracks the anchor's own reflow independently - the base class re-arranges the
+popup from its own layout pass every time instead. Its ownership and close
+lifetime follow the
+[popup navigation session contract](../concepts/floating-surfaces.md#popup-navigation-sessions),
+while first-party provisional navigation callbacks remain an internal
+implementation detail, not exposed to external derivatives.
+
+**The owner never lays out its own popup.** After `MeasureOverride` returns,
+`ControlBase.Measure` measures the owned popup's content against the owner's own
+content-box width; after `ArrangeOverride` returns, `ControlBase.Arrange`
+arranges the popup across the owner's full root bounds - in that order, because
+a popup anchored to an inner retained descendant (a composite's editor, an
+overflow trigger) needs that descendant's `Bounds` already committed by
+`ArrangeOverride` before it can resolve its own anchor-relative placement. A
+derived control whose own arrange-time logic instead needs the _popup's_ content
+already arranged - reading or writing a descendant reachable only through the
+popup, such as synchronizing a list's provisional selection against its own
+now-current viewport - overrides `OnPopupArranged()` for that work instead of
+doing it from `ArrangeOverride`, which always runs before the popup arranges for
+the same pass.
+
+`ControlBase`'s own attach and unavailable paths forward the popup coordinator's
+lifecycle automatically: `OnOwnerAttached()` runs immediately after
+`OnAttached()` returns, and `OnOwnerUnavailable(reason)` - followed by
+`Detach()` when the reason is `Disposed` - runs immediately after
+`OnUnavailable(reason)` returns. A derived control never forwards these itself.
+
+A control that never calls `EnablePopup` owns no popup framework-part slot at
+all - `OwnedControlCount` and `FindOwnedSlot("drop-down")` reflect that
+directly.
 
 ## Appearance extension point
 

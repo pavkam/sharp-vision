@@ -6,8 +6,6 @@ namespace SharpVision.Controls;
 using System.Runtime.ExceptionServices;
 using System.Windows.Input;
 
-using Popups;
-
 using SharpVision.Controls.Input;
 
 using SharpVision.Terminal.Input;
@@ -556,6 +554,136 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         InvalidateVisualStateCore();
     }
 
+    /// <summary>Reconciles exactly one event handler to the still-current borrowed command.</summary>
+    private void ReconcileCommandSubscription()
+    {
+        while (true)
+        {
+            var desired = IsDisposed ? null : _command;
+
+            if (ReferenceEquals(_subscribedCommand, desired))
+            {
+                return;
+            }
+
+            if (_subscribedCommand is { } subscribed)
+            {
+                var subscribedHandler = _subscribedCommandHandler;
+                Debug.Assert(subscribedHandler is not null, "A tracked command always owns its exact handler.");
+
+                try
+                {
+                    subscribed.CanExecuteChanged -= subscribedHandler;
+                }
+                catch
+                {
+                    TrackRetiredCommandSubscription(subscribed, subscribedHandler);
+                    throw;
+                }
+
+                if (ReferenceEquals(_subscribedCommand, subscribed) &&
+                    _subscribedCommandHandler == subscribedHandler)
+                {
+                    _subscribedCommand = null;
+                    _subscribedCommandHandler = null;
+                }
+
+                UntrackRetiredCommandSubscription(subscribed, subscribedHandler);
+                continue;
+            }
+
+            if (desired is null)
+            {
+                return;
+            }
+
+            void CandidateHandler(object? sender, EventArgs eventArgs) =>
+                OnCanExecuteChanged(desired, sender, eventArgs);
+
+            EventHandler candidateHandler = CandidateHandler;
+
+            try
+            {
+                desired.CanExecuteChanged += candidateHandler;
+            }
+            catch
+            {
+                try
+                {
+                    desired.CanExecuteChanged -= candidateHandler;
+                }
+                catch
+                {
+                    TrackRetiredCommandSubscription(desired, candidateHandler);
+                }
+
+                throw;
+            }
+
+            if (!IsDisposed &&
+                ReferenceEquals(_command, desired) &&
+                _subscribedCommand is null)
+            {
+                _subscribedCommand = desired;
+                _subscribedCommandHandler = candidateHandler;
+                return;
+            }
+
+            try
+            {
+                desired.CanExecuteChanged -= candidateHandler;
+            }
+            catch
+            {
+                TrackRetiredCommandSubscription(desired, candidateHandler);
+                throw;
+            }
+        }
+    }
+
+    /// <summary>Records a handler whose remove accessor did not complete successfully.</summary>
+    private void TrackRetiredCommandSubscription(ICommand command, EventHandler handler)
+    {
+        if (!_retiredCommandSubscriptions.Any(candidate =>
+                ReferenceEquals(candidate.Command, command) && candidate.Handler == handler))
+        {
+            _retiredCommandSubscriptions.Add((command, handler));
+        }
+    }
+
+    /// <summary>Forgets a retired handler after a later removal completes successfully.</summary>
+    private void UntrackRetiredCommandSubscription(ICommand command, EventHandler handler) =>
+        _retiredCommandSubscriptions.RemoveAll(candidate =>
+            ReferenceEquals(candidate.Command, command) && candidate.Handler == handler);
+
+    /// <summary>Detaches every known command handler while retaining the first accessor failure.</summary>
+    private void ReleaseCommandSubscriptions()
+    {
+        var subscriptions = _retiredCommandSubscriptions.ToList();
+
+        if (_subscribedCommand is { } subscribed &&
+            _subscribedCommandHandler is { } subscribedHandler &&
+            !subscriptions.Any(candidate =>
+                ReferenceEquals(candidate.Command, subscribed) && candidate.Handler == subscribedHandler))
+        {
+            subscriptions.Add((subscribed, subscribedHandler));
+        }
+
+        _subscribedCommand = null;
+        _subscribedCommandHandler = null;
+        _retiredCommandSubscriptions.Clear();
+        ExceptionDispatchInfo? failure = null;
+
+        foreach (var subscription in subscriptions)
+        {
+            CaptureFailure(
+                () => subscription.Command.CanExecuteChanged -= subscription.Handler,
+                ref failure);
+        }
+
+        failure?.Throw();
+    }
+
     #endregion
 
     #region Segment editing
@@ -1040,358 +1168,29 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     #region Popup
 
-    private PopupDropDownCoordinator? _popupCoordinator;
-
-    /// <summary>Opts a derived input into an owned popup with shared open/close publication,
-    /// modal composition, focus restoration, and a framework-part slot.</summary>
-    /// <param name="content">The non-null popup content, also used as its focus scope.</param>
-    /// <param name="placement">The preferred anchor-relative placement.</param>
-    /// <param name="focusOnOpen">Whether opening transfers focus to the first eligible descendant of <paramref name="content"/>.</param>
-    /// <param name="popupTabNavigation">The Tab-traversal boundary the owned popup itself applies
-    /// to <paramref name="content"/>.</param>
-    /// <param name="beforeOpen">Optional work run before the popup opens, such as seeding a value or syncing a calendar.</param>
-    /// <param name="beforeCloseFocusRestore">Optional work run before the closing focus-restore check, such as discarding type-ahead state.</param>
-    /// <returns>The newly constructed, owned popup.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">The popup capability is already enabled.</exception>
-    protected Popup EnablePopup(
-        ControlBase content,
-        PopupPlacement placement = PopupPlacement.Below,
-        bool focusOnOpen = false,
-        TabNavigation popupTabNavigation = TabNavigation.None,
-        Action? beforeOpen = null,
-        Action? beforeCloseFocusRestore = null) =>
-        EnablePopupCore(
-            content,
-            placement,
-            focusOnOpen,
-            popupTabNavigation,
-            beforeOpen,
-            beforeCloseFocusRestore,
-            beginSession: null,
-            handleNavigationKey: null,
-            cancelSession: null,
-            acceptSession: null);
-
-    /// <summary>Opts an in-assembly input into the owned-popup lifecycle plus provisional
-    /// navigation delegated once from the owner's preview route.</summary>
-    /// <param name="content">The non-null popup content, also used as its focus scope.</param>
-    /// <param name="placement">The preferred anchor-relative placement.</param>
-    /// <param name="focusOnOpen">Whether opening transfers focus into <paramref name="content"/>.</param>
-    /// <param name="popupTabNavigation">The popup content's Tab-traversal boundary.</param>
-    /// <param name="beforeOpen">Optional work run before the popup opens.</param>
-    /// <param name="beforeCloseFocusRestore">Optional work run before closing focus restoration.</param>
-    /// <param name="beginSession">Snapshots and seeds one provisional session.</param>
-    /// <param name="handleNavigationKey">Delegates one live owner-preview navigation stroke.</param>
-    /// <param name="cancelSession">Restores or rebases a session closed without acceptance.</param>
-    /// <param name="acceptSession">Commits provisional state before an accepted close.</param>
-    /// <returns>The newly constructed, owned popup.</returns>
-    private protected Popup EnablePopupNavigationSession(
-        ControlBase content,
-        PopupPlacement placement = PopupPlacement.Below,
-        bool focusOnOpen = false,
-        TabNavigation popupTabNavigation = TabNavigation.None,
-        Action? beforeOpen = null,
-        Action? beforeCloseFocusRestore = null,
-        Action? beginSession = null,
-        Func<KeyEventArgs, bool>? handleNavigationKey = null,
-        Action? cancelSession = null,
-        Action? acceptSession = null) =>
-        EnablePopupCore(
-            content,
-            placement,
-            focusOnOpen,
-            popupTabNavigation,
-            beforeOpen,
-            beforeCloseFocusRestore,
-            beginSession,
-            handleNavigationKey,
-            cancelSession,
-            acceptSession);
-
-    private Popup EnablePopupCore(
-        ControlBase content,
-        PopupPlacement placement,
-        bool focusOnOpen,
-        TabNavigation popupTabNavigation,
-        Action? beforeOpen,
-        Action? beforeCloseFocusRestore,
-        Action? beginSession,
-        Func<KeyEventArgs, bool>? handleNavigationKey,
-        Action? cancelSession,
-        Action? acceptSession)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        VerifyMutable();
-
-        if (_popupCoordinator is not null)
-        {
-            throw new InvalidOperationException("The popup capability is already enabled.");
-        }
-
-        var popup = new Popup
-        {
-            Anchor = this,
-            Content = content,
-            FocusOnOpen = focusOnOpen,
-            ModalBehavior = PopupModalBehavior.None,
-            TabNavigation = popupTabNavigation,
-            ConnectsToAnchor = true,
-            Placement = placement,
-            SuppressCloseOtherPopups = true,
-            // The owner re-arranges its own popup child from its own ArrangeOverride every pass,
-            // so base Popup's anchor-reflow tracking would be a redundant second placement pass
-            // reacting to the same self-owned anchor.
-            TracksAnchorReflow = false
-        };
-        var slot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Popup,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "drop-down",
-                InvalidationImpact.Measure),
-            capacity: 1);
-        slot.Add(popup);
-        _popupCoordinator = new PopupDropDownCoordinator(
-            this,
-            popup,
-            content,
-            RequestFocus,
-            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
-            OnDropDownOpened,
-            OnDropDownClosed,
-            beforeOpen,
-            beforeCloseFocusRestore,
-            beginSession: beginSession,
-            handleNavigationKey: handleNavigationKey,
-            cancelSession: cancelSession,
-            acceptSession: acceptSession);
-        return popup;
-    }
-
-    /// <summary>Commits the active popup session's provisional state and closes the owned popup.</summary>
-    /// <remarks>Concrete drop-down owners call this only after target-owned keyboard or pointer
-    /// activation has accepted the provisional item. The operation is a no-op when the popup has
-    /// no active open session.</remarks>
-    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
-    /// control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
-    protected void AcceptPopupAndClose()
-    {
-        VerifyMutable();
-
-        if (_popupCoordinator is not { } coordinator)
-        {
-            throw new InvalidOperationException("The popup capability is not enabled.");
-        }
-
-        coordinator.AcceptAndClose();
-    }
-
-    /// <summary>Retires the active popup session and begins a fresh one without closing the popup.</summary>
-    /// <remarks>An in-assembly drop-down owner calls this from its acceptance callback when a
-    /// selection callback committed a newer selection than the accepted row: the newer decision
-    /// keeps the popup open over the current state instead of being dismissed by the superseded
-    /// acceptance, and no close or reopen is published. A no-op without an open session.</remarks>
-    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
-    /// control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    private protected void RestartPopupNavigationSession()
-    {
-        VerifyMutable();
-
-        if (_popupCoordinator is not { } coordinator)
-        {
-            throw new InvalidOperationException("The popup capability is not enabled.");
-        }
-
-        coordinator.RestartSession();
-    }
-
     /// <summary>Gets or sets whether the owned popup is open.</summary>
-    /// <exception cref="InvalidOperationException">The popup capability is not enabled, the
+    /// <remarks>
+    /// The input family's public name for <see cref="ControlBase.IsPopupOpen"/>: a combo box,
+    /// date input, or any other popup-backed value editor reads more naturally as
+    /// <c>input.IsOpen</c>, so this forwards to the capability-level property and
+    /// <see cref="PopupOpenPropertyName"/> publishes this name on every transition.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, or the
     /// control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
     public bool IsOpen
     {
-        get => _popupCoordinator is { } coordinator
-            ? coordinator.IsOpen
-            : throw new InvalidOperationException("The popup capability is not enabled.");
-        set
-        {
-            if (_popupCoordinator is not { } coordinator)
-            {
-                throw new InvalidOperationException("The popup capability is not enabled.");
-            }
-
-            coordinator.SetOpen(value);
-        }
+        get => IsPopupOpen;
+        set => IsPopupOpen = value;
     }
 
-    /// <summary>Reconciles exactly one event handler to the still-current borrowed command.</summary>
-    private void ReconcileCommandSubscription()
-    {
-        while (true)
-        {
-            var desired = IsDisposed ? null : _command;
-
-            if (ReferenceEquals(_subscribedCommand, desired))
-            {
-                return;
-            }
-
-            if (_subscribedCommand is { } subscribed)
-            {
-                var subscribedHandler = _subscribedCommandHandler;
-                Debug.Assert(subscribedHandler is not null, "A tracked command always owns its exact handler.");
-
-                try
-                {
-                    subscribed.CanExecuteChanged -= subscribedHandler;
-                }
-                catch
-                {
-                    TrackRetiredCommandSubscription(subscribed, subscribedHandler);
-                    throw;
-                }
-
-                if (ReferenceEquals(_subscribedCommand, subscribed) &&
-                    _subscribedCommandHandler == subscribedHandler)
-                {
-                    _subscribedCommand = null;
-                    _subscribedCommandHandler = null;
-                }
-
-                UntrackRetiredCommandSubscription(subscribed, subscribedHandler);
-                continue;
-            }
-
-            if (desired is null)
-            {
-                return;
-            }
-
-            void CandidateHandler(object? sender, EventArgs eventArgs) =>
-                OnCanExecuteChanged(desired, sender, eventArgs);
-
-            EventHandler candidateHandler = CandidateHandler;
-
-            try
-            {
-                desired.CanExecuteChanged += candidateHandler;
-            }
-            catch
-            {
-                try
-                {
-                    desired.CanExecuteChanged -= candidateHandler;
-                }
-                catch
-                {
-                    TrackRetiredCommandSubscription(desired, candidateHandler);
-                }
-
-                throw;
-            }
-
-            if (!IsDisposed &&
-                ReferenceEquals(_command, desired) &&
-                _subscribedCommand is null)
-            {
-                _subscribedCommand = desired;
-                _subscribedCommandHandler = candidateHandler;
-                return;
-            }
-
-            try
-            {
-                desired.CanExecuteChanged -= candidateHandler;
-            }
-            catch
-            {
-                TrackRetiredCommandSubscription(desired, candidateHandler);
-                throw;
-            }
-        }
-    }
-
-    /// <summary>Records a handler whose remove accessor did not complete successfully.</summary>
-    private void TrackRetiredCommandSubscription(ICommand command, EventHandler handler)
-    {
-        if (!_retiredCommandSubscriptions.Any(candidate =>
-                ReferenceEquals(candidate.Command, command) && candidate.Handler == handler))
-        {
-            _retiredCommandSubscriptions.Add((command, handler));
-        }
-    }
-
-    /// <summary>Forgets a retired handler after a later removal completes successfully.</summary>
-    private void UntrackRetiredCommandSubscription(ICommand command, EventHandler handler) =>
-        _retiredCommandSubscriptions.RemoveAll(candidate =>
-            ReferenceEquals(candidate.Command, command) && candidate.Handler == handler);
-
-    /// <summary>Detaches every known command handler while retaining the first accessor failure.</summary>
-    private void ReleaseCommandSubscriptions()
-    {
-        var subscriptions = _retiredCommandSubscriptions.ToList();
-
-        if (_subscribedCommand is { } subscribed &&
-            _subscribedCommandHandler is { } subscribedHandler &&
-            !subscriptions.Any(candidate =>
-                ReferenceEquals(candidate.Command, subscribed) && candidate.Handler == subscribedHandler))
-        {
-            subscriptions.Add((subscribed, subscribedHandler));
-        }
-
-        _subscribedCommand = null;
-        _subscribedCommandHandler = null;
-        _retiredCommandSubscriptions.Clear();
-        ExceptionDispatchInfo? failure = null;
-
-        foreach (var subscription in subscriptions)
-        {
-            CaptureFailure(
-                () => subscription.Command.CanExecuteChanged -= subscription.Handler,
-                ref failure);
-        }
-
-        failure?.Throw();
-    }
-
-    /// <summary>Gets the current owned-popup request version for continuation validation.</summary>
-    internal ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
-        ? coordinator.TransitionVersion
-        : throw new InvalidOperationException("The popup capability is not enabled.");
-
-    /// <summary>Gets the current owned-popup navigation-session identity for stale-continuation validation.</summary>
-    internal ulong PopupSessionGeneration => _popupCoordinator is { } coordinator
-        ? coordinator.SessionGeneration
-        : throw new InvalidOperationException("The popup capability is not enabled.");
-
-    /// <summary>Called after the owned popup opens.</summary>
-    protected virtual void OnDropDownOpened()
-    {
-    }
-
-    /// <summary>Called after the owned popup closes.</summary>
-    protected virtual void OnDropDownClosed()
-    {
-    }
+    /// <inheritdoc/>
+    protected override string PopupOpenPropertyName => nameof(IsOpen);
 
     #endregion
 
     #region Lifecycle
-
-    /// <inheritdoc/>
-    protected override void OnAttached()
-    {
-        base.OnAttached();
-        _popupCoordinator?.OnOwnerAttached();
-    }
 
     /// <inheritdoc/>
     protected override void OnFocusChanged(bool focused)
@@ -1418,13 +1217,11 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        _popupCoordinator?.OnOwnerUnavailable(reason);
 
         if (reason == ReleaseReason.Disposed)
         {
             _command = null;
             ExceptionDispatchInfo? failure = null;
-            CaptureFailure(() => _popupCoordinator?.Detach(), ref failure);
             CaptureFailure(ReleaseCommandSubscriptions, ref failure);
             failure?.Throw();
         }

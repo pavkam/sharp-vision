@@ -80,8 +80,8 @@ classDiagram
 > constructors (`Tooltip`, `Flyout`), so showing either leaves an open drop-down
 > or menu untouched. Framework-owned menu, input, and CommandPalette popups also
 > set that policy because their owners coordinate dismissal inside their own
-> logical plane. The popups `InputBase.EnablePopup` builds default `FocusOnOpen`
-> to `false`, with `Tooltip` setting it false again.
+> logical plane. The popups `ControlBase.EnablePopup` builds default
+> `FocusOnOpen` to `false`, with `Tooltip` setting it false again.
 
 ## Keyboard
 

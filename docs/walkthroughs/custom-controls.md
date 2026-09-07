@@ -118,12 +118,20 @@ public sealed class RatingField : InputBase
 }
 ```
 
-`IsOpen` is already `public` on `InputBase`, so `RatingField` inherits its
-open/close surface without declaring anything - the same inherited property
-`ComboBox`, `DateInput`, and `DateTimeInput` expose. Calling `EnablePopup` a
-second time, or reading `IsOpen` before `EnablePopup` ever runs, both throw
+`IsOpen` is already `public` on `InputBase` (forwarding `ControlBase`'s
+capability-level `IsPopupOpen`), so `RatingField` inherits its open/close
+surface without declaring anything - the same inherited property `ComboBox`,
+`DateInput`, and `DateTimeInput` expose. Calling `EnablePopup` a second time, or
+reading `IsOpen` before `EnablePopup` ever runs, both throw
 `InvalidOperationException` rather than silently no-op, so a capability mistake
 fails where it happens instead of producing an inert control.
+
+Notice that `RatingField` never overrides `MeasureOverride` or `ArrangeOverride`
+to lay out `_choices`' popup: `ControlBase` measures and arranges any owned
+popup for every owner automatically, after the owner's own layout override
+returns. See [Owned popups](../controls/control.md#owned-popups) for the
+complete contract, including the `OnPopupArranged` seam a control uses when its
+own arrange-time logic needs the popup's content already arranged.
 
 ## Complete the component
 

@@ -341,7 +341,6 @@ public sealed class ComboBox: InputBase
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = MeasureCells(SelectedItemText())
             .Add(_indicatorReservedWidth)
@@ -350,11 +349,12 @@ public sealed class ComboBox: InputBase
         return new Size(width, _fieldContentHeight);
     }
 
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
+    /// <summary>Synchronizes the private drop-down list's selection against the committed
+    /// <see cref="SelectedIndex"/>, or against its own already-arranged provisional current row
+    /// while open - reading the list's own viewport, which is why this runs after the owned popup
+    /// arranges instead of from <c>ArrangeOverride</c>.</summary>
+    protected override void OnPopupArranged()
     {
-        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
-
         if (IsOpen && _list.SelectedIndex != _list.ActiveIndex)
         {
             SynchronizeListSelection(_list.ActiveIndex);

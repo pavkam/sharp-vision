@@ -11,19 +11,21 @@ the string `Text` property, backed by a lazily materialized owned caption child
 that never allocates until a control's text is first assigned. Reading `Text`
 before `EnableCaption` runs is always safe and returns `""`; assigning it before
 `EnableCaption` runs throws `InvalidOperationException`, the same precedent
-[`IsOpen`](input-base.md#api) sets for the popup capability. `EnableCommand`
-gives a control `Command`/`CommandParameter`, gated the same way. A control that
-needs arbitrary owned content instead of a plain caption does not call
-`EnableCaption` - it derives from [`InputBase`](input-base.md#overview) directly
-and calls whichever capabilities it actually needs, the way
-[`ComboBox`](input/combo-box.md#overview), `DateInput`, and `DateTimeInput` do
-for their popup-backed fields, pairing `EnablePopup` with
-`EnablePressActivation` and skipping the caption capability.
-`EnablePressActivation` itself lives on [`ControlBase`](control.md#api), not
-`InputBase`, so a control that needs press activation without any of
-`InputBase`'s caption, command, or popup machinery calls it directly instead of
-deriving `InputBase` at all. The internal `ListItem` is one such control: it
-calls `EnablePressActivation` while keeping
+[`IsPopupOpen`](control.md#owned-popups) sets for the popup capability.
+`EnableCommand` gives a control `Command`/`CommandParameter`, gated the same
+way. A control that needs arbitrary owned content instead of a plain caption
+does not call `EnableCaption` - it derives from
+[`InputBase`](input-base.md#overview) directly and calls whichever capabilities
+it actually needs, the way [`ComboBox`](input/combo-box.md#overview),
+`DateInput`, and `DateTimeInput` do for their popup-backed fields, pairing
+`EnablePopup` with `EnablePressActivation` and skipping the caption capability.
+`EnablePressActivation` and `EnablePopup` both live on
+[`ControlBase`](control.md#api), not `InputBase`, so a control that needs press
+activation or an owned popup without any of `InputBase`'s caption or command
+machinery calls the capability directly instead of deriving `InputBase` at all;
+`SuggestionInput`, `CommandPalette`, and `CommandBar` do exactly that for their
+own popups. The internal `ListItem` is one such control: it calls
+`EnablePressActivation` while keeping
 [`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
 realized template output, since it already derives from `ContentControl` for
 that reason. `Expander`, `Pager`, the internal `InfoBarDismissButton`, and

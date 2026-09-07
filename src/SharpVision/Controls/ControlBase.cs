@@ -8,6 +8,8 @@ using System.Runtime.ExceptionServices;
 
 using DataBinding;
 
+using Popups;
+
 using SharpVision.Menus;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
@@ -922,6 +924,312 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
     }
 
+    #region Popup
+
+    private Popup? _popup;
+    private PopupDropDownCoordinator? _popupCoordinator;
+
+    /// <summary>Opts a control into an owned popup with shared open/close publication, modal
+    /// composition, focus restoration, and a framework-part slot.</summary>
+    /// <param name="content">The non-null popup content, also used as its focus scope.</param>
+    /// <param name="placement">The preferred anchor-relative placement.</param>
+    /// <param name="focusOnOpen">Whether opening transfers focus to the first eligible descendant of <paramref name="content"/>.</param>
+    /// <param name="popupTabNavigation">The Tab-traversal boundary the owned popup itself applies
+    /// to <paramref name="content"/>.</param>
+    /// <param name="beforeOpen">Optional work run before the popup opens, such as seeding a value or syncing a calendar.</param>
+    /// <param name="beforeCloseFocusRestore">Optional work run before the closing focus-restore check, such as discarding type-ahead state.</param>
+    /// <param name="anchor">The optional anchor-relative reference control; null anchors the popup to this control.</param>
+    /// <param name="ownerInitialFocus">Optional focusable retained descendant used when this
+    /// control's public owner is not itself focusable, such as a composite's inner editor.</param>
+    /// <param name="requestFocus">Optional override for restoring focus onto the owner after the
+    /// popup closes; null requests focus back onto this control.</param>
+    /// <param name="contentHeightLimit">Optional intrinsic, fixed, or placement-side-relative
+    /// maximum content height, applied to <see cref="Popup.ContentHeightLimit"/>; null leaves the
+    /// popup's own default.</param>
+    /// <param name="connectsToAnchor">Whether the popup surface omits the frame edge adjoining its anchor.</param>
+    /// <param name="partKey">The framework-part key identifying the owned popup slot.</param>
+    /// <returns>The newly constructed, owned popup.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="partKey"/> is null or empty.</exception>
+    /// <exception cref="InvalidOperationException">The popup capability is already enabled.</exception>
+    protected Popup EnablePopup(
+        ControlBase content,
+        PopupPlacement placement = PopupPlacement.Below,
+        bool focusOnOpen = false,
+        TabNavigation popupTabNavigation = TabNavigation.None,
+        Action? beforeOpen = null,
+        Action? beforeCloseFocusRestore = null,
+        ControlBase? anchor = null,
+        ControlBase? ownerInitialFocus = null,
+        Func<bool>? requestFocus = null,
+        Length? contentHeightLimit = null,
+        bool connectsToAnchor = true,
+        string partKey = "drop-down") =>
+        EnablePopupCore(
+            content,
+            placement,
+            focusOnOpen,
+            popupTabNavigation,
+            beforeOpen,
+            beforeCloseFocusRestore,
+            anchor,
+            ownerInitialFocus,
+            requestFocus,
+            contentHeightLimit,
+            connectsToAnchor,
+            partKey,
+            beginSession: null,
+            handleNavigationKey: null,
+            cancelSession: null,
+            acceptSession: null);
+
+    /// <summary>Opts an in-assembly control into the owned-popup lifecycle plus provisional
+    /// navigation delegated once from the owner's preview route.</summary>
+    /// <param name="content">The non-null popup content, also used as its focus scope.</param>
+    /// <param name="placement">The preferred anchor-relative placement.</param>
+    /// <param name="focusOnOpen">Whether opening transfers focus into <paramref name="content"/>.</param>
+    /// <param name="popupTabNavigation">The popup content's Tab-traversal boundary.</param>
+    /// <param name="beforeOpen">Optional work run before the popup opens.</param>
+    /// <param name="beforeCloseFocusRestore">Optional work run before closing focus restoration.</param>
+    /// <param name="anchor">The optional anchor-relative reference control; null anchors the popup to this control.</param>
+    /// <param name="ownerInitialFocus">Optional focusable retained descendant used when this
+    /// control's public owner is not itself focusable.</param>
+    /// <param name="requestFocus">Optional override for restoring focus onto the owner after the
+    /// popup closes; null requests focus back onto this control.</param>
+    /// <param name="contentHeightLimit">Optional ceiling applied to <see cref="Popup.ContentHeightLimit"/>.</param>
+    /// <param name="connectsToAnchor">Whether the popup surface omits the frame edge adjoining its anchor.</param>
+    /// <param name="partKey">The framework-part key identifying the owned popup slot.</param>
+    /// <param name="beginSession">Snapshots and seeds one provisional session.</param>
+    /// <param name="handleNavigationKey">Delegates one live owner-preview navigation stroke.</param>
+    /// <param name="cancelSession">Restores or rebases a session closed without acceptance.</param>
+    /// <param name="acceptSession">Commits provisional state before an accepted close.</param>
+    /// <returns>The newly constructed, owned popup.</returns>
+    private protected Popup EnablePopupNavigationSession(
+        ControlBase content,
+        PopupPlacement placement = PopupPlacement.Below,
+        bool focusOnOpen = false,
+        TabNavigation popupTabNavigation = TabNavigation.None,
+        Action? beforeOpen = null,
+        Action? beforeCloseFocusRestore = null,
+        ControlBase? anchor = null,
+        ControlBase? ownerInitialFocus = null,
+        Func<bool>? requestFocus = null,
+        Length? contentHeightLimit = null,
+        bool connectsToAnchor = true,
+        string partKey = "drop-down",
+        Action? beginSession = null,
+        Func<KeyEventArgs, bool>? handleNavigationKey = null,
+        Action? cancelSession = null,
+        Action? acceptSession = null) =>
+        EnablePopupCore(
+            content,
+            placement,
+            focusOnOpen,
+            popupTabNavigation,
+            beforeOpen,
+            beforeCloseFocusRestore,
+            anchor,
+            ownerInitialFocus,
+            requestFocus,
+            contentHeightLimit,
+            connectsToAnchor,
+            partKey,
+            beginSession,
+            handleNavigationKey,
+            cancelSession,
+            acceptSession);
+
+    private Popup EnablePopupCore(
+        ControlBase content,
+        PopupPlacement placement,
+        bool focusOnOpen,
+        TabNavigation popupTabNavigation,
+        Action? beforeOpen,
+        Action? beforeCloseFocusRestore,
+        ControlBase? anchor,
+        ControlBase? ownerInitialFocus,
+        Func<bool>? requestFocus,
+        Length? contentHeightLimit,
+        bool connectsToAnchor,
+        string partKey,
+        Action? beginSession,
+        Func<KeyEventArgs, bool>? handleNavigationKey,
+        Action? cancelSession,
+        Action? acceptSession)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrEmpty(partKey);
+        VerifyMutable();
+
+        if (_popupCoordinator is not null)
+        {
+            throw new InvalidOperationException("The popup capability is already enabled.");
+        }
+
+        var popup = new Popup
+        {
+            Anchor = anchor ?? this,
+            Content = content,
+            FocusOnOpen = focusOnOpen,
+            ModalBehavior = PopupModalBehavior.None,
+            TabNavigation = popupTabNavigation,
+            ConnectsToAnchor = connectsToAnchor,
+            Placement = placement,
+            SuppressCloseOtherPopups = true,
+            // The owner is arranged by this base's own Arrange from its own owned popup slot every
+            // pass, so base Popup's anchor-reflow tracking would be a redundant second placement
+            // pass reacting to the same self-owned anchor.
+            TracksAnchorReflow = false
+        };
+
+        if (contentHeightLimit is { } heightLimit)
+        {
+            popup.ContentHeightLimit = heightLimit;
+        }
+
+        var slot = RegisterOwnedSlot(
+            new OwnedControlOptions(
+                OwnedControlRole.FrameworkPart,
+                OwnedControlLayer.Popup,
+                participatesInHitTesting: true,
+                participatesInNavigation: true,
+                partKey: partKey,
+                InvalidationImpact.Measure),
+            capacity: 1);
+        slot.Add(popup);
+        _popup = popup;
+        var openProperty = PopupOpenPropertyName;
+        _popupCoordinator = new PopupDropDownCoordinator(
+            this,
+            popup,
+            content,
+            requestFocus ?? RequestFocus,
+            () => NotifyPropertyChanged(openProperty, InvalidationImpact.None),
+            OnDropDownOpened,
+            OnDropDownClosed,
+            beforeOpen,
+            beforeCloseFocusRestore,
+            ownerInitialFocus: ownerInitialFocus,
+            beginSession: beginSession,
+            handleNavigationKey: handleNavigationKey,
+            cancelSession: cancelSession,
+            acceptSession: acceptSession);
+        return popup;
+    }
+
+    /// <summary>Commits the active popup session's provisional state and closes the owned popup.</summary>
+    /// <remarks>Concrete drop-down owners call this only after target-owned keyboard or pointer
+    /// activation has accepted the provisional item. The operation is a no-op when the popup has
+    /// no active open session.</remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <exception cref="Exception">An acceptance or close callback fails after close cleanup completes.</exception>
+    protected void AcceptPopupAndClose()
+    {
+        VerifyMutable();
+
+        if (_popupCoordinator is not { } coordinator)
+        {
+            throw new InvalidOperationException("The popup capability is not enabled.");
+        }
+
+        coordinator.AcceptAndClose();
+    }
+
+    /// <summary>Retires the active popup session and begins a fresh one without closing the popup.</summary>
+    /// <remarks>An in-assembly drop-down owner calls this from its acceptance callback when a
+    /// selection callback committed a newer selection than the accepted row: the newer decision
+    /// keeps the popup open over the current state instead of being dismissed by the superseded
+    /// acceptance, and no close or reopen is published. A no-op without an open session.</remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    private protected void RestartPopupNavigationSession()
+    {
+        VerifyMutable();
+
+        if (_popupCoordinator is not { } coordinator)
+        {
+            throw new InvalidOperationException("The popup capability is not enabled.");
+        }
+
+        coordinator.RestartSession();
+    }
+
+    /// <summary>Gets the property name the owned popup publishes through
+    /// <see cref="PropertyChanged"/> whenever <see cref="IsPopupOpen"/> transitions.</summary>
+    /// <remarks>
+    /// Defaults to <see cref="IsPopupOpen"/>. A control family that exposes the same open state
+    /// under its own public name overrides this so subscribers observe the name they actually
+    /// bind to: <see cref="InputBase"/> publishes <c>IsOpen</c>, and a command bar publishes
+    /// <c>IsOverflowOpen</c>. The override must return a constant; it is read once when the popup
+    /// capability is enabled.
+    /// </remarks>
+    protected virtual string PopupOpenPropertyName => nameof(IsPopupOpen);
+
+    /// <summary>Gets or sets whether the owned popup is open.</summary>
+    /// <remarks>
+    /// This is the capability-level open state shared by every popup owner; a control family
+    /// exposes it under its own public name (<see cref="InputBase.IsOpen"/>) by forwarding to
+    /// this property. A derived control whose public open-state property applies extra gating
+    /// (for example deferring open until a resolver finishes) overrides this property, calling
+    /// the base setter once its own gating has resolved to an actual coordinator transition.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    /// <exception cref="Exception">A focus, scope, pointer-cleanup, or user callback fails after committed cleanup.</exception>
+    public virtual bool IsPopupOpen
+    {
+        get => _popupCoordinator is { } coordinator
+            ? coordinator.IsOpen
+            : throw new InvalidOperationException("The popup capability is not enabled.");
+        set
+        {
+            if (_popupCoordinator is not { } coordinator)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            coordinator.SetOpen(value);
+        }
+    }
+
+    /// <summary>Gets the current owned-popup request version for continuation validation.</summary>
+    internal ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
+        ? coordinator.TransitionVersion
+        : throw new InvalidOperationException("The popup capability is not enabled.");
+
+    /// <summary>Gets the current owned-popup navigation-session identity for stale-continuation validation.</summary>
+    internal ulong PopupSessionGeneration => _popupCoordinator is { } coordinator
+        ? coordinator.SessionGeneration
+        : throw new InvalidOperationException("The popup capability is not enabled.");
+
+    /// <summary>Called after the owned popup opens.</summary>
+    protected virtual void OnDropDownOpened()
+    {
+    }
+
+    /// <summary>Called after the owned popup closes.</summary>
+    protected virtual void OnDropDownClosed()
+    {
+    }
+
+    /// <summary>Called immediately after this control's owned popup is arranged for the current pass.</summary>
+    /// <remarks>
+    /// A derived owner whose own arrange-time logic needs the popup's content already arranged -
+    /// reading or writing a descendant reachable only through the popup, such as synchronizing a
+    /// list's provisional selection against its own now-current viewport - overrides this hook
+    /// instead of doing that work inside <see cref="ArrangeOverride"/>, which always runs before
+    /// the owned popup is arranged for the same pass.
+    /// </remarks>
+    protected virtual void OnPopupArranged()
+    {
+    }
+
+    #endregion
+
     /// <summary>Raised after this control loses direct keyboard focus.</summary>
     public event EventHandler? LostFocus;
 
@@ -1392,6 +1700,16 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 widthLimitBase,
                 heightLimitBase));
             var content = MeasureOverride(contentConstraint);
+
+            if (_popup is { } ownedPopup)
+            {
+                // The owner's popup measured against its own content-box width, exactly as every
+                // migrated owner measured it before this capability moved here - not the wider
+                // border-box constraint this method itself received, which would over-measure the
+                // popup by the owner's margin, border, and padding insets.
+                _ = MeasureChild(ownedPopup, new Constraint(contentConstraint.Width, height: null));
+            }
+
             ContentExtent = content;
             var desired = OnMeasuredDesired(constraint, ResolveDesiredSize(
                 constraint,
@@ -1570,6 +1888,25 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 {
                     _ = MeasureChild(contextMenuPresentation, new Constraint(null, null));
                     ArrangeChild(contextMenuPresentation, RootBounds(bounds), ResolvedAxes.Both);
+                }
+
+                // The owned popup is arranged after ArrangeOverride, matching every migrated
+                // owner's own former arrange order: a popup anchored to an inner retained
+                // descendant (a composite's editor, an overflow trigger) needs that descendant's
+                // Bounds already committed by ArrangeOverride before the popup can resolve its own
+                // anchor-relative placement. OnPopupArranged then gives a derived owner whose own
+                // arrange-time logic needs the popup's content already arranged - ComboBox
+                // synchronizes its list's provisional selection against the list's own now-current
+                // viewport - a seam to do that work after this popup arrange commits, since by
+                // this point ArrangeOverride itself has already returned.
+                if (_popup is { } ownedPopup)
+                {
+                    ArrangeChild(ownedPopup, RootBounds(bounds), ResolvedAxes.Both);
+
+                    if (!IsDisposed)
+                    {
+                        OnPopupArranged();
+                    }
                 }
 
                 ClearCollapsedOwnedChildBounds();
@@ -5052,6 +5389,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 ExceptionAggregation.Capture(
                     () => OnUnavailable(reason),
                     ref failure);
+                ExceptionAggregation.Capture(
+                    () => _popupCoordinator?.OnOwnerUnavailable(reason),
+                    ref failure);
+
+                if (reason == ReleaseReason.Disposed)
+                {
+                    ExceptionAggregation.Capture(() => _popupCoordinator?.Detach(), ref failure);
+                }
             }
 
             if (reason == ReleaseReason.Disposed)
@@ -5266,6 +5611,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
 
         ExceptionAggregation.Capture(OnAttached, ref failure);
+        ExceptionAggregation.Capture(() => _popupCoordinator?.OnOwnerAttached(), ref failure);
 
         if (_attachmentParticipants is { } participants)
         {

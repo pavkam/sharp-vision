@@ -377,6 +377,7 @@ namespace SharpVision.Controls
         protected virtual bool IsIndeterminateState { get; }
         public bool IsPointerDirectlyOver { get; }
         public bool IsPointerOver { get; }
+        public virtual bool IsPopupOpen { get; set; }
         public bool IsPressed { get; }
         protected virtual bool IsPressedState { get; }
         protected virtual bool IsSelectedState { get; }
@@ -392,6 +393,7 @@ namespace SharpVision.Controls
         protected SharpVision.Terminal.Rendering.CellStyle NormalStyle { get; }
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.ControlBase? Parent { get; }
+        protected virtual string PopupOpenPropertyName { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
         public virtual string SelectedText { get; }
         public SharpVision.Styling.Shadow Shadow { get; set; }
@@ -425,6 +427,7 @@ namespace SharpVision.Controls
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         public event System.EventHandler<SharpVision.Input.TextSelectionChangedEventArgs>? TextSelectionChanged;
         public event System.EventHandler? VisibilityChanged;
+        protected void AcceptPopupAndClose() { }
         protected virtual void Activate(SharpVision.Input.ActivationCause cause) { }
         public System.IDisposable AddHandler<TArgs>(SharpVision.Input.Event<TArgs> routedEvent, System.EventHandler<TArgs> handler, bool handledEventsToo = false)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
@@ -447,6 +450,7 @@ namespace SharpVision.Controls
         public void Dispose() { }
         protected void EnableChromeAuthoring() { }
         protected void EnableDrag(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Func<bool>? tryCapture = null, System.Func<bool>? isAvailable = null) { }
+        protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null, SharpVision.Controls.ControlBase? anchor = null, SharpVision.Controls.ControlBase? ownerInitialFocus = null, System.Func<bool>? requestFocus = null, SharpVision.Layout.Length? contentHeightLimit = default, bool connectsToAnchor = true, string partKey = "drop-down") { }
         protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null) { }
         protected void EstablishTextSelectionCaret() { }
         protected T? FindAncestor<T>()
@@ -494,11 +498,14 @@ namespace SharpVision.Controls
         protected virtual void OnDetached() { }
         protected virtual void OnDisposed() { }
         protected virtual void OnDisposing() { }
+        protected virtual void OnDropDownClosed() { }
+        protected virtual void OnDropDownOpened() { }
         protected virtual void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected virtual void OnFocusChanged(bool focused) { }
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected virtual void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected virtual void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
+        protected virtual void OnPopupArranged() { }
         protected virtual void OnPressedChanged(bool pressed) { }
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -595,23 +602,19 @@ namespace SharpVision.Controls
         public object? CommandParameter { get; set; }
         public SharpVision.Styling.Affix? EndAffix { get; set; }
         public bool IsOpen { get; set; }
+        protected override string PopupOpenPropertyName { get; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
-        protected void AcceptPopupAndClose() { }
         protected void ArrangeCaption(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void DrawDropDownIndicator(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect content, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected void EnableCaption() { }
         protected void EnableCommand() { }
-        protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null) { }
         protected void ExecuteCommandIfAny() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected SharpVision.Terminal.Geometry.Size MeasureCaption(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
-        protected override void OnAttached() { }
-        protected virtual void OnDropDownClosed() { }
-        protected virtual void OnDropDownOpened() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -1663,11 +1666,11 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.ListSelectionChangedEventArgs>? SelectionChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnPopupArranged() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
@@ -1676,8 +1679,9 @@ namespace SharpVision.Controls.Input
     {
         public CommandBar() { }
         public SharpVision.Controls.Input.CommandBarStyle ActualStyle { get; }
-        public bool IsOverflowOpen { get; }
+        public bool IsOverflowOpen { get; set; }
         public SharpVision.Controls.Input.CommandBarEntryCollection Items { get; }
+        protected override string PopupOpenPropertyName { get; }
         public int SelectedIndex { get; set; }
         public SharpVision.Controls.Input.CommandBarItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
@@ -1685,7 +1689,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Controls.Input.CommandBarItemInvokedEventArgs>? ItemInvoked;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnAttached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
@@ -1763,11 +1766,13 @@ namespace SharpVision.Controls.Input
         public SharpVision.Styling.Border FieldBorder { get; set; }
         public SharpVision.Styling.Shadow FieldShadow { get; set; }
         public bool IsOpen { get; set; }
+        public override bool IsPopupOpen { get; set; }
         public bool IsResolving { get; }
         public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public System.Collections.Generic.IReadOnlyList<object?> Items { get; }
         public string? Placeholder { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
+        protected override string PopupOpenPropertyName { get; }
         public SharpVision.Controls.Input.CommandPaletteResolver? Resolver { get; set; }
         public SharpVision.Layout.Length RowHeight { get; set; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
@@ -1777,10 +1782,10 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? Opened;
         public event System.EventHandler<SharpVision.Controls.Input.CommandPaletteResolutionFailedEventArgs>? ResolutionFailed;
         public event System.EventHandler? ResultsChanged;
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void Close() { }
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
+        protected override void OnDropDownClosed() { }
+        protected override void OnDropDownOpened() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Open() { }
@@ -1841,7 +1846,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
@@ -1879,7 +1883,6 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler? DropDownOpened;
         public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
@@ -2038,11 +2041,13 @@ namespace SharpVision.Controls.Input
         public SharpVision.Layout.Length DropDownHeight { get; set; }
         public SharpVision.Styling.Affix? EndAffix { get; set; }
         public bool IsOpen { get; set; }
+        public override bool IsPopupOpen { get; set; }
         public bool IsResolving { get; }
         public SharpVision.Controls.Collections.ItemTemplate ItemTemplate { get; set; }
         public int MinimumPrefixLength { get; set; }
         public string? Placeholder { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
+        protected override string PopupOpenPropertyName { get; }
         public SharpVision.Controls.Input.SuggestionResolver? Resolver { get; set; }
         public SharpVision.Layout.Length RowHeight { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
@@ -2055,10 +2060,10 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Controls.Input.SuggestionResolutionFailedEventArgs>? ResolutionFailed;
         public event System.EventHandler<SharpVision.Input.ItemInvokedEventArgs>? SuggestionAccepted;
         public event System.EventHandler? SuggestionsChanged;
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void Close() { }
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
+        protected override void OnDropDownClosed() { }
+        protected override void OnDropDownOpened() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Open() { }
@@ -3948,6 +3953,7 @@ namespace SharpVision.Popups
         protected override bool ClipsChildren { get; }
         public bool CloseOnEscape { get; set; }
         public bool ConnectsToAnchor { get; init; }
+        public SharpVision.Layout.Length ContentHeightLimit { get; set; }
         public bool FocusOnOpen { get; set; }
         public bool IsOpen { get; set; }
         public SharpVision.Popups.PopupModalBehavior ModalBehavior { get; set; }

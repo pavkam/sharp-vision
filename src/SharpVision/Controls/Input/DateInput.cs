@@ -309,7 +309,6 @@ public sealed class DateInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
         var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
         var width = MeasureCells(FormatValue())
             .Add(_indicatorReservedWidth)
@@ -317,10 +316,6 @@ public sealed class DateInput: InputBase
             .Add(affixes.EndCells);
         return new Size(width, 1);
     }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
 
     /// <summary>Resolves the box editable segment text is drawn into: the content box with the
     /// drop-down indicator's own reserved columns subtracted first, then deflated for any active

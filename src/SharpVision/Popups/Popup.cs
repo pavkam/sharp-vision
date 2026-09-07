@@ -184,12 +184,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative ceiling applied to
     /// owned content height.</summary>
-    /// <remarks>Composite input owners use this seam without exposing their retained popup.</remarks>
     /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage ceiling is zero.</exception>
     /// <exception cref="ArgumentException">The ceiling uses proportional sizing.</exception>
     /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
-    internal Length ContentHeightLimit
+    public Length ContentHeightLimit
     {
         get;
         set

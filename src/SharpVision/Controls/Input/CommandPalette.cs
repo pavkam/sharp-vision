@@ -22,7 +22,6 @@ public sealed class CommandPalette: CompositeControlBase
     private readonly TextInput _input;
     private readonly ListView _list;
     private readonly Popup _popup;
-    private readonly PopupDropDownCoordinator _popupCoordinator;
     private readonly LatestControlOperation _resolutionOperation = new();
     private int _resolutionGeneration;
     private int _openingSelectedIndex = -1;
@@ -52,38 +51,14 @@ public sealed class CommandPalette: CompositeControlBase
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
-        _popup = new Popup
-        {
-            Anchor = _input,
-            ConnectsToAnchor = true,
-            Content = _list,
-            FocusOnOpen = false,
-            ModalBehavior = PopupModalBehavior.None,
-            Placement = PopupPlacement.Below,
-            SuppressCloseOtherPopups = true,
-            TabNavigation = TabNavigation.None,
-            TracksAnchorReflow = false,
-            ContentHeightLimit = Length.Cells(8)
-        };
-        var popupSlot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Popup,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "results",
-                InvalidationImpact.Measure),
-            capacity: 1);
-        popupSlot.Add(_popup);
-        _popupCoordinator = new PopupDropDownCoordinator(
-            this,
-            _popup,
+        _popup = EnablePopupNavigationSession(
             _list,
-            _input.Focus,
-            () => NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None),
-            OnOpened,
-            OnClosed,
+            focusOnOpen: false,
+            anchor: _input,
             ownerInitialFocus: _input,
+            requestFocus: _input.Focus,
+            contentHeightLimit: Length.Cells(8),
+            partKey: "results",
             beginSession: BeginNavigationSession,
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession);
@@ -431,7 +406,19 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public bool IsOpen
     {
-        get => _popupCoordinator.IsOpen;
+        get => IsPopupOpen;
+        set => IsPopupOpen = value;
+    }
+
+    /// <inheritdoc/>
+    protected override string PopupOpenPropertyName => nameof(IsOpen);
+
+    /// <inheritdoc/>
+    /// <remarks>Opening with no items starts a resolution instead; the request is remembered and
+    /// honored once results arrive.</remarks>
+    public override bool IsPopupOpen
+    {
+        get => base.IsPopupOpen;
         set
         {
             VerifyMutable();
@@ -446,13 +433,13 @@ public sealed class CommandPalette: CompositeControlBase
 
             if (!value)
             {
-                _popupCoordinator.SetOpen(false);
+                base.IsPopupOpen = false;
                 return;
             }
 
             if (Items.Count > 0)
             {
-                _popupCoordinator.SetOpen(true);
+                base.IsPopupOpen = true;
             }
             else
             {
@@ -479,20 +466,6 @@ public sealed class CommandPalette: CompositeControlBase
     #endregion
 
     #region Layout, input, and lifecycle
-
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        _ = MeasureChild(_popup, new Constraint(constraint.Width, height: null));
-        return base.MeasureOverride(constraint);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds)
-    {
-        base.ArrangeOverride(bounds);
-        ArrangeChild(_popup, RootBounds(bounds), ResolvedAxes.Both);
-    }
 
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
@@ -527,7 +500,6 @@ public sealed class CommandPalette: CompositeControlBase
     protected override void OnAttached()
     {
         base.OnAttached();
-        _popupCoordinator.OnOwnerAttached();
         SchedulePendingFirstResultSelection();
     }
 
@@ -536,7 +508,6 @@ public sealed class CommandPalette: CompositeControlBase
     {
         base.OnUnavailable(reason);
         ClearPendingFirstResultSelection();
-        _popupCoordinator.OnOwnerUnavailable(reason);
         ExceptionDispatchInfo? failure = null;
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
@@ -551,7 +522,6 @@ public sealed class CommandPalette: CompositeControlBase
             _input.TextChanged -= OnTextChanged;
             _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
-            _popupCoordinator.Detach();
             Opened = null;
             Closed = null;
             ResultsChanged = null;
@@ -580,7 +550,7 @@ public sealed class CommandPalette: CompositeControlBase
             stroke.Modifiers.IsActivationEligible())
         {
             eventArgs.IsHandled = true;
-            _popupCoordinator.SetOpen(false);
+            base.IsPopupOpen = false;
             return true;
         }
 
@@ -588,7 +558,7 @@ public sealed class CommandPalette: CompositeControlBase
             stroke.Code == Code.Tab &&
             KeyboardModifierPolicy.IsTabTraversalEligible(stroke.Modifiers))
         {
-            _popupCoordinator.SetOpen(false);
+            base.IsPopupOpen = false;
             return false;
         }
 
@@ -637,7 +607,7 @@ public sealed class CommandPalette: CompositeControlBase
 
     /// <summary>Unifies the first available result's selection and current state after the popup
     /// makes its rows eligible, then publishes the completed open transition.</summary>
-    private void OnOpened()
+    protected override void OnDropDownOpened()
     {
         if (Items.Count > 0)
         {
@@ -647,7 +617,8 @@ public sealed class CommandPalette: CompositeControlBase
         Opened?.Invoke(this, EventArgs.Empty);
     }
 
-    private void OnClosed()
+    /// <inheritdoc/>
+    protected override void OnDropDownClosed()
     {
         _wantsOpen = false;
         ClearPendingFirstResultSelection();
@@ -836,7 +807,7 @@ public sealed class CommandPalette: CompositeControlBase
         SetResultsOpenState(_wantsOpen && Items.Count > 0);
 
         if (IsCurrentResolution(lease) &&
-            _popupCoordinator.IsOpen &&
+            IsOpen &&
             _list.SelectedIndex < 0)
         {
             RequestFirstResultSelection(generation);
@@ -863,12 +834,12 @@ public sealed class CommandPalette: CompositeControlBase
                 return;
             }
 
-            _popupCoordinator.SetOpen(true);
+            base.IsPopupOpen = true;
             return;
         }
 
         var editorHadFocus = _input.IsFocused;
-        _popupCoordinator.SetOpen(false);
+        base.IsPopupOpen = false;
 
         // Exiting the modal scope restores the focus that preceded Open(), which is right for
         // Escape, activation, and light dismissal but wrong for a close the user did not request:
@@ -889,7 +860,7 @@ public sealed class CommandPalette: CompositeControlBase
     private void RequestFirstResultSelection(int resolutionGeneration)
     {
         _pendingFirstSelectionResolutionGeneration = resolutionGeneration;
-        _pendingFirstSelectionSessionGeneration = _popupCoordinator.SessionGeneration;
+        _pendingFirstSelectionSessionGeneration = PopupSessionGeneration;
         SchedulePendingFirstResultSelection();
     }
 
@@ -928,8 +899,8 @@ public sealed class CommandPalette: CompositeControlBase
         ClearPendingFirstResultSelection();
 
         if (!IsDisposed && resolutionGeneration == _resolutionGeneration &&
-            _popupCoordinator.IsOpen &&
-            _popupCoordinator.SessionGeneration == sessionGeneration &&
+            IsOpen &&
+            PopupSessionGeneration == sessionGeneration &&
             _list.SelectedIndex < 0)
         {
             _ = _list.MoveSelection(Code.Home);
@@ -1045,15 +1016,15 @@ public sealed class CommandPalette: CompositeControlBase
             eventArgs.Index == identity.ItemIndex &&
             eventArgs.Index == _list.SelectedIndex &&
             eventArgs.Index == _list.ActiveIndex &&
-            _popupCoordinator.TransitionVersion == identity.PopupTransitionVersion &&
-            _popupCoordinator.SessionGeneration == identity.PopupSessionGeneration;
+            PopupTransitionVersion == identity.PopupTransitionVersion &&
+            PopupSessionGeneration == identity.PopupSessionGeneration;
 
         if (!isCurrentInvocation)
         {
             return;
         }
 
-        _popupCoordinator.AcceptAndClose();
+        AcceptPopupAndClose();
         ItemInvoked?.Invoke(
             this,
             new ItemInvokedEventArgs(eventArgs.Index, eventArgs.Item, eventArgs.Cause));
@@ -1067,8 +1038,8 @@ public sealed class CommandPalette: CompositeControlBase
             ? new PopupItemActivationIdentity(
                 eventArgs.ActivationGeneration,
                 eventArgs.Index,
-                _popupCoordinator.TransitionVersion,
-                _popupCoordinator.SessionGeneration)
+                PopupTransitionVersion,
+                PopupSessionGeneration)
             : null;
     }
 

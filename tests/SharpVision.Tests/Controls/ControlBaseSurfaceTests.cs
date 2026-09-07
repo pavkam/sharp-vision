@@ -445,4 +445,72 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         probe.IsDraggingNow.ShouldBeFalse();
     }
+
+    /// <summary>Verifies <see cref="ControlBase.EnablePopup"/>'s owner never has to lay out its own
+    /// popup: the base class measures and arranges the owned popup after
+    /// <see cref="ControlBase.MeasureOverride"/>/<see cref="ControlBase.ArrangeOverride"/> even
+    /// though the probe overrides neither.</summary>
+    [Fact]
+    public async Task EnablePopup_WhenOpenedOnPlainControl_ArrangesPopupWithoutOwnerLayoutAsync()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => probe.IsPopupOpen = true, "open the owned popup");
+
+        // Assert
+        probe.Popup.Bounds.Width.ShouldBeGreaterThan(0);
+        probe.Popup.Bounds.Height.ShouldBeGreaterThan(0);
+        probe.Popup.Bounds.X.ShouldBeGreaterThanOrEqualTo(0);
+        probe.Popup.Bounds.Y.ShouldBeGreaterThanOrEqualTo(0);
+        probe.Popup.Bounds.Right.ShouldBeLessThanOrEqualTo(20);
+        probe.Popup.Bounds.Bottom.ShouldBeLessThanOrEqualTo(10);
+    }
+
+    /// <summary>Verifies the base-owned popup capability raises <c>OnDropDownOpened</c> then
+    /// <c>OnDropDownClosed</c> in order as <see cref="ControlBase.IsPopupOpen"/> toggles.</summary>
+    [Fact]
+    public async Task IsPopupOpen_WhenToggled_RaisesOpenedThenClosedHooksAsync()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => probe.IsPopupOpen = true, "open the owned popup");
+        await surface.UpdateAsync(() => probe.IsPopupOpen = false, "close the owned popup");
+
+        // Assert
+        probe.LifecycleEvents.ShouldBe(["OnDropDownOpened", "OnDropDownClosed"]);
+    }
+
+    /// <summary>Verifies disposing the owner while its base-owned popup is open detaches the
+    /// popup coordinator cleanly - no throw, and the owner commits disposed - proving
+    /// <see cref="ControlBase"/> forwards attach/unavailable lifecycle for any popup owner, not
+    /// only <see cref="InputBase"/> derivatives.</summary>
+    [Fact]
+    public async Task Dispose_WhenPopupOpen_DetachesCoordinatorAsync()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => probe.IsPopupOpen = true, "open the owned popup");
+
+        // Act
+        await surface.UpdateAsync(probe.Dispose, "dispose the owner while its popup is open");
+
+        // Assert
+        probe.IsDisposed.ShouldBeTrue();
+    }
 }

@@ -25,7 +25,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     private readonly CommandBarOverflowButton _overflowButton;
     private readonly Menu _overflowMenu;
     private readonly Popup _overflowPopup;
-    private readonly PopupDropDownCoordinator _overflowCoordinator;
     private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly StyleSlot<CommandBarStyle> _style;
     private readonly HashSet<ControlBase> _primaryEntries = [];
@@ -73,35 +72,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             IsTabStop = false
         };
         _overflowMenu.ItemInvocationCompleted += OnOverflowItemInvocationCompleted;
-        _overflowPopup = new Popup
-        {
-            Anchor = _overflowButton,
-            Content = _overflowMenu,
-            FocusOnOpen = true,
-            ModalBehavior = PopupModalBehavior.None,
-            Placement = PopupPlacement.Below,
-            SuppressCloseOtherPopups = true,
-            TabNavigation = TabNavigation.None,
-            TracksAnchorReflow = false
-        };
-        var popupSlot = RegisterOwnedSlot(
-            new OwnedControlOptions(
-                OwnedControlRole.FrameworkPart,
-                OwnedControlLayer.Popup,
-                participatesInHitTesting: true,
-                participatesInNavigation: true,
-                partKey: "overflow",
-                InvalidationImpact.Measure),
-            capacity: 1);
-        popupSlot.Add(_overflowPopup);
-        _overflowCoordinator = new PopupDropDownCoordinator(
-            this,
-            _overflowPopup,
+        _overflowPopup = EnablePopup(
             _overflowMenu,
-            RequestFocus,
-            () => NotifyPropertyChanged(nameof(IsOverflowOpen), InvalidationImpact.None),
-            static () => { },
-            static () => { });
+            focusOnOpen: true,
+            anchor: _overflowButton,
+            connectsToAnchor: false,
+            partKey: "overflow");
 
         IsFocusable = true;
         IsTabStop = true;
@@ -204,8 +180,17 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         }
     }
 
-    /// <summary>Gets whether the private overflow menu currently owns an active popup session.</summary>
-    public bool IsOverflowOpen => _overflowCoordinator.IsOpen;
+    /// <summary>Gets or sets whether the private overflow menu currently owns an active popup session.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public bool IsOverflowOpen
+    {
+        get => IsPopupOpen;
+        set => IsPopupOpen = value;
+    }
+
+    /// <inheritdoc/>
+    protected override string PopupOpenPropertyName => nameof(IsOverflowOpen);
 
     /// <summary>Gets or sets the complete local presentation, or null for inherited theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -452,7 +437,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
         if (IsOverflowOpen)
         {
-            _overflowCoordinator.SetOpen(false);
+            IsOverflowOpen = false;
         }
 
         Invalidate(Invalidation.Measure);
@@ -669,7 +654,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         var padding = ActualStyle.Padding;
         var availableHeight = constraint.Height.Subtract(padding.Vertical);
         var desired = MeasureChild(_host, new Constraint(width: null, availableHeight));
-        _ = MeasureChild(_overflowPopup, new Constraint(constraint.Width, height: null));
         return new Size(
             desired.Width.Add(_host.Margin.Horizontal).Add(padding.Horizontal),
             desired.Height.Add(_host.Margin.Vertical).Add(padding.Vertical));
@@ -692,7 +676,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             _overflowButton,
             showTrigger ? new Rect(triggerX, content.Y, 1, Math.Min(1, content.Height)) : new Rect(content.X, content.Y, 0, 0),
             ResolvedAxes.Both);
-        ArrangeChild(_overflowPopup, RootBounds(bounds), ResolvedAxes.Both);
     }
 
     private void PrepareLayout(int availableWidth)
@@ -739,7 +722,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
             if (IsOverflowOpen)
             {
-                _overflowCoordinator.SetOpen(false);
+                IsOverflowOpen = false;
             }
         }
 
@@ -957,7 +940,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
         if (IsOverflowOpen)
         {
-            _overflowCoordinator.SetOpen(false);
+            IsOverflowOpen = false;
             return;
         }
 
@@ -1130,7 +1113,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             _overflowMenu.SelectedItem = projection.Item;
         }
 
-        _overflowCoordinator.SetOpen(true);
+        IsOverflowOpen = true;
         return true;
     }
 
@@ -1141,7 +1124,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
         if (!IsDisposed && IsOverflowOpen)
         {
-            _overflowCoordinator.AcceptAndClose();
+            AcceptPopupAndClose();
         }
     }
 
@@ -1196,7 +1179,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
             if (IsOverflowOpen && !item.EffectiveIsVisible)
             {
-                _overflowCoordinator.SetOpen(false);
+                IsOverflowOpen = false;
             }
         }
     }
@@ -1237,20 +1220,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnAttached()
-    {
-        base.OnAttached();
-        _overflowCoordinator.OnOwnerAttached();
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         _availabilityGeneration++;
         ExceptionDispatchInfo? failure = null;
         CaptureFailure(CancelSelectedItemPressActivation, ref failure);
         CaptureFailure(_overflowButton.CancelPress, ref failure);
-        CaptureFailure(() => _overflowCoordinator.OnOwnerUnavailable(reason), ref failure);
         CaptureFailure(() => base.OnUnavailable(reason), ref failure);
 
         if (reason == ReleaseReason.Disposed)
@@ -1258,7 +1233,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             FocusEntered -= OnFocusEntered;
             FocusLeft -= OnFocusLeft;
             _overflowMenu.ItemInvocationCompleted -= OnOverflowItemInvocationCompleted;
-            CaptureFailure(_overflowCoordinator.Detach, ref failure);
             CaptureFailure(() => ReleaseOverflowProjections(disposeFaces: false), ref failure);
             ItemInvoked = null;
         }
