@@ -215,8 +215,8 @@ public sealed class Grid: Container
         // false ceiling entirely: every track gets its own full, non-competing request, with
         // Percent still sized against the visible viewport instead of falling back to its own
         // unrelated intrinsic request.
-        var rowScrolls = AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0;
-        var columnScrolls = AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0;
+        var rowScrolls = ScrollsVertically();
+        var columnScrolls = ScrollsHorizontally();
         int? rowAvailable = rowScrolls ? null : bounds.Height;
         int? columnAvailable = columnScrolls ? null : bounds.Width;
         var rowPercentBase = rowScrolls ? Viewport.Height : (int?) null;

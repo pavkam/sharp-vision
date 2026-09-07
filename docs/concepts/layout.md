@@ -170,13 +170,29 @@ for every caller, and this divergence is intentional rather than an oversight to
 unify. `Tracks.Resolve` accepts an optional `percentBase` distinct from its
 allocation ceiling for exactly this reason. `Grid.Resolve` and
 `TablePresenter.MeasureCells` both reserve spacing out of the incoming axis
-before allocating and pass no `percentBase`, so their Percent tracks resolve
-against that already spacing-reduced area. `Stack` passes its pre-spacing axis
-as an explicit `percentBase` (see
+before allocating and, off a non-scrolling axis, pass no `percentBase`, so their
+Percent tracks resolve against that already spacing-reduced area. `Stack`
+passes its pre-spacing axis as an explicit `percentBase` (see
 [Stack](../controls/layout/stack.md#behavior)), so its Percent tracks resolve
 against the complete axis instead. A caller comparing the two panels with
 identical `Percent(50)` participants and non-zero spacing sees Grid's
 percentages come out slightly smaller than Stack's for this reason.
+
+When `AutoScroll` arms the axis a caller allocates along, that caller instead
+passes the candidate visible viewport extent as an explicit `percentBase` -
+`Grid.ArrangeOverride`, `Stack.ArrangeOverride`, `Dock.ArrangeOverride`, and
+`Overlay.ArrangeOverride` all do this for their own Percent and Star
+participants using the committed `Viewport`, valid only from an arrange
+override. `TablePresenter.MeasureCells` is shared by both passes and sources
+the same candidate from whichever is valid where it is called: the committed
+`Viewport` from `ArrangeOverride`, or the in-progress `ScrollMeasureViewport`
+candidate (see [Scrolling](scrolling.md#automatic-scrollbar-algorithm)) from
+`MeasureOverride`, mirroring `SplitPane` and `Wrap`. The allocation ceiling on
+that axis is otherwise `Math.Max(Extent, Viewport)`, which is, by construction,
+too large to have ever accounted for a Percent or Star participant's own true
+share - resolving against it instead of the viewport crushes that participant
+toward its own automatic or minimum size the moment scrolled content makes
+`Extent` exceed `Viewport`.
 
 The convenience overload returns an array. The full overloads accept
 `ReadOnlySpan<T>` inputs and write into a caller-owned `Span<int>`. Integer

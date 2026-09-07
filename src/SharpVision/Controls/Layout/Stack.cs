@@ -158,8 +158,7 @@ public sealed class Stack: Container
         {
             var vertical = Orientation == Orientation.Vertical;
             var axis = vertical ? bounds.Height : bounds.Width;
-            var scrolls = AutoScroll &&
-                (ScrollBars & (vertical ? ScrollBars.Vertical : ScrollBars.Horizontal)) != 0;
+            var scrolls = vertical ? ScrollsVertically() : ScrollsHorizontally();
             int? percentBase = scrolls ? (vertical ? Viewport.Height : Viewport.Width) : axis;
             Fill(children, lengths, automatic, minimum, maximum, percentBase);
             var spacing = LayoutMath.GapExtent(Spacing, count, axis);

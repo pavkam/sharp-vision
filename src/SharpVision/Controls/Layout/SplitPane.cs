@@ -490,12 +490,6 @@ public sealed class SplitPane: Container
     }
 
     [Pure]
-    private bool ScrollsHorizontally() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0;
-
-    [Pure]
-    private bool ScrollsVertically() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0;
-
-    [Pure]
     private bool ScrollsPrimary() =>
         Orientation == Orientation.Horizontal ? ScrollsHorizontally() : ScrollsVertically();
 

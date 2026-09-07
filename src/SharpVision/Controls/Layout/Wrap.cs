@@ -263,10 +263,4 @@ public sealed class Wrap: Container
     private bool ScrollsPrimary() =>
         Orientation == Orientation.Horizontal ? ScrollsHorizontally() : ScrollsVertically();
 
-    [Pure]
-    private bool ScrollsHorizontally() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0;
-
-    [Pure]
-    private bool ScrollsVertically() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0;
-
 }

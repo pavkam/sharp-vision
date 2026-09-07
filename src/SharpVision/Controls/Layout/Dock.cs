@@ -285,13 +285,21 @@ public sealed class Dock: Container
         var remaining = bounds;
         var last = LastParticipant();
 
+        // A scrolling dock axis arranges within bounds inflated to Math.Max(Extent, Viewport) by
+        // Container.ResolveContentSlot, so a Percent/Star sibling's true (viewport-relative) share
+        // must be resolved against the visible Viewport instead of that inflated axis - otherwise
+        // it is crushed toward its own minimum the moment scrolled content makes Extent exceed
+        // Viewport, mirroring the same fix already applied to Grid and Stack.
+        var horizontalPercentBase = ScrollsHorizontally() ? Viewport.Width : (int?) null;
+        var verticalPercentBase = ScrollsVertically() ? Viewport.Height : (int?) null;
+
         // Every same-axis participant's size is decided once, up front, by ResolveAxisBorders —
         // both non-Star children (as Resolve always did) and Star children, which share their
         // axis's leftover space by weight, mirroring Tracks.AllocateStars for Grid/StackPanel.
         // Horizontal (Left/Right) and vertical (Top/Bottom) children never consume each other's
         // axis, so the two groups are resolved independently up front.
-        var horizontalBorders = ResolveAxisBorders(horizontal: true, bounds.Width, last, out var horizontalLimitBases);
-        var verticalBorders = ResolveAxisBorders(horizontal: false, bounds.Height, last, out var verticalLimitBases);
+        var horizontalBorders = ResolveAxisBorders(horizontal: true, bounds.Width, last, horizontalPercentBase, out var horizontalLimitBases);
+        var verticalBorders = ResolveAxisBorders(horizontal: false, bounds.Height, last, verticalPercentBase, out var verticalLimitBases);
 
         for (var index = 0; index < Children.Count; index++)
         {
@@ -364,9 +372,13 @@ public sealed class Dock: Container
     }
 
     // Resolves a non-Star edge request against the given axis. Called once per participant by
-    // ResolveAxisBorders; Star lengths never reach here.
+    // ResolveAxisBorders; Star lengths never reach here. A Percent request resolves against
+    // percentBase (the visible Viewport) instead of the sequential-consumption available pool when
+    // the owning axis scrolls, while every other kind - and the final space clamp below, which must
+    // still exhaust against the real available space for sequential Cells/Auto placement to remain
+    // correct - keeps resolving against available exactly as before.
     [Pure]
-    private static int Resolve(ControlBase child, int available, bool horizontal)
+    private static int Resolve(ControlBase child, int available, bool horizontal, int? percentBase = null)
     {
         Debug.Assert(available >= 0, "Available dock axis space is non-negative.");
 
@@ -382,7 +394,7 @@ public sealed class Dock: Container
         {
             LengthKind.Auto => desired,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => Percent(available, length.Value),
+            LengthKind.Percent => Percent(percentBase ?? available, length.Value),
             LengthKind.Star => throw new UnreachableException("Star lengths resolve through AllocateStarBorders."),
             _ => throw new UnreachableException()
         };
@@ -407,7 +419,7 @@ public sealed class Dock: Container
     // considered: a collapsed child, or the last child when LastChildFills, never reserves space
     // on either axis.
     [Pure]
-    private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last, out int[] limitBases)
+    private int[] ResolveAxisBorders(bool horizontal, int axisTotal, int last, int? percentBase, out int[] limitBases)
     {
         var borders = new int[Children.Count];
         limitBases = new int[Children.Count];
@@ -444,7 +456,7 @@ public sealed class Dock: Container
             else
             {
                 limitBases[index] = remaining;
-                var border = Resolve(child, remaining, horizontal);
+                var border = Resolve(child, remaining, horizontal, percentBase);
                 borders[index] = border;
                 remaining -= Math.Min(remaining, border.Add(margin));
             }
@@ -454,12 +466,15 @@ public sealed class Dock: Container
 
         if (starIndices is not null && totalWeight > 0)
         {
+            // Stars share limitBases's percentage base with DistributeStarShares's own effective
+            // pool below, so a Star's percent-based Min/MaxWidth resolves against the same axis its
+            // weighted share does.
             foreach (var index in starIndices)
             {
-                limitBases[index] = remaining;
+                limitBases[index] = percentBase ?? remaining;
             }
 
-            DistributeStarShares(starIndices, remaining, horizontal, borders);
+            DistributeStarShares(starIndices, remaining, horizontal, borders, percentBase);
         }
 
         return borders;
@@ -472,19 +487,24 @@ public sealed class Dock: Container
     // first seeded at its own minimum, exactly as Tracks pre-seeds a track's destination before
     // splitting the remainder: a large minimum is a reservation the weighted split then adds to,
     // not a post-hoc floor that silently steals cells another Star was already allocated.
-    private void DistributeStarShares(List<int> starIndices, int pool, bool horizontal, int[] borders)
+    // percentBase substitutes the visible Viewport for pool - the sequential-consumption leftover,
+    // itself derived from bounds inflated to Math.Max(Extent, Viewport) - whenever the owning axis
+    // scrolls, exactly mirroring Resolve's LengthKind.Percent substitution so a Star's percent-based
+    // Min/MaxWidth and its own weighted share both resolve against what is actually visible.
+    private void DistributeStarShares(List<int> starIndices, int pool, bool horizontal, int[] borders, int? percentBase = null)
     {
+        var effectivePool = percentBase ?? pool;
         var reserved = 0;
 
         foreach (var index in starIndices)
         {
             var child = Children[index];
-            ResolveLimits(child, pool, horizontal, out var minimum, out _);
+            ResolveLimits(child, effectivePool, horizontal, out var minimum, out _);
             borders[index] = minimum;
             reserved += minimum;
         }
 
-        var remaining = Math.Max(0, pool - reserved);
+        var remaining = Math.Max(0, effectivePool - reserved);
         var eligible = new HashSet<int>(starIndices);
 
         while (remaining > 0 && eligible.Count > 0)
@@ -517,7 +537,7 @@ public sealed class Dock: Container
 
                 var child = Children[index];
                 var length = horizontal ? child.Width : child.Height;
-                ResolveLimits(child, pool, horizontal, out _, out var maximum);
+                ResolveLimits(child, effectivePool, horizontal, out _, out var maximum);
 
                 cumulativeWeight += length.Value;
                 var edge = (int) Math.Round(pass * cumulativeWeight / totalWeight, MidpointRounding.AwayFromZero);

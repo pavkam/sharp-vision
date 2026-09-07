@@ -523,6 +523,14 @@ public abstract class Container: ControlBase
         }
     } = ScrollBars.Vertical;
 
+    /// <summary>Gets whether this container currently scrolls (clips and offsets) its horizontal axis.</summary>
+    [Pure]
+    protected bool ScrollsHorizontally() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0;
+
+    /// <summary>Gets whether this container currently scrolls (clips and offsets) its vertical axis.</summary>
+    [Pure]
+    protected bool ScrollsVertically() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0;
+
     /// <summary>Gets or sets the common chrome reservation policy for enabled scroll axes.</summary>
     /// <remarks>Both axis policies are synchronized from the live committed value after property
     /// observers return. A reentrant observer's newer common policy therefore owns both axes.</remarks>
@@ -1243,12 +1251,12 @@ public abstract class Container: ControlBase
     }
 
     [Pure]
-    private int MaximumX() => AutoScroll && (ScrollBars & ScrollBars.Horizontal) != 0
+    private int MaximumX() => ScrollsHorizontally()
         ? Math.Max(0, Extent.Width - Viewport.Width)
         : 0;
 
     [Pure]
-    private int MaximumY() => AutoScroll && (ScrollBars & ScrollBars.Vertical) != 0
+    private int MaximumY() => ScrollsVertically()
         ? Math.Max(0, Extent.Height - Viewport.Height)
         : 0;
 

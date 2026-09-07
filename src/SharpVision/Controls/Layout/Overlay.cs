@@ -270,6 +270,17 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
+        // A scrolling overlay axis arranges within bounds inflated to Math.Max(Extent, Viewport) by
+        // Container.ResolveContentSlot, so a Percent/Star offset or length's true (viewport-relative)
+        // value must resolve against the visible Viewport instead of that inflated axis - otherwise
+        // it is crushed toward its own automatic size the moment overflowing content makes Extent
+        // exceed Viewport, mirroring the same fix already applied to Grid, Stack, and Dock. Only the
+        // offset/length percentage base changes; the physical placement below (bounds.X, bounds.Right,
+        // and the un-anchored fill width/height) still spans the real content box so a child still
+        // lays out at the correct physical position within it.
+        var horizontalBase = ScrollsHorizontally() ? Viewport.Width : bounds.Width;
+        var verticalBase = ScrollsVertically() ? Viewport.Height : bounds.Height;
+
         foreach (var child in Children)
         {
             if (child.Visibility == Visibility.Collapsed)
@@ -279,15 +290,15 @@ public sealed class Overlay: Container
 
             var positionsWidth = GetLeft(child) is not null || GetRight(child) is not null;
             var positionsHeight = GetTop(child) is not null || GetBottom(child) is not null;
-            var left = positionsWidth ? Resolve(GetLeft(child), bounds.Width) : 0;
-            var right = positionsWidth ? Resolve(GetRight(child), bounds.Width) : 0;
-            var top = positionsHeight ? Resolve(GetTop(child), bounds.Height) : 0;
-            var bottom = positionsHeight ? Resolve(GetBottom(child), bounds.Height) : 0;
+            var left = positionsWidth ? Resolve(GetLeft(child), horizontalBase) : 0;
+            var right = positionsWidth ? Resolve(GetRight(child), horizontalBase) : 0;
+            var top = positionsHeight ? Resolve(GetTop(child), verticalBase) : 0;
+            var bottom = positionsHeight ? Resolve(GetBottom(child), verticalBase) : 0;
             var width = positionsWidth
-                ? Outer(child, horizontal: true, bounds.Width, left, right)
+                ? Outer(child, horizontal: true, horizontalBase, left, right)
                 : bounds.Width;
             var height = positionsHeight
-                ? Outer(child, horizontal: false, bounds.Height, top, bottom)
+                ? Outer(child, horizontal: false, verticalBase, top, bottom)
                 : bounds.Height;
             var x = GetLeft(child) is not null
                 ? bounds.X.Add(left)
@@ -311,8 +322,8 @@ public sealed class Overlay: Container
                 slot,
                 widthResolved: positionsWidth,
                 heightResolved: positionsHeight,
-                widthLimitBase: positionsWidth ? bounds.Width : null,
-                heightLimitBase: positionsHeight ? bounds.Height : null);
+                widthLimitBase: positionsWidth ? horizontalBase : null,
+                heightLimitBase: positionsHeight ? verticalBase : null);
         }
     }
 

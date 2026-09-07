@@ -185,7 +185,13 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        MeasureCells(constraint.Width);
+        // A scrolling presenter measures its horizontal axis unbounded (Container.MeasureContent
+        // already supplies constraint.Width: null for it), so a Percent column's own automatic
+        // fallback would otherwise report its bare header/content width instead of a real
+        // viewport-relative share. ScrollMeasureViewport - not the committed Viewport, which is
+        // only valid from ArrangeOverride - is this measure pass's own candidate percentage base,
+        // mirroring SplitPane and Wrap.
+        MeasureCells(constraint.Width, ScrollsHorizontally() ? ScrollMeasureViewport.Width : null);
 
         if (_owner.IsProgressive)
         {
@@ -235,7 +241,9 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         // width transition earns one final constrained measurement pass.
         if (!_hasMeasuredWidth || _measuredWidth != bounds.Width)
         {
-            MeasureCells(bounds.Width);
+            // Arrange resolves the final, committed Viewport - unlike the measure pass above,
+            // which must use its own ScrollMeasureViewport candidate instead.
+            MeasureCells(bounds.Width, ScrollsHorizontally() ? Viewport.Width : null);
         }
 
         if (_owner.IsProgressive)
@@ -687,7 +695,7 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         return false;
     }
 
-    private void MeasureCells(int? availableWidth)
+    private void MeasureCells(int? availableWidth, int? percentBase)
     {
         _measuredWidth = availableWidth;
         _hasMeasuredWidth = true;
@@ -725,7 +733,17 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
         int? available = availableWidth.HasValue
             ? Math.Max(0, availableWidth.Value - GapWidth(_owner.Columns.Count))
             : null;
-        ColumnWidths = Tracks.Resolve(available, lengths, automatic);
+
+        // A horizontally scrolling presenter arranges within a width inflated to
+        // Math.Max(Extent, Viewport) by Container.ResolveContentSlot, so a Percent column's true
+        // (viewport-relative) width must be resolved against the visible Viewport instead of that
+        // inflated width - otherwise it is crushed toward its own automatic width the moment
+        // overflowing columns make Extent exceed Viewport, mirroring the same fix already applied
+        // to Grid and Stack. percentBase carries the caller's own candidate or committed viewport
+        // (see the two call sites); minimum/maximum spans stay empty, matching the 3-arg overload
+        // this replaces.
+        ColumnWidths = new int[_owner.Columns.Count];
+        Tracks.Resolve(available, lengths, automatic, ReadOnlySpan<int>.Empty, ReadOnlySpan<int>.Empty, ColumnWidths, percentBase);
         RowHeights = new int[_owner.Rows.Count];
 
         for (var rowIndex = 0; rowIndex < _owner.Rows.Count; rowIndex++)
