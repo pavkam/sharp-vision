@@ -15,6 +15,65 @@ using TerminalInputOptions = InputOptions;
 /// </summary>
 public sealed class ProtocolRouterTests
 {
+    /// <summary>Verifies router deadline forwarding resumes live keys after dropping a paste.</summary>
+    [Fact]
+    public void ExpirePaste_WhenDeadlineIsReached_ReportsTruncationAndResumesKeys()
+    {
+        var sink = new RecordingProtocolSink();
+        var clock = new Capabilities.ManualTimeProvider();
+        using ProtocolRouter router = new(sink, timeProvider: clock);
+        router.Route("\u001b[200~a"u8);
+        router.PendingPasteDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.PasteTimeout);
+
+        clock.Advance(TerminalInputOptions.Default.PasteTimeout);
+        router.ExpirePaste().ShouldBeTrue();
+        router.ExpirePaste().ShouldBeFalse();
+        router.Route("x"u8);
+
+        router.PendingPasteDeadline.ShouldBeNull();
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Truncated);
+        sink.Pastes.ShouldBeEmpty();
+        sink.Text.ShouldBe([new TerminalText(new Rune('x'))]);
+    }
+
+    /// <summary>Verifies wrapped-looking paste content remains byte-exact data under a route.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Route_WhenPasteContainsMultiplexerEnvelope_PreservesPayload(bool completeEnvelope)
+    {
+        // Arrange
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, "\u001bP1$r0m\u001b\\"u8);
+        var payload = completeEnvelope ? wrapped.WrittenSpan.ToArray() : "\u001bPtmux;unfinished"u8.ToArray();
+        var bytes = "\u001b[200~"u8.ToArray().Concat(payload).Concat("\u001b[201~x"u8.ToArray())
+            .Concat(wrapped.WrittenSpan.ToArray()).ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using ProtocolRouter router = new(sink, route);
+
+            // Act
+            router.Route(bytes.AsSpan(0, split));
+            router.Route(bytes.AsSpan(split));
+            router.Complete();
+
+            // Assert
+            sink.Pastes.ShouldHaveSingleItem($"split {split}").Utf8.ToArray().ShouldBe(payload);
+            sink.Text.ShouldBe([new TerminalText(new Rune('x'))]);
+            sink.Diagnostics.ShouldBeEmpty();
+            sink.StatusResponses.ShouldHaveSingleItem().Value.ToArray().ShouldBe("0m"u8.ToArray());
+        }
+    }
+
     #region Typed response and sequence routing
 
     /// <summary>Gets representative values for every bounded string family.</summary>

@@ -971,6 +971,8 @@ public sealed class Session: IAsyncDisposable
         Task? ss3Expiry = null;
         Task? mouseExpiry = null;
         Task? utf8Expiry = null;
+        Task? pasteExpiry = null;
+        var wakeSources = new Task[9];
         var preferResize = false;
 
         // Capability publication is the startup barrier. Input may refine the
@@ -1001,97 +1003,46 @@ public sealed class Session: IAsyncDisposable
                 var ss3Ready = ss3Expiry is not null && ss3Expiry.IsCompleted;
                 var mouseReady = mouseExpiry is not null && mouseExpiry.IsCompleted;
                 var utf8Ready = utf8Expiry is not null && utf8Expiry.IsCompleted;
-                Task completed;
+                var pasteReady = pasteExpiry is not null && pasteExpiry.IsCompleted;
 
-                if (!deadlineReady && !escapeReady && !keyMatcherReady && !ss3Ready && !mouseReady && !utf8Ready && !read.IsCompleted && !resize.IsCompleted)
+                if (!deadlineReady && !escapeReady && !keyMatcherReady && !ss3Ready &&
+                    !mouseReady && !utf8Ready && !pasteReady && !read.IsCompleted && !resize.IsCompleted)
                 {
-                    completed = (deadline, escapeExpiry, keyMatcherExpiry, ss3Expiry, mouseExpiry, utf8Expiry) switch
-                    {
-                        (null, null, null, null, null, null) => await Task.WhenAny(read, resize).ConfigureAwait(false),
-                        ({ } negotiation, null, null, null, null, null) => await Task.WhenAny(read, resize, negotiation).ConfigureAwait(false),
-                        (null, { } escape, null, null, null, null) => await Task.WhenAny(read, resize, escape).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, null, null, null) => await Task.WhenAny(read, resize, keyMatcher).ConfigureAwait(false),
-                        (null, null, null, { } ss3, null, null) => await Task.WhenAny(read, resize, ss3).ConfigureAwait(false),
-                        (null, null, null, null, { } mouse, null) => await Task.WhenAny(read, resize, mouse).ConfigureAwait(false),
-                        (null, null, null, null, null, { } utf8) => await Task.WhenAny(read, resize, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, null, null, null) => await Task.WhenAny(read, resize, negotiation, escape).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, null, null, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher).ConfigureAwait(false),
-                        ({ } negotiation, null, null, { } ss3, null, null) => await Task.WhenAny(read, resize, negotiation, ss3).ConfigureAwait(false),
-                        ({ } negotiation, null, null, null, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, mouse).ConfigureAwait(false),
-                        ({ } negotiation, null, null, null, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, utf8).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, null, null, null) => await Task.WhenAny(read, resize, escape, keyMatcher).ConfigureAwait(false),
-                        (null, { } escape, null, { } ss3, null, null) => await Task.WhenAny(read, resize, escape, ss3).ConfigureAwait(false),
-                        (null, { } escape, null, null, { } mouse, null) => await Task.WhenAny(read, resize, escape, mouse).ConfigureAwait(false),
-                        (null, { } escape, null, null, null, { } utf8) => await Task.WhenAny(read, resize, escape, utf8).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, { } ss3, null, null) => await Task.WhenAny(read, resize, keyMatcher, ss3).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, null, { } mouse, null) => await Task.WhenAny(read, resize, keyMatcher, mouse).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, null, null, { } utf8) => await Task.WhenAny(read, resize, keyMatcher, utf8).ConfigureAwait(false),
-                        (null, null, null, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, ss3, mouse).ConfigureAwait(false),
-                        (null, null, null, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, ss3, utf8).ConfigureAwait(false),
-                        (null, null, null, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, null, null, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, { } ss3, null, null) => await Task.WhenAny(read, resize, negotiation, escape, ss3).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, null, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, escape, mouse).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, null, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, { } ss3, null, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, null, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher, mouse).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, null, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, keyMatcher, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, null, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, ss3, mouse).ConfigureAwait(false),
-                        ({ } negotiation, null, null, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, ss3, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, null, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, mouse, utf8).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, { } ss3, null, null) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, null, { } mouse, null) => await Task.WhenAny(read, resize, escape, keyMatcher, mouse).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, null, null, { } utf8) => await Task.WhenAny(read, resize, escape, keyMatcher, utf8).ConfigureAwait(false),
-                        (null, { } escape, null, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, escape, ss3, mouse).ConfigureAwait(false),
-                        (null, { } escape, null, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, escape, ss3, utf8).ConfigureAwait(false),
-                        (null, { } escape, null, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, escape, mouse, utf8).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, keyMatcher, ss3, mouse).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, keyMatcher, ss3, utf8).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, keyMatcher, mouse, utf8).ConfigureAwait(false),
-                        (null, null, null, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, ss3, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, { } ss3, null, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, ss3).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, null, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, mouse).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, null, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, escape, ss3, mouse).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, ss3, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3, mouse).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, keyMatcher, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, null, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, ss3, mouse, utf8).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3, mouse).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3, utf8).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, escape, keyMatcher, mouse, utf8).ConfigureAwait(false),
-                        (null, { } escape, null, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, escape, ss3, mouse, utf8).ConfigureAwait(false),
-                        (null, null, { } keyMatcher, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, keyMatcher, ss3, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, { } ss3, { } mouse, null) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, ss3, mouse).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, { } ss3, null, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, ss3, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, { } keyMatcher, null, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, keyMatcher, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, { } escape, null, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, escape, ss3, mouse, utf8).ConfigureAwait(false),
-                        ({ } negotiation, null, { } keyMatcher, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, negotiation, keyMatcher, ss3, mouse, utf8).ConfigureAwait(false),
-                        (null, { } escape, { } keyMatcher, { } ss3, { } mouse, { } utf8) => await Task.WhenAny(read, resize, escape, keyMatcher, ss3, mouse, utf8).ConfigureAwait(false),
-                        var (negotiation, escape, keyMatcher, ss3, mouse, utf8) => await Task.WhenAny(read, resize, negotiation!, escape!, keyMatcher!, ss3!, mouse!, utf8!).ConfigureAwait(false)
-                    };
+                    // The fixed buffer bounds the wait set without enumerating every combination
+                    // of optional deadlines or allocating a new array on each input fragment.
+                    var wakeCount = 0;
+                    wakeSources[wakeCount++] = read;
+                    wakeSources[wakeCount++] = resize;
+                    AddWakeSource(deadline, wakeSources, ref wakeCount);
+                    AddWakeSource(escapeExpiry, wakeSources, ref wakeCount);
+                    AddWakeSource(keyMatcherExpiry, wakeSources, ref wakeCount);
+                    AddWakeSource(ss3Expiry, wakeSources, ref wakeCount);
+                    AddWakeSource(mouseExpiry, wakeSources, ref wakeCount);
+                    AddWakeSource(utf8Expiry, wakeSources, ref wakeCount);
+                    AddWakeSource(pasteExpiry, wakeSources, ref wakeCount);
+                    _ = await Task.WhenAny(wakeSources.AsSpan(0, wakeCount)).ConfigureAwait(false);
+                    continue;
                 }
-                else
-                {
-                    completed = deadlineReady switch
-                    {
-                        true => deadline!,
-                        false when escapeReady => escapeExpiry!,
-                        false when keyMatcherReady => keyMatcherExpiry!,
-                        false when ss3Ready => ss3Expiry!,
-                        false when mouseReady => mouseExpiry!,
-                        false when utf8Ready => utf8Expiry!,
-                        false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
-                        false when read.IsCompleted => read,
-                        _ => resize
-                    };
 
-                    if (read.IsCompleted && resize.IsCompleted)
-                    {
-                        preferResize = !preferResize;
-                    }
+                // A ready read is progress, even if processing was delayed by a sink callback.
+                // Never reinterpret its queued paste payload as keys because a timer also fired.
+                var completed = deadlineReady switch
+                {
+                    true => deadline!,
+                    false when escapeReady => escapeExpiry!,
+                    false when keyMatcherReady => keyMatcherExpiry!,
+                    false when ss3Ready => ss3Expiry!,
+                    false when mouseReady => mouseExpiry!,
+                    false when utf8Ready => utf8Expiry!,
+                    false when pasteReady && !read.IsCompleted => pasteExpiry!,
+                    false when read.IsCompleted && resize.IsCompleted => preferResize ? resize : read,
+                    false when read.IsCompleted => read,
+                    _ => resize
+                };
+
+                if (read.IsCompleted && resize.IsCompleted)
+                {
+                    preferResize = !preferResize;
                 }
 
                 if (deadline is not null && ReferenceEquals(completed, deadline))
@@ -1220,6 +1171,22 @@ public sealed class Session: IAsyncDisposable
                     continue;
                 }
 
+                if (pasteExpiry is not null && ReferenceEquals(completed, pasteExpiry))
+                {
+                    await pasteExpiry.ConfigureAwait(false);
+
+                    // Check again after awaiting: input may have become ready since selection.
+                    if (!read.IsCompleted)
+                    {
+                        _ = router.ExpirePaste();
+                    }
+
+                    pasteExpiry = router.PendingPasteDeadline is { } pendingPaste
+                        ? DelayUntilAsync(pendingPaste, linked.Token)
+                        : null;
+                    continue;
+                }
+
                 if (ReferenceEquals(completed, resize))
                 {
                     var dimensions = await resize.ConfigureAwait(false);
@@ -1332,6 +1299,15 @@ public sealed class Session: IAsyncDisposable
                     ? DelayUntilAsync(utf8Deadline, linked.Token)
                     : null;
 
+                // Keep an earlier wake-up across progress and completed/restarted pastes. When
+                // it fires, consult the current deadline and re-arm only then. Replacing a long
+                // delay for every fragment would retain an unbounded number of pending timers.
+                if (pasteExpiry is null && router.PendingPasteDeadline is { } pasteDeadline)
+                {
+                    pasteExpiry = DelayUntilAsync(pasteDeadline, linked.Token);
+                }
+
+
                 Debug.Assert(ready || negotiator is not null, "Incomplete startup always owns a negotiator.");
 
                 if (!ready && negotiator!.Completed)
@@ -1390,6 +1366,7 @@ public sealed class Session: IAsyncDisposable
             Observe(ss3Expiry);
             Observe(mouseExpiry);
             Observe(utf8Expiry);
+            Observe(pasteExpiry);
 
             if (await DrainAsync(read).ConfigureAwait(false))
             {
@@ -1483,6 +1460,16 @@ public sealed class Session: IAsyncDisposable
     #endregion
 
     #region Cleanup and mode encoding
+
+    /// <summary>Adds one optional task to the bounded session wake set.</summary>
+    private static void AddWakeSource(Task? task, Task[] sources, ref int count)
+    {
+        if (task is not null)
+        {
+            Debug.Assert(count < sources.Length, "Every session wake source fits the fixed buffer.");
+            sources[count++] = task;
+        }
+    }
 
     private Task DelayUntilAsync(DateTimeOffset deadline, CancellationToken cancellationToken)
     {

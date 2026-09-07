@@ -832,6 +832,7 @@ namespace SharpVision.Terminal.Input
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
         public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
         public System.DateTimeOffset? PendingMouseDeadline { get; }
+        public System.DateTimeOffset? PendingPasteDeadline { get; }
         public System.DateTimeOffset? PendingSs3Deadline { get; }
         public System.DateTimeOffset? PendingUtf8Deadline { get; }
         public void Complete() { }
@@ -840,6 +841,7 @@ namespace SharpVision.Terminal.Input
         public bool ExpireEscape() { }
         public bool ExpireKeyMatcher() { }
         public bool ExpireMouse() { }
+        public bool ExpirePaste() { }
         public bool ExpireSs3() { }
         public bool ExpireUtf8() { }
     }
@@ -853,6 +855,7 @@ namespace SharpVision.Terminal.Input
         public int MaxPasteBytes { get; init; }
         public SharpVision.Terminal.Protocols.MouseCoordinates MouseCoordinates { get; init; }
         public SharpVision.Terminal.Protocols.ParserLimits ParserLimits { get; init; }
+        public System.TimeSpan PasteTimeout { get; init; }
         public bool PixelMouse { get; init; }
         public SharpVision.Terminal.Terminfo.ProgramLimits ProgramLimits { get; init; }
         public SharpVision.Terminal.Capabilities.QueryLimits QueryLimits { get; init; }
@@ -1408,6 +1411,7 @@ namespace SharpVision.Terminal.Protocols
         public System.DateTimeOffset? PendingEscapeDeadline { get; }
         public System.DateTimeOffset? PendingKeyMatcherDeadline { get; }
         public System.DateTimeOffset? PendingMouseDeadline { get; }
+        public System.DateTimeOffset? PendingPasteDeadline { get; }
         public System.DateTimeOffset? PendingSs3Deadline { get; }
         public System.DateTimeOffset? PendingUtf8Deadline { get; }
         public void Complete() { }
@@ -1415,6 +1419,7 @@ namespace SharpVision.Terminal.Protocols
         public bool ExpireEscape() { }
         public bool ExpireKeyMatcher() { }
         public bool ExpireMouse() { }
+        public bool ExpirePaste() { }
         public bool ExpireSs3() { }
         public bool ExpireUtf8() { }
         public void Route(System.ReadOnlySpan<byte> input) { }

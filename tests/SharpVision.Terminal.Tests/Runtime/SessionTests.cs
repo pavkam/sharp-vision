@@ -19,6 +19,98 @@ using SharpVision.Terminal.Multiplexing;
 /// </summary>
 public sealed class SessionTests
 {
+    /// <summary>Verifies queued paste bytes win over an elapsed inactivity timer.</summary>
+    [Fact]
+    public async Task RunAsync_WhenPasteReadAndExpiryAreReady_PreservesQueuedPayloadAsync()
+    {
+        var clock = new ManualTimeProvider();
+        await using SessionTransport transport = new()
+        {
+            OnRead = count =>
+            {
+                if (count == 2)
+                {
+                    clock.Advance(InputOptions.Default.PasteTimeout);
+                }
+            }
+        };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        transport.Input("\u001b[200~a"u8.ToArray());
+        transport.Input("\u001b[A\u001b[201~x"u8.ToArray());
+        transport.Close();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal, clock);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Pastes.ShouldHaveSingleItem().Utf8.ToArray().ShouldBe("a\u001b[A"u8.ToArray());
+        sink.Strokes.ShouldBe([new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)]);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies progress and successive pastes share at most one pending expiry timer.</summary>
+    [Fact]
+    public async Task RunAsync_WhenManyPastesComplete_ReusesPendingExpiryTimerAsync()
+    {
+        var clock = new ManualTimeProvider();
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var timersAtClosure = 0;
+        var sink = new RuntimeSink { OnClosed = () => timersAtClosure = clock.CreatedTimerCount };
+
+        for (var paste = 0; paste < 100; paste++)
+        {
+            transport.Input("\u001b[200~a"u8.ToArray());
+            transport.Input("b"u8.ToArray());
+            transport.Input("\u001b[201~"u8.ToArray());
+        }
+
+        transport.Close();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal, clock);
+
+        await session.RunAsync(TestContext.Current.CancellationToken);
+
+        sink.Pastes.Count.ShouldBe(100);
+        sink.Pastes.Select(paste => Encoding.UTF8.GetString(paste.Utf8.Span)).ShouldAllBe(paste => paste == "ab");
+        timersAtClosure.ShouldBe(1);
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an abandoned paste expires without another input byte and keys resume.</summary>
+    [Fact]
+    public async Task RunAsync_WhenPasteStalls_DiscardsPayloadAndResumesInputAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(3));
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal, clock);
+        var running = session.RunAsync(timeout.Token).AsTask();
+
+        // Act: advance only the injected clock after the unterminated paste arrives. Retry until
+        // the read loop arms its timer, with a real bound so missing wake-up wiring fails promptly.
+        transport.Input("\u001b[200~private payload"u8.ToArray());
+
+        while (!sink.DiagnosticReceived.Task.IsCompleted)
+        {
+            clock.Advance(TimeSpan.FromSeconds(10));
+            await Task.Delay(10, timeout.Token);
+        }
+
+        transport.Input("x"u8.ToArray());
+        await sink.StrokeReceived.Task.WaitAsync(timeout.Token);
+        transport.Close();
+        await running.WaitAsync(timeout.Token);
+
+        // Assert
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Truncated);
+        sink.Pastes.ShouldBeEmpty();
+        sink.Strokes.ShouldBe([new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)]);
+        sink.Faults.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies an explicitly requested unsupported mode reports before strict promotion.</summary>
     [Fact]
     public async Task RunAsync_WhenRequestedFocusIsUnsupportedAndPromoted_ReportsThenThrowsAsync()

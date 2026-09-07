@@ -38,6 +38,10 @@ internal sealed class SessionTransport: ITransport
     /// <summary>Gets the number of completed reads, including empty EOF reads.</summary>
     internal int ReadCount { get; private set; }
 
+    /// <summary>Runs immediately before a successful read returns, with its completed-read count.
+    /// Tests use this boundary to make input and an injected deadline ready in the same iteration.</summary>
+    internal Action<int>? OnRead { get; init; }
+
     /// <summary>Gets ASCII-decoded concatenated writes.</summary>
     internal string JoinedWrites => string.Concat(_writes.Select(Encoding.ASCII.GetString));
 
@@ -81,6 +85,7 @@ internal sealed class SessionTransport: ITransport
             var value = await _input.Reader.ReadAsync(cancellationToken);
             value.AsMemory().CopyTo(destination);
             ReadCount++;
+            OnRead?.Invoke(ReadCount);
             return value.Length;
         }
         catch (ChannelClosedException)

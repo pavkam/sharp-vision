@@ -15,6 +15,13 @@ internal sealed class RuntimeSink: ISink
     /// <summary>Gets decoded key callbacks.</summary>
     internal List<Stroke> Strokes { get; } = [];
 
+    /// <summary>Gets owned paste callbacks.</summary>
+    internal List<Paste> Pastes { get; } = [];
+
+    /// <summary>Completes after the first redacted diagnostic is recorded.</summary>
+    internal TaskCompletionSource DiagnosticReceived { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>Gets committed resize callbacks.</summary>
     internal List<Dimensions> Resizes { get; } = [];
 
@@ -106,13 +113,17 @@ internal sealed class RuntimeSink: ISink
     public void Input(in Pointer value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(Paste value) => _ = value;
+    public void Input(Paste value) => Pastes.Add(value);
 
     /// <inheritdoc/>
     public void Input(in TerminalFocus value) => _ = value;
 
     /// <inheritdoc/>
-    public void Input(in Diagnostic value) => Diagnostics.Add(value);
+    public void Input(in Diagnostic value)
+    {
+        Diagnostics.Add(value);
+        _ = DiagnosticReceived.TrySetResult();
+    }
 
     /// <inheritdoc/>
     public void Response(in XtermCapabilitiesResponse value)

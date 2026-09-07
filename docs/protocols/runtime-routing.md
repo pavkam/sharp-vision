@@ -78,6 +78,13 @@ ordered response callback. A complete local resize grid has precedence. Earlier
 pointer values are immutable and are never revisited when later geometry
 arrives.
 
+The router forwards the input decoder's pending deadlines and expiry operations,
+including `PendingPasteDeadline` and `ExpirePaste()`. The session schedules them
+without requiring another transport read. While
+[bracketed paste](paste-focus.md#supported-features) owns input, even a complete
+multiplexer reply envelope is literal payload. Expiry clears the partial paste
+before a diagnostic is delivered; it never replays retained bytes as input.
+
 `Session` owns a `ProtocolRouter` and delivers the complete sink contract in
 transport order. `Application` queues typed replies as immutable records and
 raises `ResponseReceived`, `PaletteResponseReceived`, `MetricsResponseReceived`,

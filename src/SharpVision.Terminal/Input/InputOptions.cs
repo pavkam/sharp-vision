@@ -17,6 +17,25 @@ public sealed record InputOptions
     /// <summary>Gets conservative default input policy.</summary>
     public static InputOptions Default { get; } = new();
 
+    /// <summary>Gets the inactivity limit for an unfinished bracketed paste. Each nonempty
+    /// transport fragment restarts the limit; the default is ten seconds.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 4,294,967,294 milliseconds, the finite session timer limit.</exception>
+    public TimeSpan PasteTimeout
+    {
+        get;
+        init
+        {
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(uint.MaxValue - 1))
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    "The paste timeout must be positive and within the finite timer limit.");
+            }
+
+            field = value;
+        }
+    } = TimeSpan.FromSeconds(10);
+
     /// <summary>Gets the lone-Escape ambiguity timeout.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
     public TimeSpan EscapeTimeout

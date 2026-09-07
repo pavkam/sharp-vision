@@ -139,6 +139,15 @@ public sealed class ProtocolRouter: IDisposable
     /// pending.</summary>
     public DateTimeOffset? PendingUtf8Deadline => _decoder.PendingUtf8Deadline;
 
+    /// <summary>Gets the paste inactivity deadline, or null when no paste is active.</summary>
+    public DateTimeOffset? PendingPasteDeadline => _decoder.PendingPasteDeadline;
+
+    /// <summary>Drops a stalled paste after its deadline and reports truncation. Decode
+    /// already available transport bytes before checking inactivity.</summary>
+    /// <returns>Whether an active paste was discarded.</returns>
+    /// <exception cref="ObjectDisposedException">The router is disposed.</exception>
+    public bool ExpirePaste() => _decoder.ExpirePaste();
+
     /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
     public bool ExpireEscape() => _decoder.ExpireEscape();
@@ -212,6 +221,16 @@ public sealed class ProtocolRouter: IDisposable
 
         while (index < input.Length)
         {
+            // Paste owns raw bytes through its exact terminator. An ESC inside it cannot start
+            // a multiplexer reply candidate: unwrapping or discarding that candidate would alter
+            // the payload or swallow the paste terminator. Ordinary runs remain batched below.
+            if (_decoder.PendingPasteDeadline is not null && input[index] == prefix[0])
+            {
+                _rawOffset = checked(_rawOffset + 1);
+                DecodeByte(input[index++]);
+                continue;
+            }
+
             // Outside a candidate and outside discard recovery, a byte can only route two
             // ways: straight through to the decoder, or as the first byte of a possible
             // wrapped reply. Bytes destined for the decoder never need to be inspected one at

@@ -384,24 +384,29 @@ Each attempted enable becomes a lease that owns its exact enable and disable
 bytes before transport I/O, so even an uncertain partial write receives its
 exact conservative cleanup attempt.
 
-One event loop awaits up to eight wake sources — one transport read, one resize
+One event loop awaits up to nine wake sources — one transport read, one resize
 read, and, only while pending, a negotiation deadline, an ambiguous-Escape
 expiry, an ambiguous-key-match expiry, an ambiguous-SS3 expiry, an
-ambiguous-mouse-report expiry, and an ambiguous-UTF-8-continuation expiry — and
-invokes exactly one sink callback per iteration. Because `Task.WhenAny` is
-biased toward whichever task is listed first when several are already complete,
-the loop re-checks readiness explicitly each iteration and applies a fixed
-priority (negotiation deadline, then Escape expiry, then key-matcher expiry,
-then SS3 expiry, then mouse expiry, then UTF-8-continuation expiry, then
-read/resize alternating) so a synchronous read burst cannot starve resize or an
-elapsed deadline. Input and resize handlers therefore cannot race each other,
-and no callback runs while `StreamTransport` holds its write gate. Input closure
-completes the decoder before `ISink.Closed`; read, decoder, resize, and handler
-faults are reported through `ISink.Fault` and remain the primary exception.
+ambiguous-mouse-report expiry, an ambiguous-UTF-8-continuation expiry, and a
+paste inactivity expiry — and handles one ready source per iteration. Because
+`Task.WhenAny` is biased toward whichever task is listed first when several are
+already complete, the loop re-checks readiness explicitly each iteration and
+applies a fixed priority (negotiation deadline, then Escape expiry, then
+key-matcher expiry, then SS3 expiry, then mouse expiry, then UTF-8-continuation
+expiry, then paste expiry when no read is ready, then read/resize alternating)
+so a synchronous read burst cannot starve resize or an elapsed deadline. Already
+available paste input takes precedence over inactivity recovery, so delayed
+processing cannot reinterpret queued payload as keys. One pending paste timer is
+retained across fragments and successive pastes; on wake it checks the current
+deadline and re-arms only if needed. Input and resize handlers therefore cannot
+race each other, and no callback runs while `StreamTransport` holds its write
+gate. Input closure completes the decoder before `ISink.Closed`; read, decoder,
+resize, and handler faults are reported through `ISink.Fault` and remain the
+primary exception.
 
 ```mermaid
 flowchart TD
-    Pending["Eight wake sources pending: read, resize, negotiation deadline, Escape expiry, key-matcher expiry, SS3 expiry, mouse expiry, UTF-8-continuation expiry"] --> Ready{"Any already complete?"}
+    Pending["Nine wake sources pending: read, resize, negotiation deadline, Escape expiry, key-matcher expiry, SS3 expiry, mouse expiry, UTF-8-continuation expiry, paste inactivity expiry"] --> Ready{"Any already complete?"}
     Ready -->|No| WhenAny["await Task.WhenAny over read, resize, and whichever deadline tasks are non-null"]
     WhenAny --> Pending
     Ready -->|Yes| Deadline{"Negotiation deadline ready?"}
@@ -416,19 +421,22 @@ flowchart TD
     Mouse -->|Yes| MouseAction["Expire the pending X10 mouse report; re-arm or clear mouseExpiry"]
     Mouse -->|No| Utf8{"UTF-8-continuation expiry ready?"}
     Utf8 -->|Yes| Utf8Action["Expire the pending UTF-8 continuation; re-arm or clear utf8Expiry"]
-    Utf8 -->|No| Both{"Both read and resize ready?"}
+    Utf8 -->|No| Paste{"Paste expiry ready and no read ready?"}
+    Paste -->|Yes| PasteAction["Re-check available input; expire stalled paste or re-arm current deadline"]
+    Paste -->|No| Both{"Both read and resize ready?"}
     Both -->|Yes| Alternate["Alternate via the preferResize toggle"]
     Both -->|No| Single["Take whichever of read or resize is ready"]
     Alternate --> Selected{"Selected task"}
     Single --> Selected
     Selected -->|Resize| ResizeAction["Forward resize to the sink; re-issue the resize read"]
-    Selected -->|Read| ReadAction["Route bytes through decoder and router; re-derive Escape, key-matcher, SS3, mouse, and UTF-8 deadlines"]
+    Selected -->|Read| ReadAction["Route bytes through decoder and router; re-derive Escape, key-matcher, SS3, mouse, UTF-8, and paste deadlines"]
     DeadlineAction --> Pending
     EscapeAction --> Pending
     KeyMatcherAction --> Pending
     Ss3Action --> Pending
     MouseAction --> Pending
     Utf8Action --> Pending
+    PasteAction --> Pending
     ResizeAction --> Pending
     ReadAction --> Pending
 ```

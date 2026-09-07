@@ -6,9 +6,22 @@ namespace SharpVision.Terminal.Tests.Input;
 using SharpVision.Terminal.Input;
 using SharpVision.Terminal.Protocols;
 
-/// <summary>Verifies <see cref="InputOptions.MouseCoordinates"/> validation at the option boundary.</summary>
+/// <summary>Verifies immutable input policy validation at the option boundary.</summary>
 public sealed class InputOptionsTests
 {
+    /// <summary>Verifies paste inactivity always has a usable finite session timer.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(4294967295)]
+    public void PasteTimeout_WhenOutsideTimerRange_ThrowsArgumentOutOfRangeException(long milliseconds)
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new InputOptions { PasteTimeout = TimeSpan.FromMilliseconds(milliseconds) });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
     /// <summary>Verifies an undefined enum value is rejected at construction instead of being
     /// silently accepted, matching the sibling <c>TerminalOptions.Coordinates</c> and
     /// <c>ConsoleRunOptions.MouseCoordinates</c> properties.</summary>

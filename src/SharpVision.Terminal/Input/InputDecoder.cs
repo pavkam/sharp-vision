@@ -35,6 +35,7 @@ public sealed class InputDecoder: IDisposable
     private DateTimeOffset _ss3Deadline;
     private DateTimeOffset _mouseDeadline;
     private DateTimeOffset _utf8Deadline;
+    private DateTimeOffset _pasteDeadline;
     private readonly CellMetricsResolver _cellMetricsResolver;
     private readonly MouseDecoder _mouseDecoder;
     private readonly Kitty.Keyboard.KittyKeyDecoder _kittyKeyDecoder;
@@ -58,7 +59,7 @@ public sealed class InputDecoder: IDisposable
     /// <summary>Initializes a decoder with a stable synchronous event sink.</summary>
     /// <param name="sink">The non-null event sink.</param>
     /// <param name="options">Finite policy, or null for conservative defaults.</param>
-    /// <param name="timeProvider">The Escape-deadline clock, or null for system time.</param>
+    /// <param name="timeProvider">The input-deadline clock, or null for system time.</param>
     /// <exception cref="ArgumentNullException"><paramref name="sink"/> is null.</exception>
     public InputDecoder(
         IInputSink sink,
@@ -146,6 +147,13 @@ public sealed class InputDecoder: IDisposable
 
         var adapter = new Adapter(this);
         var position = 0;
+
+        // Count arrival once per nonempty fragment, not once per payload byte. A paste may take
+        // longer than its initial deadline as long as it keeps making progress.
+        if (_pasteAccumulator.Active && !input.IsEmpty)
+        {
+            _pasteDeadline = _timeProvider.GetUtcNow() + _options.PasteTimeout;
+        }
 
         while (position < input.Length)
         {
@@ -241,6 +249,30 @@ public sealed class InputDecoder: IDisposable
     /// multi-byte sequence is pending. The read loop mirrors this into a wake-up so
     /// <see cref="ExpireUtf8"/> runs even when no further byte ever arrives.</summary>
     public DateTimeOffset? PendingUtf8Deadline => _utf8.HasPending ? _utf8Deadline : null;
+
+    /// <summary>Gets the paste inactivity deadline, or null when no paste is active. A read loop
+    /// must call <see cref="ExpirePaste"/> at this deadline even if no further input arrives.</summary>
+    public DateTimeOffset? PendingPasteDeadline => _pasteAccumulator.Active ? _pasteDeadline : null;
+
+    /// <summary>Drops a stalled paste and reports truncation without emitting its payload as
+    /// input. Already available transport bytes should be decoded before checking inactivity.</summary>
+    /// <returns>Whether an active paste was discarded.</returns>
+    /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
+    public bool ExpirePaste()
+    {
+        ThrowIfDisposed();
+
+        if (!_pasteAccumulator.Active || _timeProvider.GetUtcNow() < _pasteDeadline)
+        {
+            return false;
+        }
+
+        // Reset before calling the sink: even a throwing diagnostic handler cannot leave
+        // private payload retained or make a subsequent expiry report the same paste twice.
+        _pasteAccumulator.Reset();
+        Report(DiagnosticCode.Truncated, SequenceKind.Csi);
+        return true;
+    }
 
     /// <summary>Emits a pending lone Escape after its ambiguity deadline.</summary>
     /// <returns>Whether an Escape key was emitted.</returns>
@@ -351,7 +383,7 @@ public sealed class InputDecoder: IDisposable
         return true;
     }
 
-    /// <summary>Completes pending UTF-8, Escape, SS3, and protocol state once.</summary>
+    /// <summary>Completes pending UTF-8, Escape, SS3, paste, and protocol state once.</summary>
     /// <exception cref="ObjectDisposedException">The decoder is disposed.</exception>
     public void Complete()
     {
@@ -1692,7 +1724,11 @@ public sealed class InputDecoder: IDisposable
         }
     }
 
-    private void BeginPaste() => _pasteAccumulator.Begin();
+    private void BeginPaste()
+    {
+        _pasteAccumulator.Begin();
+        _pasteDeadline = _timeProvider.GetUtcNow() + _options.PasteTimeout;
+    }
 
     private void ProcessPaste(byte value)
     {

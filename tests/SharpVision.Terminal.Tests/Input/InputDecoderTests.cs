@@ -2296,6 +2296,98 @@ public sealed class InputDecoderTests
 
     #region Bracketed paste
 
+    /// <summary>Verifies paste expiry drops every partial terminator and overflow state once.</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, false)]
+    [InlineData(4, false)]
+    [InlineData(5, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(3, true)]
+    [InlineData(4, true)]
+    [InlineData(5, true)]
+    public void ExpirePaste_WhenDeadlineIsReached_DiscardsPartialPayloadAndRecovers(int prefix, bool overflow)
+    {
+        var options = new InputOptions { MaxPasteBytes = overflow ? 1 : 128, PasteTimeout = TimeSpan.FromSeconds(2) };
+        var bytes = "\u001b[200~ab"u8.ToArray().Concat("\u001b[201~"u8[..prefix].ToArray()).ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            // Arrange
+            var sink = new RecordingInputSink();
+            var clock = new ManualTimeProvider();
+            using InputDecoder decoder = new(sink, options, clock);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.PendingPasteDeadline.ShouldBe(clock.GetUtcNow() + options.PasteTimeout);
+
+            // Act
+            clock.Advance(options.PasteTimeout - TimeSpan.FromTicks(1));
+            decoder.ExpirePaste().ShouldBeFalse();
+            clock.Advance(TimeSpan.FromTicks(1));
+            decoder.ExpirePaste().ShouldBeTrue();
+            decoder.ExpirePaste().ShouldBeFalse();
+            decoder.PendingPasteDeadline.ShouldBeNull();
+            decoder.Decode("x\u001b[200~a\u001b[201~"u8);
+            decoder.Complete();
+
+            // Assert
+            sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Truncated);
+            sink.Pastes.ShouldHaveSingleItem().Utf8.ToArray().ShouldBe("a"u8.ToArray());
+            sink.Strokes.ShouldBe([new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)]);
+        }
+    }
+
+    /// <summary>Verifies an active paste may outlive its initial deadline while fragments arrive.</summary>
+    [Fact]
+    public void Decode_WhenPasteProgressContinues_ExtendsInactivityDeadline()
+    {
+        var sink = new RecordingInputSink();
+        var clock = new ManualTimeProvider();
+        using InputDecoder decoder = new(sink, timeProvider: clock);
+        decoder.Decode("\u001b[200~a"u8);
+        var original = decoder.PendingPasteDeadline.ShouldNotBeNull();
+
+        clock.Advance(TimeSpan.FromSeconds(9));
+        decoder.Decode("\u001b[20"u8);
+        decoder.PendingPasteDeadline.ShouldBe(original + TimeSpan.FromSeconds(9));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        decoder.Decode([]);
+        decoder.ExpirePaste().ShouldBeFalse();
+        decoder.PendingPasteDeadline.ShouldBe(original + TimeSpan.FromSeconds(9));
+        decoder.Decode("1~"u8);
+        clock.Advance(TimeSpan.FromSeconds(10));
+
+        decoder.PendingPasteDeadline.ShouldBeNull();
+        decoder.ExpirePaste().ShouldBeFalse();
+        sink.Pastes.ShouldHaveSingleItem().Utf8.ToArray().ShouldBe("a"u8.ToArray());
+        sink.Strokes.ShouldBeEmpty();
+        sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies EOF drops pending paste state and disposal rejects expiry.</summary>
+    [Fact]
+    public void Complete_WhenPasteIsPending_ClearsDeadlineBeforeDisposal()
+    {
+        var sink = new RecordingInputSink();
+        using InputDecoder decoder = new(sink);
+        decoder.Decode("\u001b[200~a"u8);
+        _ = decoder.PendingPasteDeadline.ShouldNotBeNull();
+
+        decoder.Complete();
+
+        decoder.PendingPasteDeadline.ShouldBeNull();
+        decoder.ExpirePaste().ShouldBeFalse();
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Truncated);
+        sink.Pastes.ShouldBeEmpty();
+        decoder.Dispose();
+        _ = Should.Throw<ObjectDisposedException>(() => decoder.ExpirePaste());
+    }
+
     /// <summary>Verifies the small immutable payload wrapper avoids reference allocation.</summary>
     [Fact]
     public void Type_WhenPasteIsInspected_IsValueType() =>

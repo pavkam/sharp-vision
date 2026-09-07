@@ -115,6 +115,12 @@ reports from legacy X10 or urxvt cell reports; a legacy extended-button press
 keeps its cell coordinates and button identity even while SGR pixel mode is
 active.
 
+For paste recovery, feed an opening bracketed-paste marker and payload without
+the closing marker, then leave input idle for ten seconds. Expect one truncation
+diagnostic, no partial paste event, and normal decoding of the next key. A paste
+that keeps receiving fragments must remain intact, including literal text that
+resembles a tmux reply envelope.
+
 Visual inspection is deliberately not stored as a synthetic Pass or Fail state:
 the specimen and its expectation stay visible, so the human can judge the output
 directly. Clipboard compares a unique marker automatically, restores the
