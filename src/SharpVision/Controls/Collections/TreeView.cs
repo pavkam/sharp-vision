@@ -606,7 +606,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             throw new InvalidOperationException("SelectAll requires multiple selection mode.");
         }
 
-        _ = CommitSelection(CollectAllItems().Where(static item => item.IsEnabled), cancellable: true);
+        _ = CommitSelection(CollectAllItems().Where(static item => item.EffectiveIsEnabled), cancellable: true);
     }
 
     /// <summary>Clears the current selection.</summary>
@@ -703,6 +703,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         if (_batchUpdateDepth > 0)
         {
             _ownedItemsStale = true;
+            _selectionVersion++;
             return;
         }
 

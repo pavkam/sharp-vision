@@ -840,6 +840,30 @@ public sealed class TreeViewTests
         last.IsSelected.ShouldBeFalse();
     }
 
+    /// <summary>Verifies SelectAll honours a disabled ancestor - not just each item's own IsEnabled -
+    /// by filtering on EffectiveIsEnabled the same way SetSelected already does, so disabling the
+    /// whole tree leaves SelectAll selecting nothing even though every item's own IsEnabled is still
+    /// true.</summary>
+    [Fact]
+    public void SelectAll_WhenTreeIsDisabled_SelectsNothingEvenThoughItemsRemainIndividuallyEnabled()
+    {
+        var tree = new TreeView { SelectionMode = TreeSelectionMode.Multiple };
+        var first = new TreeViewItem { Header = "First" };
+        var second = new TreeViewItem { Header = "Second" };
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+
+        tree.IsEnabled = false;
+
+        tree.SelectAll();
+
+        tree.SelectedItems.ShouldBeEmpty();
+        first.IsSelected.ShouldBeFalse();
+        second.IsSelected.ShouldBeFalse();
+        first.IsEnabled.ShouldBeTrue("the item's own IsEnabled is untouched by disabling the tree");
+        second.IsEnabled.ShouldBeTrue("the item's own IsEnabled is untouched by disabling the tree");
+    }
+
     /// <summary>Verifies check state propagates down and reports mixed child state on a parent.</summary>
     [Fact]
     public void Checkable_WhenChildrenDiffer_ParentBecomesIndeterminate()
@@ -3000,6 +3024,48 @@ public sealed class TreeViewTests
         _ = tree.SetSelected(second, true);
 
         secondSubscriberObservations.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a first subscriber that reenters through item removal while a Begin/EndUpdate
+    /// batch is open - so the removal takes the deferred, staleness-marking branch of
+    /// NotifyStructureChanged instead of the eager rebuild the unbatched sibling test exercises -
+    /// still stops a later subscriber from observing the now-obsolete outer proposal, and never
+    /// leaves the removed item reporting as selected, even before EndUpdate closes the batch.
+    /// </summary>
+    [Fact]
+    public void SetSelected_WhenChangingSubscriberReentrantlyRemovesAnItemDuringBatch_LaterSubscriberNeverSeesSupersededProposal()
+    {
+        var tree = Build(out var first, out var second, out _);
+        List<string> secondSubscriberObservations = [];
+
+        tree.SelectionChanging += (_, eventArgs) =>
+        {
+            if (eventArgs.AddedItems.Any(item => ReferenceEquals(item, second)))
+            {
+                _ = tree.Items.Remove(second);
+            }
+        };
+        tree.SelectionChanging += (_, eventArgs) =>
+            secondSubscriberObservations.Add(Names(eventArgs.AddedItems));
+
+        tree.BeginUpdate();
+        try
+        {
+            var accepted = tree.SetSelected(second, true);
+
+            accepted.ShouldBeFalse();
+            secondSubscriberObservations.ShouldBeEmpty();
+            tree.SelectedItems.ShouldNotContain(second);
+            tree.SelectedItem.ShouldNotBeSameAs(second);
+        }
+        finally
+        {
+            tree.EndUpdate();
+        }
+
+        secondSubscriberObservations.ShouldBeEmpty();
+        tree.SelectedItems.ShouldNotContain(second);
+        tree.SelectedItem.ShouldNotBeSameAs(second);
     }
 
     /// <summary>Verifies normalization the control performs on its own behalf is not cancellable.</summary>
