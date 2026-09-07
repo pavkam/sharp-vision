@@ -107,6 +107,14 @@ cell/pixel mouse, Kitty keyboard, and xterm modifyOtherKeys. Their active state
 comes from the runtime diagnostics snapshot, and matching decoded events update
 the protocol row to Observed.
 
+For Kitty keyboard input, include Delete, Insert, PageUp, F5, and keypad Begin:
+check press, repeat, and release, then repeat with Caps Lock or Num Lock
+enabled. These keys must retain their identity and modifiers under a
+terminal-description profile. Mouse records distinguish genuine SGR pixel
+reports from legacy X10 or urxvt cell reports; a legacy extended-button press
+keeps its cell coordinates and button identity even while SGR pixel mode is
+active.
+
 Visual inspection is deliberately not stored as a synthetic Pass or Fail state:
 the specimen and its expectation stay visible, so the human can judge the output
 directly. Clipboard compares a unique marker automatically, restores the

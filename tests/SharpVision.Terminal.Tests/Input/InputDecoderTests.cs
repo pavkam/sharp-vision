@@ -352,6 +352,64 @@ public sealed class InputDecoderTests
             false));
     }
 
+    /// <summary>Verifies cell coordinates and extended buttons survive every split while SGR
+    /// pixel input is enabled, with or without metrics for genuine pixel reports.</summary>
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public void Decode_WhenLegacyMouseArrivesInPixelMode_PreservesCellReport(
+        bool utf8,
+        bool extended,
+        bool withMetrics)
+    {
+        // Arrange
+        var code = extended ? 128 : 0;
+        var field = code + 32;
+        var x10 = Encoding.UTF8.GetBytes($"\u001b[M{new Rune(field)}*%x");
+
+        if (!utf8)
+        {
+            x10 = [0x1b, (byte) '[', (byte) 'M', (byte) field, 42, 37, (byte) 'x'];
+        }
+
+        var urxvt = Encoding.UTF8.GetBytes($"\u001b[{field};10;5Mx");
+        var options = new InputOptions
+        {
+            PixelMouse = true,
+            MouseCoordinates = utf8 ? MouseCoordinates.Utf8 : MouseCoordinates.Default,
+            CellMetrics = withMetrics ? new CellMetrics(8, 16) : null
+        };
+
+        foreach (var bytes in new[] { x10, urxvt })
+        {
+            for (var split = 0; split <= bytes.Length; split++)
+            {
+                var sink = new RecordingInputSink();
+                using InputDecoder decoder = new(sink, options);
+
+                // Act
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+
+                // Assert
+                sink.Pointers.ShouldBe(
+                    [new Pointer(new Point(9, 4), null,
+                        extended ? Buttons.Back : Buttons.Primary,
+                        InputAction.Press, 0, 0, Modifiers.None, false, false)],
+                    $"split {split}");
+                sink.Text.Single().Value.ShouldBe(new Rune('x'), $"split {split}");
+                sink.Diagnostics.ShouldBeEmpty($"split {split}");
+            }
+        }
+    }
+
     /// <summary>Verifies a legacy selector-three mouse report preserves its unqualified release
     /// identity because the protocol does not identify which button transitioned.</summary>
     [Fact]
@@ -961,13 +1019,36 @@ public sealed class InputDecoderTests
     /// Verifies the Kitty keypad Begin/center key reuses the existing <see cref="Code.Begin"/>
     /// logical code rather than a dedicated keypad-specific member.
     /// </summary>
-    [Fact]
-    public void Decode_WhenKeypadBeginCode_MapsToExistingBeginCode()
+    [Theory]
+    [InlineData("57427u", 57427, KeyAction.Press)]
+    [InlineData("1E", 0, KeyAction.Press)]
+    [InlineData("1;1:2E", 0, KeyAction.Repeat)]
+    [InlineData("1;1:3E", 0, KeyAction.Release)]
+    [InlineData("57427~", 57427, KeyAction.Press)]
+    [InlineData("57427;1:2~", 57427, KeyAction.Repeat)]
+    [InlineData("57427;1:3~", 57427, KeyAction.Release)]
+    public void Decode_WhenKeypadBeginCode_MapsToExistingBeginCode(string sequence, int native, KeyAction action)
     {
-        var sink = Decode(Encoding.ASCII.GetBytes($"[57427u"));
+        var bytes = Encoding.ASCII.GetBytes($"\u001b[{sequence}x");
 
-        sink.Strokes.Single().ShouldBe(
-            new Stroke(Code.Begin, null, 57427, Modifiers.None, KeyAction.Press));
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, new InputOptions { UseAnsiKeyGrammar = false });
+            decoder.EnableKittyKeyboardDisambiguation();
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Strokes.ShouldBe(
+            [
+                new Stroke(Code.Begin, null, native, Modifiers.None, action),
+                new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)
+            ], $"split {split}");
+            sink.Text.ShouldBe([new TerminalText(new Rune('x'))], $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
     }
 
     /// <summary>
@@ -1805,6 +1886,83 @@ public sealed class InputDecoderTests
             new Stroke(code, null, native, modifiers, action)
         ]);
         sink.Diagnostics.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies tilde keys retain their Kitty identity and action before exact profile
+    /// bindings, both with explicit events and with a negotiated default press.</summary>
+    [Theory]
+    [InlineData("3", Code.Delete, 3, KeyAction.Press, true)]
+    [InlineData("2;1:2", Code.Insert, 2, KeyAction.Repeat, false)]
+    [InlineData("5;1:3", Code.PageUp, 5, KeyAction.Release, false)]
+    [InlineData("15;1:1", Code.F5, 15, KeyAction.Press, false)]
+    public void Decode_WhenKittyTildeKeyHasProfileBinding_PreservesEnhancedKey(
+        string parameters, Code code, int native, KeyAction action, bool negotiated)
+    {
+        // Arrange
+        var sequence = Encoding.UTF8.GetBytes($"\u001b[{parameters}~");
+        var bytes = sequence.Concat("x"u8.ToArray()).ToArray();
+
+        foreach (var withBinding in new[] { false, true })
+        {
+            var options = InputOptions.Default.WithKeyMap(
+                withBinding ? new KeyMap([new KeyBinding(sequence, Code.F63)]) : KeyMap.Empty,
+                useAnsiKeyGrammar: false);
+
+            for (var split = 0; split <= bytes.Length; split++)
+            {
+                var sink = new RecordingInputSink();
+                using InputDecoder decoder = new(sink, options);
+
+                if (negotiated)
+                {
+                    decoder.EnableKittyKeyboardDisambiguation();
+                }
+
+                // Act
+                decoder.Decode(bytes.AsSpan(0, split));
+                decoder.Decode(bytes.AsSpan(split));
+                decoder.Complete();
+
+                // Assert
+                sink.Strokes.ShouldBe(
+                    [new Stroke(code, null, native, Modifiers.None, action),
+                        new Stroke(Code.Character, new Rune('x'), 0, Modifiers.None, KeyAction.Press)],
+                    $"split {split}, binding {withBinding}");
+                sink.Text.Single().Value.ShouldBe(new Rune('x'));
+                sink.Diagnostics.ShouldBeEmpty();
+            }
+        }
+    }
+
+    /// <summary>Verifies omitted event types retain every Kitty modifier bit on tilde keys.</summary>
+    [Theory]
+    [InlineData(17, Modifiers.Hyper)]
+    [InlineData(33, Modifiers.Meta)]
+    [InlineData(65, Modifiers.CapsLock)]
+    [InlineData(129, Modifiers.NumLock)]
+    [InlineData(256, (Modifiers) 255)]
+    public void Decode_WhenKittyTildePressHasHighModifiers_PreservesAllBits(
+        int encoded, Modifiers modifiers)
+    {
+        // Arrange
+        var bytes = Encoding.UTF8.GetBytes($"\u001b[3;{encoded}~");
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+            decoder.EnableKittyKeyboardDisambiguation();
+
+            // Act
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            // Assert
+            sink.Strokes.ShouldBe([new Stroke(Code.Delete, null, 3, modifiers, KeyAction.Press)],
+                $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty();
+        }
     }
 
     /// <summary>

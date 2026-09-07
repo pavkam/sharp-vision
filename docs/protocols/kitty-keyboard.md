@@ -60,6 +60,17 @@ the built-in ANSI compatibility grammar while the negotiated lease is active.
 Press, repeat, and release remain distinct typed actions across arbitrary
 transport fragmentation.
 
+Keypad Begin uses the existing `Code.Begin` for both specified encodings,
+`CSI 1 E` and `CSI 57427 ~`, including modified, repeat, and release events. The
+numeric CSI `u` alias also remains accepted.
+
+The same precedence applies to tilde forms such as `CSI 3 ~` (Delete), `CSI 5 ~`
+(PageUp), and `CSI 15 ~` (F5). A negotiated press or an explicit event sub-field
+selects Kitty decoding before exact profile key lookup, even when the ANSI
+compatibility grammar is disabled. With that selection, all eight modifier bits
+remain available when the default press event is omitted; Hyper, Meta, Caps
+Lock, and Num Lock do not make an otherwise valid key fail.
+
 Escape, Enter, Tab, Backspace, lock keys, Print Screen, Pause, Menu, F13-F35,
 the keypad block, the media transport and volume keys, and the modifier-as-key
 block (bare presses of Left/Right Shift, Control, Alt, Super, Hyper, Meta, and
@@ -96,7 +107,7 @@ lifecycle tests own nesting and cleanup.
 - [Kitty comprehensive keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)
   defines enhancement flags, CSI-u fields, functional keys, events, and text.
 
-Source accessed 2026-08-30.
+Source accessed 2026-09-07.
 
 ## Expected behavior
 

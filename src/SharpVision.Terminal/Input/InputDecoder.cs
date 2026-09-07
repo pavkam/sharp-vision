@@ -1051,8 +1051,12 @@ public sealed class InputDecoder: IDisposable
         // here, not accidental.
         var isKittyGrammar = _kittyKeyboardDisambiguationEnabled || HasKittyEventType(parameters);
 
-        return (_options.UseAnsiKeyGrammar || isKittyGrammar) &&
-            TryHandleCsiKey(parameters, final, isKittyGrammar);
+        // Kitty's tilde functional keys have the same precedence and negotiation rules as its
+        // cursor forms. Exact profile bindings must not swallow their enhanced events.
+        return isKittyGrammar && final == (byte) '~'
+            ? TryHandleTildeKey(parameters, isKittyGrammar: true)
+            : (_options.UseAnsiKeyGrammar || isKittyGrammar) &&
+              TryHandleCsiKey(parameters, final, isKittyGrammar);
     }
 
     // Kitty reuses the legacy CSI cursor-key finals when progressive event reporting is active.
@@ -1081,6 +1085,12 @@ public sealed class InputDecoder: IDisposable
             return true;
         }
 
+        return TryHandleTildeKey(parameters, isKittyGrammar: false);
+    }
+
+    /// <summary>Decodes tilde functional keys with the selected keyboard modifier grammar.</summary>
+    private bool TryHandleTildeKey(ReadOnlySpan<byte> parameters, bool isKittyGrammar)
+    {
         // Kitty reports repeat/release on tilde-form functional keys (Delete, Insert,
         // PageUp/Down, F5-F12) as a colon-separated event type appended to the modifier field -
         // e.g. "3;1:2~" for a Delete repeat. That colon is only valid in this second field, so it
@@ -1104,11 +1114,6 @@ public sealed class InputDecoder: IDisposable
         {
             return true;
         }
-
-        // Same Kitty-grammar signal TryHandleLegacyCsiKey uses for the cursor/function-key form:
-        // the disambiguation lease alone, with no event sub-parameter present, is enough to treat
-        // bit 3 of the modifier field as Super rather than legacy Meta.
-        var isKittyGrammar = _kittyKeyboardDisambiguationEnabled || HasKittyEventType(parameters);
 
         if (count is < 1 or > 2 || values[0] < 0 ||
             !TryGetModifier(count == 2 ? values[1] : 1, out var modifiers, isKittyGrammar))
@@ -1157,14 +1162,8 @@ public sealed class InputDecoder: IDisposable
             return false;
         }
 
-        // See the matching remap in TryReadCsiModifiers: Kitty's own bit 3 is Super, but this
-        // legacy ANSI grammar (guarded by UseAnsiKeyGrammar above) defines bit 3 as Meta - except
-        // reaching here already guarantees HasKittyEventType(parameters), where bit 3 is Super.
-        if (!HasKittyEventType(parameters))
-        {
-            RemapLegacySuperToMeta(ref modifiers);
-        }
-
+        // An explicit event sub-field identifies Kitty grammar, whose modifier bits remain
+        // unchanged even when no disambiguation lease has been acquired.
         return true;
     }
 
@@ -1214,13 +1213,15 @@ public sealed class InputDecoder: IDisposable
 
     private bool TryHandleCsiKey(ReadOnlySpan<byte> parameters, byte final, bool isKittyGrammar)
     {
-        // CSI Z (cursor back-tab / Shift+Tab) has no SS3 equivalent, so it stays CSI-only. An
+        // Kitty's CSI E keypad Begin and CSI Z (cursor back-tab / Shift+Tab) stay CSI-only. An
         // unmapped final byte returns false rather than Code.Unknown: CSI sits in an extensible
         // dispatch chain (terminfo KeyMap, then the ANSI grammar fallback) that must still get a
         // chance to claim it, unlike SS3 which has no further fallback.
         Code? code = final == (byte) 'Z'
             ? Code.Tab
-            : TryMapCursorKey(final, out var mapped) ? mapped : null;
+            : isKittyGrammar && final == (byte) 'E'
+                ? Code.Begin
+                : TryMapCursorKey(final, out var mapped) ? mapped : null;
 
         if (code is null)
         {
@@ -1264,6 +1265,7 @@ public sealed class InputDecoder: IDisposable
             21 => Code.F10,
             23 => Code.F11,
             24 => Code.F12,
+            57427 => Code.Begin,
             _ => Code.Unknown
         };
         EmitStroke(code, null, native, modifiers, action);
@@ -1581,17 +1583,18 @@ public sealed class InputDecoder: IDisposable
         value = value < 0 ? 1 : value;
         var flags = value - 1;
 
+        if (isKittyGrammar)
+        {
+            modifiers = (Modifiers) flags;
+            return value is >= 1 and <= 256;
+        }
+
         // This legacy ctlseqs.txt modifier code has its own 4-bit layout (Shift=1, Alt=2,
         // Control=4, Meta=8) which only coincidentally aligns with the Modifiers enum's bit
-        // layout in bits 0-2; bit 3 means Meta here, not Super, so it cannot be cast directly -
-        // except under Kitty grammar, where the wire encoding is reused but bit 3 already means
-        // Super (see the matching remap in TryReadCsiModifiers).
+        // layout in bits 0-2; bit 3 means Meta here, so the legacy branch remaps that bit.
         modifiers = (Modifiers) (flags & 0b0111) | ((flags & 0b1000) != 0 ? Modifiers.Super : Modifiers.None);
 
-        if (!isKittyGrammar)
-        {
-            RemapLegacySuperToMeta(ref modifiers);
-        }
+        RemapLegacySuperToMeta(ref modifiers);
 
         return value is >= 1 and <= 16;
     }

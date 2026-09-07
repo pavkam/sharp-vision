@@ -134,6 +134,7 @@ public sealed record InputOptions
 
     /// <summary>
     /// Gets whether SGR pointer coordinates are pixels rather than cells.
+    /// X10 and urxvt reports retain cell coordinates and extended-button identities.
     /// </summary>
     public bool PixelMouse { get; init; }
 

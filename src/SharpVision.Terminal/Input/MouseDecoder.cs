@@ -202,6 +202,10 @@ internal sealed class MouseDecoder
             return;
         }
 
+        // Pixel policy applies only to SGR reports. Legacy X10 and urxvt retain cell units and
+        // extended button selectors even when interleaved with negotiated SGR pixel input.
+        var pixelReport = sgr && _pixelMouse;
+
         // Kitty reserves bit 8 as a leave marker only in SGR pixel mode, and it is the complete
         // leave identity there: both the press and the SGR release final byte carry it, so this
         // gate must not be narrowed to press-only reports, or a leave's release half falls through
@@ -209,7 +213,7 @@ internal sealed class MouseDecoder
         // button that was never pressed. Every other button, modifier, and coordinate field is
         // explicitly unreliable for this event and must not influence the coordinate-free value
         // published to the UI.
-        if (_pixelMouse && (code & 128) != 0)
+        if (pixelReport && (code & 128) != 0)
         {
             var leave = new Pointer(
                 null,
@@ -245,7 +249,7 @@ internal sealed class MouseDecoder
         Point? pixels = null;
         var inferred = false;
 
-        if (_pixelMouse)
+        if (pixelReport)
         {
             pixels = source;
             cells = null;
@@ -318,7 +322,7 @@ internal sealed class MouseDecoder
 
     // Invariant: bit 8 (code & 128) is only ever set here while in SGR pixel mode if the caller
     // is wrong somewhere upstream. EmitPointer intercepts every bit-8 report (press and release
-    // alike) as a Leave before reaching this call whenever _pixelMouse is true, so the extended-
+    // alike) as a Leave before reaching this call for SGR pixel reports, so the extended-
     // button branch below is reachable with bit 8 set only in cell mode, where it retains xterm's
     // Back/Forward/Extended10/Extended11 meaning. Do not reintroduce a press/release asymmetry by
     // narrowing that upstream gate without threading pixel-mode awareness back into this method.

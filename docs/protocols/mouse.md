@@ -54,8 +54,11 @@ regardless of which final byte carried it. The same bit in cell mode instead
 retains xterm's extended button meaning, as described above, and zero
 coordinates without the marker remain malformed.
 
-Cell reports subtract the wire's one-based origin exactly once. With
-`Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based
+Cell reports subtract the wire's one-based origin exactly once. X10 and urxvt
+reports always retain cell units and extended-button identities, including when
+they arrive beside SGR pixel reports. Pixel policy applies only to SGR framing;
+it cannot turn a legacy extended-button press into a Kitty leave notification.
+With `Input.InputOptions.PixelMouse`, SGR coordinates are retained as zero-based
 pixels; validated `Geometry.CellMetrics` derive optional cells and set
 `CellPositionInferred` — from exact total dimensions when both grids are known,
 or by dividing through the nominal cell size when only a cell-size report
@@ -108,7 +111,7 @@ never activate the modes.
   define bit 8 as the SGR pixel leave marker and require every other field to be
   ignored.
 
-Sources accessed 2026-08-27.
+Sources accessed 2026-09-07.
 
 ## Expected behavior
 
