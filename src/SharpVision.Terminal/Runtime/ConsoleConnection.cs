@@ -268,6 +268,14 @@ public sealed class ConsoleConnection: IAsyncDisposable
     internal bool WindowsVirtualTerminal { get; }
 
     /// <summary>
+    /// Gets the Unix termios boundary this connection's restore lease owns, or null when this
+    /// connection wraps a non-Unix (or caller-supplied) restore lease. Lets a Unix-only caller in
+    /// the hosting <c>SharpVision</c> assembly wire <c>JobControlSignals</c> around the exact same
+    /// termios state this connection already captured, instead of re-deriving it.
+    /// </summary>
+    internal UnixConsoleMode? UnixMode => _restore as UnixConsoleMode;
+
+    /// <summary>
     /// Gets or sets a callback invoked exactly once, immediately after the restore lease disposes.
     /// Used by <see cref="SystemConsoleHost"/> to release its single-open guard once this
     /// connection's restore lease has run, so a legitimate sequential open-close-open still works.

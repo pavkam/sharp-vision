@@ -330,21 +330,16 @@ internal static class RuntimeInterop
 
             // ISIG governs INTR, QUIT and SUSP together, so restoring it to keep Ctrl+C raising
             // SIGINT for cooperative shutdown also re-arms the tty's SUSP character (and, on
-            // macOS, DSUSP). Nothing in this process installs a SIGTSTP handler, so left alone the
-            // default disposition would stop the process while the terminal is still raw, still on
-            // the alternate screen, with the cursor hidden and mouse, focus, paste and Kitty
-            // keyboard modes still enabled - `fg` would then resume it without any of that undone.
-            // Disabling the SUSP (and DSUSP) character themselves keeps ISIG live for Ctrl+C while
-            // making Ctrl+Z (and Ctrl+Y on macOS) arrive as an ordinary 0x1a input byte instead of
-            // stopping the process.
-            raw[_layout.ControlCharactersOffset + _layout.SuspendCharacterIndex] =
-                _layout.DisabledControlCharacter;
-
-            if (_layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
-            {
-                raw[_layout.ControlCharactersOffset + delayedSuspendCharacterIndex] =
-                    _layout.DisabledControlCharacter;
-            }
+            // macOS, DSUSP), letting Ctrl+Z raise SIGTSTP again instead of arriving as an ordinary
+            // 0x1a input byte. That used to be a hazard - nothing installed a SIGTSTP handler, so
+            // the default disposition would stop the process while the terminal was still raw,
+            // still on the alternate screen, with the cursor hidden and mouse, focus, paste and
+            // Kitty keyboard modes still enabled, and `fg` would resume it without any of that
+            // undone - which is why this method used to disable SUSP/DSUSP outright here. That
+            // stopgap is gone now that JobControlSignals installs a real SIGTSTP handler that
+            // restores cooked mode and every leased terminal mode before the process actually
+            // stops, and a SIGCONT handler that undoes all of it again on resume: leaving the
+            // SUSP/DSUSP bytes exactly as captured is what lets the tty raise SIGTSTP at all.
         }
 
         WriteLocalFlags(raw, flags);

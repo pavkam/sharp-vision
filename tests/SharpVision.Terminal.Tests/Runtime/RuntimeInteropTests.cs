@@ -218,12 +218,12 @@ public sealed class RuntimeInteropTests
 
     /// <summary>
     /// Verifies that restoring ISIG (the default <c>captureControlKeys: false</c> raw-mode shape)
-    /// also disables the SUSP character (and DSUSP on macOS) at the exact byte offsets the current
-    /// platform's layout declares, so Ctrl+Z arrives as an ordinary input byte instead of stopping
-    /// the process while it is still raw and on the alternate screen.
+    /// leaves the SUSP character (and DSUSP on macOS) exactly as captured, at the exact byte offsets
+    /// the current platform's layout declares - unlike the earlier stopgap that disabled them, Ctrl+Z
+    /// must still raise SIGTSTP now that JobControlSignals installs a real handler for it.
     /// </summary>
     [Fact]
-    public void ComputeRawTerminalAttributes_WhenCaptureControlKeysIsFalse_DisablesTheSuspendCharacters()
+    public void ComputeRawTerminalAttributes_WhenCaptureControlKeysIsFalse_LeavesTheSuspendCharactersArmed()
     {
         Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
 
@@ -238,13 +238,11 @@ public sealed class RuntimeInteropTests
 
         var raw = RuntimeInterop.ComputeRawTerminalAttributes(captured, captureControlKeys: false);
 
-        raw[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
-            .ShouldBe(layout.DisabledControlCharacter);
+        raw[layout.ControlCharactersOffset + layout.SuspendCharacterIndex].ShouldBe((byte) 0x1a);
 
         if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndexAssertion)
         {
-            raw[layout.ControlCharactersOffset + delayedSuspendCharacterIndexAssertion]
-                .ShouldBe(layout.DisabledControlCharacter);
+            raw[layout.ControlCharactersOffset + delayedSuspendCharacterIndexAssertion].ShouldBe((byte) 0x19);
         }
     }
 

@@ -177,17 +177,19 @@ public sealed class UnixConsoleModeTests
         }
         else
         {
-            // ISIG is restored so Ctrl+C keeps raising SIGINT, which also re-arms SUSP unless it is
-            // explicitly disabled - assert both halves of that fix directly against the real kernel
-            // state, not merely against this test's own expectation of what Enter should have done.
+            // ISIG is restored so Ctrl+C keeps raising SIGINT, which also re-arms SUSP - assert
+            // both halves directly against the real kernel state, not merely against this test's
+            // own expectation of what Enter should have done. SUSP itself is left exactly as
+            // captured (cfmakeraw() never touches c_cc[VSUSP]/[VDSUSP]), so Ctrl+Z still raises
+            // SIGTSTP for JobControlSignals' handler to catch.
             (ReadLocalFlags(afterEnter, layout) & layout.SignalsEnabledFlag).ShouldNotBe(0ul);
             afterEnter[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
-                .ShouldBe(layout.DisabledControlCharacter);
+                .ShouldBe(before[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]);
 
             if (layout.DelayedSuspendCharacterIndex is int delayedSuspendCharacterIndex)
             {
                 afterEnter[layout.ControlCharactersOffset + delayedSuspendCharacterIndex]
-                    .ShouldBe(layout.DisabledControlCharacter);
+                    .ShouldBe(before[layout.ControlCharactersOffset + delayedSuspendCharacterIndex]);
             }
         }
 
@@ -196,9 +198,8 @@ public sealed class UnixConsoleModeTests
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterRestore).ShouldBeTrue();
         afterRestore.ShouldBe(before);
 
-        // The whole-buffer comparison above already proves this, but restoring exactly the
-        // captured c_cc bytes - undoing the SUSP/DSUSP disablement from Enter - is the specific
-        // claim this fix makes, so assert it directly too.
+        // The whole-buffer comparison above already proves this, but restoring the exact captured
+        // c_cc bytes is a specific claim this test also makes directly.
         afterRestore[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]
             .ShouldBe(before[layout.ControlCharactersOffset + layout.SuspendCharacterIndex]);
 
@@ -259,5 +260,62 @@ public sealed class UnixConsoleModeTests
         }
 
         leaked.ShouldBeFalse("the unread pointer tail survived terminal restoration");
+    }
+
+    /// <summary>
+    /// Verifies the SIGTSTP/SIGCONT round trip against a real pseudoterminal: <see cref="UnixConsoleMode.Suspend"/>
+    /// restores the exact cooked state <see cref="UnixConsoleMode.Enter"/> originally captured,
+    /// without releasing the lease, and <see cref="UnixConsoleMode.Resume"/> re-derives and
+    /// re-applies the identical raw state - so a lease can suspend and resume more than once and
+    /// still restore correctly on final <see cref="UnixConsoleMode.Dispose"/>.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SuspendThenResume_OnAFreshPseudoterminal_RoundTripsRawModeByDirectSyscallAsync(
+        bool captureControlKeys)
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires a Unix pseudoterminal.");
+
+        await using var pty = UnixPseudoterminal.Open();
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var before).ShouldBeTrue();
+
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys,
+            getAttributes: _ => RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var state)
+                ? state
+                : null,
+            setAttributes: (_, state) => RuntimeInterop.TrySetTerminalAttributes(pty.SlaveDescriptor, state),
+            restoreAttributes: (_, state) => RuntimeInterop.TryRestoreTerminalAttributes(
+                pty.SlaveDescriptor,
+                state));
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterEnter).ShouldBeTrue();
+
+        // Act - suspend once, resume once, and prove the round trip is repeatable rather than a
+        // one-shot lucky pass.
+        mode.Suspend().ShouldBeTrue();
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterFirstSuspend).ShouldBeTrue();
+        afterFirstSuspend.ShouldBe(before);
+
+        mode.Resume().ShouldBeTrue();
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterFirstResume).ShouldBeTrue();
+        afterFirstResume.ShouldBe(afterEnter);
+
+        mode.Suspend().ShouldBeTrue();
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterSecondSuspend).ShouldBeTrue();
+        afterSecondSuspend.ShouldBe(before);
+
+        mode.Resume().ShouldBeTrue();
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterSecondResume).ShouldBeTrue();
+        afterSecondResume.ShouldBe(afterEnter);
+
+        // Assert - the lease is still intact after two full suspend/resume cycles: an ordinary
+        // Dispose() still restores cooked mode exactly once, like Enter's own test above.
+        mode.Dispose();
+
+        RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterDispose).ShouldBeTrue();
+        afterDispose.ShouldBe(before);
     }
 }

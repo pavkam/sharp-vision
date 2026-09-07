@@ -464,6 +464,38 @@ public sealed class ConsoleApplicationBuilder
                 // Application even exists) still wraps the whole run, so a real signal there is
                 // observed by both; StopAsync's idempotent shutdown makes that harmless.
                 observeProcessSignals: !Options.TreatControlCAsInput);
+
+            // Only a real Unix console connection owns a termios boundary to suspend and re-enter -
+            // a caller-supplied transport, or a Windows console, has none, and connection.UnixMode
+            // is null for both, so this never registers there. Session already exists at this
+            // point (the Application constructor above builds it), which is what lets this wire
+            // straight into Session.SuspendAsync()/ResumeAsync() instead of needing its own copy of
+            // the lease-walk logic.
+            if (connection.UnixMode is { } unixMode)
+            {
+                var jobControl = JobControlSignals.Register(
+                    onSuspend: () =>
+                    {
+                        // Unwind leased terminal modes while still raw, then restore cooked mode.
+                        // Raw/cooked termios state never gates output, so writing the disable bytes
+                        // could legally happen in either order relative to Suspend() - this order
+                        // keeps the suspend path a mirror image of onResume below, which re-enters
+                        // raw mode first and replays leases second.
+                        application.Session.SuspendAsync().AsTask().GetAwaiter().GetResult();
+                        _ = unixMode.Suspend();
+                    },
+                    onResume: () =>
+                    {
+                        _ = unixMode.Resume();
+                        application.Session.ResumeAsync().AsTask().GetAwaiter().GetResult();
+                    });
+
+                // Mirrors _processSignals' own disposal inside Application - Stopped is the one
+                // funnel every terminal path crosses, including a preflight failure after this
+                // point that routes through the catch block's application.DisposeAsync() call below.
+                application.Stopped += (_, _) => jobControl.Dispose();
+            }
+
             // Attach (which runs the screen's OnAttach - the documented place for theme
             // publication, docs/concepts/screen.md) and the builder's own configured Theme both
             // now require the owning dispatcher thread. Build() itself always runs on

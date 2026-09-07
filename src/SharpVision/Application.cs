@@ -224,6 +224,11 @@ public sealed class Application:
             _initializeModalKey = InitializeModalKey;
             Dispatcher.Idle += OnIdle;
             Dispatcher.UnhandledException += OnDispatcherUnhandled;
+            // Only ever raised for a real Unix console whose builder wired a job-control SIGCONT
+            // resume through Session.ResumeAsync() - see ConsoleApplicationBuilder.Build() and
+            // JobControlSignals. Harmless to subscribe unconditionally: a Session backed by a
+            // caller-supplied transport that never calls ResumeAsync() simply never raises this.
+            Session.Resumed += OnSessionResumed;
 
             if (observeProcessSignals is { } observeCtrlC)
             {
@@ -999,6 +1004,48 @@ public sealed class Application:
 
         Root.Invalidate(Invalidation.Render);
         ProcessInvalidation();
+    }
+
+    /// <summary>
+    /// Handles <see cref="global::SharpVision.Terminal.Runtime.Session.Resumed"/> - a SIGCONT job-control resume
+    /// finishing its lease replay - by queuing exactly the recovery <see cref="RefreshScreen"/>'s
+    /// own remarks already describe for "a resumed session": the terminal may have shown unrelated
+    /// content (the shell's own prompt, another program) for the entire time this process was
+    /// stopped, so the renderer's cached idea of the screen can no longer be trusted for a
+    /// differential update.
+    /// </summary>
+    /// <remarks>
+    /// Runs on whatever arbitrary thread raised <see cref="global::SharpVision.Terminal.Runtime.Session.Resumed"/> -
+    /// documented on that event as an arbitrary signal-handling thread for the job-control path,
+    /// never this instance's own dispatcher thread - so this only ever queues the actual repaint, matching how
+    /// <see cref="RequestCooperativeStop"/> marshals a process signal onto the dispatcher. Must not
+    /// throw: it is invoked from inside <c>JobControlSignals.InvokeResume</c>'s own top-level
+    /// catch-all, but nothing here should rely on that as its only safety net.
+    /// </remarks>
+    private void OnSessionResumed(object? sender, EventArgs eventArgs)
+    {
+        if (_stopping)
+        {
+            return;
+        }
+
+        try
+        {
+            Observe(Dispatcher.InvokeAsync(() =>
+            {
+                if (!_stopping)
+                {
+                    RefreshScreen();
+                }
+            }).AsTask());
+        }
+        catch
+        {
+            // A disposed or full dispatcher throwing synchronously here is the same "nothing left
+            // to repaint" outcome as the _stopping check above already handles - not a failure this
+            // callback has anything useful to do with, and it must never throw onto its caller's
+            // signal-handling thread regardless.
+        }
     }
 
     /// <inheritdoc/>

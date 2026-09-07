@@ -3127,4 +3127,135 @@ public sealed class SessionTests
     }
 
     #endregion
+
+    #region Job control (suspend/resume)
+
+    /// <summary>
+    /// Verifies a SIGTSTP-style suspend writes the active lease's disable bytes without clearing
+    /// the lease list - unlike <see cref="Session.RunAsync"/>'s own final cleanup, a later SIGCONT
+    /// resume needs the exact same lease still recorded so it can replay its enable bytes.
+    /// </summary>
+    [Fact]
+    public async Task SuspendAsync_WhenALeaseIsActive_WritesDisableBytesWithoutClearingTheLeaseListAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        transport.JoinedWrites.ShouldBe("enter");
+
+        // Act
+        await session.SuspendAsync();
+
+        // Assert
+        transport.JoinedWrites.ShouldBe("enterexit");
+        session.LastSuspendException.ShouldBeNull();
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
+    /// <summary>
+    /// Verifies a SIGCONT-style resume replays every active lease's enable bytes in original
+    /// acquisition order - the forward counterpart to <see cref="Session.SuspendAsync"/>'s reverse
+    /// walk, re-applying rather than re-acquiring the lease a prior suspend never released.
+    /// </summary>
+    [Fact]
+    public async Task ReplayLeasesAsync_AfterSuspend_RewritesTheSameEnableBytesAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await session.SuspendAsync();
+
+        // Act - if SuspendAsync had cleared the lease list, this would write nothing at all;
+        // writing the exact enable bytes again is the proof the list survived intact.
+        await session.ReplayLeasesAsync();
+
+        // Assert
+        transport.JoinedWrites.ShouldBe("enterexitenter");
+        session.LastResumeException.ShouldBeNull();
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
+    /// <summary>
+    /// Verifies a resume raises <see cref="Session.Resumed"/> exactly once, only after every lease
+    /// has already been replayed - the point at which the owning application needs to force a full
+    /// repaint, per <see cref="Session.Resumed"/>'s own remarks.
+    /// </summary>
+    [Fact]
+    public async Task ResumeAsync_WhenCalled_RaisesResumedAfterReplayingLeasesAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await session.SuspendAsync();
+
+        var raisedCount = 0;
+        string? writesWhenRaised = null;
+        session.Resumed += (_, _) =>
+        {
+            raisedCount++;
+            writesWhenRaised = transport.JoinedWrites;
+        };
+
+        // Act
+        await session.ResumeAsync();
+
+        // Assert
+        raisedCount.ShouldBe(1);
+        writesWhenRaised.ShouldBe("enterexitenter");
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
+    #endregion
 }
