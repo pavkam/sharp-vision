@@ -402,10 +402,10 @@ original write, flush, or cancellation exception.
 When
 [grapheme clustering is proven](../protocols/grapheme-clustering.md#overview),
 the renderer instead enables mode 2027 exactly once - even ahead of the "did
-anything change" check that decides whether a frame produces any output at
-all, so a frame with no cell damage still carries the pending enable rather
-than silently deferring negotiation - and disables it again during
-`ShutdownAsync` if it was ever enabled.
+anything change" check that decides whether a frame produces any output at all,
+so a frame with no cell damage still carries the pending enable rather than
+silently deferring negotiation - and disables it again during `ShutdownAsync` if
+it was ever enabled.
 
 `Damage.Enumerate` compares semantic cells row-major and returns merged
 `DamageSpan` values expanded through grapheme ownership in both frames. A

@@ -44,11 +44,11 @@ keep composed and decomposed text equal in width without allocating normalized
 storage. Invalid UTF-16, combining-only clusters, private-use scalars, and
 scalars unassigned in Unicode 17 each occupy one conservative, repairable cell.
 
-This width algorithm is capability-unaware by design: it never branches on
-what the terminal has proven to support. Instead, when an authoritative
-terminal proves it implements DEC private mode 2027, `Renderer` negotiates and
-enables that mode so the terminal measures extended grapheme clusters the same
-way this pipeline does — see
+This width algorithm is capability-unaware by design: it never branches on what
+the terminal has proven to support. Instead, when an authoritative terminal
+proves it implements DEC private mode 2027, `Renderer` negotiates and enables
+that mode so the terminal measures extended grapheme clusters the same way this
+pipeline does — see
 [grapheme clustering](../protocols/grapheme-clustering.md#overview). The
 terminal is made to agree with this library's tables; this library's tables
 never change to match the terminal.

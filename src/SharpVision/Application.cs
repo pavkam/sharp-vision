@@ -1007,7 +1007,7 @@ public sealed class Application:
     }
 
     /// <summary>
-    /// Handles <see cref="global::SharpVision.Terminal.Runtime.Session.Resumed"/> - a SIGCONT job-control resume
+    /// Handles <see cref="Session.Resumed"/> - a SIGCONT job-control resume
     /// finishing its lease replay - by queuing exactly the recovery <see cref="RefreshScreen"/>'s
     /// own remarks already describe for "a resumed session": the terminal may have shown unrelated
     /// content (the shell's own prompt, another program) for the entire time this process was
@@ -1015,7 +1015,7 @@ public sealed class Application:
     /// differential update.
     /// </summary>
     /// <remarks>
-    /// Runs on whatever arbitrary thread raised <see cref="global::SharpVision.Terminal.Runtime.Session.Resumed"/> -
+    /// Runs on whatever arbitrary thread raised <see cref="Session.Resumed"/> -
     /// documented on that event as an arbitrary signal-handling thread for the job-control path,
     /// never this instance's own dispatcher thread - so this only ever queues the actual repaint, matching how
     /// <see cref="RequestCooperativeStop"/> marshals a process signal onto the dispatcher. Must not

@@ -41,17 +41,17 @@ inconsistent `Supported` state. Session mode leases, `Renderer` synchronized
 output, `Renderer` grapheme-clustering enablement, and both encoder paths gate
 on that predicate, so environment-only evidence emits no mode-2026 wrapping, no
 mode-2027 enable, no overline, no typed underline, and no underline color.
-Environment evidence remains observable, but it cannot silently
-enable a feature. `ColorDepth` separately records monochrome, 16-color,
-indexed-256, or true-color fidelity together with its origin, but it follows a
-different rule than every other feature: color evidence forms a lattice in which
-the environment may only raise fidelity above what the terminal description
-already established, or apply the user's own opt-out. A validated terminal
-description sets the color floor — including the informal `Tc` boolean and a
-validated `RGB` capability, both stronger true-color evidence than the numeric
-`colors` capability alone, since tmux and countless user configurations
-advertise 24-bit support that way even though the shared `xterm-256color`,
-`tmux-256color` and `screen-256color` entries all still say `colors#256`.
+Environment evidence remains observable, but it cannot silently enable a
+feature. `ColorDepth` separately records monochrome, 16-color, indexed-256, or
+true-color fidelity together with its origin, but it follows a different rule
+than every other feature: color evidence forms a lattice in which the
+environment may only raise fidelity above what the terminal description already
+established, or apply the user's own opt-out. A validated terminal description
+sets the color floor — including the informal `Tc` boolean and a validated `RGB`
+capability, both stronger true-color evidence than the numeric `colors`
+capability alone, since tmux and countless user configurations advertise 24-bit
+support that way even though the shared `xterm-256color`, `tmux-256color` and
+`screen-256color` entries all still say `colors#256`.
 `COLORTERM=truecolor`/`24bit`, the Kitty identity, and a bounded query's
 direct-color reply may each raise a `Default` or `Database` depth to
 `TrueColor`, but none of them can lower a depth or reach a `Query` or `Override`
@@ -310,18 +310,18 @@ The strategy snapshots caller-supplied environment values and reserves slots in
 this order. Wire order also places graphics before the DA1 fence and separates
 local queries from the wrapped outer group, as the discovery pipeline specifies.
 
-| Priority | Query family                                     | When it is included                                                                   |
-| -------: | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-|        1 | Primary device attributes (DA1)                  | Always; one slot is reserved before optional probes.                                  |
-|        2 | Kitty keyboard status                            | Support is unknown or tentative and at least two slots exist.                         |
-|        3 | Secondary device attributes (DA2)                | Capacity remains.                                                                     |
+| Priority | Query family                                           | When it is included                                                                   |
+| -------: | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+|        1 | Primary device attributes (DA1)                        | Always; one slot is reserved before optional probes.                                  |
+|        2 | Kitty keyboard status                                  | Support is unknown or tentative and at least two slots exist.                         |
+|        3 | Secondary device attributes (DA2)                      | Capacity remains.                                                                     |
 |        4 | Private modes 2026, 2027, 1004, 2004, 1006, 1016, 5522 | The corresponding feature is unknown or tentative.                                    |
-|        5 | Geometry                                         | Local host geometry is incomplete.                                                    |
-|        6 | Palette and default colors                       | Capacity remains and the destination admits string queries.                           |
-|        7 | iTerm2 capability query (OSC 1337)               | Support is unknown or tentative; the destination and policy admit the probe.          |
-|        8 | Finite xterm refinements                         | The destination has an xterm-like hint and stronger evidence has not settled support. |
-|        9 | Kitty graphics query                             | Support is unknown or tentative and capacity remains; this consumes a slot.           |
-|       10 | Cursor-position request (CSI 6 n)                | Capacity remains; last in the local group, and its reply resolves only itself.        |
+|        5 | Geometry                                               | Local host geometry is incomplete.                                                    |
+|        6 | Palette and default colors                             | Capacity remains and the destination admits string queries.                           |
+|        7 | iTerm2 capability query (OSC 1337)                     | Support is unknown or tentative; the destination and policy admit the probe.          |
+|        8 | Finite xterm refinements                               | The destination has an xterm-like hint and stronger evidence has not settled support. |
+|        9 | Kitty graphics query                                   | Support is unknown or tentative and capacity remains; this consumes a slot.           |
+|       10 | Cursor-position request (CSI 6 n)                      | Capacity remains; last in the local group, and its reply resolves only itself.        |
 
 Definitive database evidence and explicit overrides suppress redundant feature
 probes. The

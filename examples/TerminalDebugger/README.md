@@ -92,10 +92,10 @@ rendition attributes, styled and colored underlines, overline, Unicode cell
 geometry, and the generated graphics sample appear beside detected support and
 an exact description of the expected result. Synchronized output is already in
 use when authorized, so resizing and switching tabs is the test—there is no
-separate “show” action. Grapheme clustering is likewise already negotiated
-and enabled once when authorized; its specimen renders a ZWJ family emoji and
-a flag sequence, which drift the cursor after them on a terminal that
-disagrees with this library's own Unicode width tables.
+separate “show” action. Grapheme clustering is likewise already negotiated and
+enabled once when authorized; its specimen renders a ZWJ family emoji and a flag
+sequence, which drift the cursor after them on a terminal that disagrees with
+this library's own Unicode width tables.
 
 Buttons remain only for tests that intentionally cause a side effect:
 

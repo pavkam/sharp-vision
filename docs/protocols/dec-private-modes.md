@@ -24,8 +24,8 @@ unsupported where the defining protocol states that rule, and value 3
 ("permanently set") means supported for every mode except 2026, whose value
 encodes an in-progress update rather than a feature toggle. Mode 2027 has no
 such carve-out: a terminal reporting it permanently set is simply always
-measuring grapheme clusters the way this library does, which is a usable
-feature toggle rather than an in-progress update.
+measuring grapheme clusters the way this library does, which is a usable feature
+toggle rather than an in-progress update.
 
 ## Restoration lifecycle
 
@@ -45,9 +45,9 @@ conservative restoration attempt. Cleanup continues through later leases in
 reverse order and preserves the original exception.
 
 Modes 2026 and 2027 are the two exceptions to the session-lease pattern above:
-both are read directly off `TerminalCapabilities` by `Renderer` instead of
-being owned by a `Session` lease, because both are consumed during rendering
-rather than tied to a session-lifetime enable/disable toggle. See
+both are read directly off `TerminalCapabilities` by `Renderer` instead of being
+owned by a `Session` lease, because both are consumed during rendering rather
+than tied to a session-lifetime enable/disable toggle. See
 [synchronized output](synchronized-output.md#overview) and
 [grapheme clustering](grapheme-clustering.md#overview) for their respective
 timing: mode 2026 brackets every non-empty frame batch, while mode 2027 is
