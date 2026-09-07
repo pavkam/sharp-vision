@@ -50,6 +50,12 @@ internal sealed class FakeTableDataSource<T>: ITableDataSource<T>
     /// stale-generation defense.</summary>
     public bool HonorCancellation { get; set; } = true;
 
+    /// <summary>Gets or sets whether a held request registers a callback on its cancellation token
+    /// that throws when invoked, modeling a misbehaving <see cref="ITableDataSource{T}"/> consumer -
+    /// for exercising the controller's own defense against a cancellation callback aborting its
+    /// cleanup.</summary>
+    public bool RegisterThrowingCancellationCallback { get; set; }
+
     /// <inheritdoc/>
     public int? Count
     {
@@ -133,6 +139,12 @@ internal sealed class FakeTableDataSource<T>: ITableDataSource<T>
             var completion = new TaskCompletionSource<TableDataResult<T>>();
             var entry = new HeldEntry(request, completion);
             _held.Add(entry);
+
+            if (RegisterThrowingCancellationCallback)
+            {
+                _ = cancellationToken.Register(
+                    static () => throw new InvalidOperationException("Simulated throwing cancellation callback."));
+            }
 
             if (HonorCancellation)
             {

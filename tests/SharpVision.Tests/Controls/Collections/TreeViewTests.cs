@@ -3739,6 +3739,40 @@ public sealed class TreeViewTests
         item.Children.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies collapsing an item whose first load is still in flight, when the source's
+    /// own request registered a cancellation callback that throws, still restores the pre-load state
+    /// - Unloaded - instead of leaving ChildState stranded at Loading, and does not let the throwing
+    /// callback escape the collapse.</summary>
+    [Fact]
+    public async Task Expanded_WhenSetFalseDuringFirstLoadAndCancellationCallbackThrows_RestoresUnloadedWithoutThrowingAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var source = new FakeTreeViewChildSource { RegisterThrowingCancellationCallback = true };
+        var deferred = source.DeferNext(null);
+        TreeView tree = null!;
+        TreeViewItem item = null!;
+
+        await dispatcher.InvokeAsync(() =>
+        {
+            item = new TreeViewItem("Root") { ChildSource = source, IsExpanded = false };
+            tree = new TreeView { Items = { item } };
+            tree.Attach(dispatcher);
+            item.IsExpanded = true;
+        }, TestContext.Current.CancellationToken);
+
+        item.ChildState.ShouldBe(TreeViewChildState.Loading);
+
+        // Collapsing cancels the in-flight load; the request's own registered cancellation callback
+        // throws, which must not escape this call and must not skip restoring ChildState below.
+        await Should.NotThrowAsync(
+            () => dispatcher.InvokeAsync(() => { item.IsExpanded = false; }, TestContext.Current.CancellationToken));
+
+        item.ChildState.ShouldBe(TreeViewChildState.Unloaded);
+        item.Children.ShouldBeEmpty();
+
+        _ = deferred.TrySetResult([]);
+    }
+
     /// <summary>Verifies collapsing an item mid-reload - one that already had committed children -
     /// cancels the reload and restores the prior Loaded state and its children untouched, and that
     /// the cancelled reload's late completion is dropped.</summary>

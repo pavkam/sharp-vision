@@ -328,7 +328,16 @@ internal sealed class TableDataController: IDisposable
 
         foreach (var range in _pending)
         {
-            range.Cts.Cancel();
+            try
+            {
+                range.Cts.Cancel();
+            }
+            catch (Exception)
+            {
+                // Swallowed, not reported: a consumer-registered cancellation callback threw,
+                // and that must not abort our own cleanup of the remaining pending ranges.
+            }
+
             range.Cts.Dispose();
             range.RetryTimer?.Dispose();
         }
@@ -354,12 +363,31 @@ internal sealed class TableDataController: IDisposable
         _disposed = true;
         _adapter.Changed -= OnAdapterChanged;
         _adapter.Detach();
-        _lifetime.Cancel();
+
+        try
+        {
+            _lifetime.Cancel();
+        }
+        catch (Exception)
+        {
+            // Swallowed, not reported: a consumer-registered cancellation callback threw, and
+            // that must not abort the rest of this object's disposal.
+        }
+
         _lifetime.Dispose();
 
         foreach (var range in _pending)
         {
-            range.Cts.Cancel();
+            try
+            {
+                range.Cts.Cancel();
+            }
+            catch (Exception)
+            {
+                // Swallowed, not reported: a consumer-registered cancellation callback threw,
+                // and that must not abort the rest of this object's disposal.
+            }
+
             range.Cts.Dispose();
             range.RetryTimer?.Dispose();
         }
@@ -375,13 +403,33 @@ internal sealed class TableDataController: IDisposable
     private void BumpGeneration()
     {
         _generation++;
-        _lifetime.Cancel();
+
+        try
+        {
+            _lifetime.Cancel();
+        }
+        catch (Exception)
+        {
+            // Swallowed, not reported: a consumer-registered cancellation callback threw, and
+            // that must not prevent replacing _lifetime below - otherwise it would stay
+            // permanently cancelled and brick every future IssueFetch call.
+        }
+
         _lifetime.Dispose();
         _lifetime = new CancellationTokenSource();
 
         foreach (var range in _pending)
         {
-            range.Cts.Cancel();
+            try
+            {
+                range.Cts.Cancel();
+            }
+            catch (Exception)
+            {
+                // Swallowed, not reported: a consumer-registered cancellation callback threw,
+                // and that must not abort cleanup of the remaining pending ranges.
+            }
+
             range.Cts.Dispose();
             range.RetryTimer?.Dispose();
         }
@@ -993,7 +1041,17 @@ internal sealed class TableDataController: IDisposable
 
             if (rangeLast < first || range.Start > last)
             {
-                range.Cts.Cancel();
+                try
+                {
+                    range.Cts.Cancel();
+                }
+                catch (Exception)
+                {
+                    // Swallowed, not reported: a consumer-registered cancellation callback
+                    // threw, and that must not skip the RemoveAt below - otherwise this range
+                    // would stay in _pending after being cancelled and disposed.
+                }
+
                 range.Cts.Dispose();
                 range.RetryTimer?.Dispose();
                 _pending.RemoveAt(index);

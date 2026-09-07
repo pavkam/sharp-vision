@@ -22,6 +22,12 @@ internal sealed class FakeTreeViewChildSource: ITreeViewChildSource
     /// <summary>Gets the managed thread id observed by the most recent request.</summary>
     internal int LastRequestThreadId { get; private set; }
 
+    /// <summary>Gets or sets whether every request registers a callback on its cancellation token
+    /// that throws when invoked, modeling a misbehaving <see cref="ITreeViewChildSource"/> consumer -
+    /// for exercising the item's own defense against a cancellation callback aborting its own
+    /// cleanup.</summary>
+    internal bool RegisterThrowingCancellationCallback { get; set; }
+
     /// <summary>Registers or replaces the children answered for one key.</summary>
     /// <param name="key">The non-null key, or null for a caller-authored root.</param>
     /// <param name="children">The non-null child descriptions.</param>
@@ -58,6 +64,13 @@ internal sealed class FakeTreeViewChildSource: ITreeViewChildSource
     {
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (RegisterThrowingCancellationCallback)
+        {
+            _ = cancellationToken.Register(
+                static () => throw new InvalidOperationException("Simulated throwing cancellation callback."));
+        }
+
         LastRequestThreadId = Environment.CurrentManagedThreadId;
         _requests.Add(context.Key);
         var normalized = context.Key ?? _rootKey;

@@ -1699,7 +1699,17 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
     private void CancelOwnLoadAndRestorePriorState(bool notifyTree = true)
     {
-        _loadOperation.Cancel();
+        try
+        {
+            _loadOperation.Cancel();
+        }
+        catch (Exception)
+        {
+            // Swallowed, not reported: a consumer-registered cancellation callback threw, and
+            // that must not skip restoring ChildState below - otherwise it would stay stranded
+            // at Loading.
+        }
+
         SetChildState(_priorChildStateBeforeLoad, notifyTree);
     }
 

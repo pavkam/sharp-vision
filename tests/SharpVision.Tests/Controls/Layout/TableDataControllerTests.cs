@@ -533,6 +533,35 @@ public sealed class TableDataControllerTests
         table.ProgressiveController!.IsPlaceholder(0).ShouldBeTrue();
     }
 
+    /// <summary>Verifies a consumer-registered cancellation callback that throws during
+    /// BumpGeneration's <c>_lifetime.Cancel()</c> does not escape, and does not leave <c>_lifetime</c>
+    /// permanently cancelled - a subsequent fetch for the same range must still be able to complete
+    /// normally instead of every future IssueFetch call being silently pre-cancelled.</summary>
+    [Fact]
+    public async Task Reload_WhenPendingFetchCancellationCallbackThrows_DoesNotThrowAndLifetimeStillFunctionsAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(500);
+        source.Gate();
+        source.RegisterThrowingCancellationCallback = true;
+        await using var surface = await ComponentSurface.MountAsync(
+            table, new Size(20, 5), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+        source.HeldCount.ShouldBe(1);
+
+        // Reload() bumps the generation, which cancels _lifetime; the still-held request's linked
+        // token cascades that cancellation into the throwing callback registered by LoadAsync above.
+        await Should.NotThrowAsync(() => surface.UpdateAsync(table.Reload, "reload while a fetch is held"));
+
+        // _lifetime must not have been left permanently cancelled: Reload()'s own rewindow should
+        // have issued a fresh, genuinely functioning fetch for the now-empty cache.
+        source.Ungate();
+        var reissuedStart = source.Requests[^1].StartIndex;
+        await surface.UpdateAsync(() => source.Release(reissuedStart), "resolve the post-reload fetch");
+
+        table.ProgressiveController!.IsPlaceholder(0).ShouldBeFalse();
+    }
+
     #endregion
 
     #region Extent and phantom rows
@@ -1104,6 +1133,29 @@ public sealed class TableDataControllerTests
         loadStateChanges.ShouldBe(0);
         table.IsDisposed.ShouldBeTrue();
         source.HeldCount.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a consumer-registered cancellation callback that throws during Dispose's
+    /// own <c>_lifetime.Cancel()</c>/pending-range <c>Cancel()</c> calls does not escape and does not
+    /// skip the rest of disposal.</summary>
+    [Fact]
+    public async Task Dispose_WhenPendingFetchCancellationCallbackThrows_DoesNotThrowAsync()
+    {
+        var table = CreateHost();
+        var source = CreateSource(20);
+        source.Gate();
+        source.RegisterThrowingCancellationCallback = true;
+        var host = new Overlay { IsFocusable = true };
+        host.Children.Add(table);
+        await using var surface = await ComponentSurface.MountAsync(
+            host, new Size(20, 10), TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(source, BuildRow, Length.Cells(1)), "bind source");
+        source.HeldCount.ShouldBe(1);
+
+        await Should.NotThrowAsync(
+            () => surface.UpdateAsync(table.Dispose, "dispose progressive table mid-fetch"));
+
+        table.IsDisposed.ShouldBeTrue();
     }
 
     /// <summary>Verifies disposing a detached progressive table with realized rows leaves owned
