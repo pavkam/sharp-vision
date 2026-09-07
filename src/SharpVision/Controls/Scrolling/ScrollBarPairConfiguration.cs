@@ -6,13 +6,16 @@ namespace SharpVision.Controls.Scrolling;
 /// <summary>Captures one complete host-to-scrollbar-pair synchronization request.</summary>
 internal readonly record struct ScrollBarPairConfiguration
 {
-    /// <summary>Initializes one complete validated-by-caller synchronization request.</summary>
+    /// <summary>Initializes one complete synchronization request whose geometry and increments
+    /// are validated by the caller and whose values are clamped when applied.</summary>
     /// <param name="horizontalMaximum">The horizontal inclusive maximum.</param>
     /// <param name="verticalMaximum">The vertical inclusive maximum.</param>
     /// <param name="horizontalViewport">The horizontal viewport extent.</param>
     /// <param name="verticalViewport">The vertical viewport extent.</param>
-    /// <param name="horizontalValue">The horizontal current value.</param>
-    /// <param name="verticalValue">The vertical current value.</param>
+    /// <param name="horizontalValue">The horizontal value, clamped into the rail range when
+    /// applied.</param>
+    /// <param name="verticalValue">The vertical value, clamped into the rail range when
+    /// applied.</param>
     /// <param name="horizontalSmallChange">The horizontal small increment.</param>
     /// <param name="verticalSmallChange">The vertical small increment.</param>
     /// <param name="horizontalLargeChange">The horizontal large increment.</param>
@@ -53,10 +56,10 @@ internal readonly record struct ScrollBarPairConfiguration
     /// <summary>Gets the vertical viewport extent.</summary>
     public int VerticalViewport { get; }
 
-    /// <summary>Gets the horizontal current value.</summary>
+    /// <summary>Gets the horizontal value, clamped into the rail range when applied.</summary>
     public int HorizontalValue { get; }
 
-    /// <summary>Gets the vertical current value.</summary>
+    /// <summary>Gets the vertical value, clamped into the rail range when applied.</summary>
     public int VerticalValue { get; }
 
     /// <summary>Gets the horizontal small increment.</summary>

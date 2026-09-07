@@ -1167,7 +1167,8 @@ public abstract class Container: ControlBase
         // Synchronize's own MaximumY() read would otherwise re-derive the stale bound the y-clamp
         // above was deliberately overridden to avoid, handing the generated vertical ScrollBar a
         // Maximum inconsistent with the VerticalOffset just committed against maximumYOverride -
-        // Configure asserts those two stay consistent, so the same override has to carry through.
+        // the rail would clamp its value to that stale bound and disagree with the committed
+        // offset, so the same override has to carry through.
         Synchronize(maximumYOverride);
 
         unchecked

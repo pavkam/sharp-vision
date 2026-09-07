@@ -212,16 +212,24 @@ internal sealed class ScrollBarPairController
             heightResolved: true);
     }
 
-    /// <summary>Synchronizes both rails from already-clamped host ranges while suppressing
-    /// callbacks caused by that synchronization.</summary>
-    /// <remarks>A reentrant request replaces any older pending request and is applied after the
-    /// current property publication completes, so the newest complete configuration wins.</remarks>
+    /// <summary>Synchronizes both rails from host ranges while suppressing callbacks caused by
+    /// that synchronization.</summary>
+    /// <remarks><para>A reentrant request replaces any older pending request and is applied after
+    /// the current property publication completes, so the newest complete configuration
+    /// wins.</para>
+    /// <para>Each value is clamped into its rail's <c>[0, maximum]</c> range on application rather
+    /// than required to arrive pre-clamped. A host commits its offsets against the extent it last
+    /// measured, and an observer of that extent publication may resynchronize before the host
+    /// re-clamps, so a stale offset against a freshly-lowered maximum degrades to the endpoint
+    /// instead of failing the layout pass.</para></remarks>
     /// <param name="horizontalMaximum">The non-negative horizontal maximum.</param>
     /// <param name="verticalMaximum">The non-negative vertical maximum.</param>
     /// <param name="horizontalViewport">The non-negative horizontal viewport extent.</param>
     /// <param name="verticalViewport">The non-negative vertical viewport extent.</param>
-    /// <param name="horizontalValue">The valid horizontal value.</param>
-    /// <param name="verticalValue">The valid vertical value.</param>
+    /// <param name="horizontalValue">The horizontal value, clamped into
+    /// <c>[0, horizontalMaximum]</c> on application.</param>
+    /// <param name="verticalValue">The vertical value, clamped into
+    /// <c>[0, verticalMaximum]</c> on application.</param>
     /// <param name="horizontalSmallChange">The non-negative horizontal small increment.</param>
     /// <param name="verticalSmallChange">The non-negative vertical small increment.</param>
     /// <param name="horizontalLargeChange">The non-negative horizontal large increment.</param>
@@ -369,8 +377,10 @@ internal sealed class ScrollBarPairController
         int largeChange)
     {
         Debug.Assert(maximum >= 0 && viewport >= 0, "Scrollbar geometry is non-negative.");
-        Debug.Assert(value >= 0 && value <= maximum, "Scrollbar value is clamped before synchronization.");
 
+        // The rail rejects a Maximum below its retained Value, so a shrinking range pulls that
+        // value down before the range moves. The incoming value is a host offset that may be
+        // stale against this maximum (see Synchronize), so it is clamped rather than asserted.
         if (bar.Value > maximum)
         {
             bar.Value = maximum;
