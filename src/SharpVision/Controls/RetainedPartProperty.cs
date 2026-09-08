@@ -7,7 +7,17 @@ using System.ComponentModel;
 using System.Runtime.ExceptionServices;
 
 /// <summary>Forwards one typed retained-part property through its semantic owner.</summary>
-internal sealed class RetainedPartProperty<T>: IDisposable
+/// <typeparam name="T">The forwarded property value type.</typeparam>
+/// <remarks>
+/// Obtained only through <see cref="ControlBase.RegisterRetainedPartProperty{T}"/>: a derived
+/// control owning one private retained descendant asks its base for a bridge for one property, then
+/// exposes this bridge's <see cref="Value"/> under its own semantic property name. The bridge walks
+/// and subscribes to every control on the ownership path between the source and the owner, so it
+/// disposes itself the moment any control on that path changes parent - the source has left the
+/// owner's retained tree and the forwarding relationship it depended on no longer holds.
+/// </remarks>
+[PublicAPI]
+public sealed class RetainedPartProperty<T>: IDisposable
 {
     private readonly IEqualityComparer<T> _comparer;
     private readonly Func<T> _get;
@@ -22,7 +32,17 @@ internal sealed class RetainedPartProperty<T>: IDisposable
     private long _sourceVersion;
 
     /// <summary>Initializes and subscribes one current-value forwarding relationship.</summary>
-    public RetainedPartProperty(
+    /// <param name="owner">The non-null semantic owner republishing this bridge's value.</param>
+    /// <param name="source">The non-null retained descendant already owned by <paramref name="owner"/>.</param>
+    /// <param name="sourcePropertyName">The non-empty source property name observed for change.</param>
+    /// <param name="ownerPropertyName">The non-empty owner property name published on change.</param>
+    /// <param name="get">The non-null delegate reading the current source value.</param>
+    /// <param name="set">The optional delegate writing the source value; null makes <see cref="Value"/> read-only.</param>
+    /// <param name="comparer">The optional equality comparer; null uses <see cref="EqualityComparer{T}.Default"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/>, <paramref name="source"/>, or <paramref name="get"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="sourcePropertyName"/> or <paramref name="ownerPropertyName"/> is empty or whitespace.</exception>
+    /// <exception cref="InvalidOperationException"><paramref name="source"/> is not an owned descendant of <paramref name="owner"/>.</exception>
+    internal RetainedPartProperty(
         ControlBase owner,
         ControlBase source,
         string sourcePropertyName,
@@ -65,6 +85,11 @@ internal sealed class RetainedPartProperty<T>: IDisposable
     }
 
     /// <summary>Gets or sets the current retained-part value.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// The bridge was constructed without a setter delegate, or the owning control is mutated
+    /// off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owner or source is disposed.</exception>
     public T Value
     {
         get => _get();
@@ -91,6 +116,13 @@ internal sealed class RetainedPartProperty<T>: IDisposable
     }
 
     /// <summary>Refreshes a value whose source reports change through a non-property event.</summary>
+    /// <remarks>
+    /// Some sources commit a change and raise a domain event - such as
+    /// <see cref="Container.ScrollChanged"/> - without also raising
+    /// <see cref="INotifyPropertyChanged.PropertyChanged"/> for every affected property. A bridge
+    /// wired to such a property is refreshed explicitly from that domain event instead of relying on
+    /// the automatic <see cref="INotifyPropertyChanged.PropertyChanged"/> subscription.
+    /// </remarks>
     public void Refresh() => Refresh(_sourceVersion);
 
     /// <inheritdoc/>

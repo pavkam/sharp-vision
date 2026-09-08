@@ -4,9 +4,12 @@
 
 `NavigationView` is a sidebar navigation control with typed items, groups,
 separators, an optional header, and a pinned footer section. It extends
-[`CompositeControlBase`](../composite-control.md#overview) with an internal
-`Dock` layout: the header docks to the top, the footer docks to the bottom, and
-a scrollable items stack fills the remainder.
+[`ScrollableCompositeControlBase`](../scrollable-composite-control.md#overview)
+with an internal `Dock` layout: the header docks to the top, the footer docks to
+the bottom, and a scrollable items stack fills the remainder. The base bridges
+only that main items stack - the footer is a second, independently scrolled
+private viewport that never gains a public scroll surface of its own (see
+[Behavior](#behavior)).
 
 The view defaults to no border and resolves its continuous sidebar plane from
 the active theme's generic `control.normal` role. It intentionally has no
@@ -29,7 +32,8 @@ populate a `NavigationView`.
 ```mermaid
 classDiagram
     ControlBase <|-- CompositeControlBase
-    CompositeControlBase <|-- NavigationView
+    CompositeControlBase <|-- ScrollableCompositeControlBase
+    ScrollableCompositeControlBase <|-- NavigationView
     ControlBase <|-- InputBase
     InputBase <|-- NavigationViewItem
     ControlBase <|-- NavigationViewGroup
@@ -38,26 +42,28 @@ classDiagram
 
 ## API
 
-| Member                                                     | Type                                                    | Default        | Description                                                                   |
-| ---------------------------------------------------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------- |
-| `Header`                                                   | `string?`                                               | `null`         | Shows an optional bold title above the main section.                          |
-| `Items`                                                    | `NavigationViewEntryCollection`                         | Empty          | Holds main items, groups, and separators in a scrollable section.             |
-| `FooterItems`                                              | `NavigationViewEntryCollection`                         | Empty          | Holds equivalent entries pinned below the main section.                       |
-| `SelectedItem`                                             | `NavigationViewItem?`                                   | `null`         | Read-only; the selected item across both sections.                            |
-| `WrapNavigation`                                           | `bool`                                                  | `false`        | Whether Up and Down wrap across the first and last available entries.         |
-| `ScrollBarStyle`                                           | `ScrollBarStyle?`                                       | `null`         | Local style for the generated bar; `null` keeps theme resolution.             |
-| `ActualScrollBarStyle`                                     | `ScrollBarStyle`                                        | Resolved       | Read-only; the style applied to the generated bar.                            |
-| `Extent`                                                   | `Size`                                                  | Empty          | Read-only; the committed non-negative content extent of the scroll container. |
-| `Viewport`                                                 | `Size`                                                  | Empty          | Read-only; the committed non-negative visible extent of the scroll container. |
-| `HorizontalOffset`                                         | `int`                                                   | `0`            | The valid horizontal content offset of the generated scroll container.        |
-| `VerticalOffset`                                           | `int`                                                   | `0`            | The valid vertical content offset of the generated scroll container.          |
-| `LineSize`                                                 | `int`                                                   | `1`            | Non-negative wheel-scroll increment forwarded to the bar.                     |
-| `PageOverlap`                                              | `int`                                                   | `0`            | Non-negative context retained by PageUp and PageDown.                         |
-| `SelectItem(NavigationViewItem item)`                      | `void`                                                  | —              | Selects one item owned by this view without moving keyboard focus.            |
-| `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                                  | —              | Scrolls the generated scroll container by signed cell deltas.                 |
-| `BringItemIntoView(NavigationViewItem item)`               | `bool`                                                  | —              | Scrolls minimally to expose one owned entry.                                  |
-| `SelectionChanged`                                         | `EventHandler<NavigationViewSelectionChangedEventArgs>` | No subscribers | Reports a committed selection change.                                         |
-| `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>`                  | No subscribers | Raised by the view after the generated scroll container's offset commits.     |
+| Member                                                               | Type                                                    | Default        | Description                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------- |
+| `Header`                                                             | `string?`                                               | `null`         | Shows an optional bold title above the main section.                          |
+| `Items`                                                              | `NavigationViewEntryCollection`                         | Empty          | Holds main items, groups, and separators in a scrollable section.             |
+| `FooterItems`                                                        | `NavigationViewEntryCollection`                         | Empty          | Holds equivalent entries pinned below the main section.                       |
+| `SelectedItem`                                                       | `NavigationViewItem?`                                   | `null`         | Read-only; the selected item across both sections.                            |
+| `WrapNavigation`                                                     | `bool`                                                  | `false`        | Whether Up and Down wrap across the first and last available entries.         |
+| Inherited `ScrollBars`                                               | `ScrollBars`                                            | `Vertical`     | Axes enabled by the private main items stack.                                 |
+| Inherited `ShowScrollBars`                                           | `ShowScrollBars`                                        | `WhenNeeded`   | Reservation policy for the generated bar.                                     |
+| Inherited `ScrollBarStyle`                                           | `ScrollBarStyle?`                                       | `null`         | Local style for the generated bar; `null` keeps theme resolution.             |
+| Inherited `ActualScrollBarStyle`                                     | `ScrollBarStyle`                                        | Resolved       | Read-only; the style applied to the generated bar.                            |
+| Inherited `Extent`                                                   | `Size`                                                  | Empty          | Read-only; the committed non-negative content extent of the scroll container. |
+| Inherited `Viewport`                                                 | `Size`                                                  | Empty          | Read-only; the committed non-negative visible extent of the scroll container. |
+| Inherited `HorizontalOffset`                                         | `int`                                                   | `0`            | The valid horizontal content offset of the generated scroll container.        |
+| Inherited `VerticalOffset`                                           | `int`                                                   | `0`            | The valid vertical content offset of the generated scroll container.          |
+| Inherited `LineSize`                                                 | `int`                                                   | `1`            | Non-negative wheel-scroll increment forwarded to the bar.                     |
+| Inherited `PageOverlap`                                              | `int`                                                   | `0`            | Non-negative context retained by PageUp and PageDown.                         |
+| `SelectItem(NavigationViewItem item)`                                | `void`                                                  | —              | Selects one item owned by this view without moving keyboard focus.            |
+| Inherited `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                                  | —              | Scrolls the generated scroll container by signed cell deltas.                 |
+| `BringItemIntoView(NavigationViewItem item)`                         | `bool`                                                  | —              | Scrolls minimally to expose one owned entry.                                  |
+| `SelectionChanged`                                                   | `EventHandler<NavigationViewSelectionChangedEventArgs>` | No subscribers | Reports a committed selection change.                                         |
+| Inherited `ScrollChanged`                                            | `EventHandler<ScrollChangedEventArgs>`                  | No subscribers | Raised by the view after the generated scroll container's offset commits.     |
 
 ## Keyboard
 
@@ -105,10 +111,13 @@ classDiagram
   `IsSelected` or `SelectedItem` observer synchronously selects another item,
   the newer selection owns the visual markers, public property, and typed event;
   the superseded transition publishes nothing further.
-- `Extent`, `Viewport`, `HorizontalOffset`, and `VerticalOffset` republish
-  changes from the private scrolling host through the view's own
-  `PropertyChanged` event. `ScrollChanged` likewise uses the view as sender;
-  retained presentation controls never escape through public notifications.
+- `ScrollBars`, `ShowScrollBars`, `Extent`, `Viewport`, `HorizontalOffset`,
+  `VerticalOffset`, `LineSize`, and `PageOverlap` are the inherited
+  `ScrollableCompositeControlBase` bridge over the private main items stack; a
+  change originating there republishes through the view's own `PropertyChanged`
+  event. `ScrollChanged` likewise uses the view as sender; retained presentation
+  controls never escape through public notifications. The footer's own offset
+  stays private - it has no public counterpart.
 
 The view is the single sidebar tab stop (`TabNavigation.None`); item and group
 faces never receive keyboard focus themselves. Up and Down arrows move the

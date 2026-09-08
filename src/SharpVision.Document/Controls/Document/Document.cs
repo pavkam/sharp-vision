@@ -5,14 +5,12 @@ namespace SharpVision.Controls.Document;
 
 using System.Runtime.ExceptionServices;
 
-using SharpVision.Controls.Scrolling;
 using SharpVision.Documents;
 using SharpVision.Runtime;
 using SharpVision.Terminal.Input;
 using SharpVision.Text;
 
 using LayoutStack = Layout.Stack;
-using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Displays a scrollable tree of rich text content: headings, paragraphs with inline markup
 /// and activatable links, lists, block quotes, code blocks, and thematic breaks.</summary>
@@ -39,7 +37,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// </remarks>
 [PublicAPI]
 public sealed class Document:
-    CompositeControlBase,
+    ScrollableCompositeControlBase,
     IStyled<DocumentStyle>,
     IClipboardCopySource,
     ISelectableTextViewport
@@ -53,7 +51,6 @@ public sealed class Document:
 
     private DocumentLayout _layout = new();
     private readonly DocumentPresenter _presenter;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<DocumentStyle> _style;
     private readonly DocumentSurface _surface;
@@ -65,7 +62,6 @@ public sealed class Document:
     private int _layoutWidth = -1;
     private int _horizontalOffset;
     private TextSelectionMap _selectionSemanticMap = TextSelectionMap.Empty;
-    private ulong _scrollTransitionVersion;
     private ulong _linkTransitionVersion;
 
     /// <summary>Initializes an empty scrollable document.</summary>
@@ -86,14 +82,22 @@ public sealed class Document:
             ShowScrollBars = ShowScrollBars.WhenNeeded,
             Children = { _presenter }
         };
-        _stack.ScrollChanged += OnStackScrollChanged;
         FocusEntered += OnDocumentFocusBoundaryChanged;
         FocusLeft += OnDocumentFocusBoundaryChanged;
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
         InitializeContent(_stack);
+        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
 
-        _scrollBarStyle = InitializePartStyle(ScrollBarStyle.ForwardingDefinition, nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
+        // Subscribed after the scrollable-content bridge above, not before: _stack.ScrollChanged is
+        // a multicast event, and OnStackScrollChanged below is the one handler in this chain that can
+        // synchronously dispose or hide this document (a subscriber to the public ScrollChanged event
+        // this raises is free to do that). The bridge's own source-scroll handler refreshes this
+        // control's cached Extent/Viewport/offset properties and, finding them changed, publishes
+        // PropertyChanged through this control - which requires this control to still be mutable.
+        // Subscribing here keeps that refresh strictly earlier in the invocation list than the
+        // handler that can tear this control down, so it always runs against a still-available
+        // owner regardless of what a ScrollChanged subscriber does.
+        _stack.ScrollChanged += OnStackScrollChanged;
 
         IsFocusable = true;
         IsTabStop = true;
@@ -809,18 +813,6 @@ public sealed class Document:
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public DocumentStyle ActualStyle => _style.Actual;
 
-    /// <summary>Gets or sets the complete local generated-bar style, or null for theme ownership.</summary>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the complete local, theme-owned, or code-owned resolved generated-bar style.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
     // Faces resolve during the paint pass, so a face replacement needs nothing but the repaint the
     // style slot already schedules. A glyph replacement is different: it can change how many cells a
     // marker or bar occupies, which moves the text beside it, and the projection caches its glyph
@@ -854,55 +846,43 @@ public sealed class Document:
 
     #region Scrolling
 
-    /// <summary>Raised after either document viewport offset commits.</summary>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
+    /// <summary>Gets the committed non-negative content extent, widened to include genuine
+    /// horizontal overflow the intrinsic selectable-text viewport can reach.</summary>
+    public override Size Extent => new(Math.Max(base.Extent.Width, _layout.MaxCells), base.Extent.Height);
 
-    /// <summary>Gets the committed non-negative content extent.</summary>
-    public Size Extent => new(Math.Max(_stack.Extent.Width, _layout.MaxCells), _stack.Extent.Height);
-
-    /// <summary>Gets the committed non-negative visible extent.</summary>
-    public Size Viewport => _stack.Viewport;
-
-    /// <summary>Gets or sets the valid vertical content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    public int VerticalOffset
+    /// <summary>Gets the document's own horizontal viewport offset.</summary>
+    /// <remarks>
+    /// Document has no generated horizontal scrollbar: this offset moves only as a side effect of
+    /// revealing a selectable-text location through <see cref="RevealSelectableTextOffset"/> or
+    /// <see cref="ScrollSelectableTextViewport"/>, so the setter <see cref="ScrollableCompositeControlBase"/>
+    /// otherwise exposes is not supported here.
+    /// </remarks>
+    /// <exception cref="NotSupportedException">A caller sets this property.</exception>
+    public override int HorizontalOffset
     {
-        get => _stack.VerticalOffset;
-        set => _stack.VerticalOffset = value;
+        get => _horizontalOffset;
+        set => throw new NotSupportedException(
+            "Document has no independent horizontal offset setter; use RevealSelectableTextOffset or " +
+            "ScrollSelectableTextViewport to move the selectable-text viewport horizontally.");
     }
 
-    /// <summary>Gets or sets the non-negative number of lines one arrow key or wheel notch scrolls.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    [NonNegativeValue]
-    public int LineSize
+    /// <summary>Gets the always-vertical scrollable axis of the private scrolling host.</summary>
+    /// <remarks>
+    /// Document's own horizontal offset is derived from the selectable-text viewport rather than a
+    /// generated horizontal scrollbar (see <see cref="HorizontalOffset"/>), so
+    /// <see cref="ScrollBars.Vertical"/> is the only legal axis set for this control.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The value is not <see cref="ScrollBars.Vertical"/>.</exception>
+    public override ScrollBars ScrollBars
     {
-        get => _stack.LineSize;
-        set => _stack.LineSize = value;
-    }
-
-    /// <summary>Gets or sets the non-negative number of lines a page scroll keeps in view.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    [NonNegativeValue]
-    public int PageOverlap
-    {
-        get => _stack.PageOverlap;
-        set => _stack.PageOverlap = value;
-    }
-
-    /// <summary>Gets or sets when the generated vertical scrollbar is shown.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached document is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
-    {
-        get => _stack.ShowScrollBars;
-        set => _stack.ShowScrollBars = value;
+        get => ScrollBars.Vertical;
+        set
+        {
+            if (value != ScrollBars.Vertical)
+            {
+                throw new ArgumentException("Document only supports vertical scrolling.", nameof(value));
+            }
+        }
     }
 
     /// <summary>Adds a signed line delta with saturation and endpoint clamping.</summary>
@@ -914,6 +894,26 @@ public sealed class Document:
     /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
     public bool ScrollBy(int lines, ScrollCause cause = ScrollCause.Programmatic) =>
         _stack.ScrollBy(0, lines, cause);
+
+    /// <summary>Rejects horizontal motion through the generic two-axis entry point and forwards the
+    /// vertical component to <see cref="ScrollBy(int, ScrollCause)"/>.</summary>
+    /// <remarks>
+    /// Document's horizontal offset is derived exclusively from the selectable-text viewport (see
+    /// <see cref="HorizontalOffset"/>); a genuinely horizontal request belongs to
+    /// <see cref="ScrollSelectableTextViewport"/> instead.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="x"/> is non-zero, or <paramref name="cause"/> is unknown.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached document is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The document is disposed.</exception>
+    public override bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
+        x != 0
+            ? throw new ArgumentOutOfRangeException(
+                nameof(x),
+                x,
+                "Document does not support horizontal scrolling through ScrollBy; use ScrollSelectableTextViewport instead.")
+            : ScrollBy(y, cause);
 
     /// <summary>Scrolls to the first line.</summary>
     /// <returns>True when the offset changed.</returns>
@@ -981,30 +981,23 @@ public sealed class Document:
         _horizontalOffset = target;
         InvalidateRetainedDescendant(_presenter, InvalidationImpact.Arrange);
 
-        unchecked
-        {
-            _scrollTransitionVersion++;
-        }
-
         RaiseScrollChanged(
             new ScrollChangedEventArgs(
                 previous,
                 new Point(_horizontalOffset, VerticalOffset),
                 Extent,
                 Viewport,
-                cause),
-            _scrollTransitionVersion);
+                cause));
         return true;
     }
 
+    // The private scrolling host only ever tracks the vertical axis, so its own committed offset
+    // always carries a stale horizontal component (whatever it was constructed with) rather than
+    // this control's own _horizontalOffset. Rebuilding both endpoints here keeps every subscriber's
+    // observed Offset.X consistent with HorizontalOffset regardless of which axis actually moved.
     private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
     {
         _ = sender;
-
-        unchecked
-        {
-            _scrollTransitionVersion++;
-        }
 
         RaiseScrollChanged(
             new ScrollChangedEventArgs(
@@ -1012,37 +1005,7 @@ public sealed class Document:
                 new Point(_horizontalOffset, eventArgs.Offset.Y),
                 Extent,
                 Viewport,
-                eventArgs.Cause),
-            _scrollTransitionVersion);
-    }
-
-    /// <summary>Delivers <see cref="ScrollChanged"/> to each subscriber only while this transition is
-    /// still the newest one. <see cref="ApplyHorizontal"/> and <see cref="OnStackScrollChanged"/> are two
-    /// independent paths that both forward into this single event, and both share the same version
-    /// field, so a subscriber that reentrantly triggers another scroll change through either path
-    /// supersedes delivery to later subscribers rather than letting a stale transition reach
-    /// them.</summary>
-    /// <param name="eventArgs">The immutable transition being delivered.</param>
-    /// <param name="transitionVersion">The version captured when this transition was raised.</param>
-    private void RaiseScrollChanged(ScrollChangedEventArgs eventArgs, ulong transitionVersion)
-    {
-        var handlers = ScrollChanged;
-
-        if (handlers is null)
-        {
-            return;
-        }
-
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_scrollTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<ScrollChangedEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+                eventArgs.Cause));
     }
 
     #endregion
@@ -2130,7 +2093,6 @@ public sealed class Document:
         base.OnUnavailable(reason);
         if (reason == ReleaseReason.Disposed)
         {
-            ScrollChanged = null;
             LinkClicked = null;
             SelectionChanged = null;
         }

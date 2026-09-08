@@ -2838,15 +2838,34 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     internal OwnedControlSlot? FindOwnedSlot(string partKey) => OwnedControls.FindPart(partKey);
 
     /// <summary>Registers one typed property bridge to a retained presentation part.</summary>
+    /// <remarks>
+    /// <paramref name="source"/> must already be an owned retained descendant of this control -
+    /// typically the private implementation root or content installed through
+    /// <see cref="CompositeControlBase.InitializeContent"/> or a similar constructor-time helper.
+    /// The returned bridge's lifetime follows this control: it is disposed automatically once this
+    /// control disposes, or earlier if any control on the ownership path between
+    /// <paramref name="source"/> and this control changes parent.
+    /// </remarks>
     /// <typeparam name="T">The forwarded property value type.</typeparam>
-    /// <param name="source">The retained source control.</param>
+    /// <param name="source">The non-null retained source control, already owned by this control.</param>
     /// <param name="sourcePropertyName">The non-empty source property name.</param>
     /// <param name="ownerPropertyName">The non-empty owner property name.</param>
-    /// <param name="get">Reads the current source value.</param>
-    /// <param name="set">Optionally writes the source value.</param>
+    /// <param name="get">The non-null delegate reading the current source value.</param>
+    /// <param name="set">The optional delegate writing the source value; null makes the bridge read-only.</param>
     /// <param name="comparer">The optional equality policy.</param>
     /// <returns>The lifecycle-owned typed property bridge.</returns>
-    internal RetainedPartProperty<T> RegisterRetainedPartProperty<T>(
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/> or <paramref name="get"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="sourcePropertyName"/> or <paramref name="ownerPropertyName"/> is empty or whitespace.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="source"/> is not an owned retained descendant of this control, or this
+    /// control is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">This control is disposed.</exception>
+    protected RetainedPartProperty<T> RegisterRetainedPartProperty<T>(
         ControlBase source,
         string sourcePropertyName,
         string ownerPropertyName,
@@ -2879,10 +2898,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Registers one forwarding bridge to a retained scrolling presentation part.</summary>
-    /// <param name="source">The retained scrolling container.</param>
+    /// <remarks>
+    /// <paramref name="source"/> must already be an owned retained descendant of this control - the
+    /// private scrolling host a constructor installed through
+    /// <see cref="CompositeControlBase.InitializeContent"/> or a similar constructor-time helper. The
+    /// returned bridge's lifetime follows this control the same way as
+    /// <see cref="RegisterRetainedPartProperty{T}"/>.
+    /// </remarks>
+    /// <param name="source">The non-null retained scrolling container, already owned by this control.</param>
     /// <param name="forwardsScrollEvent">Whether the bridge directly forwards ScrollChanged.</param>
     /// <returns>The lifecycle-owned forwarding bridge.</returns>
-    internal RetainedScrollPart RegisterRetainedScrollPart(
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="source"/> is not an owned retained descendant of this control, or this
+    /// control is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">This control is disposed.</exception>
+    protected RetainedScrollPart RegisterRetainedScrollPart(
         Container source,
         bool forwardsScrollEvent = true)
     {

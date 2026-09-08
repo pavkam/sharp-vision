@@ -20,7 +20,7 @@ using TextOverflow = Text.Overflow;
 
 /// <summary>Displays JSON as a focusable hierarchical collection of properties and array entries.</summary>
 [PublicAPI]
-public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
+public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewStyle>
 {
     /// <summary>Gets the largest caller-configurable indentation step retained by the projection.</summary>
     internal const int MaximumIndent = 4096;
@@ -45,9 +45,7 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     private List<JsonViewLine> _lines = [];
     private readonly JsonViewContent _content;
     private readonly LayoutStack _stack;
-    private readonly RetainedScrollPart _scrollPart;
     private readonly WidthDependentViewportCoordinator _projectionCoordinator;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly StyleSlot<JsonViewStyle> _style;
     private JsonViewNode? _selectedNode;
     private int? _projectionWidth;
@@ -70,6 +68,14 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             Children = { _content }
         };
         InitializeContent(_stack);
+
+        // Installed before the coordinator below, not after: both subscribe to _stack.ScrollChanged,
+        // and a consumer's ScrollChanged handler (reached through the coordinator, since
+        // forwardsScrollEvent is false) is free to dispose this view synchronously. Subscribing the
+        // scrollable-content bridge first keeps its own refresh of the cached Extent/Viewport/offset
+        // properties strictly earlier in the invocation list than that handler, so the refresh always
+        // runs against a still-available owner regardless of what the handler does.
+        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
         _projectionCoordinator = new WidthDependentViewportCoordinator(
             this,
             _stack,
@@ -77,11 +83,6 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
             static () => true,
             () => _projectionWidth,
             Reproject);
-        _scrollPart = RegisterRetainedScrollPart(_stack, forwardsScrollEvent: false);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -174,119 +175,26 @@ public sealed class JsonView: CompositeControlBase, IStyled<JsonViewStyle>
     /// <summary>Raised after the selected property or array-entry pointer changes.</summary>
     public event EventHandler<JsonViewSelectionChangedEventArgs>? SelectionChanged;
 
-    /// <summary>Gets or sets which overflow axes provide generated scrollbars.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBars ScrollBars
-    {
-        get => _scrollPart.ScrollBars;
-        set => _scrollPart.ScrollBars = value;
-    }
-
-    /// <summary>Gets or sets when generated scrollbars are visible.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
-    {
-        get => _scrollPart.ShowScrollBars;
-        set => _scrollPart.ShowScrollBars = value;
-    }
-
-    /// <summary>Gets or sets the complete local style for generated scrollbars.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the resolved style applied to generated scrollbars.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Raised after a generated scrolling viewport commits changed offsets.</summary>
+    /// <summary>Adds one <see cref="ScrollableCompositeControlBase.ScrollChanged"/> subscriber,
+    /// routed to the shared width-dependent viewport coordinator rather than the private scrolling
+    /// host's own bridge.</summary>
     /// <remarks>
-    /// This is not a direct forward of the composed viewport's own event: a layout pass that needs
-    /// more than one internal arrange to settle the wrapped projection's width, the shared
-    /// coordinator coalesces every intermediate change that occurs
-    /// while it settles into the single event actually raised, so a subscriber only ever observes
-    /// the final settled offset, extent, and viewport for one layout pass, never a transient value
-    /// clamped against a since-superseded wrap. An offset change from any other cause - scrolling,
-    /// programmatic <see cref="ScrollBy"/>, a resize that does not need reconciling - is forwarded
-    /// exactly as it occurs, individually.
+    /// This is not a direct forward of the composed viewport's own event: for a layout pass that
+    /// needs more than one internal arrange to settle the wrapped projection's width, the shared
+    /// coordinator coalesces every intermediate change that occurs while it settles into the single
+    /// event actually raised, so a subscriber only ever observes the final settled offset, extent,
+    /// and viewport for one layout pass, never a transient value clamped against a
+    /// since-superseded wrap. An offset change from any other cause - scrolling, programmatic
+    /// <see cref="ScrollableCompositeControlBase.ScrollBy"/>, a resize that does not need
+    /// reconciling - is forwarded exactly as it occurs, individually.
     /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _projectionCoordinator.ScrollChanged += value;
-        remove => _projectionCoordinator.ScrollChanged -= value;
-    }
+    /// <param name="handler">The subscriber to add, or null (a no-op).</param>
+    protected override void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+        _projectionCoordinator.ScrollChanged += handler;
 
-    /// <summary>Gets the committed content extent.</summary>
-    public Size Extent => _scrollPart.Extent;
-
-    /// <summary>Gets the committed visible viewport extent.</summary>
-    public Size Viewport => _scrollPart.Viewport;
-
-    /// <summary>Gets or sets the valid horizontal content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int HorizontalOffset
-    {
-        get => _scrollPart.HorizontalOffset;
-        set => _scrollPart.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the valid vertical content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int VerticalOffset
-    {
-        get => _scrollPart.VerticalOffset;
-        set => _scrollPart.VerticalOffset = value;
-    }
-
-    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells.</summary>
-    /// <remarks>
-    /// Keyboard navigation always moves the selection by exactly one line regardless of this
-    /// value - only the mouse wheel consults it.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int LineSize
-    {
-        get => _scrollPart.LineSize;
-        set => _scrollPart.LineSize = value;
-    }
-
-    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    [NonNegativeValue]
-    public int PageOverlap
-    {
-        get => _scrollPart.PageOverlap;
-        set => _scrollPart.PageOverlap = value;
-    }
-
-    /// <summary>Scrolls by signed cell deltas with saturation and endpoint clamping.</summary>
-    /// <param name="x">The requested horizontal delta.</param>
-    /// <param name="y">The requested vertical delta.</param>
-    /// <param name="cause">The defined input path.</param>
-    /// <returns>True when at least one offset changes.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
-        _stack.ScrollBy(x, y, cause);
+    /// <inheritdoc/>
+    protected override void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+        _projectionCoordinator.ScrollChanged -= handler;
 
     /// <summary>Sets the disclosure state of one container entry.</summary>
     /// <param name="path">The non-null RFC 6901 pointer of a non-root object or array entry.</param>

@@ -5,8 +5,6 @@ namespace SharpVision.Controls.Collections;
 
 using Layout;
 
-using Scrolling;
-
 using SharpVision.Controls.Input;
 using SharpVision.Terminal.Input;
 
@@ -17,7 +15,7 @@ using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Displays hierarchical data as an expandable and collapsible tree of items.</summary>
 [PublicAPI]
-public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
+public sealed class TreeView: ScrollableCompositeControlBase, IStyled<TreeViewStyle>
 {
     private readonly StyleSlot<TreeViewStyle> _style;
 
@@ -35,8 +33,6 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     public TreeViewStyle ActualStyle => _style.Actual;
 
     private readonly LayoutStack _itemsStack;
-    private readonly RetainedScrollPart _scrollPart;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly CurrentItemNavigator _navigator;
     private readonly HashSet<TreeViewItem> _selectedItems = [];
     private TreeViewItem? _selectionAnchor;
@@ -69,106 +65,6 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
     private readonly Queue<TreeViewItem> _pendingChildLoads = new();
     private int _activeChildLoads;
 
-    /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
-    /// <remarks>
-    /// Null returns the bar to the library default for this control, which is
-    /// <see cref="ScrollBarStyle.ThinBlock"/>. An explicit value stays caller-owned. The
-    /// generated bar is a private retained part, so this proxy is the only way to reach it.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
-    /// <remarks>
-    /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
-    /// library default supplies rather than an opinion this control baked in.
-    /// </remarks>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Raised after the generated scroll container's offset commits.</summary>
-    /// <remarks>
-    /// The scrolling items container is a private retained part; this forwards its
-    /// <see cref="Container.ScrollChanged"/> so a consumer can observe scroll position without
-    /// reaching into private presentation trees.
-    /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _scrollPart.AddScrollChanged(value);
-        remove => _scrollPart.RemoveScrollChanged(value);
-    }
-
-    /// <summary>Gets the committed non-negative content extent of the generated scroll container.</summary>
-    public Size Extent => _scrollPart.Extent;
-
-    /// <summary>Gets the committed non-negative visible extent of the generated scroll container.</summary>
-    public Size Viewport => _scrollPart.Viewport;
-
-    /// <summary>Gets or sets the valid horizontal content offset of the generated scroll container.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    [NonNegativeValue]
-    public int HorizontalOffset
-    {
-        get => _scrollPart.HorizontalOffset;
-        set => _scrollPart.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the valid vertical content offset of the generated scroll container.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    [NonNegativeValue]
-    public int VerticalOffset
-    {
-        get => _scrollPart.VerticalOffset;
-        set => _scrollPart.VerticalOffset = value;
-    }
-
-    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
-    /// generated scroll container.</summary>
-    /// <remarks>
-    /// Keyboard navigation always moves by exactly one item regardless of this value - only the
-    /// mouse wheel consults it.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    [NonNegativeValue]
-    public int LineSize
-    {
-        get => _scrollPart.LineSize;
-        set => _scrollPart.LineSize = value;
-    }
-
-    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached tree view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    [NonNegativeValue]
-    public int PageOverlap
-    {
-        get => _scrollPart.PageOverlap;
-        set => _scrollPart.PageOverlap = value;
-    }
-
-    /// <summary>Scrolls the generated scroll container by signed cell deltas with saturation and
-    /// endpoint clamping.</summary>
-    /// <param name="x">The requested horizontal delta.</param>
-    /// <param name="y">The requested vertical delta.</param>
-    /// <param name="cause">The defined input path.</param>
-    /// <returns>True when at least one offset changed.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached tree view is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The tree view is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
-        _itemsStack.ScrollBy(x, y, cause);
-
     /// <summary>Scrolls minimally to expose one owned item, without requiring the caller to know
     /// about the private realized visual tree.</summary>
     /// <param name="item">The non-null owned item.</param>
@@ -198,12 +94,8 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
         root.Children.Add(_itemsStack);
 
         InitializeContent(root);
-        _scrollPart = RegisterRetainedScrollPart(_itemsStack);
+        InitializeScrollableContent(_itemsStack);
         _style = InitializeStyle(TreeViewStyle.Definition);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _itemsStack, nameof(ScrollBarStyle));
         Items = new TreeViewItemCollection { Owner = this };
         IsFocusable = true;
         IsTabStop = true;

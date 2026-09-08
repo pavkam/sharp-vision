@@ -2,12 +2,13 @@
 
 ## Overview
 
-`CodeView` is declared `public sealed class CodeView : CompositeControlBase` and
-implements `IStyled<CodeViewStyle>`, `ISelectableTextViewport`, and
-`IClipboardCopySource` (the selectable-text source role is inherited from
-`ControlBase`). It displays a read-only, syntax-colored source file with
-grapheme-safe selection, two-axis scrolling, and collapsible fold ranges. There
-is no editing API: replacing `Code` replaces the whole source.
+`CodeView` is declared
+`public sealed class CodeView : ScrollableCompositeControlBase` and implements
+`IStyled<CodeViewStyle>`, `ISelectableTextViewport`, and `IClipboardCopySource`
+(the selectable-text source role is inherited from `ControlBase`). It displays a
+read-only, syntax-colored source file with grapheme-safe selection, two-axis
+scrolling, and collapsible fold ranges. There is no editing API: replacing
+`Code` replaces the whole source.
 
 `CodeView` is a direct keyboard focus target. Its container-shaped style uses
 the focusable-container Theme fallback, preserving normal container geometry
@@ -27,14 +28,19 @@ invalidation only while the containing layout pass is already active. Wrapped,
 clipped, and ellipsized modes use the same bounded viewport coordinator as
 `JsonView`, so internal reflow passes publish at most one `ScrollChanged` with
 the final offset, extent, and viewport. `Overflow.Visible` bypasses that
-transaction and keeps its unwrapped fast path.
+transaction and keeps its unwrapped fast path. Scrolling properties other than
+`ScrollChanged` are inherited from
+[`ScrollableCompositeControlBase`](../scrollable-composite-control.md#overview);
+`ScrollChanged` routes through the same viewport coordinator instead of the
+base's default host-forwarding path.
 
 ## Inheritance
 
 ```mermaid
 classDiagram
     ControlBase <|-- CompositeControlBase
-    CompositeControlBase <|-- CodeView
+    CompositeControlBase <|-- ScrollableCompositeControlBase
+    ScrollableCompositeControlBase <|-- CodeView
     ISelectableTextViewport <|.. CodeView
     IClipboardCopySource <|.. CodeView
 ```
@@ -49,16 +55,16 @@ classDiagram
 | `Style`                                                      | `CodeViewStyle?`                              | `null`                         | Complete local presentation, or null for theme ownership.                                                            |
 | `ActualStyle`                                                | `CodeViewStyle`                               | Resolved                       | Read-only resolved presentation.                                                                                     |
 | Inherited `ContextMenu`                                      | `ContextMenu?`                                | `CodeViewContextMenu` instance | Replaceable menu with copy, selection, and folding commands.                                                         |
-| `ScrollBars`                                                 | `ScrollBars`                                  | `Both`                         | Axes that may expose generated scrollbars.                                                                           |
-| `ShowScrollBars`                                             | `ShowScrollBars`                              | `WhenNeeded`                   | Generated-scrollbar visibility policy.                                                                               |
-| `ScrollBarStyle`                                             | `ScrollBarStyle?`                             | `null`                         | Complete local generated-scrollbar style.                                                                            |
-| `ActualScrollBarStyle`                                       | `ScrollBarStyle`                              | Resolved                       | Read-only resolved generated-scrollbar style.                                                                        |
-| `Extent`                                                     | `Size`                                        | Layout-dependent               | Read-only committed content extent in cells.                                                                         |
-| `Viewport`                                                   | `Size`                                        | Layout-dependent               | Read-only committed visible extent in cells.                                                                         |
-| `HorizontalOffset`, `VerticalOffset`                         | `int`                                         | `0`                            | Valid committed content offsets; reject values beyond the current extent.                                            |
-| `LineSize`                                                   | `int`                                         | `1`                            | Non-negative wheel-scroll cell increment.                                                                            |
+| Inherited `ScrollBars`                                       | `ScrollBars`                                  | `Both`                         | Axes that may expose generated scrollbars.                                                                           |
+| Inherited `ShowScrollBars`                                   | `ShowScrollBars`                              | `WhenNeeded`                   | Generated-scrollbar visibility policy.                                                                               |
+| Inherited `ScrollBarStyle`                                   | `ScrollBarStyle?`                             | `null`                         | Complete local generated-scrollbar style.                                                                            |
+| Inherited `ActualScrollBarStyle`                             | `ScrollBarStyle`                              | Resolved                       | Read-only resolved generated-scrollbar style.                                                                        |
+| Inherited `Extent`                                           | `Size`                                        | Layout-dependent               | Read-only committed content extent in cells.                                                                         |
+| Inherited `Viewport`                                         | `Size`                                        | Layout-dependent               | Read-only committed visible extent in cells.                                                                         |
+| Inherited `HorizontalOffset`, `VerticalOffset`               | `int`                                         | `0`                            | Valid committed content offsets; reject values beyond the current extent.                                            |
+| Inherited `LineSize`                                         | `int`                                         | `1`                            | Non-negative wheel-scroll cell increment.                                                                            |
 | `Overflow`                                                   | `Overflow`                                    | `Visible`                      | How a line's horizontal overflow is handled; see [Soft wrapping](#soft-wrapping).                                    |
-| `PageOverlap`                                                | `int`                                         | `0`                            | Non-negative cells retained between page commands.                                                                   |
+| Inherited `PageOverlap`                                      | `int`                                         | `0`                            | Non-negative cells retained between page commands.                                                                   |
 | `Selection`                                                  | `Selection`                                   | Empty at `0`                   | Read-only directional range over normalized `Code`.                                                                  |
 | Inherited `IsTextSelectionEnabled`                           | `bool`                                        | `true`                         | Enabled by the constructor; disabling clears CodeView selection and gestures.                                        |
 | Inherited `TextSelection`                                    | `Selection`                                   | Empty at `0`                   | The same committed directional value exposed by `Selection`.                                                         |
@@ -67,7 +73,7 @@ classDiagram
 | `ClipboardWriter`                                            | `Action<string>?`                             | `null`                         | Optional detached/context-menu copy sink; attached Ctrl+C uses `Application`.                                        |
 | `IsFoldingEnabled`                                           | `bool`                                        | `true`                         | Whether the fold gutter and collapsed-line projection are active.                                                    |
 | `FoldRanges`                                                 | `IReadOnlyList<SyntaxFoldRange>`              | Empty                          | Detected fold ranges, outer ranges first.                                                                            |
-| `ScrollBy(int x, int y, ScrollCause cause)`                  | `bool`                                        | —                              | Applies signed deltas with saturation and endpoint clamping.                                                         |
+| Inherited `ScrollBy(int x, int y, ScrollCause cause)`        | `bool`                                        | —                              | Applies signed deltas with saturation and endpoint clamping.                                                         |
 | `SetSelection(Selection selection)`                          | `void`                                        | —                              | Replaces the range after validating grapheme-boundary endpoints.                                                     |
 | `SelectAll()`                                                | `void`                                        | —                              | Selects the complete normalized source.                                                                              |
 | `ClearSelection()`                                           | `void`                                        | —                              | Collapses at the current directional caret.                                                                          |

@@ -164,6 +164,26 @@ public sealed class DocumentTests
         _ = Should.Throw<ArgumentOutOfRangeException>(() => document.ScrollBy(1, (ScrollCause) 99));
     }
 
+    /// <summary>Verifies setting VerticalOffset raises the document's own PropertyChanged, proving
+    /// the shared scrolling base's retained-part bridge - not a plain forward to the private
+    /// stack - backs this property.</summary>
+    [Fact]
+    public void VerticalOffset_WhenSet_RaisesPropertyChanged()
+    {
+        // Arrange
+        var document = Filled(20);
+        new LayoutEngine().Layout(document, new Size(40, 5));
+        List<string?> changed = [];
+        document.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        // Act
+        document.VerticalOffset = 2;
+
+        // Assert
+        document.VerticalOffset.ShouldBe(2);
+        changed.ShouldContain(nameof(Document.VerticalOffset));
+    }
+
     /// <summary>Verifies the endpoint commands move to the first and last lines and report whether
     /// they changed anything.</summary>
     [Fact]

@@ -4,7 +4,6 @@
 namespace SharpVision.Navigation;
 
 using SharpVision.Controls.Layout;
-using SharpVision.Controls.Scrolling;
 using SharpVision.Terminal.Input;
 
 using DisplayText = Controls.Display.Text;
@@ -12,13 +11,12 @@ using LayoutStack = Controls.Layout.Stack;
 
 /// <summary>Provides a sidebar navigation control with typed items, groups, header, and footer.</summary>
 [PublicAPI]
-public sealed class NavigationView: CompositeControlBase
+public sealed class NavigationView: ScrollableCompositeControlBase
 {
     private readonly LayoutStack _itemsStack;
     private readonly LayoutStack _footerStack;
     private readonly DisplayText _headerText;
     private readonly CurrentItemNavigator _navigator;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly RetainedPropertyOverrideService _itemPropertyOverrides;
     private readonly RetainedPropertyOverrideService _footerPropertyOverrides;
     private long _selectionVersion;
@@ -36,115 +34,6 @@ public sealed class NavigationView: CompositeControlBase
 
     /// <summary>Gets the private footer offset used to prove bounded footer exposure.</summary>
     internal int FooterVerticalOffset => _footerStack.VerticalOffset;
-
-    /// <summary>Gets or sets the complete local style for this control's generated scrollbar.</summary>
-    /// <remarks>
-    /// Null returns the bar to the library default for this control, which is
-    /// <see cref="ScrollBarStyle.ThinLine"/>. An explicit value stays caller-owned. The
-    /// generated bar is a private retained part, so this proxy is the only way to reach it.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the resolved style applied to the generated scrollbar.</summary>
-    /// <remarks>
-    /// Resolved by the bar itself, so a null local value reports whatever the active Theme or the
-    /// library default supplies rather than an opinion this control baked in.
-    /// </remarks>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Raised after the generated scroll container's offset commits.</summary>
-    /// <remarks>
-    /// The view republishes the generated container's transition with itself as sender, so a
-    /// consumer can observe scroll position without reaching into private presentation trees.
-    /// </remarks>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;
-
-    /// <summary>Gets the committed non-negative content extent of the generated scroll container.</summary>
-    public Size Extent => _itemsStack.Extent;
-
-    /// <summary>Gets the committed non-negative visible extent of the generated scroll container.</summary>
-    public Size Viewport => _itemsStack.Viewport;
-
-    /// <summary>Gets or sets the valid horizontal content offset of the generated scroll container.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public int HorizontalOffset
-    {
-        get => _itemsStack.HorizontalOffset;
-        set => _itemsStack.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the valid vertical content offset of the generated scroll container.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public int VerticalOffset
-    {
-        get => _itemsStack.VerticalOffset;
-        set => _itemsStack.VerticalOffset = value;
-    }
-
-    /// <summary>Gets or sets the non-negative wheel-scroll increment in cells forwarded to the
-    /// generated scroll container.</summary>
-    /// <remarks>
-    /// Keyboard navigation always moves by exactly one entry regardless of this value - only the
-    /// mouse wheel consults it.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public int LineSize
-    {
-        get => _itemsStack.LineSize;
-        set
-        {
-            var previous = _itemsStack.LineSize;
-            _itemsStack.LineSize = value;
-
-            if (previous != _itemsStack.LineSize)
-            {
-                NotifyPropertyChanged(nameof(LineSize), InvalidationImpact.None);
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached navigation view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public int PageOverlap
-    {
-        get => _itemsStack.PageOverlap;
-        set
-        {
-            var previous = _itemsStack.PageOverlap;
-            _itemsStack.PageOverlap = value;
-
-            if (previous != _itemsStack.PageOverlap)
-            {
-                NotifyPropertyChanged(nameof(PageOverlap), InvalidationImpact.None);
-            }
-        }
-    }
-
-    /// <summary>Scrolls the generated scroll container by signed cell deltas with saturation and
-    /// endpoint clamping.</summary>
-    /// <param name="x">The requested horizontal delta.</param>
-    /// <param name="y">The requested vertical delta.</param>
-    /// <param name="cause">The defined input path.</param>
-    /// <returns>True when at least one offset changed.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
-    /// <exception cref="InvalidOperationException">The attached navigation view is accessed off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) =>
-        _itemsStack.ScrollBy(x, y, cause);
 
     /// <summary>Scrolls minimally to expose one owned entry, without requiring the caller to know
     /// about the private realized visual tree.</summary>
@@ -212,14 +101,9 @@ public sealed class NavigationView: CompositeControlBase
         _footerPropertyOverrides = new RetainedPropertyOverrideService(this, _footerStack.Children.OwnedSlot);
         _itemsStack.BoundsChanged += OnNavigationHostBoundsChanged;
         _footerStack.BoundsChanged += OnNavigationHostBoundsChanged;
-        _itemsStack.PropertyChanged += OnItemsStackPropertyChanged;
-        _itemsStack.ScrollChanged += OnItemsStackScrollChanged;
 
         InitializeContent(root);
-        _scrollBarStyle = InitializePartStyle(
-            ScrollBarStyle.ForwardingDefinition,
-            nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _itemsStack, nameof(ScrollBarStyle));
+        InitializeScrollableContent(_itemsStack);
         Items = new NavigationViewEntryCollection(this, isFooter: false);
         FooterItems = new NavigationViewEntryCollection(this, isFooter: true);
         IsFocusable = true;
@@ -922,25 +806,6 @@ public sealed class NavigationView: CompositeControlBase
         eventArgs.IsHandled = _itemsStack.ScrollBy(x, y, ScrollCause.Wheel);
     }
 
-    private void OnItemsStackPropertyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName is nameof(Extent) or nameof(Viewport) or
-            nameof(HorizontalOffset) or nameof(VerticalOffset))
-        {
-            NotifyPropertyChanged(eventArgs.PropertyName, InvalidationImpact.None);
-        }
-    }
-
-    private void OnItemsStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
-    {
-        _ = sender;
-        ScrollChanged?.Invoke(this, eventArgs);
-    }
-
     /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
@@ -948,8 +813,6 @@ public sealed class NavigationView: CompositeControlBase
 
         if (reason == ReleaseReason.Disposed)
         {
-            _itemsStack.PropertyChanged -= OnItemsStackPropertyChanged;
-            _itemsStack.ScrollChanged -= OnItemsStackScrollChanged;
             foreach (var group in _itemsStack.Children.Concat(_footerStack.Children).OfType<NavigationViewGroup>())
             {
                 group.RetirePresentationMetadataForOwnerDisposal();
@@ -958,7 +821,6 @@ public sealed class NavigationView: CompositeControlBase
             _itemPropertyOverrides.Dispose();
             _footerPropertyOverrides.Dispose();
             SelectionChanged = null;
-            ScrollChanged = null;
             _ = SetCurrent(null);
             Select(null, ActivationCause.Programmatic);
         }

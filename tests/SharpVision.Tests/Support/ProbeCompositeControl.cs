@@ -27,4 +27,19 @@ internal sealed class ProbeCompositeControl: CompositeControlBase
     /// <param name="impact">The earliest affected phase.</param>
     internal void InvalidateDescendant(ControlBase descendant, InvalidationImpact impact) =>
         InvalidateRetainedDescendant(descendant, impact);
+
+    /// <summary>Requests a typed retained-part property bridge through the protected owner seam.</summary>
+    /// <typeparam name="T">The forwarded property value type.</typeparam>
+    /// <param name="source">The candidate retained source control.</param>
+    /// <param name="sourcePropertyName">The non-empty source property name.</param>
+    /// <param name="ownerPropertyName">The non-empty owner property name.</param>
+    /// <param name="get">Reads the current source value.</param>
+    /// <param name="set">Optionally writes the source value.</param>
+    internal RetainedPartProperty<T> RegisterProbeRetainedPartProperty<T>(
+        ControlBase source,
+        string sourcePropertyName,
+        string ownerPropertyName,
+        Func<T> get,
+        Action<T>? set = null) =>
+        RegisterRetainedPartProperty(source, sourcePropertyName, ownerPropertyName, get, set);
 }

@@ -430,6 +430,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
       "input-base",
       "items-control",
       "pressable",
+      "scrollable-composite-control",
     ],
   );
 });

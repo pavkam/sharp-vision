@@ -98,6 +98,8 @@ Complete modal tasks such as `MessageBox` live in
   independent replaceable header to `ContentControl`.
 - [CompositeControl](composite-control.md#overview) owns one retained private
   implementation root initialized by the concrete constructor.
+- [ScrollableCompositeControl](scrollable-composite-control.md#overview) adds
+  one shared scrolling contract for a composite's private scrolling host.
 - [ItemsControl](items-control.md#overview) exposes typed semantic items through
   a private presentation host.
 - [ScrollableItemsControl](items-control.md#scrollableitemscontrol) adds one

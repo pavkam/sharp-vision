@@ -47,7 +47,7 @@ using TextSelection = Selection;
 /// </remarks>
 [PublicAPI]
 public sealed class CodeView:
-    CompositeControlBase,
+    ScrollableCompositeControlBase,
     IStyled<CodeViewStyle>,
     ISelectableTextViewport,
     IClipboardCopySource,
@@ -59,7 +59,6 @@ public sealed class CodeView:
     private readonly CodeViewContent _content;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<CodeViewStyle> _style;
-    private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
     private readonly WidthDependentViewportCoordinator _projectionCoordinator;
 
     private string[] _lines = [string.Empty];
@@ -133,6 +132,14 @@ public sealed class CodeView:
             Children = { _content },
         };
         InitializeContent(_stack);
+
+        // Installed before the coordinator below, not after: both subscribe to _stack.ScrollChanged,
+        // and a consumer's ScrollChanged handler (reached through the coordinator, since
+        // forwardsScrollEvent is false) is free to dispose this view synchronously. Subscribing the
+        // scrollable-content bridge first keeps its own refresh of the cached Extent/Viewport/offset
+        // properties strictly earlier in the invocation list than that handler, so the refresh always
+        // runs against a still-available owner regardless of what the handler does.
+        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
         _projectionCoordinator = new WidthDependentViewportCoordinator(
             this,
             _stack,
@@ -140,8 +147,6 @@ public sealed class CodeView:
             () => Overflow != Overflow.Visible,
             () => _rowsWidth,
             Reproject);
-        _scrollBarStyle = InitializePartStyle(ScrollBarStyle.ForwardingDefinition, nameof(ScrollBarStyle));
-        BindStyle(_scrollBarStyle, _stack, nameof(ScrollBarStyle));
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -261,18 +266,6 @@ public sealed class CodeView:
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public CodeViewStyle ActualStyle => _style.Actual;
 
-    /// <summary>Gets or sets the complete local scrollbar presentation, or null for theme ownership.</summary>
-    /// <exception cref="InvalidOperationException">The attached view is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The view is disposed.</exception>
-    public ScrollBarStyle? ScrollBarStyle
-    {
-        get => _scrollBarStyle.Local;
-        set => _scrollBarStyle.Local = value;
-    }
-
-    /// <summary>Gets the complete local, theme-owned, or code-owned scrollbar presentation.</summary>
-    public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
     /// <summary>
     /// Repaints the render surface whenever <see cref="ActualStyle"/> actually changes - whether
     /// from a local <see cref="Style"/> assignment or purely from an inherited Theme swap.
@@ -303,87 +296,17 @@ public sealed class CodeView:
 
     #region Scrolling
 
-    /// <summary>Gets or sets which overflow axes provide generated scrollbars.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value contains unknown flags.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ScrollBars ScrollBars
-    {
-        get => _stack.ScrollBars;
-        set => _stack.ScrollBars = value;
-    }
+    /// <summary>Adds one <see cref="ScrollableCompositeControlBase.ScrollChanged"/> subscriber,
+    /// routed to the shared width-dependent viewport coordinator rather than the private scrolling
+    /// host's own bridge, so a subscriber observes one settled transition per reconciled layout pass
+    /// instead of every intermediate reconciliation attempt.</summary>
+    /// <param name="handler">The subscriber to add, or null (a no-op).</param>
+    protected override void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+        _projectionCoordinator.ScrollChanged += handler;
 
-    /// <summary>Gets or sets the visibility policy for generated scrollbars.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not a known member.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public ShowScrollBars ShowScrollBars
-    {
-        get => _stack.ShowScrollBars;
-        set => _stack.ShowScrollBars = value;
-    }
-
-    /// <summary>Gets the committed content extent in terminal cells.</summary>
-    public Size Extent => _stack.Extent;
-
-    /// <summary>Gets the committed visible extent in terminal cells.</summary>
-    public Size Viewport => _stack.Viewport;
-
-    /// <summary>Gets or sets the valid horizontal content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int HorizontalOffset
-    {
-        get => _stack.HorizontalOffset;
-        set => _stack.HorizontalOffset = value;
-    }
-
-    /// <summary>Gets or sets the valid vertical content offset.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int VerticalOffset
-    {
-        get => _stack.VerticalOffset;
-        set => _stack.VerticalOffset = value;
-    }
-
-    /// <summary>Gets or sets the non-negative wheel-scroll cell increment.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int LineSize
-    {
-        get => _stack.LineSize;
-        set => _stack.LineSize = value;
-    }
-
-    /// <summary>Gets or sets the non-negative cells of context retained between page commands.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public int PageOverlap
-    {
-        get => _stack.PageOverlap;
-        set => _stack.PageOverlap = value;
-    }
-
-    /// <summary>Applies signed cell deltas with saturation and endpoint clamping.</summary>
-    /// <param name="x">The horizontal cell delta.</param>
-    /// <param name="y">The vertical cell delta.</param>
-    /// <param name="cause">The originating cause reported to <see cref="ScrollChanged"/>.</param>
-    /// <returns>True when the committed offset changed.</returns>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool ScrollBy(int x, int y, ScrollCause cause = ScrollCause.Programmatic) => _stack.ScrollBy(x, y, cause);
-
-    /// <summary>Raised after one settled offset, extent, or viewport transition.</summary>
-    public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-    {
-        add => _projectionCoordinator.ScrollChanged += value;
-        remove => _projectionCoordinator.ScrollChanged -= value;
-    }
+    /// <inheritdoc/>
+    protected override void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+        _projectionCoordinator.ScrollChanged -= handler;
 
     #endregion
 
@@ -872,7 +795,7 @@ public sealed class CodeView:
     /// <para>
     /// <see cref="Overflow.Visible"/>, the default, is exactly today's behavior:
     /// every source line occupies one presentation row of unbounded width, and long lines scroll
-    /// horizontally instead of wrapping - <see cref="Extent"/>'s width tracks the widest visible
+    /// horizontally instead of wrapping - <see cref="ScrollableCompositeControlBase.Extent"/>'s width tracks the widest visible
     /// line.
     /// </para>
     /// <para>
@@ -882,9 +805,9 @@ public sealed class CodeView:
     /// and <see cref="Overflow.WrapAnywhere"/> split a long logical line into more
     /// than one presentation row, while <see cref="Overflow.Clip"/> and
     /// <see cref="Overflow.Ellipsis"/> keep one row and truncate it. Every one of
-    /// these disables the horizontal extent entirely - <see cref="Extent"/>'s width becomes exactly
-    /// <see cref="Viewport"/>'s width, since every row is now guaranteed to fit it, and
-    /// <see cref="HorizontalOffset"/> can never move away from zero. A continuation row - any
+    /// these disables the horizontal extent entirely - <see cref="ScrollableCompositeControlBase.Extent"/>'s width becomes exactly
+    /// <see cref="ScrollableCompositeControlBase.Viewport"/>'s width, since every row is now guaranteed to fit it, and
+    /// <see cref="ScrollableCompositeControlBase.HorizontalOffset"/> can never move away from zero. A continuation row - any
     /// presentation row after the first for one wrapped logical line - never repeats the
     /// fold-gutter arrow: folding operates on whole logical lines, so the gutter is left blank for
     /// every row but the first.
@@ -932,7 +855,7 @@ public sealed class CodeView:
     /// measured unbounded so it can report its natural extent), and reporting a literal <c>0</c>
     /// there would make this control itself arrange at zero width - since it is not
     /// <see cref="HorizontalAlignment.Stretch"/> by default, its own arranged width comes straight
-    /// from this desired size - collapsing <see cref="Viewport"/> to zero before
+    /// from this desired size - collapsing <see cref="ScrollableCompositeControlBase.Viewport"/> to zero before
     /// <see cref="ArrangeOverride"/> even runs reconciliation, whose own
     /// <c>viewportWidth &lt;= 0</c> guard then bails out immediately and never gets a chance to
     /// rewrap. Mirrors how <c>JsonView.MeasureProjectedContent</c> always measures its actual

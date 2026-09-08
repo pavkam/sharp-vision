@@ -1,34 +1,24 @@
 ﻿namespace SharpVision.Controls.SyntaxHighlighting
 {
-    public sealed class CodeView : SharpVision.Controls.CompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Runtime.IDispatcherAttachmentObserver, SharpVision.Text.ISelectableTextViewport
+    public sealed class CodeView : SharpVision.Controls.ScrollableCompositeControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.SyntaxHighlighting.CodeViewStyle>, SharpVision.Runtime.IClipboardCopySource, SharpVision.Runtime.IDispatcherAttachmentObserver, SharpVision.Text.ISelectableTextViewport
     {
         public CodeView() { }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle ActualStyle { get; }
         protected override bool CaptureTextSelectionOnPress { get; }
         public SharpVision.SyntaxHighlighting.SyntaxDefinitionCatalog Catalog { get; set; }
         public System.Action<string>? ClipboardWriter { get; set; }
         public string Code { get; set; }
-        public SharpVision.Terminal.Geometry.Size Extent { get; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.SyntaxHighlighting.SyntaxFoldRange> FoldRanges { get; }
         protected override bool HasAuthoritativeTextSelectionProjection { get; }
-        public int HorizontalOffset { get; set; }
         public bool IsFoldingEnabled { get; set; }
         public string? Language { get; set; }
-        public int LineSize { get; set; }
         public SharpVision.Text.Overflow Overflow { get; set; }
-        public int PageOverlap { get; set; }
-        public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
-        public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
         public SharpVision.Terminal.Geometry.Rect SelectableTextViewport { get; }
         public override string SelectedText { get; }
         public SharpVision.Text.Selection Selection { get; }
-        public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Controls.SyntaxHighlighting.CodeViewStyle? Style { get; set; }
-        public int VerticalOffset { get; set; }
-        public SharpVision.Terminal.Geometry.Size Viewport { get; }
-        public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         public event System.EventHandler<System.EventArgs>? SelectionChanged;
+        protected override void AddScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
         protected override SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void ClearSelection() { }
@@ -46,8 +36,8 @@
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
+        protected override void RemoveScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
         public bool RevealSelectableTextOffset(int offset) { }
-        public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         public bool ScrollSelectableTextViewport(int horizontal, int vertical) { }
         public void SelectAll() { }
         public bool SetFolded(int line, bool folded) { }

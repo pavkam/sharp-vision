@@ -885,7 +885,8 @@ public sealed class CodeViewSurfaceTests
         view.SelectedText.ShouldBe("alpha beta gamma");
     }
 
-    /// <summary>Verifies a wheel notch scrolls the view by <see cref="CodeView.LineSize"/> lines,
+    /// <summary>Verifies a wheel notch scrolls the view by
+    /// <see cref="Controls.ScrollableCompositeControlBase.LineSize"/> lines,
     /// using a non-default LineSize so the assertion cannot pass merely by coincidence with a
     /// hardcoded single-line delta.</summary>
     [Fact]

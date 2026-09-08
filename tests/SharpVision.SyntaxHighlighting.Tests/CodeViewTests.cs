@@ -81,6 +81,30 @@ public sealed class CodeViewTests
         observed.ShouldBe([2]);
     }
 
+    /// <summary>Verifies setting VerticalOffset raises the view's own PropertyChanged, proving the
+    /// shared scrolling base's retained-part bridge - not a plain forward to the private host -
+    /// backs this property.</summary>
+    [Fact]
+    public void VerticalOffset_WhenSet_RaisesPropertyChanged()
+    {
+        // Arrange
+        var view = new CodeView
+        {
+            Code = string.Join('\n', Enumerable.Repeat("line", 20)),
+            Height = Length.Cells(3),
+        };
+        new LayoutEngine().Layout(view, new Size(10, 3));
+        List<string?> changed = [];
+        view.PropertyChanged += (_, eventArgs) => changed.Add(eventArgs.PropertyName);
+
+        // Act
+        view.VerticalOffset = 2;
+
+        // Assert
+        view.VerticalOffset.ShouldBe(2);
+        changed.ShouldContain(nameof(CodeView.VerticalOffset));
+    }
+
     /// <summary>Verifies a reveal deferred by fold expansion completes at the detached layout
     /// boundary even though no dispatcher exists to run a posted continuation.</summary>
     [Fact]

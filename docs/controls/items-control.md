@@ -82,7 +82,11 @@ semantic item control whose one private presentation host supplies scrolling. It
 keeps that mutable host private while exposing extent, viewport, offsets, scroll
 policy, scrollbar styling, and `ScrollChanged` on the semantic owner. The event
 sender is always the item owner; retained presentation controls never escape
-through the public contract.
+through the public contract. A composite with the same scrolling need whose
+implementation tree is not a typed item collection uses
+[`ScrollableCompositeControlBase`](scrollable-composite-control.md#overview)
+instead - the two roles share the same forwarding contract shape over different
+base classes.
 
 A concrete constructor calls `InitializeScrollableItemsHost(Container)` once.
 The host must already contain the control-specific layout behavior and may

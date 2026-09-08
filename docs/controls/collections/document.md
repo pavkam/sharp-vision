@@ -2,11 +2,12 @@
 
 ## Overview
 
-`Document` is declared `public sealed class Document : CompositeControlBase` and
-implements `IStyled<DocumentStyle>`, `ISelectableTextViewport`, and
-`IClipboardCopySource`. It displays a scrollable tree of rich text content:
-headings, paragraphs with inline markup and activatable links, bulleted and
-numbered lists, block quotes, preformatted code, and thematic breaks.
+`Document` is declared
+`public sealed class Document : ScrollableCompositeControlBase` and implements
+`IStyled<DocumentStyle>`, `ISelectableTextViewport`, and `IClipboardCopySource`.
+It displays a scrollable tree of rich text content: headings, paragraphs with
+inline markup and activatable links, bulleted and numbered lists, block quotes,
+preformatted code, and thematic breaks.
 
 A document is a semantic content tree. Text, links, lists, tables, callouts, and
 other structural nodes stay lightweight data. `DocumentInlineControl` and
@@ -47,7 +48,8 @@ control such as `CodeView`.
 ```mermaid
 classDiagram
     ControlBase <|-- CompositeControlBase
-    CompositeControlBase <|-- Document
+    CompositeControlBase <|-- ScrollableCompositeControlBase
+    ScrollableCompositeControlBase <|-- Document
     DocumentNode <|-- DocumentBlock
     DocumentNode <|-- DocumentInline
     DocumentNode <|-- DocumentListItem
@@ -77,41 +79,44 @@ classDiagram
 
 ## API
 
-| Member                                                                                         | Type                                          | Default          | Description                                                                              |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
-| `Blocks`                                                                                       | `DocumentBlockCollection`                     | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                    |
-| `Style`                                                                                        | `DocumentStyle?`                              | `null`           | Complete local presentation, or null for theme ownership.                                |
-| `ActualStyle`                                                                                  | `DocumentStyle`                               | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                  |
-| `ScrollBarStyle`                                                                               | `ScrollBarStyle?`                             | `null`           | Local generated-bar style; null leaves it to the theme.                                  |
-| `ActualScrollBarStyle`                                                                         | `ScrollBarStyle`                              | Resolved         | Read-only resolved generated-bar style.                                                  |
-| `Extent`                                                                                       | `Size`                                        | Layout-dependent | Read-only committed content extent, including genuine horizontal overflow, in cells.     |
-| `Viewport`                                                                                     | `Size`                                        | Layout-dependent | Read-only committed non-negative visible extent, in cells.                               |
-| `VerticalOffset`                                                                               | `int`                                         | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.      |
-| `LineSize`                                                                                     | `int`                                         | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.       |
-| `PageOverlap`                                                                                  | `int`                                         | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.               |
-| `ShowScrollBars`                                                                               | `ShowScrollBars`                              | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.              |
-| `ActiveLink`                                                                                   | `DocumentLink?`                               | `null`           | Focused projected link; unprojected, foreign, or disabled assignments clear it.          |
-| `Selection`                                                                                    | `Selection`                                   | Empty at `0`     | Read-only directional UTF-16 range over the normalized semantic stream.                  |
-| Inherited `IsTextSelectionEnabled`                                                             | `bool`                                        | `true`           | Enabled by the constructor; disabling clears Document selection and selection gestures.  |
-| Inherited `TextSelection`                                                                      | `Selection`                                   | Empty at `0`     | The same committed directional value exposed by `Selection`.                             |
-| Inherited `SelectedText`                                                                       | `string`                                      | `""`             | Read-only owned copy of the selected semantic substring.                                 |
-| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                          | —                | Parses, revalidates, then atomically consumes all detached roots.                        |
-| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`               | —                | Reads a bounded stream, then consumes its result unless canceled.                        |
-| `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                        | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause.   |
-| `ScrollToTop()`                                                                                | `bool`                                        | —                | Scrolls to the first line; reports whether the offset changed.                           |
-| `ScrollToEnd()`                                                                                | `bool`                                        | —                | Scrolls to the last line; reports whether the offset changed.                            |
-| `SetSelection(Selection selection)`                                                            | `void`                                        | —                | Replaces the range after validating both endpoints as grapheme boundaries.               |
-| `SelectAll()`                                                                                  | `void`                                        | —                | Selects the complete normalized semantic stream.                                         |
-| `ClearSelection()`                                                                             | `void`                                        | —                | Collapses the range at its current active caret.                                         |
-| `CopySelection()`                                                                              | `string`                                      | —                | Pure read of `SelectedText`; clipboard publication remains application-owned.            |
-| `GetSelectableTextSnapshot()`                                                                  | `SelectableTextSnapshot`                      | —                | Authoritative full semantic stream plus currently visible document-local glyph geometry. |
-| `SelectableTextViewport`                                                                       | `Rect`                                        | Layout-dependent | Read-only visible selectable aperture in document-local cells.                           |
-| `RevealSelectableTextOffset(int offset)`                                                       | `bool`                                        | —                | Reveals one validated grapheme offset through the document's intrinsic viewport.         |
-| `ScrollSelectableTextViewport(int horizontal, int vertical)`                                   | `bool`                                        | —                | Offers signed cell motion to the intrinsic selectable viewport.                          |
-| `ScrollChanged`                                                                                | `EventHandler<ScrollChangedEventArgs>`        | —                | Raised after either intrinsic viewport offset commits.                                   |
-| `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`         | —                | Raised after any link is activated, following that link's own `Clicked`.                 |
-| `SelectionChanged`                                                                             | `EventHandler`                                | —                | Raised synchronously after a different directional selection commits.                    |
-| Inherited `TextSelectionChanged`                                                               | `EventHandler<TextSelectionChangedEventArgs>` | —                | Raised from the same committed transition as `SelectionChanged`.                         |
+| Member                                                                                         | Type                                          | Default          | Description                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Blocks`                                                                                       | `DocumentBlockCollection`                     | Empty            | Owned ordered root block content; accepts only `DocumentBlock` nodes.                                                                           |
+| `Style`                                                                                        | `DocumentStyle?`                              | `null`           | Complete local presentation, or null for theme ownership.                                                                                       |
+| `ActualStyle`                                                                                  | `DocumentStyle`                               | Resolved         | Read-only; the complete local, theme-owned, or code-owned presentation.                                                                         |
+| Inherited `ScrollBarStyle`                                                                     | `ScrollBarStyle?`                             | `null`           | Local generated-bar style; null leaves it to the theme.                                                                                         |
+| Inherited `ActualScrollBarStyle`                                                               | `ScrollBarStyle`                              | Resolved         | Read-only resolved generated-bar style.                                                                                                         |
+| `Extent`                                                                                       | `Size`                                        | Layout-dependent | Override; read-only committed content extent, widened to include genuine horizontal overflow, in cells.                                         |
+| Inherited `Viewport`                                                                           | `Size`                                        | Layout-dependent | Read-only committed non-negative visible extent, in cells.                                                                                      |
+| `HorizontalOffset`                                                                             | `int`                                         | `0`              | Override; read-only in effect - the setter this member has on `ScrollableCompositeControlBase` throws `NotSupportedException` here (see below). |
+| Inherited `VerticalOffset`                                                                     | `int`                                         | `0`              | Valid vertical content offset in lines; rejects a value outside the current extent.                                                             |
+| Inherited `LineSize`                                                                           | `int`                                         | `1`              | Non-negative lines one arrow key or wheel notch scrolls; rejects a negative value.                                                              |
+| Inherited `PageOverlap`                                                                        | `int`                                         | `0`              | Non-negative lines a page command keeps in view; rejects a negative value.                                                                      |
+| `ScrollBars`                                                                                   | `ScrollBars`                                  | `Vertical`       | Override; always `Vertical` - the setter rejects any other value with `ArgumentException` (see below).                                          |
+| Inherited `ShowScrollBars`                                                                     | `ShowScrollBars`                              | `WhenNeeded`     | When the generated vertical scrollbar is shown; rejects an undefined value.                                                                     |
+| `ActiveLink`                                                                                   | `DocumentLink?`                               | `null`           | Focused projected link; unprojected, foreign, or disabled assignments clear it.                                                                 |
+| `Selection`                                                                                    | `Selection`                                   | Empty at `0`     | Read-only directional UTF-16 range over the normalized semantic stream.                                                                         |
+| Inherited `IsTextSelectionEnabled`                                                             | `bool`                                        | `true`           | Enabled by the constructor; disabling clears Document selection and selection gestures.                                                         |
+| Inherited `TextSelection`                                                                      | `Selection`                                   | Empty at `0`     | The same committed directional value exposed by `Selection`.                                                                                    |
+| Inherited `SelectedText`                                                                       | `string`                                      | `""`             | Read-only owned copy of the selected semantic substring.                                                                                        |
+| `Load(string, IDocumentFormatReader, DocumentReadOptions?)`                                    | `DocumentReadResult`                          | —                | Parses, revalidates, then atomically consumes all detached roots.                                                                               |
+| `LoadAsync(Stream, IDocumentFormatReader, DocumentReadOptions?, Encoding?, CancellationToken)` | `ValueTask<DocumentReadResult>`               | —                | Reads a bounded stream, then consumes its result unless canceled.                                                                               |
+| `ScrollBy(int lines, ScrollCause cause)`                                                       | `bool`                                        | —                | Adds a signed line delta with saturation and endpoint clamping; rejects unknown cause.                                                          |
+| `ScrollBy(int x, int y, ScrollCause cause)`                                                    | `bool`                                        | —                | Override; forwards `y` to the overload above and rejects a non-zero `x` with `ArgumentOutOfRangeException` (see below).                         |
+| `ScrollToTop()`                                                                                | `bool`                                        | —                | Scrolls to the first line; reports whether the offset changed.                                                                                  |
+| `ScrollToEnd()`                                                                                | `bool`                                        | —                | Scrolls to the last line; reports whether the offset changed.                                                                                   |
+| `SetSelection(Selection selection)`                                                            | `void`                                        | —                | Replaces the range after validating both endpoints as grapheme boundaries.                                                                      |
+| `SelectAll()`                                                                                  | `void`                                        | —                | Selects the complete normalized semantic stream.                                                                                                |
+| `ClearSelection()`                                                                             | `void`                                        | —                | Collapses the range at its current active caret.                                                                                                |
+| `CopySelection()`                                                                              | `string`                                      | —                | Pure read of `SelectedText`; clipboard publication remains application-owned.                                                                   |
+| `GetSelectableTextSnapshot()`                                                                  | `SelectableTextSnapshot`                      | —                | Authoritative full semantic stream plus currently visible document-local glyph geometry.                                                        |
+| `SelectableTextViewport`                                                                       | `Rect`                                        | Layout-dependent | Read-only visible selectable aperture in document-local cells.                                                                                  |
+| `RevealSelectableTextOffset(int offset)`                                                       | `bool`                                        | —                | Reveals one validated grapheme offset through the document's intrinsic viewport.                                                                |
+| `ScrollSelectableTextViewport(int horizontal, int vertical)`                                   | `bool`                                        | —                | Offers signed cell motion to the intrinsic selectable viewport.                                                                                 |
+| Inherited `ScrollChanged`                                                                      | `EventHandler<ScrollChangedEventArgs>`        | —                | Raised after either intrinsic viewport offset commits.                                                                                          |
+| `LinkClicked`                                                                                  | `EventHandler<DocumentLinkEventArgs>`         | —                | Raised after any link is activated, following that link's own `Clicked`.                                                                        |
+| `SelectionChanged`                                                                             | `EventHandler`                                | —                | Raised synchronously after a different directional selection commits.                                                                           |
+| Inherited `TextSelectionChanged`                                                               | `EventHandler<TextSelectionChangedEventArgs>` | —                | Raised from the same committed transition as `SelectionChanged`.                                                                                |
 
 `ScrollBy` defaults its `cause` to `ScrollCause.Programmatic`; the other causes
 describe keyboard, pointer, wheel, and content-driven changes and reach
@@ -119,9 +124,17 @@ subscribers through `ScrollChanged` (see
 [scrolling.md](../../concepts/scrolling.md#overview)). `Extent` and `Viewport`
 report the committed values from the most recent layout pass, so both are zero
 before the document has been measured. Horizontal overflow has no separate
-generated rail or public offset setter; `RevealSelectableTextOffset` and
-`ScrollSelectableTextViewport` move it as part of the selectable-text viewport,
-and `ScrollChanged` reports that movement in `Offset.X`.
+generated rail or working public offset setter: `HorizontalOffset` and the
+two-axis `ScrollBy` overload exist because `Document` inherits them from
+[`ScrollableCompositeControlBase`](../scrollable-composite-control.md#overview),
+but `HorizontalOffset`'s setter throws `NotSupportedException` and `ScrollBy`
+rejects a non-zero `x` with `ArgumentOutOfRangeException` - `Document` derives
+its horizontal position exclusively from the selectable-text viewport.
+`RevealSelectableTextOffset` and `ScrollSelectableTextViewport` move it as part
+of that viewport, and `ScrollChanged` reports that movement in `Offset.X`.
+`ScrollBars` is similarly restricted to `Vertical`: the private scrolling stack
+never gains a generated horizontal rail, so setting any other value throws
+`ArgumentException`.
 
 `DocumentLinkEventArgs` carries one property, `Link`, holding the activated
 `DocumentLink`. It exists so an application can handle every link centrally

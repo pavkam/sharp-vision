@@ -13,7 +13,7 @@ public sealed class RetainedPartPropertyTests
         var source = new ProbeControl();
         var owner = new ProbeCompositeControl(source);
         var value = 1;
-        using var property = owner.RegisterRetainedPartProperty(
+        using var property = owner.RegisterProbeRetainedPartProperty(
             source,
             "SourceValue",
             "OwnerValue",
@@ -37,7 +37,7 @@ public sealed class RetainedPartPropertyTests
         var source = new ProbeControl();
         var owner = new ProbeCompositeControl(source);
         var value = 1;
-        using var property = owner.RegisterRetainedPartProperty(
+        using var property = owner.RegisterProbeRetainedPartProperty(
             source,
             "SourceValue",
             "OwnerValue",
@@ -72,7 +72,7 @@ public sealed class RetainedPartPropertyTests
         var foreign = new ProbeControl();
         var getterCalls = 0;
 
-        _ = Should.Throw<InvalidOperationException>(() => owner.RegisterRetainedPartProperty(
+        _ = Should.Throw<InvalidOperationException>(() => owner.RegisterProbeRetainedPartProperty(
             foreign,
             "SourceValue",
             "OwnerValue",
@@ -93,7 +93,7 @@ public sealed class RetainedPartPropertyTests
         var source = new ProbeControl();
         var owner = new ProbeCompositeControl(source);
         var value = 1;
-        _ = owner.RegisterRetainedPartProperty(
+        _ = owner.RegisterProbeRetainedPartProperty(
             source,
             nameof(ProbeControl.Tag),
             "OwnerValue",
