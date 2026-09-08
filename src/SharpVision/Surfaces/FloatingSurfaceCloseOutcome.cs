@@ -4,7 +4,14 @@
 namespace SharpVision.Surfaces;
 
 /// <summary>Describes the committed result of one shared floating-surface close request.</summary>
-internal enum FloatingSurfaceCloseOutcome
+/// <remarks>
+/// Returned by the outcome-reporting overloads of the protected close seams on
+/// <see cref="FloatingSurfaceBase"/> (<see cref="FloatingSurfaceBase.CloseSurfaceWithOutcome(Action,Action,Action)"/>
+/// and its siblings), so an externally defined surface family can distinguish a veto or a deferred
+/// fade-out from immediate completion instead of only learning whether the surface is closed.
+/// </remarks>
+[PublicAPI]
+public enum FloatingSurfaceCloseOutcome
 {
     /// <summary>No presented lifetime accepted the request.</summary>
     Ignored,

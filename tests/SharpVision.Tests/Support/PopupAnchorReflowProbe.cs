@@ -10,7 +10,7 @@ internal sealed class PopupAnchorReflowProbe: Popup
     internal int AnchorReflowCalls { get; private set; }
 
     /// <inheritdoc/>
-    internal override void OnAnchorReflow()
+    protected override void OnAnchorReflow()
     {
         AnchorReflowCalls++;
         base.OnAnchorReflow();

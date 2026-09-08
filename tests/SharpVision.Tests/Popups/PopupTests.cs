@@ -2864,6 +2864,43 @@ public sealed class PopupTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Verifies that an externally defined Popup subclass - one with no access to any
+    /// internal SharpVision member - can still opt into outside-press dismissal purely through
+    /// the protected <see cref="Popup.ConfigureLightDismiss(PopupLightDismissPolicy)"/> seam and
+    /// the public <see cref="PopupLightDismissPolicy"/> constructor. Flyout already proves this
+    /// path end to end, but only as an in-assembly family; this proves the same contract holds for
+    /// a third-party-style subclass built solely on public and protected surface.
+    /// </summary>
+    [Fact]
+    public async Task ConfigureLightDismiss_WhenOutsideClickOccurs_ClosesDerivedPopupAsync()
+    {
+        var anchor = new Button
+        {
+            Text = "Anchor",
+            Width = Length.Cells(8),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var background = new Button { Text = "Background", Width = Length.Cells(12), Height = Length.Cells(1) };
+        Overlay.SetTop(background, Length.Cells(6));
+        var popup = new LightDismissingPopupProbe { Anchor = anchor, Content = new ControlText("Content") };
+        var root = new Overlay { Children = { background, anchor, popup } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(24, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => popup.IsOpen = true, "open the derived popup");
+
+        popup.IsOpen.ShouldBeTrue();
+        popup.HasLightDismissRegistration.ShouldBeTrue();
+
+        await surface.Pointer.ClickAsync(background);
+
+        popup.IsOpen.ShouldBeFalse();
+    }
+
     private static Theme PopupTheme(string pointingUp) => ThemeCatalog.Parse(ThemeJson.Create().Replace(
         "\"popup\": { \"normal\": { \"border\": { \"sides\":\"all\", \"glyphStyle\":\"rounded\" } } }",
         $"\"popup\": {{ \"normal\": {{ \"border\": {{ \"sides\":\"all\", \"glyphStyle\":\"rounded\" }}, \"anchorGlyphs\": {{ \"pointingUp\": \"{pointingUp}\" }} }} }}",

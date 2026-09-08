@@ -13,7 +13,7 @@ internal sealed class PopupContentAvailableProbe: Popup
     internal Exception? ContentAvailableFailure { get; set; }
 
     /// <inheritdoc/>
-    internal override bool OnContentAvailable()
+    protected override bool OnContentAvailable()
     {
         ContentAvailableCalls++;
 

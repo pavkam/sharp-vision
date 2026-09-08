@@ -55,12 +55,15 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <remarks>
     /// Floating surfaces share focus, pointer capture, key-release capability, and availability
     /// cleanup. A concrete family supplies only geometry, policy, appearance state, and its close
-    /// action.
+    /// action. A derived family calls this exactly once, from its own constructor, before the
+    /// surface can be opened; the affordance it wires stays active for the lifetime of the
+    /// surface and is routed to by <see cref="HandleSurfaceCloseInteraction"/> and
+    /// <see cref="CancelSurfaceCloseInteraction"/>.
     /// </remarks>
     /// <exception cref="ArgumentNullException">A delegate is null.</exception>
     /// <exception cref="InvalidOperationException">The attached surface is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
-    private protected void InitializeSurfaceCloseInteraction(
+    protected void InitializeSurfaceCloseInteraction(
         Func<Rect> bounds,
         Func<bool> isAvailable,
         Func<bool> canCompleteSpace,
@@ -75,23 +78,38 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     /// <summary>Routes one event through the initialized capture-aware close affordance.</summary>
     /// <param name="eventArgs">The non-null routed event.</param>
+    /// <remarks>
+    /// <see cref="InitializeSurfaceCloseInteraction"/> must already have run. A family calls this
+    /// from its own pointer- or key-routing overrides to feed the shared press-activation state
+    /// machine that ultimately invokes the <c>activate</c> delegate it supplied at setup.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
-    private protected void HandleSurfaceCloseInteraction(RoutedEventArgs eventArgs)
+    protected void HandleSurfaceCloseInteraction(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         HandlePressActivation(eventArgs);
     }
 
     /// <summary>Cancels any held key or pointer state in the initialized close affordance.</summary>
-    private protected void CancelSurfaceCloseInteraction() => CancelPressActivation(releaseCapture: false);
+    /// <remarks>
+    /// <see cref="InitializeSurfaceCloseInteraction"/> must already have run. A family calls this
+    /// when focus, capture, or availability changes make the in-progress press invalid, without
+    /// releasing an already-held pointer capture.
+    /// </remarks>
+    protected void CancelSurfaceCloseInteraction() => CancelPressActivation(releaseCapture: false);
 
     /// <summary>Handles one eligible initial Escape stroke through a family-provided close policy.</summary>
     /// <param name="eventArgs">The non-null routed event.</param>
     /// <param name="canClose">Whether the concrete surface currently permits Escape dismissal.</param>
     /// <param name="close">The close request to run after the event becomes handled.</param>
     /// <returns>Whether this method handled an eligible Escape stroke.</returns>
+    /// <remarks>
+    /// Belongs to the request phase: a true result means <paramref name="close"/> already ran and
+    /// <paramref name="eventArgs"/> is marked handled, so the caller's own key-handling override
+    /// should return immediately afterward.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> or <paramref name="close"/> is null.</exception>
-    private protected static bool TryHandleSurfaceEscape(
+    protected static bool TryHandleSurfaceEscape(
         RoutedEventArgs eventArgs,
         bool canClose,
         Action close)
@@ -191,10 +209,21 @@ public abstract class FloatingSurfaceBase: ContentControl
     protected bool IsSurfacePresented { get; private set; }
 
     /// <summary>Gets whether the common lifecycle still represents a logically open surface.</summary>
-    private protected bool IsSurfaceOpen { get; private set; }
+    /// <remarks>
+    /// This becomes true inside <see cref="BeginSurfaceOpenLifetime"/> or a successful
+    /// <see cref="OpenSurface"/>/<see cref="TryOpenSurface"/> commit, and only clears once the
+    /// close transaction fully completes - it stays true through <see cref="IsSurfaceExiting"/>
+    /// so a deferred fade-out close is still considered logically open.
+    /// </remarks>
+    protected bool IsSurfaceOpen { get; private set; }
 
     /// <summary>Gets whether an accepted close is visually disappearing before structural cleanup.</summary>
-    private protected bool IsSurfaceExiting { get; private set; }
+    /// <remarks>
+    /// Belongs to the exit phase, after <see cref="Closing"/> has been raised and a positive
+    /// <see cref="FadeOutDuration"/> defers structural cleanup. A family checks this to route
+    /// input away from a surface that is still attached but no longer interactive.
+    /// </remarks>
+    protected bool IsSurfaceExiting { get; private set; }
 
     /// <summary>Gets whether this surface currently owns one active application modality scope.</summary>
     protected bool HasActiveSurfaceModal => _modalSession.IsActive;
@@ -209,7 +238,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// only a reentrant call that lands synchronously from a <see cref="CloseRequested"/> handler
     /// without also swallowing reentry from those later phases.
     /// </remarks>
-    private protected bool IsRequestingClose { get; private set; }
+    protected bool IsRequestingClose { get; private set; }
 
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
@@ -287,7 +316,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <see cref="RaiseCloseRequested"/> directly, or reentry during its own request phase throws
     /// instead of the documented no-op.</summary>
     /// <returns>False when a handler vetoed the request; otherwise true.</returns>
-    private protected bool RaiseCloseRequestedInRequestPhase()
+    protected bool RaiseCloseRequestedInRequestPhase()
     {
         IsRequestingClose = true;
 
@@ -309,7 +338,13 @@ public abstract class FloatingSurfaceBase: ContentControl
     protected EventHandler? CaptureClosedHandlers() => Closed;
 
     /// <summary>Begins a fresh logical surface lifetime before presentation is available.</summary>
-    private protected void BeginSurfaceOpenLifetime() => IsSurfaceOpen = true;
+    /// <remarks>
+    /// Belongs to the earliest part of the request phase: a family that needs
+    /// <see cref="IsSurfaceOpen"/> to read true before its own commit reaches
+    /// <see cref="OpenSurface"/> or <see cref="TryOpenSurface"/> - for example, because opening
+    /// involves an asynchronous or multi-step commit - calls this first.
+    /// </remarks>
+    protected void BeginSurfaceOpenLifetime() => IsSurfaceOpen = true;
 
     /// <summary>Atomically commits family-specific open state and marks the surface as presented.</summary>
     /// <param name="commitOpenState">The non-null family-specific state commit.</param>
@@ -348,7 +383,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// presentation preconditions fail.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A family callback, Opened subscriber, or transition startup fails.</exception>
-    private protected bool TryOpenSurface([InstantHandle] Func<bool> tryCommitOpenState)
+    protected bool TryOpenSurface([InstantHandle] Func<bool> tryCommitOpenState)
     {
         ArgumentNullException.ThrowIfNull(tryCommitOpenState);
         return OpenSurfaceCore(tryCommitOpenState);
@@ -466,7 +501,13 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <param name="commitUnavailableState">Makes family content structurally unavailable.</param>
     /// <param name="completion">An optional exact-once callback after complete disappearance.</param>
     /// <returns>The committed close outcome.</returns>
-    private protected FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(
+    /// <remarks>
+    /// Belongs to the request phase through the exit phase in one call: it publishes
+    /// <see cref="CloseRequested"/> and <see cref="Closing"/> itself, so a family that has not yet
+    /// published either notification for this close calls this overload directly, without calling
+    /// <see cref="RaiseCloseRequestedInRequestPhase"/> first.
+    /// </remarks>
+    protected FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion = null)
@@ -487,7 +528,12 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
-    private protected FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(
+    /// <remarks>
+    /// Belongs to the request phase through the exit phase in one call, the same as the three-parameter
+    /// overload; use this overload when the caller also needs to distinguish dispatcher completion
+    /// from abandonment.
+    /// </remarks>
+    protected FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion,
@@ -516,7 +562,15 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
-    private protected bool CloseSurfaceAfterClosing(
+    /// <remarks>
+    /// Belongs to the request phase through the exit phase in one call, for a family whose
+    /// retention decision - whether the surface actually leaves after <see cref="Closing"/> -
+    /// can only be made once observers have run. Use this instead of
+    /// <see cref="CloseSurfaceWithOutcome(Action,Action,Action)"/> when
+    /// <paramref name="commitClosingState"/> needs to inspect state that a <see cref="Closing"/>
+    /// handler may itself have just changed.
+    /// </remarks>
+    protected bool CloseSurfaceAfterClosing(
         [InstantHandle] Action prepareClosingState,
         [InstantHandle] Func<bool> commitClosingState,
         [InstantHandle] Action commitUnavailableState)
@@ -537,7 +591,11 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <param name="commitUnavailableState">Makes family content structurally unavailable.</param>
     /// <param name="completion">An optional exact-once callback after complete disappearance.</param>
     /// <returns>The committed close outcome.</returns>
-    private protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingWithOutcome(
+    /// <remarks>
+    /// The precise-outcome sibling of <see cref="CloseSurfaceAfterClosing"/>; see that method for
+    /// when to prefer this shape.
+    /// </remarks>
+    protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingWithOutcome(
         [InstantHandle] Action prepareClosingState,
         [InstantHandle] Func<bool> commitClosingState,
         [InstantHandle] Action commitUnavailableState,
@@ -574,7 +632,15 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// </exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
-    private protected bool CloseSurfaceAfterClosingRequest(
+    /// <remarks>
+    /// Belongs to the closing phase onward: the caller must already have published its own
+    /// <see cref="CloseRequested"/> and <see cref="Closing"/> notifications - typically through
+    /// <see cref="RaiseCloseRequestedInRequestPhase"/> followed by <see cref="RaiseSurfaceClosing"/>
+    /// or <see cref="RaiseSurfaceClosingWithReentrantOpenGuard"/> - before calling this. Calling it
+    /// without having published those first produces a close that the base never announced as
+    /// requested or closing.
+    /// </remarks>
+    protected bool CloseSurfaceAfterClosingRequest(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState)
     {
@@ -591,7 +657,11 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <param name="commitUnavailableState">Makes family content structurally unavailable.</param>
     /// <param name="completion">An optional exact-once callback after complete disappearance.</param>
     /// <returns>The committed close outcome.</returns>
-    private protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(
+    /// <remarks>
+    /// The precise-outcome sibling of <see cref="CloseSurfaceAfterClosingRequest"/>; see that
+    /// method for the required call order.
+    /// </remarks>
+    protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion = null)
@@ -612,7 +682,11 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <exception cref="InvalidOperationException">Opening or closure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">A state callback, lifecycle subscriber, or modal cleanup callback fails.</exception>
-    private protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(
+    /// <remarks>
+    /// Belongs to the closing phase onward, the same as the three-parameter overload; use this
+    /// overload when the caller also needs to distinguish dispatcher completion from abandonment.
+    /// </remarks>
+    protected FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(
         [InstantHandle] Action commitClosingState,
         [InstantHandle] Action commitUnavailableState,
         [InstantHandle] Action? completion,
@@ -831,10 +905,16 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Immediately completes an already-accepted positive exit for an internal exclusive
     /// surface replacement, without publishing another close request or Closing notification.</summary>
     /// <returns>True when an active exit was completed; otherwise false.</returns>
+    /// <remarks>
+    /// Belongs to the exit phase: call this only while <see cref="IsSurfaceExiting"/> is true, to
+    /// skip the remainder of a fade-out and finish structural cleanup and <see cref="Closed"/>
+    /// synchronously - for example, when a family is about to replace this surface with another
+    /// and cannot wait for the fade timer.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached surface is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The surface is disposed.</exception>
     /// <exception cref="Exception">Deferred cleanup or a lifecycle subscriber fails after cleanup continues.</exception>
-    private protected bool CompleteSurfaceExitImmediately()
+    protected bool CompleteSurfaceExitImmediately()
     {
         VerifyMutable();
 
@@ -1104,24 +1184,49 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     /// <summary>Resolves the effective entrance fade duration for one new presentation.</summary>
     /// <returns>A validated non-negative duration.</returns>
-    private protected virtual TimeSpan ResolveFadeInDuration() => FadeInDuration;
+    /// <remarks>
+    /// Called from the request phase, inside <see cref="OpenSurface"/>/<see cref="TryOpenSurface"/>,
+    /// before the family commit runs. The base implementation returns <see cref="FadeInDuration"/>;
+    /// a family overrides this only to derive the duration from something other than that property,
+    /// such as a fixed zero for a surface that never animates in.
+    /// </remarks>
+    protected virtual TimeSpan ResolveFadeInDuration() => FadeInDuration;
 
     /// <summary>Resolves the effective exit fade duration for one accepted close.</summary>
     /// <returns>A validated non-negative duration.</returns>
-    private protected virtual TimeSpan ResolveFadeOutDuration() => FadeOutDuration;
+    /// <remarks>
+    /// Called from the closing phase, after the close request is accepted and
+    /// <see cref="Closing"/> has run. The base implementation returns <see cref="FadeOutDuration"/>.
+    /// </remarks>
+    protected virtual TimeSpan ResolveFadeOutDuration() => FadeOutDuration;
 
     /// <summary>Responds after a positive entrance reaches full cell visibility.</summary>
-    private protected virtual void OnSurfaceEntranceCompleted()
+    /// <remarks>
+    /// Belongs to the end of the request phase. This runs only when
+    /// <see cref="ResolveFadeInDuration"/> returned a positive duration and the surface remained
+    /// presented for its whole entrance; it never runs for a synchronous zero-duration open.
+    /// </remarks>
+    protected virtual void OnSurfaceEntranceCompleted()
     {
     }
 
     /// <summary>Responds after shared fade progress commits and before its public notification.</summary>
-    private protected virtual void OnFadeProgressChanged()
+    /// <remarks>
+    /// May run during either the request phase (entrance) or the exit phase (dismissal); read
+    /// <see cref="IsSurfaceExiting"/> to tell which. <see cref="FadeProgress"/> already reflects
+    /// the new value when this runs.
+    /// </remarks>
+    protected virtual void OnFadeProgressChanged()
     {
     }
 
     /// <summary>Cancels family interaction and source timers immediately after positive exit is accepted.</summary>
-    private protected virtual void OnSurfaceExitAccepted() =>
+    /// <remarks>
+    /// Belongs to the start of the exit phase: this runs once, right after a close is accepted and
+    /// before the exit fade (if any) begins. The base implementation releases this surface's
+    /// captured pointer, if any, through <see cref="ReleaseReason.Hidden"/>.
+    /// </remarks>
+    protected virtual void OnSurfaceExitAccepted() =>
         CaptureOwner?.Unavailable(this, ReleaseReason.Hidden);
 
     /// <summary>Gets whether routed and semantic input must be consumed for the supplied subtree member.</summary>
@@ -1141,7 +1246,14 @@ public abstract class FloatingSurfaceBase: ContentControl
     }
 
     /// <summary>Settles family state when direct hide, detach, or disposal aborts a transition.</summary>
-    private protected virtual void OnSurfaceTransitionAborted()
+    /// <remarks>
+    /// Runs instead of the transition reaching its natural end - an interrupted entrance never
+    /// reaches <see cref="OnSurfaceEntranceCompleted"/>, and an interrupted exit never finishes
+    /// through the deferred completion that would otherwise raise <see cref="Closed"/>. A family
+    /// uses this to release any state it set up in <see cref="OnSurfaceExitAccepted"/> or during
+    /// entrance that a normal completion would otherwise have released.
+    /// </remarks>
+    protected virtual void OnSurfaceTransitionAborted()
     {
     }
 
@@ -1286,12 +1398,23 @@ public abstract class FloatingSurfaceBase: ContentControl
 
     /// <summary>Applies family policy for a current active modal dismissal request.</summary>
     /// <param name="scope">The exact current active scope.</param>
-    private protected virtual void OnSurfaceModalDismissRequested(ModalScope scope) =>
+    /// <remarks>
+    /// Runs only while <see cref="HasActiveSurfaceModal"/> is true, in response to an outside
+    /// interaction that the active <see cref="ModalScope"/> classifies as a dismissal request - for
+    /// example, a click outside a modal Popup. The base implementation takes no action; a family
+    /// overrides this to translate the request into its own close policy.
+    /// </remarks>
+    protected virtual void OnSurfaceModalDismissRequested(ModalScope scope) =>
         _ = scope;
 
     /// <summary>Applies family policy after an externally ended scope clears from the session.</summary>
     /// <param name="scope">The exact exited scope.</param>
-    private protected virtual void OnSurfaceModalExited(ModalScope scope) =>
+    /// <remarks>
+    /// Runs after the modal session's active scope has already cleared, so
+    /// <see cref="HasActiveSurfaceModal"/> already reads false when this executes. The base
+    /// implementation takes no action.
+    /// </remarks>
+    protected virtual void OnSurfaceModalExited(ModalScope scope) =>
         _ = scope;
 
     /// <summary>
@@ -1300,7 +1423,14 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// a descendant of a removed subtree root, which never receives its own <c>OnUnavailable</c> call —
     /// can still leave <see cref="OpenSurface"/> reopenable afterward.
     /// </summary>
-    private protected void ReleasePresentation()
+    /// <remarks>
+    /// Bypasses the ordinary closing/exit phases entirely and their notifications - it raises
+    /// neither <see cref="Closing"/> nor <see cref="Closed"/>. Call this only from a family's own
+    /// <see cref="ControlBase.OnUnavailable"/>/<see cref="ControlBase.OnDetached"/> override, for a
+    /// removal path the base's own handling of those does not already cover.
+    /// </remarks>
+    /// <exception cref="Exception">Fade-transition abort cleanup fails after cleanup continues.</exception>
+    protected void ReleasePresentation()
     {
         ExceptionDispatchInfo? failure = null;
         CaptureFailure(AbortFadeTransition, ref failure);

@@ -38,10 +38,10 @@ public sealed class Flyout: Popup
     /// light dismiss already assumes its bounds are fixed for the pointer geometry captured when
     /// it opened, so a moved anchor closes it instead of chasing the new position.</summary>
     /// <inheritdoc/>
-    internal override void OnAnchorReflow() => IsOpen = false;
+    protected override void OnAnchorReflow() => IsOpen = false;
 
     /// <inheritdoc/>
-    internal override bool CompleteOpenContent(bool suppressFocusOnOpen) => ExcludePopupPeers(
+    protected override bool CompleteOpenContent(bool suppressFocusOnOpen) => ExcludePopupPeers(
         static candidate => candidate is Flyout,
         candidate => IsAncestorOf(candidate, this),
         () => base.CompleteOpenContent(suppressFocusOnOpen));

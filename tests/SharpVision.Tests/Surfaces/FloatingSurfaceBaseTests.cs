@@ -3,8 +3,6 @@
 
 namespace SharpVision.Tests.Surfaces;
 
-using System.Reflection;
-
 using SharpVision.Surfaces;
 
 /// <summary>Verifies the shared lifecycle and modality contract for elevated surfaces.</summary>
@@ -47,18 +45,6 @@ public sealed class FloatingSurfaceBaseTests
         surface.Opened += listener.Handle;
         surface.Dispose();
         return (surface, new WeakReference(listener));
-    }
-
-    /// <summary>Verifies only in-assembly surface families may suppress an already-published Closing event.</summary>
-    [Fact]
-    public void CloseSurfaceAfterClosingRequest_WhenInspected_IsPrivateProtected()
-    {
-        var method = typeof(FloatingSurfaceBase).GetMethod(
-            "CloseSurfaceAfterClosingRequest",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        _ = method.ShouldNotBeNull();
-        (method.Attributes & MethodAttributes.MemberAccessMask).ShouldBe(MethodAttributes.FamANDAssem);
     }
 
     /// <summary>Verifies detached presentation is rejected without committing common surface state.</summary>

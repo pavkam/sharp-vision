@@ -278,7 +278,7 @@ public sealed class Tooltip: Popup
     }
 
     /// <inheritdoc/>
-    internal override bool OnContentAvailable()
+    protected override bool OnContentAvailable()
     {
         if (!base.OnContentAvailable())
         {

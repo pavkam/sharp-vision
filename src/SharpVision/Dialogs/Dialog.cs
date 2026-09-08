@@ -683,7 +683,7 @@ public abstract class Dialog<TResult>: Window
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceModalExited(ModalScope scope)
+    protected override void OnSurfaceModalExited(ModalScope scope)
     {
         base.OnSurfaceModalExited(scope);
         var dispatcher = Dispatcher;

@@ -14,7 +14,7 @@ internal sealed class PopupAnchorReflowReentrancyProbe: Popup
     internal Rect? ReflowAnchorDuringOpenTo { get; set; }
 
     /// <inheritdoc/>
-    internal override bool OnContentAvailable()
+    protected override bool OnContentAvailable()
     {
         if (!base.OnContentAvailable())
         {
@@ -30,5 +30,5 @@ internal sealed class PopupAnchorReflowReentrancyProbe: Popup
     }
 
     /// <inheritdoc/>
-    internal override void OnAnchorReflow() => IsOpen = false;
+    protected override void OnAnchorReflow() => IsOpen = false;
 }

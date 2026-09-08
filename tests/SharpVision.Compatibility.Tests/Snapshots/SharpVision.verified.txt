@@ -2827,6 +2827,7 @@ namespace SharpVision.Dialogs
         protected override void OnDisposed() { }
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnSurfaceModalExited(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.ControlBase owner, SharpVision.Controls.ControlBase? initialFocus, System.Threading.CancellationToken cancellationToken) { }
     }
@@ -4031,9 +4032,13 @@ namespace SharpVision.Notifications
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnFadeProgressChanged() { }
         protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnSurfaceEntranceCompleted() { }
+        protected override void OnSurfaceExitAccepted() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override System.TimeSpan ResolveFadeInDuration() { }
         public void Show(SharpVision.Controls.ControlBase owner) { }
     }
     public enum ToastAnimation
@@ -4077,6 +4082,8 @@ namespace SharpVision.Popups
     public sealed class Flyout : SharpVision.Popups.Popup
     {
         public Flyout() { }
+        protected override bool CompleteOpenContent(bool suppressFocusOnOpen) { }
+        protected override void OnAnchorReflow() { }
         public void ShowAt(SharpVision.Controls.ControlBase anchor) { }
     }
     public class Popup : SharpVision.Surfaces.FloatingSurfaceBase
@@ -4086,33 +4093,53 @@ namespace SharpVision.Popups
         protected override bool ClipsChildren { get; }
         public bool CloseOnEscape { get; set; }
         public bool ConnectsToAnchor { get; init; }
+        public bool ConstrainToRoot { get; set; }
         public SharpVision.Layout.Length ContentHeightLimit { get; set; }
         public bool FocusOnOpen { get; set; }
         public bool IsOpen { get; set; }
         public SharpVision.Popups.PopupModalBehavior ModalBehavior { get; set; }
         public SharpVision.Popups.PopupPlacement Placement { get; set; }
+        public SharpVision.Popups.PopupPlacement ResolvedPlacement { get; }
         public bool ShowAnchorIndicator { get; set; }
         public SharpVision.Popups.PopupChrome Style { get; set; }
         public bool SuppressCloseOtherPopups { get; init; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseImmediatelyForPeerTransition() { }
+        protected virtual bool CompleteOpenContent(bool suppressFocusOnOpen) { }
+        protected void ConfigureLightDismiss(SharpVision.Popups.PopupLightDismissPolicy policy) { }
+        protected bool ExcludePopupPeers(System.Func<SharpVision.Popups.Popup, bool> isFamily, System.Func<SharpVision.Popups.Popup, bool> isExcluded, System.Func<bool> continuation) { }
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
+        protected void LayoutAgainstRoot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected virtual void OnAnchorReflow() { }
         protected override void OnAttached() { }
+        protected virtual bool OnContentAvailable() { }
         protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnDetached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnSurfaceModalDismissRequested(SharpVision.Input.ModalScope scope) { }
+        protected override void OnSurfaceModalExited(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.ControlBase? initialFocus = null) { }
+        protected override System.TimeSpan ResolveFadeOutDuration() { }
     }
     public readonly struct PopupChrome : System.IEquatable<SharpVision.Popups.PopupChrome>
     {
         public SharpVision.Styling.Border? Border { get; init; }
         public SharpVision.Styling.Shadow? Shadow { get; init; }
+    }
+    public sealed class PopupLightDismissPolicy
+    {
+        public PopupLightDismissPolicy(bool includeAnchor, SharpVision.Terminal.Input.Buttons buttons, bool interceptAtModalBoundary, System.Action dismiss) { }
+        public SharpVision.Terminal.Input.Buttons Buttons { get; }
+        public System.Action Dismiss { get; }
+        public bool IncludeAnchor { get; }
+        public bool InterceptAtModalBoundary { get; }
     }
     public enum PopupModalBehavior
     {
@@ -4133,6 +4160,7 @@ namespace SharpVision.Popups
         public System.TimeSpan ShowDelay { get; set; }
         public string? Text { get; set; }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
+        protected override bool OnContentAvailable() { }
         protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnDetached() { }
         protected override void OnPropertyChanged(string propertyName) { }
@@ -4892,6 +4920,9 @@ namespace SharpVision.Surfaces
         public System.TimeSpan FadeOutDuration { get; set; }
         public double FadeProgress { get; }
         protected bool HasActiveSurfaceModal { get; }
+        protected bool IsRequestingClose { get; }
+        protected bool IsSurfaceExiting { get; }
+        protected bool IsSurfaceOpen { get; }
         protected bool IsSurfacePresented { get; }
         protected override bool ReceivesInheritedSelectionState { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
@@ -4899,18 +4930,49 @@ namespace SharpVision.Surfaces
         public event System.EventHandler? Closed;
         public event System.EventHandler? Closing;
         public event System.EventHandler? Opened;
+        protected void BeginSurfaceOpenLifetime() { }
+        protected void CancelSurfaceCloseInteraction() { }
         protected System.EventHandler? CaptureClosedHandlers() { }
         protected bool CloseSurface(System.Action commitClosingState, System.Action commitUnavailableState) { }
+        protected bool CloseSurfaceAfterClosing(System.Action prepareClosingState, System.Func<bool> commitClosingState, System.Action commitUnavailableState) { }
+        protected bool CloseSurfaceAfterClosingRequest(System.Action commitClosingState, System.Action commitUnavailableState) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(System.Action commitClosingState, System.Action commitUnavailableState, System.Action? completion = null) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingRequestWithOutcome(System.Action commitClosingState, System.Action commitUnavailableState, System.Action? completion, System.Action? completionAbandoned) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseSurfaceAfterClosingWithOutcome(System.Action prepareClosingState, System.Func<bool> commitClosingState, System.Action commitUnavailableState, System.Action? completion = null) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(System.Action commitClosingState, System.Action commitUnavailableState, System.Action? completion = null) { }
+        protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseSurfaceWithOutcome(System.Action commitClosingState, System.Action commitUnavailableState, System.Action? completion, System.Action? completionAbandoned) { }
+        protected bool CompleteSurfaceExitImmediately() { }
         protected SharpVision.Input.ModalScope EnterSurfaceModal(SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.ControlBase? initialFocus) { }
         protected void ExitSurfaceModal() { }
+        protected void HandleSurfaceCloseInteraction(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected void InitializeSurfaceCloseInteraction(System.Func<SharpVision.Terminal.Geometry.Rect> bounds, System.Func<bool> isAvailable, System.Func<bool> canCompleteSpace, System.Action<bool> setPressed, System.Action<SharpVision.Input.ActivationCause> activate) { }
         protected override void OnDetached() { }
+        protected virtual void OnFadeProgressChanged() { }
+        protected virtual void OnSurfaceEntranceCompleted() { }
+        protected virtual void OnSurfaceExitAccepted() { }
+        protected virtual void OnSurfaceModalDismissRequested(SharpVision.Input.ModalScope scope) { }
+        protected virtual void OnSurfaceModalExited(SharpVision.Input.ModalScope scope) { }
+        protected virtual void OnSurfaceTransitionAborted() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected void OpenSurface(System.Action commitOpenState) { }
         protected bool RaiseCloseRequested() { }
+        protected bool RaiseCloseRequestedInRequestPhase() { }
         protected void RaiseSurfaceClosed() { }
         protected void RaiseSurfaceClosing() { }
         protected void RaiseSurfaceClosingWithReentrantOpenGuard() { }
         protected void RaiseSurfaceOpened() { }
+        protected void ReleasePresentation() { }
+        protected virtual System.TimeSpan ResolveFadeInDuration() { }
+        protected virtual System.TimeSpan ResolveFadeOutDuration() { }
+        protected bool TryOpenSurface(System.Func<bool> tryCommitOpenState) { }
+        protected static bool TryHandleSurfaceEscape(SharpVision.Input.RoutedEventArgs eventArgs, bool canClose, System.Action close) { }
+    }
+    public enum FloatingSurfaceCloseOutcome
+    {
+        Ignored = 0,
+        Vetoed = 1,
+        Deferred = 2,
+        Completed = 3,
     }
     public sealed class SurfaceCloseRequestedEventArgs : System.EventArgs
     {
@@ -5126,6 +5188,7 @@ namespace SharpVision.Windows
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnSurfaceModalDismissRequested(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
     }

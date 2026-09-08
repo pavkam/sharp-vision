@@ -1368,8 +1368,11 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceModalDismissRequested(ModalScope scope)
+    /// <exception cref="ArgumentNullException"><paramref name="scope"/> is null.</exception>
+    protected override void OnSurfaceModalDismissRequested(ModalScope scope)
     {
+        ArgumentNullException.ThrowIfNull(scope);
+
         if (scope.IsActive &&
             Visibility == Visibility.Visible)
         {

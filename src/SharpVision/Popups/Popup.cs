@@ -94,11 +94,21 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     /// <summary>Configures the one Popup-owned light-dismiss policy before attachment.</summary>
     /// <param name="policy">The non-null family policy.</param>
+    /// <remarks>
+    /// Belongs to setup, alongside <see cref="FloatingSurfaceBase.InitializeSurfaceCloseInteraction"/>:
+    /// a derived family that wants outside-press dismissal calls this exactly once, typically from
+    /// its own constructor, before the Popup is ever attached to a dispatcher or opened. Flyout
+    /// calls this from its own constructor as a direct subclass; ContextMenu, which composes an
+    /// owned Popup instead of deriving from it, calls this on that instance from within the same
+    /// assembly - which is why this member is <see langword="protected internal"/> rather than
+    /// only <see langword="protected"/>. A family that does not want light dismiss simply never
+    /// calls it.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="policy"/> is null.</exception>
     /// <exception cref="ArgumentException">A policy is already configured.</exception>
     /// <exception cref="InvalidOperationException">The Popup is already attached or open.</exception>
     /// <exception cref="ObjectDisposedException">The Popup is disposed.</exception>
-    internal void ConfigureLightDismiss(PopupLightDismissPolicy policy)
+    protected internal void ConfigureLightDismiss(PopupLightDismissPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
         ObjectDisposedException.ThrowIf(IsDisposed, this);
@@ -166,7 +176,15 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     public bool ConnectsToAnchor { get; init; }
 
     /// <summary>Gets or sets whether placement flips and clamps inside the owning root.</summary>
-    internal bool ConstrainToRoot { get; set; } = true;
+    /// <remarks>
+    /// True (the default) is what every in-repo Popup family wants: <see cref="ResolvedPlacement"/>
+    /// flips away from <see cref="Placement"/> when the preferred side does not fit, and the
+    /// resolved frame clamps inside the owning root's bounds. A composite owner that already
+    /// arranges its own popup child against known-good bounds - and does not want the base
+    /// resolving a different placement than the one it asked for - sets this false before the
+    /// popup first opens; this property carries no validation of its own.
+    /// </remarks>
+    public bool ConstrainToRoot { get; set; } = true;
 
     /// <summary>Gets or sets whether this popup re-resolves placement when its foreign anchor
     /// reflows while open. A self-anchored composite (a ComboBox drop-down, a submenu, and the
@@ -488,7 +506,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     #region Layout and rendering
 
     /// <summary>Gets the placement selected by the latest arranged open presentation.</summary>
-    internal PopupPlacement ResolvedPlacement { get; private set; } = PopupPlacement.Below;
+    /// <remarks>
+    /// Reflects <see cref="Placement"/> directly when <see cref="ConstrainToRoot"/> is false or a
+    /// <see cref="FixedOrigin"/> is set; otherwise it may differ from <see cref="Placement"/> after
+    /// flipping to the side that actually fits. This updates only during layout, so it reads the
+    /// prior open presentation's value until the next Measure/Arrange pass resolves a new one.
+    /// </remarks>
+    public PopupPlacement ResolvedPlacement { get; private set; } = PopupPlacement.Below;
 
     /// <inheritdoc/>
     /// <inheritdoc/>
@@ -1218,10 +1242,14 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// opening transaction.</summary>
     /// <param name="suppressFocusOnOpen">Whether this opening stage must leave focus unchanged.</param>
     /// <returns>True while this exact opening still owns continuation.</returns>
-    /// <remarks>Families that must exclude peers before exposing candidate content override this
-    /// member and wrap the base continuation in their exclusion transaction.</remarks>
+    /// <remarks>
+    /// Belongs to the request phase, inside the Popup opening transaction. Families that must
+    /// exclude peers before exposing candidate content - the way <c>ExcludePopupPeers</c> does for
+    /// Flyout and MenuItem - override this member and wrap the base continuation in their exclusion
+    /// transaction rather than overriding <see cref="OnContentAvailable"/> directly.
+    /// </remarks>
     /// <exception cref="Exception">Content availability, focus, or family setup fails.</exception>
-    internal virtual bool CompleteOpenContent(bool suppressFocusOnOpen)
+    protected virtual bool CompleteOpenContent(bool suppressFocusOnOpen)
     {
         ExceptionDispatchInfo? failure = null;
         var ownsContinuation = true;
@@ -1257,12 +1285,16 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     /// <summary>Completes family-specific setup after current content becomes available during opening.</summary>
     /// <remarks>
-    /// Failures participate in the Popup opening transaction: all opening stages complete, family state
-    /// rolls back, and the earliest failure is rethrown.
+    /// Belongs to the request phase; runs after <see cref="MakeContentAvailable"/>'s visibility and
+    /// focus work has already committed, from inside <see cref="CompleteOpenContent"/>. Failures
+    /// participate in the Popup opening transaction: all opening stages complete, family state
+    /// rolls back, and the earliest failure is rethrown. The base subscribes anchor reflow tracking
+    /// and, when <see cref="TracksAnchorReflow"/> is set, resolves initial placement so
+    /// <see cref="FloatingSurfaceBase.Opened"/> observers see committed bounds.
     /// </remarks>
     /// <returns>True while the family-specific opening still owns continuation.</returns>
     /// <exception cref="Exception">Family-specific post-content setup fails.</exception>
-    internal virtual bool OnContentAvailable()
+    protected virtual bool OnContentAvailable()
     {
         SubscribeAnchorReflow();
 
@@ -1292,9 +1324,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// bypassing, and the two calls immediately after are the synchronous follow-up its contract
     /// requires; a full Invalidate would force an unrelated full-tree pass for a local reposition.
     /// A root that has no bounds yet (opening staged before the first layout) is left to that
-    /// first pass.
+    /// first pass. Belongs to the request phase and to anchor-reflow handling: the base calls this
+    /// from <see cref="OnContentAvailable"/> and from <see cref="OnAnchorReflow"/>'s default
+    /// implementation; a family overriding <see cref="OnAnchorReflow"/> with different behavior
+    /// (dismissing instead of following, for example) need not call this at all.
     /// </remarks>
-    private protected void LayoutAgainstRoot()
+    protected void LayoutAgainstRoot()
     {
         var root = RootBounds(default);
 
@@ -1312,7 +1347,13 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// re-resolves placement against the anchor's new position, line-for-line what a Tooltip's
     /// own layout pass already did before this tracking moved here. A family with different needs
     /// (a Flyout dismissing instead of following) overrides this instead of subscribing itself.</summary>
-    internal virtual void OnAnchorReflow() => LayoutAgainstRoot();
+    /// <remarks>
+    /// Runs only while <see cref="TracksAnchorReflow"/> is true and this popup is open with a
+    /// non-null <see cref="Anchor"/>; the base subscribes and unsubscribes this automatically
+    /// around those conditions, so a family never wires the anchor's own <c>BoundsChanged</c>
+    /// event itself.
+    /// </remarks>
+    protected virtual void OnAnchorReflow() => LayoutAgainstRoot();
 
     /// <summary>Starts reacting to the current Anchor's own reflow while this popup is open, so a
     /// foreign sibling growing, shrinking, or moving elsewhere re-resolves placement instead of
@@ -1502,8 +1543,11 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceModalDismissRequested(ModalScope scope)
+    /// <exception cref="ArgumentNullException"><paramref name="scope"/> is null.</exception>
+    protected override void OnSurfaceModalDismissRequested(ModalScope scope)
     {
+        ArgumentNullException.ThrowIfNull(scope);
+
         if (scope.IsActive && IsOpen)
         {
             IsOpen = false;
@@ -1511,7 +1555,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceModalExited(ModalScope scope)
+    protected override void OnSurfaceModalExited(ModalScope scope)
     {
         _ = scope;
         var preserveOpen = ModalityOwner?.IsUnavailable(this) == true;
@@ -1527,12 +1571,22 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    private protected override TimeSpan ResolveFadeOutDuration() =>
+    protected override TimeSpan ResolveFadeOutDuration() =>
         _bypassFadeOut ? TimeSpan.Zero : base.ResolveFadeOutDuration();
 
     /// <summary>Closes this Popup synchronously for internal peer and submenu replacement.</summary>
     /// <returns>The precise shared close outcome, including a request veto.</returns>
-    internal FloatingSurfaceCloseOutcome CloseImmediatelyForPeerTransition()
+    /// <remarks>
+    /// Belongs to the closing phase through the exit phase: it bypasses this popup's own fade-out
+    /// duration so a replaced peer or submenu never lingers visually mid-transition. A subclass
+    /// that composes sibling Popups and needs one to make way for another immediately - the way
+    /// <see cref="ExcludePopupPeers"/> does for Flyout - calls this on the peer being displaced
+    /// instead of setting its own <c>IsOpen</c>. MenuItem, which owns a submenu Popup by
+    /// composition rather than inheritance, calls this on that instance from within the same
+    /// assembly - which is why this member is <see langword="protected internal"/> rather than
+    /// only <see langword="protected"/>.
+    /// </remarks>
+    protected internal FloatingSurfaceCloseOutcome CloseImmediatelyForPeerTransition()
     {
         if (CompleteSurfaceExitImmediately())
         {
@@ -1798,9 +1852,17 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <param name="isExcluded">Excludes ancestors or other family-specific identities.</param>
     /// <param name="continuation">Runs the opening stage between the two stable peer snapshots.</param>
     /// <returns>True only while this exact opening still owns continuation.</returns>
+    /// <remarks>
+    /// Belongs to the request phase: a family overriding <see cref="CompleteOpenContent"/> calls
+    /// this from that override, passing its own base call (or further wrapped work) as
+    /// <paramref name="continuation"/>, to close sibling Popups before this one's content becomes
+    /// available - the way Flyout and MenuItem exclude other open flyouts and menu items.
+    /// <paramref name="isFamily"/> and <paramref name="isExcluded"/> both run once per candidate
+    /// peer discovered under the shared ownership root.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">Any callback is null.</exception>
     /// <exception cref="Exception">Peer closure or the opening continuation fails.</exception>
-    internal bool ExcludePopupPeers(
+    protected bool ExcludePopupPeers(
         Func<Popup, bool> isFamily,
         Func<Popup, bool> isExcluded,
         Func<bool> continuation)

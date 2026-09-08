@@ -79,6 +79,38 @@ Escape strokes for Window, Popup, Flyout, and Toast. Concrete families retain
 their public policy gates and close action, so sharing input mechanics does not
 conflate Window visibility, Popup open state, or Toast dismissal.
 
+### Extension surface for external families
+
+`FloatingSurfaceBase` exposes every seam a shipped family (Window, Popup, Toast,
+Dialog) itself uses as `protected`, so an externally defined family that derives
+from it directly, in a different assembly, reaches the exact same authoring
+surface - no member of this common lifecycle stays reachable only from inside
+`SharpVision`. `FloatingSurfaceCloseOutcome`, returned by the outcome-reporting
+close overloads, is public for the same reason. Each member belongs to one phase
+of the close transaction shown in the state diagram below: request
+(`CloseRequested`), closing (`Closing` and family commit), or exit (the optional
+fade-out and final `Closed`).
+
+| Member                                                                                                                                                                        | Phase             | Description                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `InitializeSurfaceCloseInteraction(bounds, isAvailable, canCompleteSpace, setPressed, activate)`                                                                              | Setup             | Wires the shared capture-aware close affordance once, from the family constructor.                                                                               |
+| `HandleSurfaceCloseInteraction(eventArgs)`, `CancelSurfaceCloseInteraction()`                                                                                                 | Any               | Routes a routed event through, or cancels, the affordance `InitializeSurfaceCloseInteraction` wired.                                                             |
+| `TryHandleSurfaceEscape(eventArgs, canClose, close)`                                                                                                                          | Request           | Runs `close` and marks the event handled for one eligible initial Escape stroke.                                                                                 |
+| `IsSurfaceOpen`, `IsSurfaceExiting`, `IsRequestingClose`                                                                                                                      | Request → Exit    | Read-only state a family consults instead of re-deriving from its own bookkeeping.                                                                               |
+| `BeginSurfaceOpenLifetime()`                                                                                                                                                  | Request           | Marks `IsSurfaceOpen` before a multi-step family commit reaches `OpenSurface`/`TryOpenSurface`.                                                                  |
+| `TryOpenSurface(tryCommitOpenState)`                                                                                                                                          | Request           | The declining sibling of the inherited `OpenSurface`, for a family commit that may itself roll back.                                                             |
+| `RaiseCloseRequestedInRequestPhase()`                                                                                                                                         | Request           | Raises `CloseRequested` with `IsRequestingClose` armed so synchronous reentry no-ops instead of throwing.                                                        |
+| `CloseSurfaceWithOutcome`, `CloseSurfaceAfterClosing`, `CloseSurfaceAfterClosingWithOutcome`, `CloseSurfaceAfterClosingRequest`, `CloseSurfaceAfterClosingRequestWithOutcome` | Request → Exit    | The outcome-reporting and post-`Closing`-commit siblings of the inherited `CloseSurface`; see each member's XML documentation for its exact required call order. |
+| `CompleteSurfaceExitImmediately()`                                                                                                                                            | Exit              | Skips the remainder of an active fade-out and finishes cleanup and `Closed` synchronously.                                                                       |
+| `ReleasePresentation()`                                                                                                                                                       | Any               | Clears presented bounds outside the normal close path, from a family's own `OnUnavailable`/`OnDetached`.                                                         |
+| `ResolveFadeInDuration()`, `ResolveFadeOutDuration()`                                                                                                                         | Request / Closing | Virtual; default to `FadeInDuration`/`FadeOutDuration`, overridden to derive a duration differently.                                                             |
+| `OnSurfaceEntranceCompleted()`, `OnFadeProgressChanged()`, `OnSurfaceExitAccepted()`, `OnSurfaceTransitionAborted()`                                                          | Request / Exit    | Virtual lifecycle hooks fired at the named entrance, progress, exit-accepted, and abort points.                                                                  |
+| `OnSurfaceModalDismissRequested(scope)`, `OnSurfaceModalExited(scope)`                                                                                                        | Modal             | Virtual; translate a modal dismissal request or scope exit into family close policy.                                                                             |
+
+Every promoted member's own XML documentation states its exact phase,
+prerequisite call order, return value, and thrown exceptions; this table is a
+map to that documentation, not a replacement for it.
+
 Popup-family infrastructure owns two callback-sensitive lifetimes centrally. An
 optional light-dismiss policy becomes one root registration only after the
 surface presentation commits, and close, hide, detach, or disposal releases it

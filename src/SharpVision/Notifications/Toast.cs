@@ -780,11 +780,11 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     }
 
     /// <inheritdoc/>
-    private protected override TimeSpan ResolveFadeInDuration() =>
+    protected override TimeSpan ResolveFadeInDuration() =>
         Animation == ToastAnimation.Fade ? AnimationDuration : base.ResolveFadeInDuration();
 
     /// <inheritdoc/>
-    private protected override void OnFadeProgressChanged()
+    protected override void OnFadeProgressChanged()
     {
         base.OnFadeProgressChanged();
 
@@ -795,14 +795,14 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceEntranceCompleted()
+    protected override void OnSurfaceEntranceCompleted()
     {
         base.OnSurfaceEntranceCompleted();
         TryStartDisplayTimer();
     }
 
     /// <inheritdoc/>
-    private protected override void OnSurfaceExitAccepted()
+    protected override void OnSurfaceExitAccepted()
     {
         ExceptionDispatchInfo? failure = null;
         CaptureFailure(base.OnSurfaceExitAccepted, ref failure);
