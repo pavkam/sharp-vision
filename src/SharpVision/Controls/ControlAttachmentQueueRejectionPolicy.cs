@@ -4,7 +4,13 @@
 namespace SharpVision.Controls;
 
 /// <summary>Defines how attachment-affine fire-and-forget work handles synchronous queue rejection.</summary>
-internal enum ControlAttachmentQueueRejectionPolicy
+/// <remarks>
+/// Passed to <see cref="ControlBase.PostForCurrentAttachment"/>, which posts a callback that only
+/// runs while a captured <see cref="ControlAttachmentToken"/> stays current. Synchronous rejection
+/// - the target dispatcher's queue is full or already disposed - is a distinct failure from that
+/// staleness check, and this policy governs only the former.
+/// </remarks>
+public enum ControlAttachmentQueueRejectionPolicy
 {
     /// <summary>Propagates the queue rejection to the caller.</summary>
     Throw,

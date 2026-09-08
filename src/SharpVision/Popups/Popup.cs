@@ -250,7 +250,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
 
     /// <summary>Gets whether this popup is inside its public open-state transition.</summary>
     private protected bool IsOpenTransitioning { get; private set; }
-    private ControlBase? _availabilityAncestor;
+    private IDisposable? _availabilityWatch;
     private ControlBase? _subscribedReflowAnchor;
 
     /// <summary>Gets or sets whether this Popup self-manages its modal scope on open.</summary>
@@ -737,7 +737,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         {
             ClearAvailabilityAncestor();
         }
-        else if (_availabilityAncestor is not null)
+        else if (_availabilityWatch is not null)
         {
             TrackUnavailableAncestor();
         }
@@ -908,62 +908,20 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
     }
 
+    /// <summary>(Re)starts watching this popup's nearest unavailable ancestor, walking the current
+    /// <see cref="ControlBase.Parent"/> chain fresh - a prior watch's own subscribed ancestor may no
+    /// longer be current after a reparent or a modal-scope exit, so this always discards whatever
+    /// watch is active and creates a new one rather than reusing it.</summary>
     private void TrackUnavailableAncestor()
     {
-        var unavailable = FindUnavailableAncestor();
-
-        if (ReferenceEquals(_availabilityAncestor, unavailable))
-        {
-            return;
-        }
-
         ClearAvailabilityAncestor();
-
-        if (unavailable is not null)
-        {
-            _availabilityAncestor = unavailable;
-            unavailable.PropertyChanged += OnAvailabilityAncestorPropertyChanged;
-            return;
-        }
-
-        ReconcilePresentationAvailability();
-    }
-
-    [Pure]
-    private ControlBase? FindUnavailableAncestor()
-    {
-        for (var current = Parent; current is not null; current = current.Parent)
-        {
-            if (current.Visibility != Visibility.Visible || !current.IsEnabled)
-            {
-                return current;
-            }
-        }
-
-        return null;
-    }
-
-    private void OnAvailabilityAncestorPropertyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName is nameof(Visibility) or nameof(IsEnabled))
-        {
-            TrackUnavailableAncestor();
-        }
+        _availabilityWatch = WatchAncestorAvailability(ReconcilePresentationAvailability);
     }
 
     private void ClearAvailabilityAncestor()
     {
-        if (_availabilityAncestor is not { } ancestor)
-        {
-            return;
-        }
-
-        _availabilityAncestor = null;
-        ancestor.PropertyChanged -= OnAvailabilityAncestorPropertyChanged;
+        _availabilityWatch?.Dispose();
+        _availabilityWatch = null;
     }
 
     private FloatingSurfaceCloseOutcome? SetOpen(bool value, bool suppressFocusOnOpen)
@@ -1651,7 +1609,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
             LengthKind.Auto => (int?) null,
             LengthKind.Cells => (int) ContentHeightLimit.Value,
             LengthKind.Percent when availableContentHeight.HasValue =>
-                ResolvePercent(availableContentHeight.Value, ContentHeightLimit.Value),
+                Length.ResolvePercent(availableContentHeight.Value, ContentHeightLimit.Value),
             LengthKind.Percent => null,
             LengthKind.Star => throw new UnreachableException(),
             _ => throw new UnreachableException()
@@ -1686,13 +1644,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         }
 
         return Math.Max(0, surfaceHeight - frame.Vertical);
-    }
-
-    [Pure]
-    private static int ResolvePercent(int value, double percent)
-    {
-        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     private static void ValidateContentHeightLimit(Length value, string paramName)

@@ -5,11 +5,18 @@ namespace SharpVision.Controls;
 
 /// <summary>Identifies one exact dispatcher attachment of one control.</summary>
 /// <remarks>
-/// The identity is intentionally opaque. Consumers can retain and return it to
-/// <see cref="ControlBase.IsCurrent(ControlAttachmentToken)"/>, but cannot infer lifecycle
-/// ordering or perform generation arithmetic.
+/// This is the "continue this deferred work only if the control is still attached to the same
+/// dispatcher" seam: a derived control captures a token with
+/// <see cref="ControlBase.CaptureAttachment"/> or <see cref="ControlBase.TryCaptureAttachment"/>,
+/// then hands it back to <see cref="ControlBase.PostForCurrentAttachment"/> or
+/// <see cref="ControlBase.InvokeForCurrentAttachmentAsync"/> so queued work runs only while that
+/// exact attachment - not merely "some attachment" - is still current. The identity is
+/// intentionally opaque: a derived control can retain and return an instance, but cannot compare,
+/// inspect, or perform generation arithmetic on it. Only <see cref="ControlBase"/> itself can
+/// validate one, so a token from a foreign control instance is inert everywhere but where it was
+/// captured.
 /// </remarks>
-internal sealed class ControlAttachmentToken
+public sealed class ControlAttachmentToken
 {
     private ControlBase Control { get; }
     private object Identity { get; }

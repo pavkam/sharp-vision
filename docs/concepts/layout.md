@@ -173,6 +173,13 @@ Fractional percentage and proportional boundaries are rounded cumulatively at
 the edges, so adjacent tracks share a single boundary and the final track
 receives the remainder.
 
+Every other `Percent` resolution - `Width`/`Height`, `MinWidth`/`MaxWidth`/
+`MinHeight`/`MaxHeight`, and the `Dock`, `Overlay`, and `Popup` placement math -
+resolves in one shot instead of cumulatively, through the public
+`Length.ResolvePercent(containing, percent)`: it rounds the exact
+`containing * percent / 100` result to the nearest whole cell, ties rounding
+away from zero, and saturates at `int.MaxValue` rather than overflowing.
+
 ## Track allocation
 
 `Tracks.Resolve` is the shared integer allocator for Grid rows and columns.

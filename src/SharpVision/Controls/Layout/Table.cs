@@ -1864,29 +1864,18 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
             row.Cells[columnIndex].SetCurrentState(true);
         }
 
-        if (rowChanged)
-        {
-            NotifyPropertyChanged(nameof(ActiveRow), InvalidationImpact.None);
-        }
-
-        // Each NotifyPropertyChanged call above can synchronously reach a PropertyChanged
-        // subscriber that disposes the table - re-check before every further disposed-guarded call.
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        if (columnChanged)
-        {
-            NotifyPropertyChanged(nameof(ActiveColumnIndex), InvalidationImpact.None);
-        }
-
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        NotifyPropertyChanged(nameof(ActiveCell), InvalidationImpact.None);
+        // NotifyPropertiesChanged raises each name in order and stops as soon as a synchronous
+        // PropertyChanged subscriber disposes the table, so ActiveCell is never published to a
+        // subscriber that already saw ActiveRow/ActiveColumnIndex reach a disposed table.
+        _ = rowChanged && columnChanged
+            ? NotifyPropertiesChanged(
+                InvalidationImpact.None,
+                nameof(ActiveRow),
+                nameof(ActiveColumnIndex),
+                nameof(ActiveCell))
+            : rowChanged
+                ? NotifyPropertiesChanged(InvalidationImpact.None, nameof(ActiveRow), nameof(ActiveCell))
+                : NotifyPropertiesChanged(InvalidationImpact.None, nameof(ActiveColumnIndex), nameof(ActiveCell));
     }
 
     private void CommitSelection(

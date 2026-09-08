@@ -161,9 +161,15 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Captures the exact current dispatcher attachment.</summary>
     /// <returns>An opaque identity invalidated by detach, reattach, or disposal.</returns>
+    /// <remarks>
+    /// This is the "continue this deferred work only if the control is still attached to the same
+    /// dispatcher" seam a derived control uses to guard fire-and-forget continuations - see
+    /// <see cref="ControlAttachmentToken"/>. Prefer <see cref="TryCaptureAttachment"/> at a call
+    /// site that cannot guarantee the control is currently attached.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The control is detached.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal ControlAttachmentToken CaptureAttachment()
+    protected internal ControlAttachmentToken CaptureAttachment()
     {
         ThrowIfDisposed();
         var dispatcher = Dispatcher ?? throw new InvalidOperationException(
@@ -175,7 +181,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// detach wins the observation race.</summary>
     /// <param name="token">The exact captured identity, or null when detached or disposed.</param>
     /// <returns>True only when a live identity was captured and revalidated.</returns>
-    internal bool TryCaptureAttachment([NotNullWhen(true)] out ControlAttachmentToken? token)
+    protected internal bool TryCaptureAttachment([NotNullWhen(true)] out ControlAttachmentToken? token)
     {
         token = null;
         var dispatcher = Dispatcher;
@@ -333,7 +339,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// but <paramref name="onDiscarded"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The captured dispatcher's queue is full.</exception>
     /// <exception cref="ObjectDisposedException">The captured dispatcher is disposed.</exception>
-    internal void PostForCurrentAttachment(
+    protected internal void PostForCurrentAttachment(
         ControlAttachmentToken token,
         Action action,
         Func<bool>? isOperationCurrent = null,
@@ -383,7 +389,11 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 case ControlAttachmentQueueRejectionPolicy.Drop:
                     return;
                 case ControlAttachmentQueueRejectionPolicy.RunCleanup:
-                    onDiscarded!();
+                    // Guaranteed non-null here: RunCleanup without a discard callback already threw
+                    // ArgumentException above. The conditional call itself (rather than a `!`
+                    // null-forgiving invoke) is what satisfies CA1062 now that this method is
+                    // externally visible and the analyzer cannot see that cross-branch guarantee.
+                    onDiscarded?.Invoke();
                     return;
                 case ControlAttachmentQueueRejectionPolicy.Report:
                     token.Dispatcher.ReportRejectedBackgroundCompletion(exception);
@@ -403,7 +413,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The captured dispatcher's queue is full.</exception>
     /// <exception cref="ObjectDisposedException">The captured dispatcher is disposed.</exception>
-    internal ValueTask InvokeForCurrentAttachmentAsync(
+    protected internal ValueTask InvokeForCurrentAttachmentAsync(
         ControlAttachmentToken token,
         Action action,
         Func<bool>? isOperationCurrent = null)
@@ -761,6 +771,54 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             EffectiveStateComputationCount++;
             return (_effectiveIsVisible = Visibility == Visibility.Visible && (Parent?.EffectiveIsVisible ?? true)).Value;
         }
+    }
+
+    /// <summary>Finds the nearest strict ancestor that is hidden or disabled.</summary>
+    /// <returns>The nearest ancestor with <see cref="Visibility"/> other than
+    /// <see cref="Visibility.Visible"/> or <see cref="IsEnabled"/> false, or null when every
+    /// ancestor up to the root is visible and enabled.</returns>
+    /// <remarks>
+    /// A pure, one-shot walk from <see cref="Parent"/> - it never inspects this control's own
+    /// <see cref="Visibility"/>/<see cref="IsEnabled"/>, and it does not subscribe to anything.
+    /// <see cref="WatchAncestorAvailability"/> is the stateful counterpart that keeps calling this
+    /// and reacting to what changed; call this directly only for a one-time check.
+    /// </remarks>
+    [Pure]
+    protected internal ControlBase? FindUnavailableAncestor()
+    {
+        for (var current = Parent; current is not null; current = current.Parent)
+        {
+            if (current.Visibility != Visibility.Visible || !current.IsEnabled)
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Watches this control's ancestry for the nearest hidden-or-disabled ancestor,
+    /// calling back once every ancestor becomes visible and enabled.</summary>
+    /// <param name="onChanged">Invoked after a re-walk finds no unavailable ancestor left - i.e.
+    /// this control's ancestry as a whole has become available again. Never invoked merely because
+    /// the tracked ancestor changed to a different, still-unavailable one.</param>
+    /// <returns>A disposable that stops watching and releases the current subscription.</returns>
+    /// <remarks>
+    /// This is the "wake me only when the ancestor that is currently suppressing me stops
+    /// suppressing me" seam <see cref="Popup"/> and <see cref="PopupModalTracker"/>
+    /// use to resume a modally-suppressed floating surface: it owns exactly one subscribed
+    /// ancestor at a time (found by <see cref="FindUnavailableAncestor"/>), re-resolves that
+    /// ancestor whenever its own <see cref="Visibility"/> or <see cref="IsEnabled"/> commits, and
+    /// moves the subscription to whatever the re-walk finds instead - which may be a different,
+    /// still-unavailable ancestor higher up, in which case <paramref name="onChanged"/> is not
+    /// called. Dispose the result to stop watching, typically when the caller's own reaction no
+    /// longer applies (the surface closed, or the caller itself is being torn down).
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="onChanged"/> is null.</exception>
+    protected internal IDisposable WatchAncestorAvailability(Action onChanged)
+    {
+        ArgumentNullException.ThrowIfNull(onChanged);
+        return new AncestorAvailabilityWatch(this, onChanged);
     }
 
     /// <summary>Gets or sets whether pointer hit testing may target this control.</summary>
@@ -4516,7 +4574,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LengthKind.Auto when stretch => available,
             LengthKind.Auto => desired,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => ResolvePercent(requestBase ?? slot, length.Value),
+            LengthKind.Percent => Length.ResolvePercent(requestBase ?? slot, length.Value),
             LengthKind.Star => available,
             _ => throw new UnreachableException()
         };
@@ -4542,7 +4600,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LengthKind.Auto => intrinsic.SaturatingAdd(inset),
             LengthKind.Cells => (int) length.Value,
             LengthKind.Percent => (requestBase ?? slot).HasValue
-                ? ResolvePercent((requestBase ?? slot)!.Value, length.Value)
+                ? Length.ResolvePercent((requestBase ?? slot)!.Value, length.Value)
                 : intrinsic.SaturatingAdd(inset),
             LengthKind.Star => slot.HasValue
                 ? Math.Max(0, slot.Value - margin)
@@ -4572,7 +4630,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         {
             LengthKind.Auto => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => (requestBase ?? slot) is { } percentageBase ? ResolvePercent(percentageBase, length.Value) : null,
+            LengthKind.Percent => (requestBase ?? slot) is { } percentageBase ? Length.ResolvePercent(percentageBase, length.Value) : null,
             LengthKind.Star => slot.HasValue ? Math.Max(0, slot.Value - margin) : null,
             _ => throw new UnreachableException()
         };
@@ -4665,7 +4723,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             LengthKind.Auto => throw new UnreachableException(),
             LengthKind.Cells => (int) limit.Value,
             LengthKind.Percent => containingExtent.HasValue
-                ? ResolvePercent(containingExtent.Value, limit.Value)
+                ? Length.ResolvePercent(containingExtent.Value, limit.Value)
                 : unboundedFallback,
             LengthKind.Star => throw new UnreachableException(),
             _ => throw new UnreachableException()
@@ -4688,14 +4746,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             throw new ArgumentException(message, paramName);
         }
     }
-
-    [Pure]
-    private static int ResolvePercent(int value, double percent)
-    {
-        var result = Math.Round(value * percent / 100, MidpointRounding.AwayFromZero);
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
-    }
-
 
     /// <summary>Walks the parent chain and returns the first ancestor of the given type, or null.</summary>
     protected T? FindAncestor<T>() where T : ControlBase
@@ -5617,6 +5667,76 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         VerifyMutable();
         Invalidate(InvalidationFor(impact));
         RaisePropertyChanged(propertyName);
+    }
+
+    /// <summary>Raises one derived committed-property notification, reporting a disposed control
+    /// instead of throwing.</summary>
+    /// <param name="propertyName">The non-empty public property name.</param>
+    /// <param name="impact">The validated earliest phase affected by the committed transaction.</param>
+    /// <returns>True when the notification ran; false when this control was already disposed.</returns>
+    /// <remarks>
+    /// <see cref="NotifyPropertyChanged"/> calls <see cref="VerifyMutable"/> first, so it throws
+    /// <see cref="ObjectDisposedException"/> when a call reaches a control a synchronous
+    /// <see cref="PropertyChanged"/> subscriber already disposed - the common shape for a caller
+    /// that raises more than one property in sequence, where an early raise's own subscriber can
+    /// dispose the control before a later raise in the same sequence runs. This overload reports
+    /// that outcome through its return value instead, so a multi-property publication can stop
+    /// cleanly rather than re-checking <see cref="IsDisposed"/> between every call. It still
+    /// performs every other <see cref="NotifyPropertyChanged"/> validation - including the
+    /// off-dispatcher <see cref="VerifyAccess"/> check - while the control remains alive.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    [NotifyPropertyChangedInvocator]
+    protected bool TryNotifyPropertyChanged(string propertyName, InvalidationImpact impact)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        ValidateImpact(impact);
+
+        if (IsDisposed)
+        {
+            return false;
+        }
+
+        VerifyAccess();
+        Invalidate(InvalidationFor(impact));
+        RaisePropertyChanged(propertyName);
+        return true;
+    }
+
+    /// <summary>Raises more than one derived committed-property notification in order, stopping as
+    /// soon as a synchronous subscriber disposes this control.</summary>
+    /// <param name="impact">The validated earliest phase affected by the committed transaction,
+    /// shared by every property in <paramref name="propertyNames"/>.</param>
+    /// <param name="propertyNames">The non-empty public property names, published in this order.</param>
+    /// <returns>True when every name was published; false when disposal cut the sequence short.</returns>
+    /// <remarks>
+    /// The disposal-safe counterpart to raising <see cref="NotifyPropertyChanged"/> several times in
+    /// a row and re-checking <see cref="IsDisposed"/> before each further call - the shape every
+    /// caller that raises more than one derived property from one committed transaction otherwise
+    /// repeats by hand. Each name is published through <see cref="TryNotifyPropertyChanged"/>; the
+    /// first one a disposed control reports stops the whole sequence, so a subscriber to an earlier
+    /// name that disposes this control cannot reach a later name in the same call.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">A name in <paramref name="propertyNames"/> is null.</exception>
+    /// <exception cref="ArgumentException">A name in <paramref name="propertyNames"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    protected bool NotifyPropertiesChanged(InvalidationImpact impact, params ReadOnlySpan<string> propertyNames)
+    {
+        ValidateImpact(impact);
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (!TryNotifyPropertyChanged(propertyName, impact))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void EnsureDirectOwnedChild(ControlBase child)

@@ -67,4 +67,16 @@ public sealed class LengthTests
         _ = Should.Throw<ArgumentException>(() => new Length(LengthKind.Auto, 1));
         _ = Should.Throw<ArgumentOutOfRangeException>(() => new Length((LengthKind) int.MaxValue, 0));
     }
+
+    /// <summary>Verifies a percentage that resolves to an exact half-cell rounds away from zero:
+    /// 3 * 50 / 100 == 1.5, the midpoint between 1 and 2.</summary>
+    [Fact]
+    public void ResolvePercent_WhenHalfway_RoundsAwayFromZero() =>
+        Length.ResolvePercent(3, 50).ShouldBe(2);
+
+    /// <summary>Verifies a percentage whose exact result exceeds <see cref="int.MaxValue"/>
+    /// saturates instead of overflowing.</summary>
+    [Fact]
+    public void ResolvePercent_WhenOverflowing_SaturatesAtMaxValue() =>
+        Length.ResolvePercent(int.MaxValue, 200).ShouldBe(int.MaxValue);
 }

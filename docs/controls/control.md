@@ -83,6 +83,11 @@ authoring-role diagram.
 | `ReceivesInheritedSelectionState`                                                                                                                              | `bool`                                        | `true`            | Protected internal virtual; whether an ancestor's `SetSelectedState` selection crosses into this owned branch. `FloatingSurfaceBase` overrides it to `false` to stop inherited selection at an independent interaction plane.                                                                                                                                              |
 | `OnDirectDisposalRequested()`                                                                                                                                  | `void`                                        | —                 | Protected internal virtual, no-op by default; runs on the disposing control before disposal publication so a control tracked outside the ordinary retained-child registry may detach itself through its owner's own removal path first. Skipped during owner-driven teardown. An override must not throw.                                                                  |
 | `RegisterAttachmentParticipant(IControlAttachmentParticipant)`                                                                                                 | `void`                                        | —                 | Protected; registers one owner-bound helper, such as a `ControlTimer`, that follows this control's dispatcher attachment. See [Owner-bound helpers](#owner-bound-helpers).                                                                                                                                                                                                 |
+| `TryCaptureAttachment(out ControlAttachmentToken? token)`                                                                                                      | `bool`                                        | —                 | Protected; captures the exact current dispatcher attachment without throwing when detached or disposed. See [Owner-bound helpers](#owner-bound-helpers).                                                                                                                                                                                                                   |
+| `PostForCurrentAttachment(token, action, isOperationCurrent?, onDiscarded?, rejectionPolicy)`                                                                  | `void`                                        | —                 | Protected; posts one callback that runs only while a captured `ControlAttachmentToken` stays current. See [Owner-bound helpers](#owner-bound-helpers).                                                                                                                                                                                                                     |
+| `InvokeForCurrentAttachmentAsync(token, action, isOperationCurrent?)`                                                                                          | `ValueTask`                                   | —                 | Protected; the awaitable counterpart to `PostForCurrentAttachment`. See [Owner-bound helpers](#owner-bound-helpers).                                                                                                                                                                                                                                                       |
+| `FindUnavailableAncestor()`                                                                                                                                    | `ControlBase?`                                | —                 | Protected; a pure one-shot walk from `Parent` to the nearest hidden or disabled ancestor. See [Ancestor availability](#ancestor-availability).                                                                                                                                                                                                                             |
+| `WatchAncestorAvailability(Action onChanged)`                                                                                                                  | `IDisposable`                                 | —                 | Protected; watches for the nearest unavailable ancestor and calls back once every ancestor becomes available again. See [Ancestor availability](#ancestor-availability).                                                                                                                                                                                                   |
 | `ContextMenu`                                                                                                                                                  | `ContextMenu?`                                | `null`            | Optional context menu shown on a secondary pointer press. A menu's presentation control may belong to only one owner at a time; assigning an already-presented menu throws `ArgumentException`.                                                                                                                                                                            |
 | `EnablePopup(...)`                                                                                                                                             | `Popup`                                       | —                 | Protected; opts into an owner-managed popup whose layout and attach/unavailable lifecycle the base class owns. See [Owned popups](#owned-popups).                                                                                                                                                                                                                          |
 | `IsPopupOpen`                                                                                                                                                  | `bool`                                        | —                 | Public virtual; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs. `InputBase` exposes it as `IsOpen`.                                                                                                                                                                                                              |
@@ -487,6 +492,8 @@ controls participate without exposing pending phase flags.
 | `BeginPropertyTransition(stream, impact, propertyName)`                    | Begin a transition transaction directly when its first committed property is not itself gated by `SetTransitionProperty`.                              |
 | `PublishTransitionProperty(ref transition, propertyName, impact)`          | Publish another property belonging to an already-begun transition.                                                                                     |
 | `NotifyPropertyChanged(name, impact)`                                      | Publish a coordinated mutation after all related fields commit.                                                                                        |
+| `TryNotifyPropertyChanged(name, impact)`                                   | Publish one property, reporting an already disposed control through its return value instead of throwing.                                              |
+| `NotifyPropertiesChanged(impact, names...)`                                | Publish several properties in order, stopping cleanly at the first name a disposed control reports.                                                    |
 | `OnPropertyChanged(propertyName)`                                          | Protected virtual hook a derived control overrides to observe its own committed properties instead of subscribing itself to its own `PropertyChanged`. |
 | `Invalidate(InvalidationImpact)`                                           | Request phase work without a property notification.                                                                                                    |
 | `InvalidateRetainedDescendant(descendant, impact)`                         | Request phase work on a still-retained private projection through its owner.                                                                           |
@@ -503,6 +510,19 @@ observer and only then rethrow the first callback failure, so the committed
 public value cannot outlive its invariant repair. Specialized visual-state
 changes compute their strongest impact from the active style rather than
 assuming that every state transition is render-only.
+
+`NotifyPropertyChanged` calls the same lifetime check every other seam above
+does, so it throws `ObjectDisposedException` when a synchronous
+`PropertyChanged` subscriber to an earlier raise already disposed the control
+before a later, related raise in the same sequence runs.
+`TryNotifyPropertyChanged` and `NotifyPropertiesChanged` are the disposal-safe
+alternative for exactly that shape - a committed transaction that must publish
+more than one derived property - reporting a disposed control through their
+return value instead. `NotifyPropertiesChanged` publishes each name in order
+through `TryNotifyPropertyChanged` and stops as soon as one reports disposal,
+replacing the hand-written "raise, check `IsDisposed`, raise again" ladder a
+transaction with several derived properties would otherwise repeat at every
+step.
 
 A derived control that needs to react to its own committed properties overrides
 `OnPropertyChanged(string propertyName)` rather than subscribing itself to its
@@ -656,6 +676,39 @@ auto-dismiss delay, or an entrance or fade animation. `AnimatedIndicatorBase`,
 `Toast`, `Tooltip`, and `FloatingSurfaceBase` all register one or more through
 this seam instead of hand-rolling their own dispatcher-timer create, tick, and
 dispose cycle.
+
+`TryCaptureAttachment`, `PostForCurrentAttachment`, and
+`InvokeForCurrentAttachmentAsync` are the deferred-work-continuation seam: a
+control captures its exact current dispatcher attachment as an opaque
+`ControlAttachmentToken`, then hands that token back so queued or awaited work
+runs only while the control is still on that exact attachment - not merely still
+attached to some dispatcher. `TryCaptureAttachment` reports failure instead of
+throwing when the control is detached or already disposed, which is the right
+choice at a call site that cannot guarantee attachment; the throwing
+`CaptureAttachment` exists for a call site that already knows the control must
+be attached. A reattach, a detach, or disposal between capture and execution all
+make the token stale, and `PostForCurrentAttachment` silently discards - or,
+with `ControlAttachmentQueueRejectionPolicy.RunCleanup`, runs an explicit
+cleanup callback for - continuation instead of running it against a control that
+has moved on. `InputBase`, `CommandPalette`, `SuggestionInput`, `TreeViewItem`,
+and `TableDataAdapter` all use this seam for deferred UI work that must not
+resurrect state on a control the caller no longer owns.
+
+### Ancestor availability
+
+`FindUnavailableAncestor` walks `Parent` upward and returns the nearest ancestor
+whose `Visibility` is not `Visible` or whose `IsEnabled` is false, or null when
+every ancestor up to the root is available; it is a pure one-shot check with no
+subscription. `WatchAncestorAvailability(onChanged)` is the stateful
+counterpart: it owns exactly one subscribed ancestor at a time, re-resolves it
+whenever that ancestor's own `Visibility` or `IsEnabled` commits, and moves the
+subscription to whatever a fresh walk finds - which may be a different,
+still-unavailable ancestor higher up, in which case `onChanged` is not called.
+`onChanged` runs only once a re-walk finds no unavailable ancestor left. Dispose
+the returned `IDisposable` to stop watching. `Popup` and `PopupModalTracker`
+both use this seam to resume a modally suppressed floating surface once whatever
+ancestor was suppressing it becomes available again, instead of each
+hand-rolling the same subscribe, re-walk, and unsubscribe cycle.
 
 ## Layout extension points
 

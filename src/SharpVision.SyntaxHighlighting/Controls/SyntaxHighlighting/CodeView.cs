@@ -72,7 +72,13 @@ public sealed class CodeView:
     private int? _rowsWidth;
     private int? _pendingRevealOffset;
     private List<int>? _pendingRevealProjection;
-    private Dispatcher? _pendingRevealDispatcher;
+
+    /// <summary>Whether a reveal continuation is already posted for the current attachment - guards
+    /// against re-posting on every arrange pass while the earlier post is still queued. Cleared
+    /// deterministically on detach (<see cref="IDispatcherAttachmentObserver.OnDispatcherDetached"/>)
+    /// rather than only when the stale post itself eventually discards, so a dispatcher that never
+    /// drains its queue before shutting down cannot leave this stuck true forever.</summary>
+    private bool _pendingRevealPosted;
     private TextSelectionMap? _textSelectionMap;
     private List<PresentationRow>? _textSelectionMapProjection;
     private Rect _textSelectionMapViewport;
@@ -905,35 +911,40 @@ public sealed class CodeView:
     {
         _projectionCoordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
 
-        if (!_pendingRevealOffset.HasValue)
+        if (!_pendingRevealOffset.HasValue || _pendingRevealPosted)
         {
             return;
         }
 
-        if (Dispatcher is not { } dispatcher)
+        // Detached: there is no dispatcher to post a continuation to, so the reveal completes
+        // synchronously right here instead of waiting for an attachment that may never come.
+        if (!TryCaptureAttachment(out var attachment))
         {
-            ProcessPendingReveal(expectedDispatcher: null);
+            ProcessPendingReveal();
             return;
         }
 
-        if (_pendingRevealDispatcher is null)
-        {
-            _pendingRevealDispatcher = dispatcher;
+        _pendingRevealPosted = true;
 
-            try
-            {
-                dispatcher.Post(() => ProcessPendingReveal(dispatcher));
-            }
-            catch
-            {
-                _pendingRevealDispatcher = null;
-                throw;
-            }
+        try
+        {
+            // ProcessPendingReveal only actually runs while `attachment` is still the control's
+            // current one - a detach, a reattach to a different dispatcher, or disposal in between
+            // all make the captured attachment stale, and the framework discards the continuation
+            // (running ClearPendingRevealPosted below) instead of invoking it.
+            PostForCurrentAttachment(attachment, ProcessPendingReveal, onDiscarded: ClearPendingRevealPosted);
+        }
+        catch
+        {
+            _pendingRevealPosted = false;
+            throw;
         }
     }
 
+    private void ClearPendingRevealPosted() => _pendingRevealPosted = false;
+
     /// <inheritdoc/>
-    void IDispatcherAttachmentObserver.OnDispatcherDetached() => _pendingRevealDispatcher = null;
+    void IDispatcherAttachmentObserver.OnDispatcherDetached() => ClearPendingRevealPosted();
 
     /// <inheritdoc/>
     void IDispatcherAttachmentObserver.OnDispatcherAttached()
@@ -1143,15 +1154,9 @@ public sealed class CodeView:
 
     #region Keyboard input
 
-    private void ProcessPendingReveal(Dispatcher? expectedDispatcher)
+    private void ProcessPendingReveal()
     {
-        if (!ReferenceEquals(_pendingRevealDispatcher, expectedDispatcher) ||
-            !ReferenceEquals(Dispatcher, expectedDispatcher))
-        {
-            return;
-        }
-
-        _pendingRevealDispatcher = null;
+        _pendingRevealPosted = false;
 
         if (_pendingRevealOffset is not { } offset || _pendingRevealProjection is not { } projection)
         {
@@ -1459,7 +1464,7 @@ public sealed class CodeView:
         CancelTextSelectionGesture(releaseCapture: true);
         _pendingRevealOffset = null;
         _pendingRevealProjection = null;
-        _pendingRevealDispatcher = null;
+        _pendingRevealPosted = false;
         _textSelectionMap = null;
         _textSelectionMapProjection = null;
         NormalizedCode = Code.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');

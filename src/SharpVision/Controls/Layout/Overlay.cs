@@ -420,18 +420,9 @@ public sealed class Overlay: Container
         {
             null => 0,
             { Kind: LengthKind.Cells } => (int) value.Value.Value,
-            { Kind: LengthKind.Percent } => Percent(axis, value.Value.Value),
+            { Kind: LengthKind.Percent } => Length.ResolvePercent(axis, value.Value.Value),
             _ => throw new UnreachableException()
         };
-    }
-
-    [Pure]
-    private static int Percent(int axis, double value)
-    {
-        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
-
-        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     /// <inheritdoc/>

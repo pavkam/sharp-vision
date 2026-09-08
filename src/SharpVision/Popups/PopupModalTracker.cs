@@ -20,7 +20,7 @@ internal sealed class PopupModalTracker
     private readonly ModalSession _session;
     private ControlBase? _owner;
     private ControlBase? _ownerInitialFocus;
-    private ControlBase? _availabilityAncestor;
+    private IDisposable? _availabilityWatch;
 
     /// <summary>Initializes a tracker for one popup with a close callback invoked on dismiss.</summary>
     /// <param name="popup">The popup whose <see cref="Popup.IsOpen"/> state is tracked.</param>
@@ -122,53 +122,19 @@ internal sealed class PopupModalTracker
         }
     }
 
+    /// <summary>(Re)starts watching the popup's nearest unavailable ancestor, resuming
+    /// <see cref="Enter"/> with the last-known owner once every ancestor becomes available again.</summary>
     private void AwaitAvailability()
     {
-        var unavailable = FindUnavailableAncestor();
-
-        if (ReferenceEquals(_availabilityAncestor, unavailable))
-        {
-            return;
-        }
-
         StopAwaitingAvailability();
+        _availabilityWatch = _popup.WatchAncestorAvailability(OnAncestryAvailable);
+    }
 
-        if (unavailable is not null)
-        {
-            _availabilityAncestor = unavailable;
-            unavailable.PropertyChanged += OnAvailabilityAncestorPropertyChanged;
-            return;
-        }
-
+    private void OnAncestryAvailable()
+    {
         if (_popup.IsOpen && _owner is { EffectiveIsEnabled: true, EffectiveIsVisible: true } owner)
         {
             Enter(owner, _ownerInitialFocus);
-        }
-    }
-
-    [Pure]
-    private ControlBase? FindUnavailableAncestor()
-    {
-        for (var current = _popup.Parent; current is not null; current = current.Parent)
-        {
-            if (current.Visibility != Visibility.Visible || !current.IsEnabled)
-            {
-                return current;
-            }
-        }
-
-        return null;
-    }
-
-    private void OnAvailabilityAncestorPropertyChanged(
-        object? sender,
-        System.ComponentModel.PropertyChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.PropertyName is nameof(ControlBase.IsEnabled) or nameof(ControlBase.Visibility))
-        {
-            AwaitAvailability();
         }
     }
 
@@ -186,13 +152,7 @@ internal sealed class PopupModalTracker
 
     private void StopAwaitingAvailability()
     {
-        if (_availabilityAncestor is not { } ancestor)
-        {
-            return;
-        }
-
-        _availabilityAncestor = null;
-        ancestor.PropertyChanged -= OnAvailabilityAncestorPropertyChanged;
+        _availabilityWatch?.Dispose();
+        _availabilityWatch = null;
     }
-
 }

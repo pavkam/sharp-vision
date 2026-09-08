@@ -394,7 +394,7 @@ public sealed class Dock: Container
         {
             LengthKind.Auto => desired,
             LengthKind.Cells => (int) length.Value,
-            LengthKind.Percent => Percent(percentBase ?? available, length.Value),
+            LengthKind.Percent => Length.ResolvePercent(percentBase ?? available, length.Value),
             LengthKind.Star => throw new UnreachableException("Star lengths resolve through AllocateStarBorders."),
             _ => throw new UnreachableException()
         };
@@ -587,15 +587,6 @@ public sealed class Dock: Container
         {
             child.ResolveHeightLimits(containingExtent, out minimum, out maximum);
         }
-    }
-
-    [Pure]
-    private static int Percent(int axis, double value)
-    {
-        Debug.Assert(axis >= 0, "Percentage base axis is non-negative.");
-
-        var result = Math.Round(axis * value / 100, MidpointRounding.AwayFromZero);
-        return result >= int.MaxValue ? int.MaxValue : (int) result;
     }
 
     [Pure]

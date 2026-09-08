@@ -113,6 +113,36 @@ public readonly record struct Length
     [Pure]
     public static Length Star(double value) => new(LengthKind.Star, value);
 
+    /// <summary>Resolves a percentage of a containing extent to a whole cell count.</summary>
+    /// <param name="containing">The non-negative containing extent, in cells.</param>
+    /// <param name="percent">The finite, non-negative percentage - not restricted to zero through
+    /// one hundred, so a caller resolving an over-100% overflow allowance can use this directly.</param>
+    /// <returns>
+    /// <paramref name="containing"/> multiplied by <paramref name="percent"/> and divided by 100,
+    /// rounded to the nearest whole cell with ties rounding away from zero, then saturated at
+    /// <see cref="int.MaxValue"/> rather than overflowing.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="containing"/> is negative, or <paramref name="percent"/> is negative or not
+    /// finite.
+    /// </exception>
+    [Pure]
+    public static int ResolvePercent(int containing, double percent)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(containing);
+
+        if (!double.IsFinite(percent) || percent < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(percent),
+                percent,
+                "The percentage must be a finite, non-negative value.");
+        }
+
+        var result = Math.Round(containing * percent / 100, MidpointRounding.AwayFromZero);
+        return result >= int.MaxValue ? int.MaxValue : (int) result;
+    }
+
     /// <summary>Gets the resolution strategy.</summary>
     public LengthKind Kind { get; }
 

@@ -171,6 +171,15 @@ internal sealed class ProbeControl: ChromeProbe
     internal void NotifyKernelProperty(string propertyName, InvalidationImpact impact) =>
         NotifyPropertyChanged(propertyName, impact);
 
+    /// <summary>Publishes more than one notification in order through the disposal-safe protected
+    /// property kernel, proving a synchronous subscriber that disposes this probe stops the
+    /// remaining names from publishing.</summary>
+    /// <param name="impact">The earliest affected UI phase shared by every name.</param>
+    /// <param name="propertyNames">The property names to publish, in order.</param>
+    /// <returns>True when every name published; false when disposal cut the sequence short.</returns>
+    internal bool NotifyKernelProperties(InvalidationImpact impact, params ReadOnlySpan<string> propertyNames) =>
+        NotifyPropertiesChanged(impact, propertyNames);
+
     /// <summary>Gets the order tags appended by <see cref="OnPropertyChanged"/> and, when a test
     /// wires its own external subscriber to append one too, by that subscriber - proving the hook
     /// runs before any external <see cref="ControlBase.PropertyChanged"/> subscriber.</summary>

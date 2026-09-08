@@ -1335,6 +1335,27 @@ public sealed class ControlBaseTests
         notifications.ShouldBe(0);
     }
 
+    /// <summary>Verifies a synchronous subscriber that disposes the control while a multi-property
+    /// publication is in progress stops the remaining names from publishing, and is reported through
+    /// the return value rather than an <see cref="ObjectDisposedException"/>.</summary>
+    [Fact]
+    public void NotifyPropertiesChanged_WhenSubscriberDisposesControl_StopsAndReturnsFalse()
+    {
+        var control = new ProbeControl();
+        List<string?> raised = [];
+        control.PropertyChanged += (_, eventArgs) =>
+        {
+            raised.Add(eventArgs.PropertyName);
+            control.Dispose();
+        };
+
+        var published = control.NotifyKernelProperties(InvalidationImpact.None, "First", "Second", "Third");
+
+        published.ShouldBeFalse();
+        raised.ShouldBe(["First"]);
+        control.IsDisposed.ShouldBeTrue();
+    }
+
     /// <summary>Verifies LocalBounds reports parent-relative position.</summary>
     [Fact]
     public void LocalBounds_WhenParentHasOffset_ReportsRelativePosition()
@@ -3345,6 +3366,77 @@ public sealed class ControlBaseTests
         owner.Register(participant);
 
         _ = Should.Throw<ArgumentException>(() => owner.Register(participant));
+    }
+
+    #endregion
+
+    #region Attachment tokens
+
+    /// <summary>Verifies a detached control cannot capture an attachment.</summary>
+    [Fact]
+    public void TryCaptureAttachment_WhenDetached_ReturnsFalse()
+    {
+        var control = new AttachmentParticipantOwner();
+
+        var captured = control.TryCaptureAttachment(out var token);
+
+        captured.ShouldBeFalse();
+        token.ShouldBeNull();
+    }
+
+    /// <summary>Verifies a continuation posted for one dispatcher attachment is discarded rather
+    /// than run once the control has since reattached to a different dispatcher.</summary>
+    [Fact]
+    public async Task PostForCurrentAttachment_WhenReattachedToAnotherDispatcher_DropsStaleWorkAsync()
+    {
+        await using var first = Dispatcher.Start();
+        await using var second = Dispatcher.Start();
+        var control = new AttachmentParticipantOwner();
+        ControlAttachmentToken? token = null;
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        await first.InvokeAsync(() =>
+        {
+            control.Attach(first);
+            _ = control.TryCaptureAttachment(out token);
+            control.Detach();
+        }, cancellationToken);
+        await second.InvokeAsync(() => control.Attach(second), cancellationToken);
+
+        var ran = false;
+        var discarded = false;
+        control.PostForCurrentAttachment(token!, () => ran = true, onDiscarded: () => discarded = true);
+
+        // The continuation above is queued on `first`; draining its queue guarantees it has
+        // already run (or discarded) before the assertions below observe it.
+        await first.InvokeAsync(static () => { }, cancellationToken);
+
+        ran.ShouldBeFalse();
+        discarded.ShouldBeTrue();
+
+        await second.InvokeAsync(control.Dispose, cancellationToken);
+    }
+
+    #endregion
+
+    #region Ancestor availability
+
+    /// <summary>Verifies a watch invokes its callback once a hidden ancestor that was suppressing
+    /// the watched control becomes visible again.</summary>
+    [Fact]
+    public void WatchAncestorAvailability_WhenHiddenAncestorBecomesVisible_InvokesCallback()
+    {
+        var root = new ProbeContainer { Visibility = Visibility.Collapsed };
+        var leaf = new ProbeControl();
+        root.Children.Add(leaf);
+        var invocations = 0;
+        using var watch = leaf.WatchAncestorAvailability(() => invocations++);
+
+        invocations.ShouldBe(0);
+
+        root.Visibility = Visibility.Visible;
+
+        invocations.ShouldBe(1);
     }
 
     #endregion
