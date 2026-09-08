@@ -80,6 +80,24 @@ internal sealed class ProbeContainer: Container
     internal Size MeasureOwned(ControlBase child, Constraint constraint) =>
         MeasureChild(child, constraint);
 
+    /// <summary>Measures one candidate through the protected direct-child seam with explicit
+    /// relative request and limit bases.</summary>
+    /// <param name="child">The candidate child.</param>
+    /// <param name="constraint">The child constraint.</param>
+    /// <param name="widthRequestBase">The containing width a relative width request resolves against.</param>
+    /// <param name="heightRequestBase">The containing height a relative height request resolves against.</param>
+    /// <param name="widthLimitBase">The containing width a relative width limit resolves against.</param>
+    /// <param name="heightLimitBase">The containing height a relative height limit resolves against.</param>
+    /// <returns>The committed child desired size.</returns>
+    internal Size MeasureOwnedWithBases(
+        ControlBase child,
+        Constraint constraint,
+        int? widthRequestBase,
+        int? heightRequestBase,
+        int? widthLimitBase,
+        int? heightLimitBase) =>
+        MeasureChild(child, constraint, widthRequestBase, heightRequestBase, widthLimitBase, heightLimitBase);
+
     /// <summary>Arranges one candidate through the protected direct-child seam.</summary>
     /// <param name="child">The candidate child.</param>
     /// <param name="slot">The assigned outer slot.</param>

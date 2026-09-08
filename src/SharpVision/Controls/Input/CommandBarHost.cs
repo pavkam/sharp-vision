@@ -26,15 +26,15 @@ internal sealed class CommandBarHost: Container
 
         foreach (var child in Children)
         {
-            child.Measure(new Constraint(width: null, constraint.Height));
+            _ = MeasureChild(child, new Constraint(width: null, constraint.Height));
 
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            width = width.Add(child.DesiredSize.Width).Add(child.Margin.Horizontal);
-            height = Math.Max(height, child.DesiredSize.Height.Add(child.Margin.Vertical));
+            width = width.Add(child.OuterDesiredSize.Width);
+            height = Math.Max(height, child.OuterDesiredSize.Height);
             count++;
         }
 
@@ -62,7 +62,7 @@ internal sealed class CommandBarHost: Container
             }
 
             var remaining = Math.Max(0, bounds.Right - position);
-            var width = Math.Min(remaining, child.DesiredSize.Width.Add(child.Margin.Horizontal));
+            var width = Math.Min(remaining, child.OuterDesiredSize.Width);
             ArrangeChild(child, new Rect(position, bounds.Y, width, bounds.Height), ResolvedAxes.Both);
             position = position.Add(width);
             arranged++;

@@ -191,10 +191,8 @@ public sealed class Wrap: Container
             }
 
             children[index] = child;
-            var desired = MeasureParticipant(child, constraint, percentageBase);
-            outerSizes[index] = new Size(
-                desired.Width.Add(child.Margin.Horizontal),
-                desired.Height.Add(child.Margin.Vertical));
+            _ = MeasureParticipant(child, constraint, percentageBase);
+            outerSizes[index] = child.OuterDesiredSize;
             index++;
         }
 

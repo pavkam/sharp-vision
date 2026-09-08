@@ -106,11 +106,11 @@ internal sealed class ListViewHost: Container
 
             foreach (var child in Children)
             {
-                child.Measure(new Constraint(constraint.Width, height));
+                _ = MeasureChild(child, new Constraint(constraint.Width, height));
 
                 if (child.Visibility != Visibility.Collapsed)
                 {
-                    realizedWidth = Math.Max(realizedWidth, child.DesiredSize.Width.Add(child.Margin.Horizontal));
+                    realizedWidth = Math.Max(realizedWidth, child.OuterDesiredSize.Width);
                 }
             }
 
@@ -122,39 +122,41 @@ internal sealed class ListViewHost: Container
 
         foreach (var child in Children)
         {
-            child.Measure(new Constraint(constraint.Width, height: null));
+            _ = MeasureChild(child, new Constraint(constraint.Width, height: null));
 
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            measuredHeight = measuredHeight.Add(child.DesiredSize.Height.Add(child.Margin.Vertical));
-            measuredWidth = Math.Max(measuredWidth, child.DesiredSize.Width.Add(child.Margin.Horizontal));
+            measuredHeight = measuredHeight.Add(child.OuterDesiredSize.Height);
+            measuredWidth = Math.Max(measuredWidth, child.OuterDesiredSize.Width);
         }
 
         return new Size(measuredWidth, measuredHeight);
     }
 
-    /// <summary>Arranges one virtualized row into its fixed-height slot, shared by this container's
-    /// own arrange pass and <see cref="ListView"/>'s out-of-band Rewindow re-arrange. Collapsed
-    /// content arranges to a zero-height rect instead of the full slot: <see cref="ListItem"/>
-    /// already reports zero <see cref="ControlBase.DesiredSize"/> for collapsed content, but
-    /// nothing else mirrors that onto the wrapper, so a stale full-height
+    /// <summary>Arranges one directly owned virtualized row into its fixed-height slot, shared by
+    /// this container's own arrange pass and <see cref="ListView"/>'s out-of-band Rewindow
+    /// re-arrange. Collapsed content arranges to a zero-height rect instead of the full slot:
+    /// <see cref="ListItem"/> already reports zero <see cref="ControlBase.DesiredSize"/> for
+    /// collapsed content, but nothing else mirrors that onto the wrapper, so a stale full-height
     /// <see cref="ControlBase.Bounds"/> would otherwise keep hit-testing at the old slot. Sibling
     /// row placement math is untouched - a collapsed row still occupies its arithmetic slot, it is
     /// simply empty within it.</summary>
-    /// <param name="row">The realized row to arrange.</param>
+    /// <param name="row">The realized row to arrange; must be directly owned by this host.</param>
     /// <param name="slot">The row's full-height arithmetic slot.</param>
-    internal static void ArrangeRow(ListItem row, Rect slot)
+    /// <exception cref="ArgumentNullException"><paramref name="row"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="row"/> is not directly owned by this host.</exception>
+    internal void ArrangeRow(ListItem row, Rect slot)
     {
         if (row.IsContentCollapsed)
         {
-            row.Arrange(new Rect(slot.X, slot.Y, slot.Width, 0), widthResolved: false, heightResolved: true);
+            ArrangeChild(row, new Rect(slot.X, slot.Y, slot.Width, 0), ResolvedAxes.Height);
             return;
         }
 
-        row.Arrange(slot, widthResolved: false, heightResolved: true);
+        ArrangeChild(row, slot, ResolvedAxes.Height);
         Debug.Assert(
             row.DesiredSize.Height == slot.Height,
             "A virtualized row's desired height matches the configured RowHeight contract - " +
@@ -190,8 +192,8 @@ internal sealed class ListViewHost: Container
                 continue;
             }
 
-            var outer = child.DesiredSize.Height.Add(child.Margin.Vertical);
-            child.Arrange(new Rect(bounds.X, origin, bounds.Width, outer), widthResolved: false, heightResolved: true);
+            var outer = child.OuterDesiredSize.Height;
+            ArrangeChild(child, new Rect(bounds.X, origin, bounds.Width, outer), ResolvedAxes.Height);
             origin = origin.Add(outer);
         }
     }

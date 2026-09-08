@@ -43,10 +43,8 @@ public sealed class GroupBox: HeaderedContentControl
 
         if (Header is { } header)
         {
-            var hd = MeasureChild(header, new Constraint(null, 1));
-            headerContentWidth = header.Visibility == Visibility.Collapsed
-                ? 0
-                : hd.Width.Add(header.Margin.Horizontal);
+            _ = MeasureChild(header, new Constraint(null, 1));
+            headerContentWidth = header.OuterDesiredSize.Width;
         }
 
         var hw = Header is null
@@ -57,13 +55,9 @@ public sealed class GroupBox: HeaderedContentControl
             return new Size(hw, 0);
         }
 
-        var desired = MeasureChild(child, constraint);
-        var contentWidth = child.Visibility == Visibility.Collapsed
-            ? 0
-            : desired.Width.Add(child.Margin.Horizontal);
-        var contentHeight = child.Visibility == Visibility.Collapsed
-            ? 0
-            : desired.Height.Add(child.Margin.Vertical);
+        _ = MeasureChild(child, constraint);
+        var contentWidth = child.OuterDesiredSize.Width;
+        var contentHeight = child.OuterDesiredSize.Height;
         return new Size(Math.Max(contentWidth, hw), contentHeight);
     }
 

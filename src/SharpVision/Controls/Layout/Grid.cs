@@ -372,10 +372,9 @@ public sealed class Grid: Container
             // fix must not disturb while fixing the Width+alignment one.
             var widthResolved = child.Width.Kind == LengthKind.Auto;
             var heightResolved = child.Height.Kind == LengthKind.Auto;
-            child.Arrange(
-                new Rect(columnOrigins[column], rowOrigins[row], width, height),
-                widthResolved: widthResolved,
-                heightResolved: heightResolved);
+            var resolvedAxes = (widthResolved ? ResolvedAxes.Width : ResolvedAxes.None) |
+                (heightResolved ? ResolvedAxes.Height : ResolvedAxes.None);
+            ArrangeChild(child, new Rect(columnOrigins[column], rowOrigins[row], width, height), resolvedAxes);
         }
     }
 
@@ -433,8 +432,8 @@ public sealed class Grid: Container
 
             var origin = rows ? GetRow(child) : GetColumn(child);
             var desired = rows
-                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
-                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
+                ? child.OuterDesiredSize.Height
+                : child.OuterDesiredSize.Width;
             result[origin] = Math.Max(result[origin], desired);
         }
 
@@ -469,8 +468,8 @@ public sealed class Grid: Container
 
             var origin = rows ? GetRow(child) : GetColumn(child);
             var desired = rows
-                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
-                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
+                ? child.OuterDesiredSize.Height
+                : child.OuterDesiredSize.Width;
             var internalSpacing = LayoutMath.GapExtent(spacing, span, desired);
             var required = Math.Max(0, desired - internalSpacing);
 
@@ -544,7 +543,7 @@ public sealed class Grid: Container
     {
         foreach (var child in Children)
         {
-            child.Measure(constraint);
+            _ = MeasureChild(child, constraint);
         }
     }
 
@@ -561,7 +560,7 @@ public sealed class Grid: Container
                 continue;
             }
 
-            child.Measure(new Constraint(
+            _ = MeasureChild(child, new Constraint(
                 SpanExtent(
                     columnExtents,
                     GetColumn(child),
@@ -602,7 +601,7 @@ public sealed class Grid: Container
                 GetColumnSpan(child),
                 ColumnSpacing,
                 availableWidth);
-            child.Measure(new Constraint(width, height: null));
+            _ = MeasureChild(child, new Constraint(width, height: null));
         }
     }
 

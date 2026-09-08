@@ -1352,6 +1352,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets the desired border-box size from the last successful measure.</summary>
     public Size DesiredSize { get; internal set; }
 
+    /// <summary>Gets the space this control claims from a parent panel's own layout accounting: a
+    /// zero size while <see cref="Visibility"/> is <see cref="Visibility.Collapsed"/>, otherwise
+    /// <see cref="DesiredSize"/> expanded by <see cref="Margin"/> on both axes.</summary>
+    /// <remarks>
+    /// Every panel that sums or maxes sibling contributions along an axis needs exactly this value,
+    /// not <see cref="DesiredSize"/> alone - margin is reserved space a panel must still account for,
+    /// and a collapsed child must contribute nothing even though its last <see cref="DesiredSize"/>
+    /// may be stale. Panels historically hand-wrote this as a per-call ternary; this property gives
+    /// every owner - in this assembly or a third-party one - one shared, always-current answer
+    /// instead of re-deriving it. The addition saturates at the integer boundaries the same way
+    /// every other layout accumulation in this library does, so a pathologically large desired size
+    /// plus margin reports <see cref="int.MaxValue"/> per axis rather than wrapping.
+    /// </remarks>
+    public Size OuterDesiredSize => Visibility == Visibility.Collapsed
+        ? default
+        : new Size(DesiredSize.Width.SaturatingAdd(Margin.Horizontal), DesiredSize.Height.SaturatingAdd(Margin.Vertical));
+
     /// <summary>Gets the natural content size from the last measure, before outer-constraint clamping.</summary>
     /// <remarks>Equals <see cref="MeasureOverride"/>'s result. Scrollable containers compare it against the arranged viewport.</remarks>
     internal Size ContentExtent { get; private set; }
@@ -2034,16 +2051,29 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Measures one direct child with parent-resolved relative request and limit bases.</summary>
     /// <param name="child">The non-null direct child owned by this control.</param>
     /// <param name="constraint">The non-negative content constraint supplied to the child.</param>
-    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
-    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
-    /// <param name="widthLimitBase">The containing width used to resolve relative width limits.</param>
-    /// <param name="heightLimitBase">The containing height used to resolve relative height limits.</param>
+    /// <param name="widthRequestBase">
+    /// The containing width a <see cref="LengthKind.Percent"/> <see cref="Width"/>
+    /// resolves against, such as a scrolling panel's committed viewport width instead of its
+    /// inflated content-extent constraint. Null means the child's width request has no containing
+    /// extent to resolve against yet and stays unbounded, exactly as during an unbounded measure
+    /// with no explicit base.
+    /// </param>
+    /// <param name="heightRequestBase">The height counterpart of <paramref name="widthRequestBase"/>.</param>
+    /// <param name="widthLimitBase">
+    /// The containing width a <see cref="LengthKind.Percent"/> <see cref="MinWidth"/> or
+    /// <see cref="MaxWidth"/> resolves against. This is independent of
+    /// <paramref name="widthRequestBase"/> because a caller can resolve a request and its limits
+    /// against different containing extents (for example, a percentage request against the visible
+    /// viewport while a percentage limit still resolves against the full slot). Null leaves a
+    /// relative limit unbounded on that axis.
+    /// </param>
+    /// <param name="heightLimitBase">The height counterpart of <paramref name="widthLimitBase"/>.</param>
     /// <returns>The child's committed desired border-box size.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
     /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or measure is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    private protected Size MeasureChild(
+    protected Size MeasureChild(
         ControlBase child,
         Constraint constraint,
         int? widthRequestBase,
@@ -2075,14 +2105,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="child">The non-null direct child owned by this control.</param>
     /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
     /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
-    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
-    /// <param name="heightLimitBase">The containing height used when the parent resolved relative limits.</param>
+    /// <param name="widthLimitBase">
+    /// The containing width a <see cref="LengthKind.Percent"/> <see cref="MinWidth"/> or
+    /// <see cref="MaxWidth"/> resolves against, such as the same base the parent already used to
+    /// resolve this axis before calling this overload. Null leaves a relative limit unbounded.
+    /// </param>
+    /// <param name="heightLimitBase">The height counterpart of <paramref name="widthLimitBase"/>.</param>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
     /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
     /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or arrange is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    private protected void ArrangeChild(
+    protected void ArrangeChild(
         ControlBase child,
         Rect slot,
         ResolvedAxes resolvedAxes,
@@ -2094,16 +2128,25 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="child">The non-null direct child owned by this control.</param>
     /// <param name="slot">The final non-negative outer slot assigned to the child.</param>
     /// <param name="resolvedAxes">Axes whose border-box sizes were already resolved by this parent.</param>
-    /// <param name="widthRequestBase">The containing width used to resolve a relative width request.</param>
-    /// <param name="heightRequestBase">The containing height used to resolve a relative height request.</param>
-    /// <param name="widthLimitBase">The containing width used when the parent resolved relative limits.</param>
-    /// <param name="heightLimitBase">The containing height used when the parent resolved relative height limits.</param>
+    /// <param name="widthRequestBase">
+    /// The containing width a <see cref="LengthKind.Percent"/> <see cref="Width"/>
+    /// resolves against, distinct from <paramref name="widthLimitBase"/> because a request and its
+    /// limits can resolve against different containing extents (see
+    /// <see cref="MeasureChild(ControlBase, Constraint, int?, int?, int?, int?)"/>). Null leaves the
+    /// width request unbounded.
+    /// </param>
+    /// <param name="heightRequestBase">The height counterpart of <paramref name="widthRequestBase"/>.</param>
+    /// <param name="widthLimitBase">
+    /// The containing width a <see cref="LengthKind.Percent"/> <see cref="MinWidth"/> or
+    /// <see cref="MaxWidth"/> resolves against. Null leaves a relative limit unbounded.
+    /// </param>
+    /// <param name="heightLimitBase">The height counterpart of <paramref name="widthLimitBase"/>.</param>
     /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="resolvedAxes"/> contains an unknown flag.</exception>
     /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
     /// <exception cref="InvalidOperationException">The attached child is accessed off-dispatcher or arrange is reentered.</exception>
     /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
-    private protected void ArrangeChild(
+    protected void ArrangeChild(
         ControlBase child,
         Rect slot,
         ResolvedAxes resolvedAxes,
@@ -4420,6 +4463,36 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
     internal void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) =>
         ResolveLimits(MinHeight, MaxHeight, containingHeight, out minimum, out maximum);
+
+    /// <summary>Resolves one direct child's authored width limits against a containing border-box
+    /// width the caller computed itself, such as a scrolling panel's committed viewport width
+    /// instead of its inflated content-extent constraint.</summary>
+    /// <param name="child">The non-null child whose <see cref="MinWidth"/> and <see cref="MaxWidth"/> are resolved.</param>
+    /// <param name="containingWidth">The containing width, or null to resolve as unbounded (a
+    /// relative minimum contributes zero and a relative maximum contributes no ceiling).</param>
+    /// <param name="minimum">The resolved minimum in cells.</param>
+    /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    protected static void ResolveChildWidthLimits(ControlBase child, int? containingWidth, out int minimum, out int maximum)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        child.ResolveWidthLimits(containingWidth, out minimum, out maximum);
+    }
+
+    /// <summary>Resolves one direct child's authored height limits against a containing border-box
+    /// height the caller computed itself, such as a scrolling panel's committed viewport height
+    /// instead of its inflated content-extent constraint.</summary>
+    /// <param name="child">The non-null child whose <see cref="MinHeight"/> and <see cref="MaxHeight"/> are resolved.</param>
+    /// <param name="containingHeight">The containing height, or null to resolve as unbounded (a
+    /// relative minimum contributes zero and a relative maximum contributes no ceiling).</param>
+    /// <param name="minimum">The resolved minimum in cells.</param>
+    /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    protected static void ResolveChildHeightLimits(ControlBase child, int? containingHeight, out int minimum, out int maximum)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        child.ResolveHeightLimits(containingHeight, out minimum, out maximum);
+    }
 
     [Pure]
     private static void ResolveLimits(

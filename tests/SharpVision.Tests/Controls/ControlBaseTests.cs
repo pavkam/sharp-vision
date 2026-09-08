@@ -1098,6 +1098,54 @@ public sealed class ControlBaseTests
         control.DesiredSize.ShouldBe(new Size(7, 3));
     }
 
+    /// <summary>Verifies a collapsed control's outer contribution to a summing or maxing panel is
+    /// zero, even though its last committed DesiredSize is stale rather than freshly re-measured
+    /// to zero - Visibility alone gates the reported outer size.</summary>
+    [Fact]
+    public void OuterDesiredSize_WhenCollapsed_IsZero()
+    {
+        var control = new ProbeControl(new Size(5, 3)) { Margin = new Thickness(2, 1) };
+        control.Measure(new Constraint(20, 20));
+        control.Visibility = Visibility.Collapsed;
+
+        control.OuterDesiredSize.ShouldBe(default);
+    }
+
+    /// <summary>Verifies a visible control's outer contribution expands its committed DesiredSize
+    /// by Margin on both axes, matching the collapsed-guarded addition every summing or maxing
+    /// panel previously hand-wrote per call site.</summary>
+    [Fact]
+    public void OuterDesiredSize_WhenVisible_AddsMargin()
+    {
+        var control = new ProbeControl(new Size(5, 3)) { Margin = new Thickness(2, 1) };
+
+        control.Measure(new Constraint(20, 20));
+
+        control.OuterDesiredSize.ShouldBe(new Size(9, 5));
+    }
+
+    /// <summary>Verifies the protected overload that carries an explicit request base resolves a
+    /// child's Percent width against that base instead of the unbounded constraint slot - the
+    /// capability a third-party panel needs to honor a viewport-relative Percent request the same
+    /// way a scrolling core panel does.</summary>
+    [Fact]
+    public void MeasureChild_WhenWidthRequestBaseGiven_ResolvesPercentWidthAgainstIt()
+    {
+        var owner = new ProbeContainer();
+        var child = new ProbeControl(new Size(3, 2)) { Width = Length.Percent(50) };
+        owner.Children.Add(child);
+
+        var desired = owner.MeasureOwnedWithBases(
+            child,
+            new Constraint(width: null, height: null),
+            widthRequestBase: 40,
+            heightRequestBase: null,
+            widthLimitBase: null,
+            heightLimitBase: null);
+
+        desired.Width.ShouldBe(20);
+    }
+
     /// <summary>Verifies OnRenderAdornment runs after a control's own OnRenderContent, giving a
     /// third party a seam to paint over its own subtree instead of only beneath it - the seam
     /// RenderOverlay already provides internally, now exposed protected.</summary>

@@ -140,15 +140,15 @@ public sealed class Dock: Container
                 continue;
             }
 
-            child.Measure(new Constraint(remainingWidth, remainingHeight));
+            _ = MeasureChild(child, new Constraint(remainingWidth, remainingHeight));
 
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            var outerWidth = child.DesiredSize.Width.Add(child.Margin.Horizontal);
-            var outerHeight = child.DesiredSize.Height.Add(child.Margin.Vertical);
+            var outerWidth = child.OuterDesiredSize.Width;
+            var outerHeight = child.OuterDesiredSize.Height;
 
             // Track the union of consumed edges and the last fill participant so
             // the dock reports both intrinsic and edge-reserved minimum sizes.
@@ -244,20 +244,20 @@ public sealed class Dock: Container
             var border = entry.Horizontal ? widthBorders![entry.Index] : heightBorders![entry.Index];
             var ownAxis = border.Add(entry.Margin);
 
-            child.Measure(entry.Horizontal
+            _ = MeasureChild(child, entry.Horizontal
                 ? new Constraint(ownAxis, entry.RemainingHeight)
                 : new Constraint(entry.RemainingWidth, ownAxis));
 
             if (entry.Horizontal)
             {
-                var crossOuter = child.DesiredSize.Height.Add(child.Margin.Vertical);
+                var crossOuter = child.OuterDesiredSize.Height;
                 widthMinimumTotal = widthMinimumTotal.Add(entry.Minimum);
                 desiredWidth = Math.Max(desiredWidth, widthMinimumTotal);
                 desiredHeight = Math.Max(desiredHeight, entry.UsedHeight.Add(crossOuter));
             }
             else
             {
-                var crossOuter = child.DesiredSize.Width.Add(child.Margin.Horizontal);
+                var crossOuter = child.OuterDesiredSize.Width;
                 heightMinimumTotal = heightMinimumTotal.Add(entry.Minimum);
                 desiredHeight = Math.Max(desiredHeight, heightMinimumTotal);
                 desiredWidth = Math.Max(desiredWidth, entry.UsedWidth.Add(crossOuter));
@@ -312,10 +312,10 @@ public sealed class Dock: Container
 
             if (LastChildFills && index == last)
             {
-                child.Arrange(
+                ArrangeChild(
+                    child,
                     remaining,
-                    widthResolved: true,
-                    heightResolved: true,
+                    ResolvedAxes.Both,
                     widthLimitBase: remaining.Width,
                     heightLimitBase: remaining.Height);
                 continue;
@@ -338,10 +338,10 @@ public sealed class Dock: Container
             };
             // Dock resolves both axes: one from the requested edge length and
             // the other from the perpendicular space owned by the dock.
-            child.Arrange(
+            ArrangeChild(
+                child,
                 slot,
-                widthResolved: true,
-                heightResolved: true,
+                ResolvedAxes.Both,
                 widthLimitBase: horizontal ? horizontalLimitBases[index] : remaining.Width,
                 heightLimitBase: horizontal ? remaining.Height : verticalLimitBases[index]);
             remaining = Consume(remaining, side, outer);

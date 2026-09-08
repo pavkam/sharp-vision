@@ -158,7 +158,7 @@ public sealed class SplitPane: Container
     internal int MaximumFirstPaneExtent { get; private set; }
 
     /// <inheritdoc/>
-    private protected override bool RemeasureInitialScrollContent => true;
+    protected override bool RemeasureInitialScrollContent => true;
 
     #region Layout
 

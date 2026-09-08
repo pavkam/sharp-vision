@@ -105,7 +105,7 @@ public sealed class Stack: Container
 
         foreach (var child in Children)
         {
-            child.Measure(Orientation == Orientation.Vertical
+            _ = MeasureChild(child, Orientation == Orientation.Vertical
                 ? new Constraint(constraint.Width, height: null)
                 : new Constraint(width: null, constraint.Height));
 
@@ -115,11 +115,11 @@ public sealed class Stack: Container
             }
 
             var desiredAxis = Orientation == Orientation.Vertical
-                ? child.DesiredSize.Height.Add(child.Margin.Vertical)
-                : child.DesiredSize.Width.Add(child.Margin.Horizontal);
+                ? child.OuterDesiredSize.Height
+                : child.OuterDesiredSize.Width;
             var desiredCross = Orientation == Orientation.Vertical
-                ? child.DesiredSize.Width.Add(child.Margin.Horizontal)
-                : child.DesiredSize.Height.Add(child.Margin.Vertical);
+                ? child.OuterDesiredSize.Width
+                : child.OuterDesiredSize.Height;
             axis = axis.Add(desiredAxis);
             cross = Math.Max(cross, desiredCross);
             count++;
@@ -331,10 +331,11 @@ public sealed class Stack: Container
                 ? new Rect(bounds.X, origin, bounds.Width, outer)
                 : new Rect(origin, bounds.Y, outer, bounds.Height);
 
-            child.Arrange(
+            var resolvedAxes = Orientation == Orientation.Horizontal ? ResolvedAxes.Width : ResolvedAxes.Height;
+            ArrangeChild(
+                child,
                 slot,
-                widthResolved: Orientation == Orientation.Horizontal,
-                heightResolved: Orientation == Orientation.Vertical,
+                resolvedAxes,
                 widthLimitBase: Orientation == Orientation.Horizontal ? limitBase : null,
                 heightLimitBase: Orientation == Orientation.Vertical ? limitBase : null);
             origin = origin.Add(outer);

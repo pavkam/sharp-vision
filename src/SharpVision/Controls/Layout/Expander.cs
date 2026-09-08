@@ -132,10 +132,8 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
 
         if (Header is { } header)
         {
-            var hd = MeasureChild(header, new Constraint(null, _headerHeightCells));
-            headerContentWidth = header.Visibility == Visibility.Collapsed
-                ? 0
-                : hd.Width.Add(header.Margin.Horizontal);
+            _ = MeasureChild(header, new Constraint(null, _headerHeightCells));
+            headerContentWidth = header.OuterDesiredSize.Width;
         }
 
         var hw = HeaderChromeWidth.Add(headerContentWidth);
@@ -144,16 +142,12 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
             return new Size(hw, _headerHeightCells);
         }
 
-        var d = MeasureChild(child,
+        _ = MeasureChild(child,
             new Constraint(
                 constraint.Width.HasValue ? Math.Max(0, constraint.Width.Value - ActualStyle.ContentIndent) : null,
                 constraint.Height.HasValue ? Math.Max(0, constraint.Height.Value - _headerHeightCells) : null));
-        var cw = child.Visibility == Visibility.Collapsed
-            ? 0
-            : d.Width.Add(child.Margin.Horizontal);
-        var ch = child.Visibility == Visibility.Collapsed
-            ? 0
-            : d.Height.Add(child.Margin.Vertical);
+        var cw = child.OuterDesiredSize.Width;
+        var ch = child.OuterDesiredSize.Height;
         var indentedWidth = ActualStyle.ContentIndent.Add(cw);
         return new Size(
             Math.Max(hw, indentedWidth),

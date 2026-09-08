@@ -121,13 +121,34 @@ failed owner callback leaves the arrange phase pending and defers the cleanup to
 the successful retry.
 
 An externally derived owner drives child layout only through
-`MeasureChild(Control, Constraint)` and
-`ArrangeChild(Control, Rect, ResolvedAxes)`. Both reject a null argument, and
-both reject any control that the caller does not directly own, before entering
-the child's transaction; arrange additionally rejects undefined axis flags. The
-`ResolvedAxes` values `Width`, `Height`, and `Both` tell the child which
-border-box dimensions the owner has already resolved. Raw measure, arrange,
-render, and pending-phase operations stay internal.
+`MeasureChild(Control, Constraint)`, its overload that adds
+`widthRequestBase`/`heightRequestBase` and `widthLimitBase`/`heightLimitBase`,
+`ArrangeChild(Control, Rect, ResolvedAxes)`, and its overloads that add
+`widthLimitBase`/`heightLimitBase` and, on top of those, `widthRequestBase`/
+`heightRequestBase`. Every one of these rejects a null argument, and every one
+rejects any control that the caller does not directly own, before entering the
+child's transaction; the arrange overloads additionally reject undefined axis
+flags. The `ResolvedAxes` values `Width`, `Height`, and `Both` tell the child
+which border-box dimensions the owner has already resolved.
+
+A request base is the containing extent a relative (`Percent`) request resolves
+against; a limit base is the containing extent a relative `MinWidth`/
+`MaxWidth`/`MinHeight`/`MaxHeight` resolves against. The two often differ: a
+panel arranging within a scrolling axis's inflated `Math.Max(Extent, Viewport)`
+slot passes the visible `Viewport` as the base so a `Percent` child (or a
+relative limit) resolves against what the user can actually see rather than the
+artificially large allocation ceiling (see
+[Scrolling](scrolling.md#automatic-scrollbar-algorithm) and the
+`Stack`/`Grid`/`Dock`/`Overlay` percentage-base discussion below). A null base
+means the corresponding relative length or limit has no containing extent to
+resolve against yet - it behaves as unbounded, exactly as it does during an
+unbounded measure with no explicit base elsewhere in this document.
+`ResolveChildWidthLimits(Control, containingWidth, out minimum, out maximum)`
+and `ResolveChildHeightLimits` let an externally derived owner resolve a child's
+authored `MinWidth`/`MaxWidth` or `MinHeight`/`MaxHeight` against a containing
+extent it computed itself, using the same resolution the framework applies
+internally. Raw measure, arrange, render, and pending-phase operations stay
+internal.
 
 Fixed and percentage dimensions override alignment. Controls default to
 `HorizontalAlignment.Left`, so an automatic width uses the measured desired

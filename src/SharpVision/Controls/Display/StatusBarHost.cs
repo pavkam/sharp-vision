@@ -33,15 +33,15 @@ internal sealed class StatusBarHost: Container
         foreach (var child in Children)
         {
             Debug.Assert(child is StatusBarItem, "The private status host contains only status items.");
-            var desired = MeasureChild(child, new Constraint(width: null, constraint.Height));
+            _ = MeasureChild(child, new Constraint(width: null, constraint.Height));
 
             if (child.Visibility == Visibility.Collapsed)
             {
                 continue;
             }
 
-            width = width.Add(desired.Width.Add(child.Margin.Horizontal));
-            height = Math.Max(height, desired.Height.Add(child.Margin.Vertical));
+            width = width.Add(child.OuterDesiredSize.Width);
+            height = Math.Max(height, child.OuterDesiredSize.Height);
             count++;
         }
 
@@ -73,7 +73,7 @@ internal sealed class StatusBarHost: Container
                 remaining -= Math.Min(Spacing, remaining);
             }
 
-            var extent = Math.Min(OuterWidth(item), remaining);
+            var extent = Math.Min(item.OuterDesiredSize.Width, remaining);
             var origin = bounds.X.Add(remaining - extent);
 
             ArrangeChild(item, new Rect(origin, bounds.Y, extent, bounds.Height), ResolvedAxes.Width);
@@ -106,7 +106,7 @@ internal sealed class StatusBarHost: Container
                 remaining -= gap;
             }
 
-            var extent = Math.Min(OuterWidth(item), remaining);
+            var extent = Math.Min(item.OuterDesiredSize.Width, remaining);
 
             ArrangeChild(item, new Rect(leftOrigin, bounds.Y, extent, bounds.Height), ResolvedAxes.Width);
 
@@ -133,8 +133,4 @@ internal sealed class StatusBarHost: Container
 
         return count;
     }
-
-    [Pure]
-    private static int OuterWidth(ControlBase item) => item.DesiredSize.Width.Add(item.Margin.Horizontal);
-
 }

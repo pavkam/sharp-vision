@@ -333,12 +333,15 @@ namespace SharpVision.Controls
         public bool IsWheelScrollingEnabled { get; set; }
         public int LineSize { get; set; }
         public int PageOverlap { get; set; }
+        protected virtual bool RemeasureInitialScrollContent { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
         public SharpVision.Scrolling.ScrollBars ScrollBars { get; set; }
+        protected SharpVision.Layout.Constraint ScrollMeasureViewport { get; }
         public SharpVision.Scrolling.ShowScrollBars ShowScrollBars { get; set; }
         public SharpVision.Scrolling.ScrollBarVisibility VerticalBarVisibility { get; set; }
         public int VerticalOffset { get; set; }
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
+        protected SharpVision.Terminal.Geometry.Rect ViewportBounds { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
@@ -418,6 +421,7 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Length MinWidth { get; set; }
         public string? Name { get; set; }
         protected SharpVision.Terminal.Rendering.CellStyle NormalStyle { get; }
+        public SharpVision.Terminal.Geometry.Size OuterDesiredSize { get; }
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.ControlBase? Parent { get; }
         protected virtual string PopupOpenPropertyName { get; }
@@ -462,6 +466,8 @@ namespace SharpVision.Controls
         protected bool AllowsModalAncestor(SharpVision.Controls.ControlBase ancestor) { }
         protected virtual SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
         protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes = 0) { }
+        protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes, int? widthLimitBase, int? heightLimitBase) { }
+        protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes, int? widthRequestBase, int? heightRequestBase, int? widthLimitBase, int? heightLimitBase) { }
         protected virtual void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected SharpVision.Controls.CallbackTransitionTransaction BeginPropertyTransition(SharpVision.Controls.CallbackTransitionStream stream, SharpVision.Controls.InvalidationImpact impact, string propertyName) { }
         protected void BindStyle<TStyle>(SharpVision.Controls.StyleSlot<TStyle> source, SharpVision.Controls.ControlBase target, string targetPropertyName = "Style")
@@ -516,6 +522,7 @@ namespace SharpVision.Controls
         protected SharpVision.Controls.AffixMetrics MeasureAffixes(SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, int gap) { }
         protected int MeasureCells(System.ReadOnlySpan<char> value) { }
         protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.ControlBase child, SharpVision.Layout.Constraint constraint) { }
+        protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.ControlBase child, SharpVision.Layout.Constraint constraint, int? widthRequestBase, int? heightRequestBase, int? widthLimitBase, int? heightLimitBase) { }
         protected virtual SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual int MoveTextSelectionCaret(SharpVision.Terminal.Input.Code code, bool extend, bool word) { }
         protected virtual int NormalizeTextSelectionClickCount(SharpVision.Controls.ControlBase? originalSource, int clickCount) { }
@@ -589,6 +596,8 @@ namespace SharpVision.Controls
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
         protected static bool IsVersionedPropertyCurrent<T>(T field, T value, long version, long commitVersion) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
+        protected static void ResolveChildHeightLimits(SharpVision.Controls.ControlBase child, int? containingHeight, out int minimum, out int maximum) { }
+        protected static void ResolveChildWidthLimits(SharpVision.Controls.ControlBase child, int? containingWidth, out int minimum, out int maximum) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
     }
     public sealed class ControlCollection : System.Collections.Generic.ICollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IList<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
@@ -2397,6 +2406,7 @@ namespace SharpVision.Controls.Layout
         public bool IsResizable { get; set; }
         public int LargeChange { get; set; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
+        protected override bool RemeasureInitialScrollContent { get; }
         public int SmallChange { get; set; }
         public event System.EventHandler<SharpVision.Controls.Layout.SplitChangedEventArgs>? SplitChanged;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }

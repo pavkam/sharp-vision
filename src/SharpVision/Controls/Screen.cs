@@ -78,25 +78,13 @@ public abstract class Screen: CompositeControlBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         var content = Content;
-        var desired = MeasureChild(content, constraint);
-        var width = content.Visibility == Visibility.Collapsed
-            ? 0
-            : desired.Width.SaturatingAdd(content.Margin.Horizontal);
-        var height = content.Visibility == Visibility.Collapsed
-            ? 0
-            : desired.Height.SaturatingAdd(content.Margin.Vertical);
+        _ = MeasureChild(content, constraint);
+        var width = content.OuterDesiredSize.Width;
+        var height = content.OuterDesiredSize.Height;
 
-        desired = MeasureChild(_presentation, constraint);
-
-        if (_presentation.Visibility != Visibility.Collapsed)
-        {
-            width = Math.Max(
-                width,
-                desired.Width.SaturatingAdd(_presentation.Margin.Horizontal));
-            height = Math.Max(
-                height,
-                desired.Height.SaturatingAdd(_presentation.Margin.Vertical));
-        }
+        _ = MeasureChild(_presentation, constraint);
+        width = Math.Max(width, _presentation.OuterDesiredSize.Width);
+        height = Math.Max(height, _presentation.OuterDesiredSize.Height);
 
         return new Size(width, height);
     }

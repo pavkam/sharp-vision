@@ -221,15 +221,17 @@ public abstract class Container: ControlBase
     /// <summary>Gets whether arrange-time scrollbar resolution first remeasures content against
     /// its final padded host size before committing the extent and viewport.</summary>
     /// <remarks>Auto-sized containers retain the existing reconciliation pass. A specialized
-    /// container whose track allocation couples one final axis to content measured on the other
-    /// can opt in so its initial scrollbar candidate never consumes stale desired geometry.</remarks>
-    private protected virtual bool RemeasureInitialScrollContent => AutoSize;
+    /// container - in this assembly or a third-party one - whose track allocation couples one
+    /// final axis to content measured on the other can override this to opt in, so its initial
+    /// scrollbar candidate never consumes stale desired geometry.</remarks>
+    protected virtual bool RemeasureInitialScrollContent => AutoSize;
 
     /// <summary>Gets the finite content constraint that supplied the current scroll measurement.
-    /// Specialized containers use this candidate viewport to resolve viewport-relative child
-    /// requests while their scroll axis remains unbounded for extent discovery. It is valid only
-    /// during the current measure override; arrange overrides must use the committed <see cref="Viewport"/>.</summary>
-    private protected Constraint ScrollMeasureViewport { get; private set; }
+    /// A specialized container uses this candidate viewport to resolve viewport-relative child
+    /// requests (a <see cref="LengthKind.Percent"/> request or limit base) while its scroll axis
+    /// remains unbounded for extent discovery. It is valid only during the current measure
+    /// override; an arrange override must use the committed <see cref="Viewport"/> instead.</summary>
+    protected Constraint ScrollMeasureViewport { get; private set; }
 
     // AutoSize sizes to content on both axes, so content is measured unbounded
     // (unclamped by an explicit Width/Height) to discover its natural size.
@@ -466,8 +468,12 @@ public abstract class Container: ControlBase
     /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
     private protected ControlCollection? Bars => _scroll.Bars;
 
-    /// <summary>Gets the committed viewport bounds for specialized container clipping.</summary>
-    private protected Rect ViewportBounds => _scroll.ViewportBounds;
+    /// <summary>Gets the committed content-box rectangle, after scrollbar reservation, that a
+    /// specialized container clips and hit-tests its scrollable content against.</summary>
+    /// <remarks>Valid after the container's own arrange pass has run at least once; it reflects the
+    /// last committed arrangement, not an in-progress measure candidate (see
+    /// <see cref="ScrollMeasureViewport"/> for that).</remarks>
+    protected Rect ViewportBounds => _scroll.ViewportBounds;
 
     /// <summary>Raised after one or both offsets commit.</summary>
     public event EventHandler<ScrollChangedEventArgs>? ScrollChanged;

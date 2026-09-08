@@ -90,6 +90,7 @@ authoring-role diagram.
 | `TextSelection`                                                                                           | `Selection`                                   | Empty at `0`      | Read-only directional UTF-16 range over the current semantic text projection.                                                                                                                                                                                                                                                                                   |
 | `SelectedText`                                                                                            | `string`                                      | `""`              | Read-only owned copy of the selected semantic substring.                                                                                                                                                                                                                                                                                                        |
 | `DesiredSize`                                                                                             | `Size`                                        | Empty             | Read-only result of the last successful measure.                                                                                                                                                                                                                                                                                                                |
+| `OuterDesiredSize`                                                                                        | `Size`                                        | Empty             | Read-only; zero while `Visibility` is `Collapsed`, otherwise `DesiredSize` expanded by `Margin` on both axes. The one shared answer every summing or maxing panel needs instead of hand-writing the same collapsed-guarded addition per call site.                                                                                                              |
 | `Bounds`                                                                                                  | `Rect`                                        | Empty             | Read-only committed arranged rectangle.                                                                                                                                                                                                                                                                                                                         |
 | `ContentBounds`                                                                                           | `Rect`                                        | Empty             | Read-only committed content area after border and padding deflation.                                                                                                                                                                                                                                                                                            |
 | `LocalBounds`                                                                                             | `Rect`                                        | Empty             | Read-only committed bounds relative to the parent's content area.                                                                                                                                                                                                                                                                                               |
@@ -596,12 +597,24 @@ saturates at zero. The extension points therefore deal only with content and
 must not repeat box-model arithmetic.
 
 A parent lays out only its direct children, through
-`MeasureChild(child, constraint)` and `ArrangeChild(child, slot, resolvedAxes)`.
-Both reject null and non-direct children before entering the child's internal
-transaction. `ArrangeChild` also rejects undefined `ResolvedAxes` flags;
-`Width`, `Height`, or `Both` means the parent has already resolved that
-border-box dimension. Raw `Measure`, `Arrange`, `Render`, phase flags, and the
-layout managers remain internal.
+`MeasureChild(child, constraint)` and `ArrangeChild(child, slot, resolvedAxes)`,
+or their overloads that carry an explicit relative request base
+(`widthRequestBase`/`heightRequestBase`, resolving a `Percent` `Width`/`Height`)
+and relative limit base (`widthLimitBase`/`heightLimitBase`, resolving a
+`Percent` `MinWidth`/`MaxWidth`/`MinHeight`/`MaxHeight`) against a containing
+extent the parent computed itself - a scrolling panel resolving both against its
+committed viewport instead of its inflated content-extent constraint, for
+example. A null base leaves the corresponding relative value unbounded.
+`ResolveChildWidthLimits(child, containingWidth, out minimum, out maximum)` and
+`ResolveChildHeightLimits` let a parent resolve a child's authored limits
+against a containing extent on their own, the same way the framework resolves
+them internally. Every one of these rejects null and non-direct children before
+entering the child's internal transaction; `ArrangeChild` also rejects undefined
+`ResolvedAxes` flags. `Width`, `Height`, or `Both` means the parent has already
+resolved that border-box dimension. Raw `Measure`, `Arrange`, `Render`, phase
+flags, and the layout managers remain internal. See
+[Layout](../concepts/layout.md#overview) for the complete request-base and
+limit-base contract.
 
 If an extension point changes a layout property, that invalidation stays pending
 for a later transaction. If it throws, the active phase is marked dirty again

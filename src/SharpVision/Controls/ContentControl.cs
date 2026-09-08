@@ -107,13 +107,9 @@ public abstract class ContentControl: ControlBase
             return default;
         }
 
-        var desired = MeasureChild(content, constraint);
+        _ = MeasureChild(content, constraint);
 
-        return content.Visibility == Visibility.Collapsed
-            ? default
-            : new Size(
-                desired.Width.SaturatingAdd(content.Margin.Horizontal),
-                desired.Height.SaturatingAdd(content.Margin.Vertical));
+        return content.OuterDesiredSize;
     }
 
     /// <inheritdoc/>

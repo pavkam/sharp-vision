@@ -909,7 +909,7 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
             var rowWidth = Math.Max(Extent.Width, origin.Width);
 
             listItem.Measure(new Constraint(rowWidth, height));
-            ListViewHost.ArrangeRow(
+            _stack.ArrangeRow(
                 listItem,
                 new Rect(
                     origin.X.Add(-horizontalOffset),

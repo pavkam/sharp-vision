@@ -242,7 +242,8 @@ public sealed class Overlay: Container
         {
             var positionsWidth = GetLeft(child) is not null || GetRight(child) is not null;
             var positionsHeight = GetTop(child) is not null || GetBottom(child) is not null;
-            child.Measure(
+            _ = MeasureChild(
+                child,
                 new Constraint(
                     positionsWidth ? null : constraint.Width,
                     positionsHeight ? null : constraint.Height));
@@ -252,8 +253,8 @@ public sealed class Overlay: Container
                 continue;
             }
 
-            var outerWidth = child.DesiredSize.Width.Add(child.Margin.Horizontal);
-            var outerHeight = child.DesiredSize.Height.Add(child.Margin.Vertical);
+            var outerWidth = child.OuterDesiredSize.Width;
+            var outerHeight = child.OuterDesiredSize.Height;
             var desiredWidth = positionsWidth
                 ? Fixed(GetLeft(child)).Add(outerWidth).Add(Fixed(GetRight(child)))
                 : outerWidth;
@@ -318,10 +319,12 @@ public sealed class Overlay: Container
                 slot = constraint.ConstrainOverlaySlot(slot, bounds);
             }
 
-            child.Arrange(
+            var resolvedAxes = (positionsWidth ? ResolvedAxes.Width : ResolvedAxes.None) |
+                (positionsHeight ? ResolvedAxes.Height : ResolvedAxes.None);
+            ArrangeChild(
+                child,
                 slot,
-                widthResolved: positionsWidth,
-                heightResolved: positionsHeight,
+                resolvedAxes,
                 widthLimitBase: positionsWidth ? horizontalBase : null,
                 heightLimitBase: positionsHeight ? verticalBase : null);
         }
