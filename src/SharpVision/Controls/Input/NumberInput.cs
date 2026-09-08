@@ -350,7 +350,7 @@ public sealed class NumberInput: InputBase
     /// the last real paint, so recomputing the caret column from this control's own CURRENT state
     /// here is provably identical to what that paint recorded.
     /// </remarks>
-    internal override void OnReuseCleanRender(TerminalCanvas canvas)
+    protected internal override void OnReuseCleanRender(TerminalCanvas canvas)
     {
         ReplayNumericInputCursor(
             canvas,

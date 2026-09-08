@@ -94,17 +94,17 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point) =>
+    protected internal override ControlBase? HitTest(Point point) =>
         !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
         Bounds.Contains(point)
             ? this
             : null;
 
     /// <inheritdoc/>
-    internal override VisualState AmbientAppearanceState => GetAppearanceState();
+    protected internal override VisualState AmbientAppearanceState => GetAppearanceState();
 
     /// <inheritdoc/>
-    internal override bool StateAffectsAmbientAppearance => true;
+    protected internal override bool StateAffectsAmbientAppearance => true;
 
     /// <inheritdoc/>
     protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme)

@@ -569,7 +569,7 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
-    internal override VisualState GetAppearanceState()
+    protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
         return _isDividerPointerOver

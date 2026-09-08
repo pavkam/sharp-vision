@@ -125,7 +125,7 @@ public sealed class Image: ControlBase
     /// ContentBounds are unchanged since the last real paint, so reading them fresh here is
     /// provably identical to what that paint recorded.
     /// </remarks>
-    internal override void OnReuseCleanRender(TerminalCanvas canvas)
+    protected internal override void OnReuseCleanRender(TerminalCanvas canvas)
     {
         if (Source is not { } source)
         {

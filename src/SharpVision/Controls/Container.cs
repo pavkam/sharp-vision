@@ -105,10 +105,10 @@ public abstract class Container: ControlBase
     protected abstract override void ArrangeOverride(Rect bounds);
 
     /// <inheritdoc/>
-    internal override bool ClipsDescendantVisualOverflow => AutoScroll;
+    protected internal override bool ClipsDescendantVisualOverflow => AutoScroll;
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point)
+    protected internal override ControlBase? HitTest(Point point)
     {
         if (!CanHitTestSelf(point, requireContainment: false))
         {

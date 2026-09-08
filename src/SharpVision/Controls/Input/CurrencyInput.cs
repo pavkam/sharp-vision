@@ -610,7 +610,7 @@ public sealed class CurrencyInput: InputBase
     /// own CURRENT state - including the sign-aware <see cref="BuildFocusedDisplay"/> layout -
     /// here is provably identical to what that paint recorded.
     /// </remarks>
-    internal override void OnReuseCleanRender(TerminalCanvas canvas)
+    protected internal override void OnReuseCleanRender(TerminalCanvas canvas)
     {
         var display = _buffer.IsEmpty && Placeholder is { Length: > 0 }
             ? new CurrencyInputFocusedDisplay(string.Empty, 0, string.Empty, 0)

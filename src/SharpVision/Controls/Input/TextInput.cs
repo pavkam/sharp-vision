@@ -726,7 +726,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     }
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point) =>
+    protected internal override ControlBase? HitTest(Point point) =>
         IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled || !Bounds.Contains(point)
             ? null
             : _scroll.HitTest(point) ?? this;

@@ -97,7 +97,7 @@ public sealed class GroupBox: HeaderedContentControl
         Content?.Render(canvas, contentClip);
 
     /// <inheritdoc/>
-    internal override void RenderOverlay(TerminalCanvas canvas)
+    protected internal override void RenderOverlay(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

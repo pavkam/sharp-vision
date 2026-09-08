@@ -73,7 +73,7 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
     /// appearance instead, and the command's <c>CanExecuteChanged</c> repaints it. Only the
     /// appearance follows the command; focus, traversal, and hit testing stay those of an enabled
     /// control.</remarks>
-    internal override VisualState GetAppearanceState()
+    protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
         var command = Command;

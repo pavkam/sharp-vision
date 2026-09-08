@@ -1549,9 +1549,21 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Returns the highest eligible control containing a screen-cell point.</summary>
+    /// <remarks>
+    /// The pointer manager calls this on every control in a physical hit-test walk; the default
+    /// tests owned popups first (they render above ordinary content), then ordinary children, then
+    /// this control itself. An override must return only <see langword="this"/> or one of its own
+    /// descendants - never an unrelated control - and must honor <see cref="EffectiveIsVisible"/>,
+    /// <see cref="EffectiveIsEnabled"/>, and <see cref="IsHitTestVisible"/> the same way
+    /// <see cref="CanHitTestSelf"/> does, so a hidden, disabled, or hit-test-invisible control never
+    /// becomes a target. <see cref="Container"/>, <see cref="Input.TextInput"/>,
+    /// <see cref="Layout.Overlay"/>, and collection items narrow or reshape which of their own
+    /// descendants or bounds participate; a control with its own non-rectangular or gated hit area
+    /// follows the same pattern.
+    /// </remarks>
     /// <param name="point">The screen-cell point.</param>
     /// <returns>This control when eligible and contained; otherwise null.</returns>
-    internal virtual ControlBase? HitTest(Point point)
+    protected internal virtual ControlBase? HitTest(Point point)
     {
         var contains = Bounds.Contains(point);
         return CanHitTestSelf(point, requireContainment: false)
@@ -2391,8 +2403,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// overrides this to re-record its semantic <see cref="TerminalCanvas.DrawImage"/> placement,
     /// which a cell copy alone never replays.
     /// </summary>
+    /// <remarks>
+    /// This runs instead of <see cref="OnRenderContent"/>, never alongside it, whenever the
+    /// renderer takes the render-clean copy path: the previous frame's cells for this control are
+    /// already restored on <paramref name="canvas"/> before this is called. An override must
+    /// therefore only re-emit paint state that lives outside the cell arena - a semantic image
+    /// placement, or a terminal cursor position - recomputed from this control's own current
+    /// properties, never a cached prior value; it must not draw or clear cells, since that would
+    /// discard the copy this path exists to avoid repainting. A control whose own paint has no
+    /// such out-of-band effect never needs this hook.
+    /// </remarks>
     /// <param name="canvas">The same clipped canvas <see cref="OnRenderContent"/> would receive.</param>
-    internal virtual void OnReuseCleanRender(TerminalCanvas canvas)
+    protected internal virtual void OnReuseCleanRender(TerminalCanvas canvas)
     {
     }
 
@@ -3801,8 +3823,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets whether this control forms a hard clip for descendant visual overflow.</summary>
-    /// <remarks>Own visual overflow remains eligible for propagation through the control's parent.</remarks>
-    internal virtual bool ClipsDescendantVisualOverflow => false;
+    /// <remarks>
+    /// Own visual overflow remains eligible for propagation through the control's parent. When
+    /// true, descendant rendering, hit testing, and the inherited selectable-text clip are all
+    /// intersected with <see cref="DescendantRenderBounds"/> in addition to any ordinary
+    /// <see cref="ClipsChildren"/> clip already applied; a shadow, an expanded
+    /// <see cref="VisualBounds"/>, or any other deliberate overflow a descendant paints is then
+    /// truncated at this control's own box instead of drawing past it. <see cref="Container"/>
+    /// returns its <c>AutoScroll</c> state and <see cref="Layout.Overlay"/> returns
+    /// <c>AutoScroll || ClipToBounds</c>; a control that establishes its own hard visual boundary
+    /// follows the same pattern.
+    /// </remarks>
+    protected internal virtual bool ClipsDescendantVisualOverflow => false;
 
     /// <summary>Adds ordered retained children that contribute semantic selectable text.</summary>
     /// <param name="children">The caller-owned destination receiving borrowed child references.</param>
@@ -3914,8 +3946,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         RenderChildren(canvas, contentClip);
 
     /// <summary>Draws specialized frame chrome after normal-layer descendants.</summary>
+    /// <remarks>
+    /// This is the last step of the render pipeline: it runs after
+    /// <see cref="RenderChildren(TerminalCanvas, Rect)"/>, after
+    /// <see cref="OnRenderAdornment"/>, and after the framework-owned border paints, within this
+    /// control's own content clip. Use it for chrome that must sit visually above the border
+    /// itself - <see cref="Layout.GroupBox"/> paints its caption over the border it interrupts, and
+    /// <see cref="Collections.TabControl"/> paints its tab strip over the border edge it sits on -
+    /// rather than the ordinary content or adornment layers underneath. The default does nothing;
+    /// most controls never need this hook.
+    /// </remarks>
     /// <param name="canvas">The canvas clipped to this control's resolved visual bounds.</param>
-    internal virtual void RenderOverlay(TerminalCanvas canvas)
+    protected internal virtual void RenderOverlay(TerminalCanvas canvas)
     {
         _ = canvas.Bounds;
         Debug.Assert(!IsDisposed, "A disposed control cannot render overlay chrome.");
@@ -3930,8 +3972,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         (!requireContainment || Bounds.Contains(point));
 
     /// <summary>Gets the local state used by the direct appearance model.</summary>
-    /// <remarks>Built-in composites may scope ancestry state to the semantic part that owns its appearance.</remarks>
-    internal virtual VisualState GetAppearanceState()
+    /// <remarks>
+    /// The renderer and the appearance resolver call this to select which <c>VisualState</c> face,
+    /// border, and shadow overlays apply. The default combines physical pointer membership, focus,
+    /// availability, and the explicit pressed, current, selection, checked, and indeterminate facts
+    /// tracked through the protected <c>Is*State</c> seams (<see cref="IsPressedState"/>,
+    /// <see cref="IsSelectedState"/>, <see cref="IsCurrentState"/>, <see cref="IsCheckedState"/>,
+    /// <see cref="IsIndeterminateState"/>). An override should derive from those seams rather than
+    /// replacing this combination outright, and should call the base result and mask or add flags,
+    /// the way <see cref="Input.Button"/> and <see cref="Input.HyperlinkButton"/> strip
+    /// <see cref="VisualState.IsPointerOver"/> and <see cref="VisualState.Pressed"/> and add
+    /// <see cref="VisualState.Disabled"/> when a bound command cannot execute, and the way
+    /// <see cref="Layout.Expander"/> and <see cref="Layout.SplitPane"/> strip
+    /// <see cref="VisualState.IsPointerOver"/> when the pointer is not over the specific region
+    /// that owns the hover cue. Built-in composites may also scope ancestry state to the semantic
+    /// part that owns its appearance.
+    /// </remarks>
+    protected internal virtual VisualState GetAppearanceState()
     {
         var result = VisualState.Normal;
 
@@ -6523,8 +6580,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="previous">The resolved appearance before the change.</param>
     /// <param name="current">The resolved appearance after the change.</param>
     /// <returns>The earliest UI phase affected by the change.</returns>
-    /// <remarks>Specialized controls may refine layout impact when intrinsic chrome has control-specific geometry.</remarks>
-    internal virtual InvalidationImpact GetAppearanceChangeImpact(
+    /// <remarks>
+    /// The appearance resolver calls this whenever a Theme replacement, local value, or state-set
+    /// change resolves to a different <see cref="ResolvedAppearance"/>, so it can invalidate no more
+    /// than the change actually requires. The default treats a border-side, shadow-visibility,
+    /// shadow-offset, or shadow-mode change as <see cref="InvalidationImpact.Measure"/> (any of
+    /// these can change the control's visual footprint), any other face, border, border-style, or
+    /// shadow difference as <see cref="InvalidationImpact.Render"/>, and no difference as
+    /// <see cref="InvalidationImpact.None"/>. Specialized controls refine this only when their own
+    /// intrinsic chrome has control-specific geometry that the generic comparison cannot see: for
+    /// example, <see cref="Input.Button"/> additionally treats a resolved-shadow difference that
+    /// changes its own pressed-translation offset as <see cref="InvalidationImpact.Arrange"/>,
+    /// because a translated pressed face moves content without changing measured size. An override
+    /// must never return an impact weaker than the base result would for the same inputs; it may
+    /// only add a stronger classification for a control-specific geometry effect the base
+    /// comparison cannot know about.
+    /// </remarks>
+    protected internal virtual InvalidationImpact GetAppearanceChangeImpact(
         ResolvedAppearance previous,
         ResolvedAppearance current) => previous.GetImpact(current);
 
@@ -6730,10 +6802,35 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets local state allowed to contribute ambient text appearance to descendants.</summary>
-    internal virtual VisualState AmbientAppearanceState => VisualState.Normal;
+    /// <remarks>
+    /// A descendant's ambient face resolves its foreground, attributes, and underline from its
+    /// nearest non-appearance-boundary ancestor's face at this state - never the ancestor's
+    /// background, which never cascades. The default always uses <see cref="VisualState.Normal"/>,
+    /// so descendants see the ancestor's resting face regardless of the ancestor's own transient
+    /// interaction state. A control whose ambient face should instead track its own active state -
+    /// <see cref="InputBase"/> with a caption child, or <see cref="Collections.ListItem"/> - returns
+    /// <see cref="GetAppearanceState"/> instead, so a caption or row content inherits the same
+    /// pointer, focus, and selection-driven color the owner itself presents. Pair an override here
+    /// with the matching <see cref="StateAffectsAmbientAppearance"/> override, or a descendant keeps
+    /// a stale ambient face after a state-only change that this property's result would have
+    /// affected.
+    /// </remarks>
+    protected internal virtual VisualState AmbientAppearanceState => VisualState.Normal;
 
     /// <summary>Gets whether local visual-state changes can affect inherited descendant face values.</summary>
-    internal virtual bool StateAffectsAmbientAppearance => false;
+    /// <remarks>
+    /// The invalidation pipeline consults this to decide whether a visual-state-only change (one
+    /// that does not itself alter this control's own resolved appearance) must still invalidate the
+    /// ambient face this control publishes to descendants through
+    /// <see cref="AmbientAppearanceState"/>. The default is <see langword="false"/>, correct for
+    /// every control whose <see cref="AmbientAppearanceState"/> stays fixed at
+    /// <see cref="VisualState.Normal"/>. A control that overrides
+    /// <see cref="AmbientAppearanceState"/> to track its own active state must also return
+    /// <see langword="true"/> here, the way <see cref="InputBase"/> and
+    /// <see cref="Collections.ListItem"/> do, or a descendant's inherited face goes stale the moment
+    /// the owner's state changes without also changing the owner's own resolved appearance.
+    /// </remarks>
+    protected internal virtual bool StateAffectsAmbientAppearance => false;
 
     /// <summary>Gets whether this control establishes a continuous background plane that
     /// framework-owned descendant backgrounds must leave visible.</summary>

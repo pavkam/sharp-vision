@@ -215,11 +215,11 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     }
 
     /// <inheritdoc/>
-    internal override VisualState AmbientAppearanceState =>
+    protected internal override VisualState AmbientAppearanceState =>
         _textSlot is not null ? GetAppearanceState() : base.AmbientAppearanceState;
 
     /// <inheritdoc/>
-    internal override bool StateAffectsAmbientAppearance => _textSlot is not null;
+    protected internal override bool StateAffectsAmbientAppearance => _textSlot is not null;
 
     /// <summary>Measures the owned caption child for a control that opted into <see cref="EnableCaption"/>
     /// and uses this default single-caption layout, or an empty size before one is materialized.</summary>

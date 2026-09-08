@@ -232,7 +232,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     }
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point) => IsOpen ? base.HitTest(point) : null;
+    protected internal override ControlBase? HitTest(Point point) => IsOpen ? base.HitTest(point) : null;
 
     /// <inheritdoc/>
     protected override Rect VisualBounds => IsOpen ? base.VisualBounds : default;

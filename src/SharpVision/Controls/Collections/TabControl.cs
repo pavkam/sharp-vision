@@ -202,7 +202,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     // background) rather than in OnRenderContent, which runs before it and had every
     // divider glyph overwritten by that background on the very next frame.
     /// <inheritdoc/>
-    internal override void RenderOverlay(TerminalCanvas canvas)
+    protected internal override void RenderOverlay(TerminalCanvas canvas)
     {
         if (Bounds.Width == 0 || Bounds.Height == 0)
         {

@@ -513,4 +513,62 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         probe.IsDisposed.ShouldBeTrue();
     }
+
+    /// <summary>Verifies a control that overrides the promoted
+    /// <see cref="ControlBase.GetAppearanceState"/> seam to force
+    /// <see cref="VisualState.Disabled"/> - the way a third-party command control presents an
+    /// unavailable appearance without an actual disabled fact, the same pattern
+    /// <see cref="Button"/> and <see cref="HyperlinkButton"/> use - paints with the same resolved
+    /// style a genuinely disabled control would.</summary>
+    [Fact]
+    public async Task GetAppearanceState_WhenOverriddenToDisabled_RendersDisabledFaceAsync()
+    {
+        // Arrange - one probe forces Disabled purely through the overridden seam while remaining
+        // enabled; a second, genuinely disabled probe is the ground truth for what that state
+        // renders. Comparing two renders through the identical mount and color pipeline, rather
+        // than a literal color computed separately, keeps the assertion independent of any
+        // terminal-capability color mapping the pipeline applies.
+        var probe = new ProbeControl(new Size(1, 1))
+        {
+            Content = "x".AsMemory(),
+            ForcedAppearanceState = VisualState.Disabled
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+        var reference = new ProbeControl(new Size(1, 1)) { Content = "x".AsMemory(), IsEnabled = false };
+        await using var referenceSurface = await ComponentSurface.MountAsync(
+            reference,
+            new Size(1, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        var actual = surface.Cell(new Point(0, 0)).Style;
+        var expected = referenceSurface.Cell(new Point(0, 0)).Style;
+
+        // Assert
+        actual.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies the promoted <see cref="ControlBase.RenderOverlay"/> seam - the way
+    /// <see cref="GroupBox"/> paints its caption over the border it interrupts and
+    /// <see cref="TabControl"/> paints its tab strip over the border edge it sits on - runs after
+    /// normal-layer descendants render, so an override can draw over content its own subtree
+    /// already committed.</summary>
+    [Fact]
+    public void RenderOverlay_WhenOverridden_DrawsAfterChildren()
+    {
+        // Arrange
+        var child = new ProbeControl(new Size(1, 1)) { Content = "x".AsMemory() };
+        var owner = new RenderOverlayProbe { Content = child, OverlayGlyph = 'O' };
+        new LayoutEngine().Layout(owner, new Size(1, 1));
+        using Frame frame = new(new Size(1, 1));
+
+        // Act
+        owner.Render(frame.Canvas);
+
+        // Assert
+        FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
+    }
 }

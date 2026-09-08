@@ -410,14 +410,14 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     }
 
     /// <inheritdoc/>
-    internal override VisualState GetAppearanceState()
+    protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState() & ~VisualState.FocusWithin;
         return IsActive ? state | VisualState.FocusWithin : state;
     }
 
     /// <inheritdoc/>
-    internal override void RenderOverlay(TerminalCanvas canvas)
+    protected internal override void RenderOverlay(TerminalCanvas canvas)
     {
         var opaque = this.HasOpaqueFill(GetAppearanceState());
 

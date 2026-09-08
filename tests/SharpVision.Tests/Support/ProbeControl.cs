@@ -127,6 +127,17 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Gets the local appearance-state flags through the protected resolution seam.</summary>
     internal VisualState ProbeAppearanceState => GetAppearanceState();
 
+    /// <summary>Gets or sets a forced appearance-state override independent of the
+    /// framework-tracked interaction facts, exercising the promoted
+    /// <see cref="ControlBase.GetAppearanceState"/> seam the way a third-party command control
+    /// presents an unavailable appearance without an actual disabled fact. Null preserves the
+    /// inherited default.</summary>
+    internal VisualState? ForcedAppearanceState { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override VisualState GetAppearanceState() =>
+        ForcedAppearanceState ?? base.GetAppearanceState();
+
     /// <summary>Releases pointer capture only when this probe owns it.</summary>
     internal void ReleaseProbePointer() => ReleasePointerCapture();
 
@@ -211,7 +222,7 @@ internal sealed class ProbeControl: ChromeProbe
     /// <see cref="RenderCalls"/> are mutually exclusive per frame regardless of which concrete
     /// control the mechanism is exercised through.
     /// </remarks>
-    internal override void OnReuseCleanRender(TerminalCanvas canvas) => ReuseCleanRenderCalls++;
+    protected internal override void OnReuseCleanRender(TerminalCanvas canvas) => ReuseCleanRenderCalls++;
 
     /// <inheritdoc/>
     protected override void OnAttached()

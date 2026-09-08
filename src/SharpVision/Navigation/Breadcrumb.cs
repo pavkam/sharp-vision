@@ -535,7 +535,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     }
 
     /// <inheritdoc/>
-    internal override void RenderOverlay(TerminalCanvas canvas)
+    protected internal override void RenderOverlay(TerminalCanvas canvas)
     {
         base.RenderOverlay(canvas);
 
@@ -591,7 +591,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     }
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point)
+    protected internal override ControlBase? HitTest(Point point)
     {
         var target = base.HitTest(point);
         return ReferenceEquals(target, _host) ? this : target;

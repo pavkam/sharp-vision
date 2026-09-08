@@ -3,8 +3,10 @@
 
 namespace SharpVision.Styling;
 
-/// <summary>Holds the concrete terminal style for every physical border edge.</summary>
-internal readonly record struct ResolvedBorderStyles
+/// <summary>Holds the concrete terminal style for every physical border edge. Only the framework
+/// produces instances, as part of <see cref="ResolvedAppearance.BorderStyles"/>; a control
+/// override receives one and reads it, but never constructs its own.</summary>
+public readonly record struct ResolvedBorderStyles
 {
     /// <summary>Initializes concrete styles for every physical edge.</summary>
     internal ResolvedBorderStyles(
@@ -20,16 +22,16 @@ internal readonly record struct ResolvedBorderStyles
     }
 
     /// <summary>Gets the top-edge style, which also owns both top corners.</summary>
-    internal TerminalStyle Top { get; }
+    public TerminalStyle Top { get; }
 
     /// <summary>Gets the right-edge style.</summary>
-    internal TerminalStyle Right { get; }
+    public TerminalStyle Right { get; }
 
     /// <summary>Gets the bottom-edge style, which also owns both bottom corners.</summary>
-    internal TerminalStyle Bottom { get; }
+    public TerminalStyle Bottom { get; }
 
     /// <summary>Gets the left-edge style.</summary>
-    internal TerminalStyle Left { get; }
+    public TerminalStyle Left { get; }
 
     /// <summary>Creates edge styles from one fully literal resolved border and the active relief palette.</summary>
     /// <param name="border">The fully literal resolved border.</param>

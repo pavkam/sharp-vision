@@ -2857,7 +2857,7 @@ public sealed class ControlBaseTests
     /// active state.</summary>
     private sealed class AppearanceProbeContainer: Container
     {
-        internal override bool StateAffectsAmbientAppearance => true;
+        protected internal override bool StateAffectsAmbientAppearance => true;
 
         internal void Author(VisualState state, AppearanceOverlay? appearance) =>
             SetAppearance(state, appearance);

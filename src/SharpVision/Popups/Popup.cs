@@ -488,7 +488,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     protected override bool ClipsChildren => false;
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point)
+    protected internal override ControlBase? HitTest(Point point)
     {
         return !IsOpen || IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled
             ? null
@@ -687,7 +687,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    internal override void RenderOverlay(TerminalCanvas canvas)
+    protected internal override void RenderOverlay(TerminalCanvas canvas)
     {
         if (IsOpen && SurfaceBounds.Width > 0 && SurfaceBounds.Height > 0)
         {

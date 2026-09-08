@@ -300,7 +300,7 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     }
 
     /// <inheritdoc/>
-    internal override VisualState GetAppearanceState()
+    protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
         return _isHeaderPointerOver && IsPointerOverHeaderTarget

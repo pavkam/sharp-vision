@@ -42,7 +42,7 @@ public sealed class Overlay: Container
     protected override bool ClipsChildren => ClipToBounds;
 
     /// <inheritdoc/>
-    internal override bool ClipsDescendantVisualOverflow => AutoScroll || ClipToBounds;
+    protected internal override bool ClipsDescendantVisualOverflow => AutoScroll || ClipToBounds;
 
     /// <summary>Gets one control's attached leading horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>
@@ -153,7 +153,7 @@ public sealed class Overlay: Container
         => _zIndices.Set(control, value);
 
     /// <inheritdoc/>
-    internal override ControlBase? HitTest(Point point) =>
+    protected internal override ControlBase? HitTest(Point point) =>
         CanHitTestSelf(point, requireContainment: false)
             ? HitTestPopup(point) ?? (AutoScroll ? HitTestScrollable(point) : HitTestUnscrolled(point))
             : null;

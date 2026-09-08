@@ -50,7 +50,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     }
 
     /// <inheritdoc/>
-    internal override InvalidationImpact GetAppearanceChangeImpact(
+    protected internal override InvalidationImpact GetAppearanceChangeImpact(
         ResolvedAppearance previous,
         ResolvedAppearance current) =>
         previous.Border.Sides != current.Border.Sides
@@ -145,7 +145,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     /// disabled appearance instead, and the command's <c>CanExecuteChanged</c> repaints it. Only
     /// the appearance follows the command; focus, traversal, and hit testing stay those of an
     /// enabled control.</remarks>
-    internal override VisualState GetAppearanceState()
+    protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
 
