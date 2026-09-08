@@ -21,13 +21,22 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class SuggestionInput: CompositeControlBase
 {
+    private readonly RetainedPartProperty<Affix?> _endAffix;
     private readonly TextInput _input;
+    private readonly RetainedPartProperty<ItemTemplate> _itemTemplate;
     private readonly ListView _list;
-    private readonly Popup _popup;
     private readonly CallbackTransitionStream _minimumPrefixLengthTransitions = new();
-    private readonly CallbackTransitionStream _resolverTransitions = new();
+    private readonly RetainedPartProperty<string?> _placeholder;
+    private readonly Popup _popup;
+    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly LatestControlOperation _resolutionOperation = new();
+    private readonly CallbackTransitionStream _resolverTransitions = new();
+    private readonly RetainedPartProperty<Length> _dropDownHeight;
+    private readonly RetainedPartProperty<Length> _rowHeight;
+    private readonly RetainedPartProperty<ScrollBars> _scrollBars;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly RetainedPartProperty<ShowScrollBars> _showScrollBars;
+    private readonly RetainedPartProperty<Affix?> _startAffix;
     private int? _currentSnapshotGeneration;
     private int? _openingSnapshotGeneration;
     private int? _pendingFirstSelectionResolutionGeneration;
@@ -76,6 +85,61 @@ public sealed class SuggestionInput: CompositeControlBase
             nameof(ScrollBarStyle));
         BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
         InitializeContent(_input);
+        _placeholder = ForwardPartProperty(
+            _input,
+            nameof(TextInput.Placeholder),
+            nameof(Placeholder),
+            () => _input.Placeholder,
+            value => _input.Placeholder = value);
+        _startAffix = ForwardPartProperty(
+            _input,
+            nameof(TextInput.StartAffix),
+            nameof(StartAffix),
+            () => _input.StartAffix,
+            value => _input.StartAffix = value);
+        _endAffix = ForwardPartProperty(
+            _input,
+            nameof(TextInput.EndAffix),
+            nameof(EndAffix),
+            () => _input.EndAffix,
+            value => _input.EndAffix = value);
+        _itemTemplate = ForwardPartProperty(
+            _list,
+            nameof(ListView.ItemTemplate),
+            nameof(ItemTemplate),
+            () => _list.ItemTemplate,
+            value => _list.ItemTemplate = value);
+        _dropDownHeight = ForwardPartProperty(
+            _popup,
+            nameof(Popup.ContentHeightLimit),
+            nameof(DropDownHeight),
+            () => _popup.ContentHeightLimit,
+            value => _popup.ContentHeightLimit = value,
+            InvalidationImpact.Measure);
+        _rowHeight = ForwardPartProperty(
+            _list,
+            nameof(ListView.RowHeight),
+            nameof(RowHeight),
+            () => _list.RowHeight,
+            value => _list.RowHeight = value);
+        _scrollBars = ForwardPartProperty(
+            _list,
+            nameof(ListView.ScrollBars),
+            nameof(ScrollBars),
+            () => _list.ScrollBars,
+            value => _list.ScrollBars = value);
+        _showScrollBars = ForwardPartProperty(
+            _list,
+            nameof(ListView.ShowScrollBars),
+            nameof(ShowScrollBars),
+            () => _list.ShowScrollBars,
+            value => _list.ShowScrollBars = value);
+        _popupChrome = ForwardPartProperty(
+            _popup,
+            nameof(Popup.Style),
+            nameof(PopupChrome),
+            () => _popup.Style,
+            value => _popup.Style = value);
     }
 
     /// <summary>Raised after the copied current suggestion snapshot changes.</summary>
@@ -107,19 +171,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string? Placeholder
     {
-        get => _input.Placeholder;
-        set
-        {
-            VerifyMutable();
-
-            if (string.Equals(_input.Placeholder, value, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            _input.Placeholder = value;
-            NotifyPropertyChanged(nameof(Placeholder), InvalidationImpact.None);
-        }
+        get => _placeholder.Value;
+        set => _placeholder.Value = value;
     }
 
     /// <summary>Gets or sets the optional leading editor affix.</summary>
@@ -127,19 +180,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Affix? StartAffix
     {
-        get => _input.StartAffix;
-        set
-        {
-            VerifyMutable();
-
-            if (_input.StartAffix == value)
-            {
-                return;
-            }
-
-            _input.StartAffix = value;
-            NotifyPropertyChanged(nameof(StartAffix), InvalidationImpact.None);
-        }
+        get => _startAffix.Value;
+        set => _startAffix.Value = value;
     }
 
     /// <summary>Gets or sets the optional trailing editor affix.</summary>
@@ -147,19 +189,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Affix? EndAffix
     {
-        get => _input.EndAffix;
-        set
-        {
-            VerifyMutable();
-
-            if (_input.EndAffix == value)
-            {
-                return;
-            }
-
-            _input.EndAffix = value;
-            NotifyPropertyChanged(nameof(EndAffix), InvalidationImpact.None);
-        }
+        get => _endAffix.Value;
+        set => _endAffix.Value = value;
     }
 
     /// <summary>Gets or sets the minimum extended-grapheme count eligible for suggestion resolution.</summary>
@@ -269,20 +300,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ItemTemplate ItemTemplate
     {
-        get => _list.ItemTemplate;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            VerifyMutable();
-
-            if (ReferenceEquals(_list.ItemTemplate, value))
-            {
-                return;
-            }
-
-            _list.ItemTemplate = value;
-            NotifyPropertyChanged(nameof(ItemTemplate), InvalidationImpact.None);
-        }
+        get => _itemTemplate.Value;
+        set => _itemTemplate.Value = value;
     }
 
     /// <summary>Gets or sets the optional projection used to obtain accepted text from a suggestion.</summary>
@@ -305,19 +324,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Length DropDownHeight
     {
-        get => _popup.ContentHeightLimit;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.ContentHeightLimit == value)
-            {
-                return;
-            }
-
-            _popup.ContentHeightLimit = value;
-            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
-        }
+        get => _dropDownHeight.Value;
+        set => _dropDownHeight.Value = value;
     }
 
     /// <summary>Gets or sets the automatic, fixed, or viewport-relative uniform suggestion-row height.</summary>
@@ -327,19 +335,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Length RowHeight
     {
-        get => _list.RowHeight;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.RowHeight == value)
-            {
-                return;
-            }
-
-            _list.RowHeight = value;
-            NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
-        }
+        get => _rowHeight.Value;
+        set => _rowHeight.Value = value;
     }
 
     /// <summary>Gets or sets the axes available to the suggestion-list overflow host.</summary>
@@ -348,19 +345,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ScrollBars ScrollBars
     {
-        get => _list.ScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.ScrollBars == value)
-            {
-                return;
-            }
-
-            _list.ScrollBars = value;
-            NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollBars.Value;
+        set => _scrollBars.Value = value;
     }
 
     /// <summary>Gets or sets the suggestion-list scrollbar reservation policy.</summary>
@@ -369,19 +355,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get => _list.ShowScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.ShowScrollBars == value)
-            {
-                return;
-            }
-
-            _list.ShowScrollBars = value;
-            NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
-        }
+        get => _showScrollBars.Value;
+        set => _showScrollBars.Value = value;
     }
 
     /// <summary>Gets or sets the complete local style for the owned suggestion-list rails.</summary>
@@ -402,19 +377,8 @@ public sealed class SuggestionInput: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public PopupChrome PopupChrome
     {
-        get => _popup.Style;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.Style == value)
-            {
-                return;
-            }
-
-            _popup.Style = value;
-            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
-        }
+        get => _popupChrome.Value;
+        set => _popupChrome.Value = value;
     }
 
     /// <summary>Returns both suggestion-popup chrome facets to Popup appearance ownership.</summary>

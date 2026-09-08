@@ -3001,6 +3001,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="get">The non-null delegate reading the current source value.</param>
     /// <param name="set">The optional delegate writing the source value; null makes the bridge read-only.</param>
     /// <param name="comparer">The optional equality policy.</param>
+    /// <param name="ownerImpact">
+    /// The owner-side earliest phase invalidated whenever the published value actually changes,
+    /// whether committed through the bridge's own <see cref="RetainedPartProperty{T}.Value"/> or
+    /// observed from <paramref name="source"/> changing on its own. Defaults to
+    /// <see cref="InvalidationImpact.None"/>.
+    /// </param>
     /// <returns>The lifecycle-owned typed property bridge.</returns>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="source"/> or <paramref name="get"/> is null.
@@ -3008,6 +3014,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="ArgumentException">
     /// <paramref name="sourcePropertyName"/> or <paramref name="ownerPropertyName"/> is empty or whitespace.
     /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="ownerImpact"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">
     /// <paramref name="source"/> is not an owned retained descendant of this control, or this
     /// control is mutated off-dispatcher.
@@ -3019,12 +3026,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         string ownerPropertyName,
         Func<T> get,
         Action<T>? set = null,
-        IEqualityComparer<T>? comparer = null)
+        IEqualityComparer<T>? comparer = null,
+        InvalidationImpact ownerImpact = InvalidationImpact.None)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePropertyName);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerPropertyName);
         ArgumentNullException.ThrowIfNull(get);
+        ValidateImpact(ownerImpact);
         VerifyMutable();
 
         if (!IsRetainedDescendant(source))
@@ -3039,11 +3048,68 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             ownerPropertyName,
             get,
             set,
-            comparer);
+            comparer,
+            ownerImpact);
         _retainedPartRegistrations ??= [];
         _retainedPartRegistrations.Add(registration);
         return registration;
     }
+
+    /// <summary>Registers one typed property bridge to a retained presentation part, publishing it
+    /// under the calling property's own name.</summary>
+    /// <remarks>
+    /// A convenience over <see cref="RegisterRetainedPartProperty{T}"/> for the common case where the
+    /// owner's public property shares the part's semantic meaning: the caller supplies the part's
+    /// property name explicitly (it usually differs from the owner's own member name) while the
+    /// owner's property name is inferred from the caller, matching the constructor-time idiom
+    /// <c>get => _x.Value; set => _x.Value = value;</c> backed by the returned bridge stored in a
+    /// field. Pass <paramref name="set"/> as null for a read-only forwarded property, the same way
+    /// <see cref="RetainedScrollPart.Extent"/> and <see cref="RetainedScrollPart.Viewport"/> forward
+    /// their read-only scroll members; the returned bridge's own <see cref="RetainedPartProperty{T}.Value"/>
+    /// setter then throws <see cref="InvalidOperationException"/> if ever assigned.
+    /// <paramref name="part"/> must already be an owned retained descendant of this control, exactly
+    /// as <see cref="RegisterRetainedPartProperty{T}"/> requires.
+    /// </remarks>
+    /// <typeparam name="T">The forwarded property value type.</typeparam>
+    /// <param name="part">The non-null retained part control, already owned by this control.</param>
+    /// <param name="partPropertyName">The non-empty part property name observed for change.</param>
+    /// <param name="ownerPropertyName">
+    /// The non-empty owner property name published through <see cref="PropertyChanged"/>. It is
+    /// passed explicitly because the bridge is created from the constructor, never from the
+    /// property itself, so a caller-member-name default would resolve to the constructor.
+    /// </param>
+    /// <param name="get">The non-null delegate reading the current part value.</param>
+    /// <param name="set">The optional delegate writing the part value; null makes the forwarded property read-only.</param>
+    /// <param name="ownerImpact">
+    /// The owner-side earliest phase invalidated whenever the forwarded value actually changes.
+    /// Defaults to <see cref="InvalidationImpact.None"/>.
+    /// </param>
+    /// <returns>The lifecycle-owned typed property bridge.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="part"/> or <paramref name="get"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="partPropertyName"/> or <paramref name="ownerPropertyName"/> is empty or whitespace.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="ownerImpact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="part"/> is not an owned retained descendant of this control, or this control
+    /// is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">This control is disposed.</exception>
+    protected RetainedPartProperty<T> ForwardPartProperty<T>(
+        ControlBase part,
+        string partPropertyName,
+        string ownerPropertyName,
+        Func<T> get,
+        Action<T>? set = null,
+        InvalidationImpact ownerImpact = InvalidationImpact.None) =>
+        RegisterRetainedPartProperty(
+            part,
+            partPropertyName,
+            ownerPropertyName,
+            get,
+            set,
+            comparer: null,
+            ownerImpact);
 
     /// <summary>Registers one forwarding bridge to a retained scrolling presentation part.</summary>
     /// <remarks>
@@ -3082,16 +3148,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Publishes one current value forwarded from a retained presentation part.</summary>
     /// <param name="propertyName">The non-empty owner property name.</param>
+    /// <param name="impact">The validated earliest owner-side phase affected by the forwarded change.</param>
     /// <remarks>
     /// Runs <see cref="OnPropertyChanged"/> before capturing subscribers, the same ordering
     /// <see cref="RaisePropertyChanged"/> gives every direct raise; the per-property generation this
     /// method already tracks then decides whether a reentrant commit from the hook itself supersedes
-    /// this publication before external subscribers are captured.
+    /// this publication before external subscribers are captured. Invalidates <paramref name="impact"/>
+    /// first, the same ordering <see cref="NotifyPropertyChanged"/> gives an owner-driven commit, so a
+    /// forwarded property invalidates the same phase whether the owner or the part itself changed it.
     /// </remarks>
-    internal void NotifyRetainedPartPropertyChanged(string propertyName)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    internal void NotifyRetainedPartPropertyChanged(string propertyName, InvalidationImpact impact)
     {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        ValidateImpact(impact);
         VerifyMutable();
+        Invalidate(InvalidationFor(impact));
         _synchronizedPropertyVersions ??= [];
         _ = _synchronizedPropertyVersions.TryGetValue(propertyName, out var version);
         version++;

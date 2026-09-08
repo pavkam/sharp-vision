@@ -23,9 +23,14 @@ public sealed class ComboBox: InputBase
     // resolution adds the border inset on top of the content size returned here.
     private const int _fieldContentHeight = 1;
     private const int _indicatorReservedWidth = DropDownIndicatorReservedWidth;
+    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly ListView _list;
     private readonly Popup _popup;
+    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
+    private readonly RetainedPartProperty<Length> _rowHeight;
+    private readonly RetainedPartProperty<ScrollBars> _scrollBars;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
+    private readonly RetainedPartProperty<ShowScrollBars> _showScrollBars;
     private string _typeAhead = string.Empty;
     private int _selectedIndex = -1;
     private long _selectionVersion;
@@ -66,6 +71,37 @@ public sealed class ComboBox: InputBase
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
         BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
+        _dropDownHeight = ForwardPartProperty(
+            _popup,
+            nameof(Popup.ContentHeightLimit),
+            nameof(DropDownHeight),
+            () => _popup.ContentHeightLimit,
+            value => _popup.ContentHeightLimit = value,
+            InvalidationImpact.Measure);
+        _scrollBars = ForwardPartProperty(
+            _list,
+            nameof(ListView.ScrollBars),
+            nameof(ScrollBars),
+            () => _list.ScrollBars,
+            value => _list.ScrollBars = value);
+        _showScrollBars = ForwardPartProperty(
+            _list,
+            nameof(ListView.ShowScrollBars),
+            nameof(ShowScrollBars),
+            () => _list.ShowScrollBars,
+            value => _list.ShowScrollBars = value);
+        _popupChrome = ForwardPartProperty(
+            _popup,
+            nameof(Popup.Style),
+            nameof(PopupChrome),
+            () => _popup.Style,
+            value => _popup.Style = value);
+        _rowHeight = ForwardPartProperty(
+            _list,
+            nameof(ListView.RowHeight),
+            nameof(RowHeight),
+            () => _list.RowHeight,
+            value => _list.RowHeight = value);
         TabNavigation = TabNavigation.None;
     }
 
@@ -214,19 +250,8 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public Length DropDownHeight
     {
-        get => _popup.ContentHeightLimit;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.ContentHeightLimit == value)
-            {
-                return;
-            }
-
-            _popup.ContentHeightLimit = value;
-            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
-        }
+        get => _dropDownHeight.Value;
+        set => _dropDownHeight.Value = value;
     }
 
     /// <summary>Gets or sets the axes available to the owned drop-down overflow host.</summary>
@@ -235,19 +260,8 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public ScrollBars ScrollBars
     {
-        get => _list.ScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.ScrollBars == value)
-            {
-                return;
-            }
-
-            _list.ScrollBars = value;
-            NotifyPropertyChanged(nameof(ScrollBars), InvalidationImpact.None);
-        }
+        get => _scrollBars.Value;
+        set => _scrollBars.Value = value;
     }
 
     /// <summary>Gets or sets the drop-down scrollbar reservation policy.</summary>
@@ -256,19 +270,8 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public ShowScrollBars ShowScrollBars
     {
-        get => _list.ShowScrollBars;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.ShowScrollBars == value)
-            {
-                return;
-            }
-
-            _list.ShowScrollBars = value;
-            NotifyPropertyChanged(nameof(ShowScrollBars), InvalidationImpact.None);
-        }
+        get => _showScrollBars.Value;
+        set => _showScrollBars.Value = value;
     }
 
     /// <summary>Gets or sets the complete local style of owned drop-down rails.</summary>
@@ -292,19 +295,8 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public PopupChrome PopupChrome
     {
-        get => _popup.Style;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.Style == value)
-            {
-                return;
-            }
-
-            _popup.Style = value;
-            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
-        }
+        get => _popupChrome.Value;
+        set => _popupChrome.Value = value;
     }
 
     /// <summary>Returns the drop-down popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
@@ -319,19 +311,8 @@ public sealed class ComboBox: InputBase
     /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
     public Length RowHeight
     {
-        get => _list.RowHeight;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.RowHeight == value)
-            {
-                return;
-            }
-
-            _list.RowHeight = value;
-            NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
-        }
+        get => _rowHeight.Value;
+        set => _rowHeight.Value = value;
     }
 
     #endregion

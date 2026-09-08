@@ -71,6 +71,12 @@ the popup is open without replacing the active result, selection, focus, or
 resolver snapshot. `Length.Auto` retains content-sized eager rows; proportional
 and zero fixed/percentage requests are invalid.
 
+`Placeholder`, `StartAffix`, `EndAffix`, `ItemTemplate`, `RowHeight`,
+`PopupChrome`, and `DropDownHeight` are two-way forwarded properties:
+`CommandPalette` raises its own `PropertyChanged` for one of them both when its
+own setter commits the change and when the retained editor, list, or popup
+changes that same property on its own.
+
 ## Keyboard
 
 | Key                 | Behavior                                                                                                                                  |

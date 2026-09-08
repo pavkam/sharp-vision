@@ -85,6 +85,36 @@ public sealed class RetainedPartPropertyTests
         getterCalls.ShouldBe(0);
     }
 
+    /// <summary>Verifies the owner-side impact invalidates the owner both when the bridge's own
+    /// <see cref="RetainedPartProperty{T}.Value"/> setter commits the change and when the source
+    /// changes the published value on its own - the same phase either way, matching the intended
+    /// fix that a forwarded property invalidates identically regardless of which side moved it.</summary>
+    [Fact]
+    public void OwnerImpact_WhenSet_InvalidatesOwnerOnPartChange()
+    {
+        var source = new ProbeControl();
+        var owner = new ProbeCompositeControl(source);
+        var value = 1;
+        using var property = owner.RegisterProbeRetainedPartProperty(
+            source,
+            nameof(ProbeControl.Tag),
+            "OwnerValue",
+            () => value,
+            next => value = next,
+            InvalidationImpact.Render);
+        owner.Clear(Invalidation.All);
+
+        property.Value = 2;
+
+        owner.Pending.ShouldBe(Invalidation.Render);
+        owner.Clear(Invalidation.All);
+
+        value = 3;
+        source.Tag = "changed";
+
+        owner.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies the generic registration releases its source subscription as soon as the
     /// retained source leaves the owner, independently of any specialized forwarding wrapper.</summary>
     [Fact]

@@ -498,6 +498,7 @@ namespace SharpVision.Controls
         public bool Focus() { }
         protected bool FocusAccessKeyTarget() { }
         protected bool FocusDescendant(SharpVision.Controls.ControlBase control, SharpVision.Input.FocusReason reason, bool cancellable) { }
+        protected SharpVision.Controls.RetainedPartProperty<T> ForwardPartProperty<T>(SharpVision.Controls.ControlBase part, string partPropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, SharpVision.Controls.InvalidationImpact ownerImpact = 0) { }
         protected SharpVision.Controls.InvalidationImpact GetAffixChangeImpact(SharpVision.Styling.Affix? previous, SharpVision.Styling.Affix? current) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetAppearanceChangeImpact(SharpVision.Styling.ResolvedAppearance previous, SharpVision.Styling.ResolvedAppearance current) { }
         protected virtual SharpVision.Styling.VisualState GetAppearanceState() { }
@@ -565,7 +566,7 @@ namespace SharpVision.Controls
         protected void RaiseTextSelectionCompatibilityEvent(System.EventHandler? handlers, object? sender, ulong transitionVersion) { }
         protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object? sender, TEventArgs eventArgs, ulong transitionVersion) { }
         protected void RegisterAttachmentParticipant(SharpVision.Controls.IControlAttachmentParticipant participant) { }
-        protected SharpVision.Controls.RetainedPartProperty<T> RegisterRetainedPartProperty<T>(SharpVision.Controls.ControlBase source, string sourcePropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
+        protected SharpVision.Controls.RetainedPartProperty<T> RegisterRetainedPartProperty<T>(SharpVision.Controls.ControlBase source, string sourcePropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null, SharpVision.Controls.InvalidationImpact ownerImpact = 0) { }
         protected SharpVision.Controls.RetainedScrollPart RegisterRetainedScrollPart(SharpVision.Controls.Container source, bool forwardsScrollEvent = true) { }
         protected void ReleasePointerCapture() { }
         protected void RenderAffixes(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics, SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, SharpVision.Terminal.Rendering.CellStyle style) { }

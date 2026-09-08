@@ -634,6 +634,26 @@ public sealed class ComboBoxTests
         box.ShowScrollBars.ShouldBe(ShowScrollBars.WhenNeeded);
     }
 
+    /// <summary>Verifies ComboBox raises its own PropertyChanged for ScrollBars when the retained
+    /// drop-down list's ScrollBars changes on its own, not only when ComboBox's own setter commits
+    /// it - the forwarded-part-property bridge notifies the owner either way.</summary>
+    [Fact]
+    public void ScrollBars_WhenDropDownListChangesItself_RaisesOwnerPropertyChanged()
+    {
+        // Arrange
+        var box = new ComboBox();
+        var raised = 0;
+        box.PropertyChanged += (_, eventArgs) =>
+            raised += eventArgs.PropertyName == nameof(ComboBox.ScrollBars) ? 1 : 0;
+
+        // Act
+        box.GetDropDownList().ScrollBars = ScrollBars.Horizontal;
+
+        // Assert
+        raised.ShouldBe(1);
+        box.ScrollBars.ShouldBe(ScrollBars.Horizontal);
+    }
+
     /// <summary>Verifies closed navigation commits through the ComboBox selection transaction
     /// without opening its retained popup. PageUp/PageDown page by the popup's DropDownHeight once
     /// it has laid out; before that (as here, with the default Auto height and no prior open) the

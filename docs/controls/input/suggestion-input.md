@@ -82,6 +82,12 @@ rejected before mutation. `RowHeight` follows the retained ListView contract:
 `Length.Auto` or positive fixed/viewport-relative percentage values are valid,
 while Star and zero fixed/percentage values are invalid.
 
+`Placeholder`, `StartAffix`, `EndAffix`, `ItemTemplate`, `DropDownHeight`,
+`RowHeight`, `ScrollBars`, `ShowScrollBars`, and `PopupChrome` are two-way
+forwarded properties: `SuggestionInput` raises its own `PropertyChanged` for one
+of them both when its own setter commits the change and when the retained
+editor, list, or popup changes that same property on its own.
+
 All public mutation is dispatcher-affine while attached and rejects a disposed
 control. `Text` also forwards the retained editor's validation. A negative
 `MinimumPrefixLength`, unknown scrollbar value, invalid length, null

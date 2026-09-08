@@ -92,6 +92,11 @@ is removed. Root resize and placement fallback resolve that percentage again.
 Star lengths and zero-valued fixed or percentage limits are rejected before
 mutation.
 
+`DropDownHeight`, `PopupChrome`, and `CalendarStyle` are two-way forwarded
+properties: `DateInput` raises its own `PropertyChanged` for one of them both
+when its own setter commits the change and when the owned popup or Calendar
+changes that same property on its own.
+
 `StartAffix` and `EndAffix` each reserve a fixed cell column inside the field
 box, strictly inboard of the drop-down indicator - the segment layout deflates
 around both, and neither ever draws over the `▼` glyph. The gap between a

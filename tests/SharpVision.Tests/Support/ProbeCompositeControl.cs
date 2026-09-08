@@ -35,11 +35,18 @@ internal sealed class ProbeCompositeControl: CompositeControlBase
     /// <param name="ownerPropertyName">The non-empty owner property name.</param>
     /// <param name="get">Reads the current source value.</param>
     /// <param name="set">Optionally writes the source value.</param>
+    /// <param name="ownerImpact">
+    /// The owner-side earliest phase invalidated on a published change. Exists so a test can prove
+    /// this parameter reaches <see cref="ControlBase.Invalidate(InvalidationImpact)"/> whether the
+    /// bridge's own <see cref="RetainedPartProperty{T}.Value"/> setter or the source's own
+    /// transition publishes the change.
+    /// </param>
     internal RetainedPartProperty<T> RegisterProbeRetainedPartProperty<T>(
         ControlBase source,
         string sourcePropertyName,
         string ownerPropertyName,
         Func<T> get,
-        Action<T>? set = null) =>
-        RegisterRetainedPartProperty(source, sourcePropertyName, ownerPropertyName, get, set);
+        Action<T>? set = null,
+        InvalidationImpact ownerImpact = InvalidationImpact.None) =>
+        RegisterRetainedPartProperty(source, sourcePropertyName, ownerPropertyName, get, set, ownerImpact: ownerImpact);
 }

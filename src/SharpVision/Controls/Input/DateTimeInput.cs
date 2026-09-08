@@ -35,7 +35,10 @@ public sealed class DateTimeInput: InputBase
         };
 
     private readonly CalendarDropDownCoordinator<DateTime> _calendarDropDown;
+    private readonly RetainedPartProperty<CalendarStyle?> _calendarStyle;
+    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly Popup _popup;
+    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly SegmentFieldBehavior _segments;
     private readonly TemporalValueState<DateTime> _state;
 
@@ -98,6 +101,25 @@ public sealed class DateTimeInput: InputBase
             nameof(Calendar.ActualStyle),
             nameof(ActualCalendarStyle),
             () => _calendarDropDown.Calendar.ActualStyle);
+        _dropDownHeight = ForwardPartProperty(
+            _popup,
+            nameof(Popup.ContentHeightLimit),
+            nameof(DropDownHeight),
+            () => _popup.ContentHeightLimit,
+            value => _popup.ContentHeightLimit = value,
+            InvalidationImpact.Measure);
+        _popupChrome = ForwardPartProperty(
+            _popup,
+            nameof(Popup.Style),
+            nameof(PopupChrome),
+            () => _popup.Style,
+            value => _popup.Style = value);
+        _calendarStyle = ForwardPartProperty(
+            _calendarDropDown.Calendar,
+            nameof(Calendar.Style),
+            nameof(CalendarStyle),
+            () => _calendarDropDown.Calendar.Style,
+            value => _calendarDropDown.Calendar.Style = value);
         EnablePressActivation();
 
         _segments = EnableSegmentEditing(
@@ -311,19 +333,8 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public Length DropDownHeight
     {
-        get => _popup.ContentHeightLimit;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.ContentHeightLimit == value)
-            {
-                return;
-            }
-
-            _popup.ContentHeightLimit = value;
-            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
-        }
+        get => _dropDownHeight.Value;
+        set => _dropDownHeight.Value = value;
     }
 
     /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
@@ -335,19 +346,8 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public PopupChrome PopupChrome
     {
-        get => _popup.Style;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.Style == value)
-            {
-                return;
-            }
-
-            _popup.Style = value;
-            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
-        }
+        get => _popupChrome.Value;
+        set => _popupChrome.Value = value;
     }
 
     /// <summary>Returns the Calendar popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
@@ -361,19 +361,8 @@ public sealed class DateTimeInput: InputBase
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public CalendarStyle? CalendarStyle
     {
-        get => _calendarDropDown.Calendar.Style;
-        set
-        {
-            VerifyMutable();
-
-            if (_calendarDropDown.Calendar.Style == value)
-            {
-                return;
-            }
-
-            _calendarDropDown.Calendar.Style = value;
-            NotifyPropertyChanged(nameof(CalendarStyle), InvalidationImpact.None);
-        }
+        get => _calendarStyle.Value;
+        set => _calendarStyle.Value = value;
     }
 
     /// <summary>Gets the resolved presentation of the owned Calendar.</summary>

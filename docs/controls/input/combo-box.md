@@ -134,7 +134,11 @@ ListView's selection, scrolling, and surface appearance inside the Popup.
   shrink to their content instead of reserving the complete maximum.
 - `ScrollBars`, `ShowScrollBars`, and `ScrollBarStyle` forward the common
   overflow policy to the owned ListView, so long choice popups use the same
-  rails as standalone lists and viewports.
+  rails as standalone lists and viewports. `ScrollBars`, `ShowScrollBars`,
+  `RowHeight`, `DropDownHeight`, and `PopupChrome` are two-way forwarded
+  properties: ComboBox raises its own `PropertyChanged` for one of them both
+  when its setter commits the change and when the owned list or popup changes
+  that same property on its own.
 - `RowHeight` forwards the ListView uniform-row contract. A positive percentage
   resolves against the final drop-down list viewport, not the field or complete
   root, and re-resolves without losing the accepted or provisional selection

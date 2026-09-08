@@ -21,6 +21,7 @@ public sealed class RetainedPartProperty<T>: IDisposable
 {
     private readonly IEqualityComparer<T> _comparer;
     private readonly Func<T> _get;
+    private readonly InvalidationImpact _ownerImpact;
     private readonly ControlBase[] _ownershipPath;
     private readonly ControlBase _owner;
     private readonly string _ownerPropertyName;
@@ -39,8 +40,14 @@ public sealed class RetainedPartProperty<T>: IDisposable
     /// <param name="get">The non-null delegate reading the current source value.</param>
     /// <param name="set">The optional delegate writing the source value; null makes <see cref="Value"/> read-only.</param>
     /// <param name="comparer">The optional equality comparer; null uses <see cref="EqualityComparer{T}.Default"/>.</param>
+    /// <param name="ownerImpact">
+    /// The owner-side earliest phase invalidated whenever the published value actually changes,
+    /// whether committed through <see cref="Value"/> or observed from the source's own transition.
+    /// Defaults to <see cref="InvalidationImpact.None"/>, matching every forwarded scroll member.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="owner"/>, <paramref name="source"/>, or <paramref name="get"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="sourcePropertyName"/> or <paramref name="ownerPropertyName"/> is empty or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="ownerImpact"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="source"/> is not an owned descendant of <paramref name="owner"/>.</exception>
     internal RetainedPartProperty(
         ControlBase owner,
@@ -49,13 +56,15 @@ public sealed class RetainedPartProperty<T>: IDisposable
         string ownerPropertyName,
         Func<T> get,
         Action<T>? set = null,
-        IEqualityComparer<T>? comparer = null)
+        IEqualityComparer<T>? comparer = null,
+        InvalidationImpact ownerImpact = InvalidationImpact.None)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePropertyName);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerPropertyName);
         ArgumentNullException.ThrowIfNull(get);
+        ArgumentOutOfRangeException.ThrowIfNotDefined(ownerImpact, nameof(ownerImpact), "The owner impact is unknown.");
         _owner = owner;
         _source = source;
         _sourcePropertyName = sourcePropertyName;
@@ -63,6 +72,7 @@ public sealed class RetainedPartProperty<T>: IDisposable
         _get = get;
         _set = set;
         _comparer = comparer ?? EqualityComparer<T>.Default;
+        _ownerImpact = ownerImpact;
         _observed = get();
         List<ControlBase> ownershipPath = [];
 
@@ -170,7 +180,7 @@ public sealed class RetainedPartProperty<T>: IDisposable
 
             if (_sourceVersion == version)
             {
-                _owner.NotifyRetainedPartPropertyChanged(_ownerPropertyName);
+                _owner.NotifyRetainedPartPropertyChanged(_ownerPropertyName, _ownerImpact);
             }
         }
     }
@@ -188,7 +198,7 @@ public sealed class RetainedPartProperty<T>: IDisposable
 
         if (_sourceVersion == version)
         {
-            _owner.NotifyRetainedPartPropertyChanged(_ownerPropertyName);
+            _owner.NotifyRetainedPartPropertyChanged(_ownerPropertyName, _ownerImpact);
         }
     }
 }

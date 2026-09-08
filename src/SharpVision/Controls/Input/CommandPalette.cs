@@ -19,10 +19,17 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class CommandPalette: CompositeControlBase
 {
+    private readonly RetainedPartProperty<Affix?> _endAffix;
     private readonly TextInput _input;
+    private readonly RetainedPartProperty<ItemTemplate> _itemTemplate;
     private readonly ListView _list;
+    private readonly RetainedPartProperty<string?> _placeholder;
     private readonly Popup _popup;
+    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly LatestControlOperation _resolutionOperation = new();
+    private readonly RetainedPartProperty<Length> _dropDownHeight;
+    private readonly RetainedPartProperty<Length> _rowHeight;
+    private readonly RetainedPartProperty<Affix?> _startAffix;
     private int _resolutionGeneration;
     private int _openingSelectedIndex = -1;
     private int _openingCurrentIndex = -1;
@@ -63,6 +70,49 @@ public sealed class CommandPalette: CompositeControlBase
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession);
         InitializeContent(_input);
+        _placeholder = ForwardPartProperty(
+            _input,
+            nameof(TextInput.Placeholder),
+            nameof(Placeholder),
+            () => _input.Placeholder,
+            value => _input.Placeholder = value);
+        _startAffix = ForwardPartProperty(
+            _input,
+            nameof(TextInput.StartAffix),
+            nameof(StartAffix),
+            () => _input.StartAffix,
+            value => _input.StartAffix = value);
+        _endAffix = ForwardPartProperty(
+            _input,
+            nameof(TextInput.EndAffix),
+            nameof(EndAffix),
+            () => _input.EndAffix,
+            value => _input.EndAffix = value);
+        _itemTemplate = ForwardPartProperty(
+            _list,
+            nameof(ListView.ItemTemplate),
+            nameof(ItemTemplate),
+            () => _list.ItemTemplate,
+            value => _list.ItemTemplate = value);
+        _rowHeight = ForwardPartProperty(
+            _list,
+            nameof(ListView.RowHeight),
+            nameof(RowHeight),
+            () => _list.RowHeight,
+            value => _list.RowHeight = value);
+        _popupChrome = ForwardPartProperty(
+            _popup,
+            nameof(Popup.Style),
+            nameof(PopupChrome),
+            () => _popup.Style,
+            value => _popup.Style = value);
+        _dropDownHeight = ForwardPartProperty(
+            _popup,
+            nameof(Popup.ContentHeightLimit),
+            nameof(DropDownHeight),
+            () => _popup.ContentHeightLimit,
+            value => _popup.ContentHeightLimit = value,
+            InvalidationImpact.Measure);
     }
 
     /// <summary>Raised after a non-empty result popup opens.</summary>
@@ -144,19 +194,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public ItemTemplate ItemTemplate
     {
-        get => _list.ItemTemplate;
-        set
-        {
-            VerifyMutable();
-
-            if (ReferenceEquals(_list.ItemTemplate, value))
-            {
-                return;
-            }
-
-            _list.ItemTemplate = value;
-            NotifyPropertyChanged(nameof(ItemTemplate), InvalidationImpact.None);
-        }
+        get => _itemTemplate.Value;
+        set => _itemTemplate.Value = value;
     }
 
     /// <summary>Gets or sets the automatic, fixed, or popup-viewport-relative uniform result-row height.</summary>
@@ -166,19 +205,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Length RowHeight
     {
-        get => _list.RowHeight;
-        set
-        {
-            VerifyMutable();
-
-            if (_list.RowHeight == value)
-            {
-                return;
-            }
-
-            _list.RowHeight = value;
-            NotifyPropertyChanged(nameof(RowHeight), InvalidationImpact.None);
-        }
+        get => _rowHeight.Value;
+        set => _rowHeight.Value = value;
     }
 
     /// <summary>Starts a fresh resolution for the current text and makes results eligible to open.</summary>
@@ -200,19 +228,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public string? Placeholder
     {
-        get => _input.Placeholder;
-        set
-        {
-            VerifyMutable();
-
-            if (string.Equals(_input.Placeholder, value, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            _input.Placeholder = value;
-            NotifyPropertyChanged(nameof(Placeholder), InvalidationImpact.None);
-        }
+        get => _placeholder.Value;
+        set => _placeholder.Value = value;
     }
 
     /// <summary>Gets or sets the optional leading editor affix.</summary>
@@ -220,19 +237,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Affix? StartAffix
     {
-        get => _input.StartAffix;
-        set
-        {
-            VerifyMutable();
-
-            if (_input.StartAffix == value)
-            {
-                return;
-            }
-
-            _input.StartAffix = value;
-            NotifyPropertyChanged(nameof(StartAffix), InvalidationImpact.None);
-        }
+        get => _startAffix.Value;
+        set => _startAffix.Value = value;
     }
 
     /// <summary>Gets or sets the optional trailing editor affix.</summary>
@@ -240,19 +246,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Affix? EndAffix
     {
-        get => _input.EndAffix;
-        set
-        {
-            VerifyMutable();
-
-            if (_input.EndAffix == value)
-            {
-                return;
-            }
-
-            _input.EndAffix = value;
-            NotifyPropertyChanged(nameof(EndAffix), InvalidationImpact.None);
-        }
+        get => _endAffix.Value;
+        set => _endAffix.Value = value;
     }
 
     /// <summary>Gets or sets the complete local editor border.</summary>
@@ -359,19 +354,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public PopupChrome PopupChrome
     {
-        get => _popup.Style;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.Style == value)
-            {
-                return;
-            }
-
-            _popup.Style = value;
-            NotifyPropertyChanged(nameof(PopupChrome), InvalidationImpact.None);
-        }
+        get => _popupChrome.Value;
+        set => _popupChrome.Value = value;
     }
 
     /// <summary>Returns the result popup border and shadow to its appearance role.</summary>
@@ -386,19 +370,8 @@ public sealed class CommandPalette: CompositeControlBase
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Length DropDownHeight
     {
-        get => _popup.ContentHeightLimit;
-        set
-        {
-            VerifyMutable();
-
-            if (_popup.ContentHeightLimit == value)
-            {
-                return;
-            }
-
-            _popup.ContentHeightLimit = value;
-            NotifyPropertyChanged(nameof(DropDownHeight), InvalidationImpact.Measure);
-        }
+        get => _dropDownHeight.Value;
+        set => _dropDownHeight.Value = value;
     }
 
     /// <summary>Gets or sets whether the non-empty result popup is open.</summary>
