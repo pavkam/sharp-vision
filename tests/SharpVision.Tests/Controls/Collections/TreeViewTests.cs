@@ -864,6 +864,25 @@ public sealed class TreeViewTests
         second.IsEnabled.ShouldBeTrue("the item's own IsEnabled is untouched by disabling the tree");
     }
 
+    /// <summary>Verifies SelectItem does not select an item whose own IsEnabled stays true but
+    /// whose EffectiveIsEnabled is false because the whole tree is disabled - the same
+    /// ancestor-disabled gap SelectAll had, on a separate public selection API.</summary>
+    [Fact]
+    public void SelectItem_WhenTreeIsDisabled_DoesNotSelectEvenThoughTheItemRemainsIndividuallyEnabled()
+    {
+        var tree = new TreeView();
+        var item = new TreeViewItem { Header = "First" };
+        tree.Items.Add(item);
+
+        tree.IsEnabled = false;
+
+        tree.SelectItem(item);
+
+        tree.SelectedItems.ShouldBeEmpty();
+        item.IsSelected.ShouldBeFalse();
+        item.IsEnabled.ShouldBeTrue("the item's own IsEnabled is untouched by disabling the tree");
+    }
+
     /// <summary>Verifies check state propagates down and reports mixed child state on a parent.</summary>
     [Fact]
     public void Checkable_WhenChildrenDiffer_ParentBecomesIndeterminate()

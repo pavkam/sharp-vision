@@ -1013,7 +1013,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
 
     private bool ApplyInputSelection(TreeViewItem item, Modifiers modifiers)
     {
-        if (SelectionMode == TreeSelectionMode.None || !item.IsEnabled)
+        if (SelectionMode == TreeSelectionMode.None || !item.EffectiveIsEnabled)
         {
             return false;
         }
@@ -1057,7 +1057,7 @@ public sealed class TreeView: CompositeControlBase, IStyled<TreeViewStyle>
             .Skip(Math.Min(start, end))
             .Take(Math.Abs(end - start) + 1)
             .Cast<TreeViewItem>()
-            .Where(static candidate => candidate.IsEnabled);
+            .Where(static candidate => candidate.EffectiveIsEnabled);
     }
 
     private bool CommitSelection(IEnumerable<TreeViewItem> items, bool cancellable = false)
