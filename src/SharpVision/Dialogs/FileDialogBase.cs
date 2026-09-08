@@ -983,7 +983,19 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         SetLoading(false);
     }
 
-    private void CancelLoad() => _loadOperation.Cancel();
+    private void CancelLoad()
+    {
+        try
+        {
+            _loadOperation.Cancel();
+        }
+        catch (Exception)
+        {
+            // Swallowed, not reported: a consumer-registered cancellation callback threw, and
+            // that must not abort the caller's own cleanup or skip the fresh Begin() that
+            // immediately follows this call in BeginLoad.
+        }
+    }
 
     private void SetLoading(bool value)
     {

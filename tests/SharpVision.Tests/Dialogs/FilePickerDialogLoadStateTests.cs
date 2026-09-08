@@ -50,6 +50,48 @@ public sealed class FilePickerDialogLoadStateTests
         dialog.CurrentDirectory.ShouldBe(directory);
     }
 
+    /// <summary>Verifies cancelling an in-flight directory load - by requesting another one before
+    /// the first resolves - does not let a consumer-registered throwing cancellation callback
+    /// escape and abort the fresh load that superseded it.</summary>
+    [Fact]
+    public async Task Reload_WhenSupersededLoadsCancellationCallbackThrows_StillCommitsTheFreshLoadAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "picker-throwing-cancel-callback"));
+        var file = Path.Combine(directory, "Program.cs");
+        var entry = new FilePickerEntry("Program.cs", file, false, false);
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, entry);
+        var dialog = new FilePickerDialog(new FilePickerOptions { InitialDirectory = directory }, source);
+        await using var surface = await ComponentSurface.MountAsync(
+            dialog,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+        var hidden = OwnedTree.Find<CheckBox>(dialog).ShouldNotBeNull();
+        source.RegisterThrowingCancellationCallback = true;
+        var deferred = source.DeferNext(directory);
+
+        // Act - toggling the checkbox requests a reload of the same directory, which is deferred;
+        // toggling it back before that resolves cancels the pending lease (cascading into the
+        // throwing callback registered on it) and issues a fresh, immediately-resolving request.
+        await Should.NotThrowAsync(() => surface.UpdateAsync(
+            () => hidden.IsChecked = true,
+            "request a reload the fake defers"));
+        dialog.IsLoading.ShouldBeTrue();
+
+        await Should.NotThrowAsync(() => surface.UpdateAsync(
+            () => hidden.IsChecked = false,
+            "cancel the deferred reload with another one before it resolves"));
+        await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+
+        // Assert - the fresh load committed normally instead of being stranded by the throwing
+        // cancellation callback the superseded load's cancellation triggered.
+        dialog.IsLoading.ShouldBeFalse();
+        dialog.CurrentDirectory.ShouldBe(directory);
+        _ = deferred.TrySetResult([entry]);
+    }
+
     /// <summary>Delegates to a fake file system and, when armed, throws the armed exception
     /// synchronously from the next entry request instead of returning a faulted task.</summary>
     private sealed class SynchronouslyRejectingFileSystem(IFilePickerFileSystem inner): IFilePickerFileSystem

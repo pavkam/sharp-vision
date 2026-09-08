@@ -12,6 +12,10 @@ internal sealed class FakeFilePickerFileSystem: IFilePickerFileSystem
     private readonly Dictionary<string, Queue<Func<Task<IReadOnlyList<FilePickerEntry>>>>> _next =
         new(StringComparer.Ordinal);
 
+    /// <summary>Gets or sets whether every subsequent request registers a callback on its
+    /// cancellation token that throws when invoked, modeling a misbehaving consumer.</summary>
+    internal bool RegisterThrowingCancellationCallback { get; set; }
+
     /// <summary>Adds or replaces one canonical directory snapshot.</summary>
     /// <param name="path">The non-null, non-blank directory path.</param>
     /// <param name="entries">The non-null entry snapshot.</param>
@@ -98,6 +102,13 @@ internal sealed class FakeFilePickerFileSystem: IFilePickerFileSystem
         ArgumentNullException.ThrowIfNull(directory);
         ArgumentNullException.ThrowIfNull(filter);
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (RegisterThrowingCancellationCallback)
+        {
+            _ = cancellationToken.Register(
+                static () => throw new InvalidOperationException("Simulated throwing cancellation callback."));
+        }
+
         var canonical = GetFullPath(directory);
 
         if (_next.TryGetValue(canonical, out var requests) && requests.TryDequeue(out var request))
