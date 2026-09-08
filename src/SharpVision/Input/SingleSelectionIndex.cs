@@ -15,19 +15,36 @@ using InstantHandle = JetBrains.Annotations.InstantHandleAttribute;
 /// repairing a selection a mutation left on an ineligible or out-of-range index by finding the
 /// nearest surviving eligible one, and cycling continuously past either end back to the other.
 /// </remarks>
-internal static class SingleSelectionIndex
+[PublicAPI]
+public static class SingleSelectionIndex
 {
     /// <summary>Scans from <paramref name="start"/> toward <paramref name="direction"/>,
     /// inclusive, stopping at the first eligible index or at either end of the collection.</summary>
-    /// <param name="start">The index to begin scanning from, inclusive.</param>
-    /// <param name="direction">Plus or minus one.</param>
+    /// <param name="start">The index to begin scanning from, inclusive. A value outside
+    /// <c>[0, count)</c> is accepted and simply yields no eligible index in that direction, rather
+    /// than throwing, so a caller may pass one-past-either-end without special-casing it.</param>
+    /// <param name="direction">Plus one to scan toward the end, or minus one to scan toward the
+    /// start.</param>
     /// <param name="count">The number of items in the collection.</param>
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The first eligible index reached, or -1 when the scan runs past either end without
     /// finding one.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="direction"/> is not <c>1</c> or <c>-1</c>, or <paramref name="count"/> is
+    /// negative.
+    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="isEligible"/> is null.</exception>
     [Pure]
     public static int FindLinear(int start, int direction, int count, [InstantHandle] Func<int, bool> isEligible)
     {
+        if (direction is not (1 or -1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "The direction must be 1 or -1.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentNullException.ThrowIfNull(isEligible);
+
         for (var index = start; index >= 0 && index < count; index += direction)
         {
             if (isEligible(index))
@@ -47,9 +64,14 @@ internal static class SingleSelectionIndex
     /// <param name="count">The number of items in the collection.</param>
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The nearest eligible index, or -1 when no item in the collection is eligible.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="isEligible"/> is null.</exception>
     [Pure]
     public static int FindNearest(int start, int count, [InstantHandle] Func<int, bool> isEligible)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentNullException.ThrowIfNull(isEligible);
+
         var successor = FindLinear(Math.Max(0, start), 1, count, isEligible);
         return successor >= 0 ? successor : FindLinear(Math.Min(start - 1, count - 1), -1, count, isEligible);
     }
@@ -58,14 +80,29 @@ internal static class SingleSelectionIndex
     /// <paramref name="start"/> in <paramref name="direction"/> and wrapping past either end of
     /// the collection back to the other until every index has been visited once.</summary>
     /// <param name="start">The current index to step away from, or -1 for no current selection.</param>
-    /// <param name="direction">Plus or minus one.</param>
+    /// <param name="direction">Plus one to step toward the end, or minus one to step toward the
+    /// start.</param>
     /// <param name="count">The number of items in the collection.</param>
     /// <param name="isEligible">Reports whether the item at a given index can be selected.</param>
     /// <returns>The next eligible index, or -1 when no item is eligible or the collection is
     /// empty.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="direction"/> is not <c>1</c> or <c>-1</c>, <paramref name="count"/> is
+    /// negative, or <paramref name="start"/> is less than -1.
+    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="isEligible"/> is null.</exception>
     [Pure]
     public static int FindWrapped(int start, int direction, int count, [InstantHandle] Func<int, bool> isEligible)
     {
+        if (direction is not (1 or -1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "The direction must be 1 or -1.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentOutOfRangeException.ThrowIfLessThan(start, -1);
+        ArgumentNullException.ThrowIfNull(isEligible);
+
         if (count == 0)
         {
             return -1;

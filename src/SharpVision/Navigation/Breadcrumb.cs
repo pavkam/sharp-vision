@@ -760,28 +760,31 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
-        if (eventArgs.Stroke.Code is Code.Home or Code.End)
+        var code = eventArgs.Stroke.Code;
+
+        // Home and End share the current-item keyboard skeleton with Up/Down; Breadcrumb has no
+        // paging concept, so it opts out of PageUp/PageDown by passing a null extent selector.
+        // Current-item navigation never selects here - only explicit activation does - so the
+        // commit callback is a no-op.
+        if (HandleCurrentItemNavigation(
+                eventArgs,
+                _navigator,
+                code is Code.Home or Code.End ? CollectNavigableItems() : [],
+                viewportExtent: 0,
+                pageOverlap: 0,
+                pageItemExtent: null,
+                wrap: false,
+                static (_, _) => { }))
         {
-            var items = CollectNavigableItems();
-
-            if (items.Count > 0)
-            {
-                _ = _navigator.SetCurrent(eventArgs.Stroke.Code == Code.Home ? items[0] : items[^1]);
-                eventArgs.IsHandled = true;
-            }
-
             return;
         }
 
-        var direction = eventArgs.Stroke.Code is Code.Left or Code.Up
-            ? -1
-            : eventArgs.Stroke.Code is Code.Right or Code.Down
-                ? 1
-                : 0;
-
-        if (direction != 0)
+        // Left and Right are control-specific: this control has no separate expand/collapse
+        // concept, so both simply alias onto the same Up/Down direction the shared skeleton already
+        // steps by, one item at a time and never wrapping.
+        if (code is Code.Left or Code.Right)
         {
-            _ = _navigator.Move(direction, wrap: false);
+            _ = _navigator.Move(code == Code.Left ? -1 : 1, wrap: false);
             eventArgs.IsHandled = true;
         }
     }

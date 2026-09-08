@@ -12,26 +12,52 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// applying it as a fixed item-index delta, so the loop advances one item at a time and sums each
 /// visited item's realized extent (treating a negative extent as zero) until the running total
 /// reaches the target. The loop always advances before its first accumulated check, so at least
-/// one step is taken even when the very first item's extent alone would satisfy the target.
+/// one step is taken even when the very first item's extent alone would satisfy the target. Every
+/// extent here is measured in terminal cells along the axis the caller is paging - row height for
+/// a vertical list, column width for a horizontal one - never in items.
 /// </remarks>
-internal static class PagingStep
+[PublicAPI]
+public static class PagingStep
 {
     /// <summary>Walks from <paramref name="start"/> in <paramref name="direction"/>, stopping once
     /// the accumulated extent reaches <paramref name="target"/> or the walk runs past either end of
     /// the collection.</summary>
-    /// <param name="start">The index to advance from; not itself included in the accumulated extent.</param>
-    /// <param name="direction">Plus or minus one.</param>
+    /// <param name="start">The index to advance from; not itself included in the accumulated
+    /// extent. Conceptually one past either end (<c>-1</c> or <paramref name="count"/>) is a valid
+    /// starting point representing "no current item", the same sentinel
+    /// <see cref="SingleSelectionIndex"/> uses.</param>
+    /// <param name="direction">Plus one to step toward the end, or minus one to step toward the
+    /// start.</param>
     /// <param name="count">The number of items in the collection being paged.</param>
-    /// <param name="target">The accumulated extent to reach or exceed before stopping.</param>
-    /// <param name="extentAt">Returns the realized extent of the item at a given index; a negative
-    /// result is treated as zero.</param>
+    /// <param name="target">The accumulated extent, in cells, to reach or exceed before
+    /// stopping.</param>
+    /// <param name="extentAt">Returns the realized cell extent of the item at a given index; a
+    /// negative result is treated as zero.</param>
     /// <param name="clamp">When true, an index that runs past either end is clamped into
     /// <c>[0, count - 1]</c>, which requires <paramref name="count"/> to be at least one; when
     /// false, it is returned as-is for the caller to resolve.</param>
     /// <returns>The resulting index.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="direction"/> is not <c>1</c> or <c>-1</c>; <paramref name="count"/> is
+    /// negative; or <paramref name="clamp"/> is true and <paramref name="count"/> is zero.
+    /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="extentAt"/> is null.</exception>
     [Pure]
     public static int Accumulate(int start, int direction, int count, int target, [InstantHandle] Func<int, int> extentAt, bool clamp)
     {
+        if (direction is not (1 or -1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction), direction, "The direction must be 1 or -1.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentNullException.ThrowIfNull(extentAt);
+
+        if (clamp && count == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), count, "Clamping requires at least one item.");
+        }
+
         var index = start;
         var accumulated = 0;
 
@@ -59,27 +85,47 @@ internal static class PagingStep
     /// <param name="viewportExtent">The extent of the viewport being paged, in cells.</param>
     /// <param name="pageOverlap">The number of cells to retain from the current viewport; clamped to
     /// <paramref name="viewportExtent"/> so it can never overshoot it.</param>
-    /// <returns>The target extent to pass to <see cref="Accumulate"/>, floored at one so a page step
-    /// always advances by at least one item even when the viewport or overlap leaves no room.</returns>
+    /// <returns>The target extent, in cells, to pass to <see cref="Accumulate"/>, floored at one so
+    /// a page step always advances by at least one item even when the viewport or overlap leaves no
+    /// room.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="viewportExtent"/> or <paramref name="pageOverlap"/> is negative.
+    /// </exception>
     [Pure]
     [NonNegativeValue]
-    public static int TargetExtent(int viewportExtent, int pageOverlap) =>
-        Math.Max(1, viewportExtent - Math.Min(pageOverlap, viewportExtent));
+    public static int TargetExtent(int viewportExtent, int pageOverlap)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(viewportExtent);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageOverlap);
+        return Math.Max(1, viewportExtent - Math.Min(pageOverlap, viewportExtent));
+    }
 
     /// <summary>Computes the minimal vertical offset that brings a fixed-height item's row slot fully
     /// inside the viewport, using saturating arithmetic so an extreme index or item extent clamps
     /// instead of silently wrapping.</summary>
-    /// <param name="index">The zero-based item position whose row slot is being brought into view.</param>
+    /// <param name="index">The item position whose row slot is being brought into view, in items.
+    /// Not clamped: a negative or otherwise out-of-collection index still resolves to a saturated
+    /// row-slot offset instead of throwing, since a caller may reach here with an index a page step
+    /// has not yet clamped into range.</param>
     /// <param name="itemExtent">The fixed per-item extent, in cells.</param>
     /// <param name="currentOffset">The offset already in effect; returned unchanged when the row slot is
     /// already fully visible.</param>
     /// <param name="viewportExtent">The extent of the viewport being scrolled, in cells.</param>
     /// <param name="contentExtent">The total scrollable content extent, in cells.</param>
     /// <returns>The offset to scroll to, clamped to <c>[0, max(0, contentExtent - viewportExtent)]</c>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="itemExtent"/>, <paramref name="currentOffset"/>, <paramref
+    /// name="viewportExtent"/>, or <paramref name="contentExtent"/> is negative.
+    /// </exception>
     [Pure]
     [NonNegativeValue]
     public static int IndexIntoViewOffset(int index, int itemExtent, int currentOffset, int viewportExtent, int contentExtent)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(itemExtent);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentOffset);
+        ArgumentOutOfRangeException.ThrowIfNegative(viewportExtent);
+        ArgumentOutOfRangeException.ThrowIfNegative(contentExtent);
+
         var start = index.Multiply(itemExtent);
 
         var target = start < currentOffset

@@ -38,6 +38,11 @@ public sealed class TreeView: ScrollableCompositeControlBase, IStyled<TreeViewSt
     private TreeViewItem? _selectionAnchor;
     private readonly List<ControlBase> _flatBuffer = [];
 
+    // Shared, never-mutated stand-in for the visible-item snapshot on a keystroke that
+    // HandleCurrentItemNavigation recognizes but never reads the collection for (Up/Down), so that
+    // path allocates nothing beyond what CurrentItemNavigator.Move already needs internally.
+    private static readonly List<ControlBase> _noVisibleItems = [];
+
     // Preorder snapshot of every currently owned item - including collapsed-but-attached branches
     // FlattenVisible structurally cannot include - refreshed only inside RebuildFlatList, the one
     // place a genuine structural change already pays for a full walk. Selection bookkeeping reads
@@ -702,75 +707,40 @@ public sealed class TreeView: ScrollableCompositeControlBase, IStyled<TreeViewSt
             return;
         }
 
-        // Home/End: jump to first/last visible item
-        if (eventArgs.Stroke.Code is Code.Home or Code.End)
+        // Home, End, PageUp, PageDown, Up, and Down share the current-item keyboard skeleton;
+        // building the visible-item snapshot only when one of those codes needs it keeps Up/Down
+        // from paying for a second snapshot on top of the one CurrentItemNavigator.Move already
+        // takes internally.
+        var code = eventArgs.Stroke.Code;
+
+        var visible = code is Code.Home or Code.End or Code.PageUp or Code.PageDown
+            ? CollectVisibleItems()
+            : _noVisibleItems;
+
+        if (HandleCurrentItemNavigation(
+                eventArgs,
+                _navigator,
+                visible,
+                Viewport.Height,
+                PageOverlap,
+                index => visible[index].Bounds.Height,
+                WrapNavigation,
+                CommitCurrent))
         {
-            var endpoints = CollectVisibleItems();
-
-            if (endpoints.Count > 0)
-            {
-                var target = eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1];
-                _ = _navigator.SetCurrent(target);
-                CommitCurrent(target, eventArgs.Stroke.Modifiers);
-                eventArgs.IsHandled = true;
-            }
-
-            return;
-        }
-
-        // PageUp/PageDown: move by a viewport's worth of realized item height. Handling the key
-        // here - rather than leaving it unhandled - is what stops it from escaping to page an
-        // enclosing scrollable container out from under the still-focused tree.
-        if (eventArgs.Stroke.Code is Code.PageUp or Code.PageDown)
-        {
-            var visible = CollectVisibleItems();
-
-            if (visible.Count > 0)
-            {
-                var target = StepPage(visible, eventArgs.Stroke.Code == Code.PageDown ? 1 : -1);
-                _ = _navigator.SetCurrent(target);
-                CommitCurrent(target, eventArgs.Stroke.Modifiers);
-                eventArgs.IsHandled = true;
-            }
-
             return;
         }
 
         // Left: collapse current or navigate to parent
-        if (eventArgs.Stroke.Code == Code.Left)
+        if (code == Code.Left)
         {
             eventArgs.IsHandled = HandleLeft(eventArgs.Stroke.Modifiers);
             return;
         }
 
         // Right: expand current or navigate to first child
-        if (eventArgs.Stroke.Code == Code.Right)
+        if (code == Code.Right)
         {
             eventArgs.IsHandled = HandleRight(eventArgs.Stroke.Modifiers);
-            return;
-        }
-
-        // Up/Down: linear DFS navigation
-        int direction;
-
-        if (eventArgs.Stroke.Code == Code.Up)
-        {
-            direction = -1;
-        }
-        else if (eventArgs.Stroke.Code == Code.Down)
-        {
-            direction = 1;
-        }
-        else
-        {
-            return;
-        }
-
-        eventArgs.IsHandled = true;
-
-        if (_navigator.Move(direction, WrapNavigation) && _navigator.Current is { } current)
-        {
-            CommitCurrent(current, eventArgs.Stroke.Modifiers);
         }
     }
 
@@ -1356,25 +1326,6 @@ public sealed class TreeView: ScrollableCompositeControlBase, IStyled<TreeViewSt
         {
             NotifyItemInvoked(item, eventArgs.Cause, item.LastModifiers);
         }
-    }
-
-    // Accumulates realized item heights from the current position until the sum reaches the
-    // committed viewport height, rather than treating the viewport's cell height as an item
-    // count. A landing index that runs past either end is clamped into range.
-    [Pure]
-    private ControlBase StepPage(List<ControlBase> visible, int direction)
-    {
-        var index = _navigator.Current is { } current ? visible.IndexOf(current) : -1;
-
-        if (index < 0)
-        {
-            index = direction > 0 ? -1 : visible.Count;
-        }
-
-        var target = PagingStep.TargetExtent(Viewport.Height, PageOverlap);
-        var result = PagingStep.Accumulate(index, direction, visible.Count, target, i => visible[i].Bounds.Height, clamp: true);
-
-        return visible[result];
     }
 
     [Pure]

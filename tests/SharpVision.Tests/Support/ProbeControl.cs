@@ -107,6 +107,19 @@ internal sealed class ProbeControl: ChromeProbe
     /// <returns>Whether focus was acquired or already owned.</returns>
     internal bool RequestProbeFocus() => RequestFocus();
 
+    /// <summary>Forwards to the protected static current-item keyboard skeleton, exercising it
+    /// without a concrete current-item owner such as TreeView or NavigationView.</summary>
+    internal static bool ProbeHandleCurrentItemNavigation(
+        KeyEventArgs eventArgs,
+        CurrentItemNavigator navigator,
+        IReadOnlyList<ControlBase> ordered,
+        int viewportExtent,
+        int pageOverlap,
+        Func<int, int>? pageItemExtent,
+        bool wrap,
+        Action<ControlBase, Modifiers> commit) =>
+        HandleCurrentItemNavigation(eventArgs, navigator, ordered, viewportExtent, pageOverlap, pageItemExtent, wrap, commit);
+
     /// <summary>Requests pointer capture through the protected consumer seam.</summary>
     /// <returns>Whether capture was acquired or already owned.</returns>
     internal bool CaptureProbePointer() => CapturePointer();

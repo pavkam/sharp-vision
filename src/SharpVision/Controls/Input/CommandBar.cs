@@ -996,8 +996,11 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         var current = _overflowTargetSelected
             ? targets.IndexOf(_overflowButton)
             : _selectedItem is null ? -1 : targets.IndexOf(_selectedItem);
-        var origin = current >= 0 ? current : direction < 0 ? targets.Count : -1;
-        var next = (origin + direction + targets.Count) % targets.Count;
+
+        // NavigationTargets() already filtered to available items, so every index is eligible; the
+        // wrapped scan therefore always stops on its very first step, landing on the same index the
+        // hand-rolled origin-rebase-plus-modulo arithmetic this replaced used to compute directly.
+        var next = SingleSelectionIndex.FindWrapped(current, direction, targets.Count, static _ => true);
         SelectNavigationTarget(targets[next]);
     }
 

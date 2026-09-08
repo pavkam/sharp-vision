@@ -7452,6 +7452,144 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         return true;
     }
 
+    /// <summary>Runs the shared Home/End/PageUp/PageDown/Up/Down current-item keyboard skeleton
+    /// that every current-item owner - a scrolling collection that tracks one current identity
+    /// independently of selection, such as <c>TreeView</c>, <c>NavigationView</c>, and
+    /// <c>Breadcrumb</c> - needs, so a derived control does not reimplement clamped page
+    /// accumulation, wrapped or unwrapped linear stepping, and the always-handled paging rule from
+    /// nothing.</summary>
+    /// <param name="eventArgs">The routed key event under evaluation. Only <c>Home</c>, <c>End</c>,
+    /// <c>PageUp</c>, <c>PageDown</c>, <c>Up</c>, and <c>Down</c> are recognized; every other code
+    /// leaves <see cref="RoutedEventArgs.IsHandled"/> untouched and returns false. The caller
+    /// applies its own routing-phase and modifier-eligibility gates before calling this method.</param>
+    /// <param name="navigator">Owns the collection's current-item identity. <paramref
+    /// name="ordered"/> must be the same realized collection this navigator was constructed
+    /// over.</param>
+    /// <param name="ordered">The currently realized, navigable items in visual order.
+    /// <c>Home</c> lands on the first entry and <c>End</c> on the last; <c>PageUp</c>/<c>PageDown</c>
+    /// accumulate <paramref name="pageItemExtent"/> across it starting from the current item.</param>
+    /// <param name="viewportExtent">The scrolled viewport's extent, in cells, along the axis
+    /// <paramref name="pageItemExtent"/> measures. Ignored when <paramref name="pageItemExtent"/> is
+    /// null.</param>
+    /// <param name="pageOverlap">The number of cells of the current viewport a page step retains,
+    /// in the same units as <paramref name="viewportExtent"/>. Ignored when <paramref
+    /// name="pageItemExtent"/> is null.</param>
+    /// <param name="pageItemExtent">Returns the realized cell extent of the item at a given index
+    /// into <paramref name="ordered"/>, such as <c>index => ordered[index].Bounds.Height</c> for a
+    /// vertical owner. Null opts out of <c>PageUp</c>/<c>PageDown</c> entirely - leaving
+    /// <see cref="RoutedEventArgs.IsHandled"/> untouched so the key can bubble to an enclosing
+    /// scrollable ancestor instead - which a current-item owner with no paging concept, such as
+    /// <c>Breadcrumb</c>, supplies.</param>
+    /// <param name="wrap">Whether <c>Up</c>/<c>Down</c> cycles past either end of <paramref
+    /// name="ordered"/> back to the other, forwarded to <see cref="CurrentItemNavigator.Move"/>.</param>
+    /// <param name="commit">Runs after <paramref name="navigator"/> adopts a new current item,
+    /// receiving the newly current item and the triggering stroke's modifiers. A current-item owner
+    /// that only tracks current identity without an automatic selection side effect - such as
+    /// <c>Breadcrumb</c>, which selects only on explicit activation - supplies a no-op.</param>
+    /// <returns>True when this call recognized <paramref name="eventArgs"/>'s code and handled it
+    /// (marking <see cref="RoutedEventArgs.IsHandled"/> as appropriate below); false when the code
+    /// was not one of the six recognized keys, or when <paramref name="pageItemExtent"/> is null for
+    /// a paging key.</returns>
+    /// <remarks>
+    /// <c>PageUp</c> and <c>PageDown</c> are reported handled - even when the accumulated walk lands
+    /// back on the boundary item it started from - once <paramref name="ordered"/> is non-empty and
+    /// <paramref name="pageItemExtent"/> is supplied; marking the key handled at the boundary is what
+    /// stops it from escaping to page a scrolling ancestor out from under the still-focused control.
+    /// <c>Home</c>, <c>End</c>, and <c>Up</c>/<c>Down</c> are likewise always reported handled -
+    /// <c>Home</c>/<c>End</c> once <paramref name="ordered"/> is non-empty, and <c>Up</c>/<c>Down</c>
+    /// unconditionally - for the same reason. <c>Enter</c>, <c>Space</c>, <c>Left</c>, and
+    /// <c>Right</c> are control-specific and never handled here; a caller that needs those keys
+    /// implements them itself, typically also driving <paramref name="navigator"/> directly.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="eventArgs"/>, <paramref name="navigator"/>, <paramref name="ordered"/>, or
+    /// <paramref name="commit"/> is null.
+    /// </exception>
+    protected static bool HandleCurrentItemNavigation(
+        KeyEventArgs eventArgs,
+        CurrentItemNavigator navigator,
+        IReadOnlyList<ControlBase> ordered,
+        int viewportExtent,
+        int pageOverlap,
+        Func<int, int>? pageItemExtent,
+        bool wrap,
+        Action<ControlBase, Modifiers> commit)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentNullException.ThrowIfNull(navigator);
+        ArgumentNullException.ThrowIfNull(ordered);
+        ArgumentNullException.ThrowIfNull(commit);
+
+        var stroke = eventArgs.Stroke;
+
+        if (stroke.Code is Code.Home or Code.End)
+        {
+            if (ordered.Count == 0)
+            {
+                return false;
+            }
+
+            var target = stroke.Code == Code.Home ? ordered[0] : ordered[^1];
+            _ = navigator.SetCurrent(target);
+            commit(target, stroke.Modifiers);
+            eventArgs.IsHandled = true;
+            return true;
+        }
+
+        if (stroke.Code is Code.PageUp or Code.PageDown)
+        {
+            if (pageItemExtent is null || ordered.Count == 0)
+            {
+                return false;
+            }
+
+            var direction = stroke.Code == Code.PageDown ? 1 : -1;
+            var index = navigator.Current is { } current ? IndexOfOrdered(ordered, current) : -1;
+
+            if (index < 0)
+            {
+                index = direction > 0 ? -1 : ordered.Count;
+            }
+
+            var pageTarget = PagingStep.TargetExtent(viewportExtent, pageOverlap);
+            var landedIndex = PagingStep.Accumulate(index, direction, ordered.Count, pageTarget, pageItemExtent, clamp: true);
+            var landed = ordered[landedIndex];
+
+            _ = navigator.SetCurrent(landed);
+            commit(landed, stroke.Modifiers);
+            eventArgs.IsHandled = true;
+            return true;
+        }
+
+        if (stroke.Code is Code.Up or Code.Down)
+        {
+            var direction = stroke.Code == Code.Down ? 1 : -1;
+            eventArgs.IsHandled = true;
+
+            if (navigator.Move(direction, wrap) && navigator.Current is { } moved)
+            {
+                commit(moved, stroke.Modifiers);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static int IndexOfOrdered(IReadOnlyList<ControlBase> items, ControlBase value)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (ReferenceEquals(items[index], value))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
     #endregion
 
     #region Press and drag activation

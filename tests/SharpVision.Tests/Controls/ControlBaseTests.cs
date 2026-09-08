@@ -4959,4 +4959,70 @@ public sealed class ControlBaseTests
             selectedControl: Hex(selectedControl)));
 
     #endregion
+
+    #region Current-item navigation
+
+    /// <summary>Verifies a PageDown that lands back on the already-current last item is still
+    /// reported handled, matching the "handled even at the boundary" contract every current-item
+    /// owner (TreeView, NavigationView) relies on to keep the stroke from escaping to page an
+    /// enclosing scrollable ancestor.</summary>
+    [Fact]
+    public void HandleCurrentItemNavigation_WhenPageDownAtEnd_IsHandledWithoutMoving()
+    {
+        // Arrange
+        ControlBase[] ordered = [new ProbeControl(), new ProbeControl(), new ProbeControl()];
+        var navigator = new CurrentItemNavigator(() => ordered);
+        _ = navigator.SetCurrent(ordered[^1]);
+        var eventArgs = new KeyEventArgs(new Stroke(Code.PageDown, null, 0, Modifiers.None, KeyAction.Press));
+        var commitCount = 0;
+
+        // Act
+        var handled = ProbeControl.ProbeHandleCurrentItemNavigation(
+            eventArgs,
+            navigator,
+            ordered,
+            viewportExtent: 10,
+            pageOverlap: 0,
+            pageItemExtent: static _ => 1,
+            wrap: false,
+            commit: (_, _) => commitCount++);
+
+        // Assert
+        handled.ShouldBeTrue();
+        eventArgs.IsHandled.ShouldBeTrue();
+        navigator.Current.ShouldBeSameAs(ordered[^1]);
+        commitCount.ShouldBe(1);
+    }
+
+    /// <summary>Verifies Home commits the first eligible entry regardless of the current
+    /// position.</summary>
+    [Fact]
+    public void HandleCurrentItemNavigation_WhenHomePressed_CommitsFirstEligible()
+    {
+        // Arrange
+        ControlBase[] ordered = [new ProbeControl(), new ProbeControl(), new ProbeControl()];
+        var navigator = new CurrentItemNavigator(() => ordered);
+        _ = navigator.SetCurrent(ordered[^1]);
+        var eventArgs = new KeyEventArgs(new Stroke(Code.Home, null, 0, Modifiers.None, KeyAction.Press));
+        ControlBase? committed = null;
+
+        // Act
+        var handled = ProbeControl.ProbeHandleCurrentItemNavigation(
+            eventArgs,
+            navigator,
+            ordered,
+            viewportExtent: 10,
+            pageOverlap: 0,
+            pageItemExtent: null,
+            wrap: false,
+            commit: (target, _) => committed = target);
+
+        // Assert
+        handled.ShouldBeTrue();
+        eventArgs.IsHandled.ShouldBeTrue();
+        navigator.Current.ShouldBeSameAs(ordered[0]);
+        committed.ShouldBeSameAs(ordered[0]);
+    }
+
+    #endregion
 }

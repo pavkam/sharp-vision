@@ -302,6 +302,23 @@ with extra command modifiers. Pointer activation snapshots owner availability
 across focus callbacks and never handles a stale continuation after detach,
 reparent, or disposal.
 
+## Current-item keyboard skeleton
+
+`TreeView`, `NavigationView`, and `Breadcrumb` each track one collection-current
+identity independently of selection through an internal `CurrentItemNavigator`,
+and share one `ControlBase.HandleCurrentItemNavigation` method for the resulting
+Home/End/PageUp/PageDown/Up/Down pattern: Home and End jump to the first or last
+eligible entry, PageUp/PageDown accumulate realized item extents toward the
+viewport through `PagingStep`, and Up/Down step one entry at a time, wrapping
+only when the owner opts in. PageUp, PageDown, Home, End, and Up/Down are always
+reported handled once the collection is non-empty - even when the cursor cannot
+move any further - which is what stops the stroke from escaping to page an
+enclosing scrollable ancestor instead. Enter, Space, Left, and Right stay
+control-specific, since activation and expand/collapse differ per owner.
+`PagingStep`, `SingleSelectionIndex`, and `KeyboardModifierPolicy` are the
+public delegate-taking algorithms this skeleton and other single-selection
+cursors (`TabControl`, `Menu`, `CommandBar`) build on.
+
 ## Pointer capture and coordinates
 
 Capture is exclusive per pointer source and supports press, drag, scrollbar,

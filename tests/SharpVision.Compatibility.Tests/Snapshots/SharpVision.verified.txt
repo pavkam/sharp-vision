@@ -606,6 +606,7 @@ namespace SharpVision.Controls
         protected void VerifyTextSelectionEnabled() { }
         protected static void CaptureFailure(System.Action action, ref System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure) { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
+        protected static bool HandleCurrentItemNavigation(SharpVision.Input.KeyEventArgs eventArgs, SharpVision.Input.CurrentItemNavigator navigator, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase> ordered, int viewportExtent, int pageOverlap, System.Func<int, int>? pageItemExtent, bool wrap, System.Action<SharpVision.Controls.ControlBase, SharpVision.Terminal.Input.Modifiers> commit) { }
         protected static bool IsVersionedPropertyCurrent<T>(T field, T value, long version, long commitVersion) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static void ResolveChildHeightLimits(SharpVision.Controls.ControlBase child, int? containingHeight, out int minimum, out int maximum) { }
@@ -3237,6 +3238,13 @@ namespace SharpVision.Input
         public SharpVision.Terminal.Protocols.Color PreviousValue { get; }
         public SharpVision.Terminal.Protocols.Color Value { get; }
     }
+    public sealed class CurrentItemNavigator
+    {
+        public CurrentItemNavigator(System.Func<System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>> items) { }
+        public SharpVision.Controls.ControlBase? Current { get; }
+        public bool Move(int delta, bool wrap) { }
+        public bool SetCurrent(SharpVision.Controls.ControlBase? value) { }
+    }
     public sealed class DateInputValueChangedEventArgs : System.EventArgs
     {
         public DateInputValueChangedEventArgs(System.DateOnly? previousValue, System.DateOnly? value) { }
@@ -3334,6 +3342,14 @@ namespace SharpVision.Input
         public bool Matches(in SharpVision.Terminal.Input.Stroke stroke) { }
         public override string ToString() { }
     }
+    public static class KeyboardModifierPolicy
+    {
+        public static bool IsCollectionSelectionEligible(SharpVision.Terminal.Input.Modifiers modifiers) { }
+        public static bool IsScalarNavigationEligible(SharpVision.Terminal.Input.Modifiers modifiers) { }
+        public static bool IsTabTraversalEligible(SharpVision.Terminal.Input.Modifiers modifiers) { }
+        public static bool IsTextEntryEligible(SharpVision.Terminal.Input.Modifiers modifiers) { }
+        public static bool MatchesCommand(SharpVision.Terminal.Input.Modifiers modifiers, SharpVision.Terminal.Input.Modifiers expected) { }
+    }
     public sealed class ListSelectionChangedEventArgs : System.EventArgs
     {
         public ListSelectionChangedEventArgs(System.ReadOnlySpan<int> addedIndexes, System.ReadOnlySpan<int> removedIndexes) { }
@@ -3379,6 +3395,12 @@ namespace SharpVision.Input
     {
         Ignore = 0,
         Dismiss = 1,
+    }
+    public static class PagingStep
+    {
+        public static int Accumulate(int start, int direction, int count, int target, System.Func<int, int> extentAt, bool clamp) { }
+        public static int IndexIntoViewOffset(int index, int itemExtent, int currentOffset, int viewportExtent, int contentExtent) { }
+        public static int TargetExtent(int viewportExtent, int pageOverlap) { }
     }
     public sealed class PasteEventArgs : SharpVision.Input.RoutedEventArgs
     {
@@ -3471,6 +3493,12 @@ namespace SharpVision.Input
         TunnelBubble = 0,
         Bubble = 1,
         Direct = 2,
+    }
+    public static class SingleSelectionIndex
+    {
+        public static int FindLinear(int start, int direction, int count, System.Func<int, bool> isEligible) { }
+        public static int FindNearest(int start, int count, System.Func<int, bool> isEligible) { }
+        public static int FindWrapped(int start, int direction, int count, System.Func<int, bool> isEligible) { }
     }
     public sealed class SliderValueChangedEventArgs : System.EventArgs
     {
