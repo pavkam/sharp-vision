@@ -79,7 +79,10 @@ public sealed class SuggestionInput: CompositeControlBase
             beginSession: BeginNavigationSession,
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession,
-            acceptSession: AcceptNavigationSession);
+            acceptSession: AcceptNavigationSession,
+            acceptCurrent: AcceptCurrent,
+            markEnterHandledWithoutAcceptance: true,
+            enterRequiresActivationEligibleModifiers: true);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
@@ -469,20 +472,29 @@ public sealed class SuggestionInput: CompositeControlBase
         CancelPendingAcceptance();
     }
 
+    /// <summary>Activates the provisional row for the shared Enter-acceptance prologue, when the
+    /// snapshot it would accept is still current.</summary>
+    /// <remarks>An open suggestion session owns Enter even while the newest request is unresolved -
+    /// the coordinator marks the stroke handled regardless of this method's result (see the
+    /// <c>markEnterHandledWithoutAcceptance: true</c> argument at the enable call), which prevents
+    /// the editor's ordinary Submitted event from accepting an older row.</remarks>
+    /// <param name="eventArgs">The routed Enter key event.</param>
+    /// <returns>True when the current snapshot activated; false when it is not yet safe to
+    /// accept.</returns>
+    private bool AcceptCurrent(KeyEventArgs eventArgs)
+    {
+        if (!CanAcceptCurrentSnapshot())
+        {
+            return false;
+        }
+
+        _ = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, eventArgs.Stroke.Modifiers);
+        return true;
+    }
+
     private bool HandleNavigationKey(KeyEventArgs eventArgs)
     {
         var stroke = eventArgs.Stroke;
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Escape &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            // Mark Escape before closing because ending the session makes the coordinator's
-            // post-callback guard intentionally refuse to mutate the old routed record.
-            eventArgs.IsHandled = true;
-            base.IsPopupOpen = false;
-            return true;
-        }
 
         if (eventArgs.IsInitialKeyDown &&
             stroke.Code == Code.Tab &&
@@ -490,23 +502,6 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             base.IsPopupOpen = false;
             return false;
-        }
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Enter &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            // An open suggestion session owns Enter even while the newest request is unresolved.
-            // This prevents the editor's ordinary Submitted event from accepting an older row.
-            eventArgs.IsHandled = true;
-
-            if (!CanAcceptCurrentSnapshot())
-            {
-                return true;
-            }
-
-            _ = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
-            return true;
         }
 
         var moved = _list.HandleCurrentNavigationKey(eventArgs);

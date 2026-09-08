@@ -133,6 +133,12 @@ returns. See [Owned popups](../controls/control.md#owned-popups) for the
 complete contract, including the `OnPopupArranged` seam a control uses when its
 own arrange-time logic needs the popup's content already arranged.
 
+A field that wants Escape-to-restore and Enter-to-commit semantics over its own
+popup content - a `TagField`-style suggestion list, for example - calls
+`EnablePopupNavigationSession` instead of `EnablePopup`; see
+[Provisional navigation sessions](../controls/control.md#provisional-navigation-sessions)
+for the session callback contract.
+
 ## Complete the component
 
 A shipped control is complete only when its

@@ -19,4 +19,9 @@ internal sealed class NoCapabilityInputProbe: InputBase
 
     /// <summary>Writes IsOpen through the protected seam without ever enabling the popup capability.</summary>
     internal void ProbeSetOpened(bool value) => IsOpen = value;
+
+    /// <summary>Draws a placeholder through the protected seam without any capability enabled,
+    /// proving the shared authoring helper needs none.</summary>
+    internal void ProbeRenderInputPlaceholder(TerminalCanvas canvas, Rect bounds, string placeholder) =>
+        RenderInputPlaceholder(canvas, bounds, placeholder);
 }

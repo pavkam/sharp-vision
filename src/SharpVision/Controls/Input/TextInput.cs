@@ -1719,7 +1719,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     }
 
     /// <inheritdoc/>
-    private protected override void OnAffixChanged()
+    protected override void OnAffixChanged()
     {
         base.OnAffixChanged();
         ArrangeChrome();

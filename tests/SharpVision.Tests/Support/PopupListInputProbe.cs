@@ -3,8 +3,8 @@
 
 namespace SharpVision.Tests.Support;
 
-/// <summary>An <see cref="InputBase"/> derivative that enables an owned popup plus press
-/// activation over a plain list-like container - mirroring <see cref="ComboBox"/>'s
+/// <summary>An <see cref="InputBase"/> derivative that enables an owned popup navigation session
+/// plus press activation over a plain list-like container - mirroring <see cref="ComboBox"/>'s
 /// capability combination without its selection semantics.</summary>
 internal sealed class PopupListInputProbe: InputBase
 {
@@ -14,9 +14,18 @@ internal sealed class PopupListInputProbe: InputBase
         Content = new ProbeContainer();
         Item = new ProbeControl { IsFocusable = true };
         Content.Children.Add(Item);
-        Popup = EnablePopup(Content, focusOnOpen: false);
+        Popup = EnablePopupNavigationSession(
+            Content,
+            focusOnOpen: false,
+            handleNavigationKey: HandleNavigationKey,
+            acceptCurrent: AcceptCurrent);
         EnablePressActivation();
     }
+
+    /// <summary>Gets or sets the callback the protected acceptance seam invokes for Enter while a
+    /// session is current; null (the default) leaves Enter to reach ordinary press activation
+    /// exactly like a control that never wired acceptance at all.</summary>
+    internal Func<KeyEventArgs, bool>? AcceptCurrentOverride { get; set; }
 
     /// <summary>Gets the popup's owned container content.</summary>
     internal ProbeContainer Content { get; }
@@ -74,4 +83,14 @@ internal sealed class PopupListInputProbe: InputBase
         base.OnEvent(eventArgs);
         HandlePressActivation(eventArgs);
     }
+
+    /// <summary>Reports no movement; this probe never needs list-style navigation to exercise the
+    /// shared Escape/Enter prologue.</summary>
+    private static bool HandleNavigationKey(KeyEventArgs eventArgs)
+    {
+        _ = eventArgs;
+        return false;
+    }
+
+    private bool AcceptCurrent(KeyEventArgs eventArgs) => AcceptCurrentOverride?.Invoke(eventArgs) ?? false;
 }

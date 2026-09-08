@@ -1349,6 +1349,70 @@ public sealed class InputBaseTests
         probe.Pending.ShouldBe(Invalidation.Render);
     }
 
+    /// <summary>Verifies Escape closes the owned popup without invoking acceptance while a
+    /// provisional navigation session is current - identical across every session-enabled owner,
+    /// so the shared coordinator prologue handles it without a per-owner callback.</summary>
+    [Fact]
+    public void EnablePopupNavigationSession_WhenEscapePressedWhileOpen_ClosesWithoutAcceptance()
+    {
+        var probe = new PopupListInputProbe { IsOpen = true };
+        var acceptCalled = false;
+        probe.AcceptCurrentOverride = _ =>
+        {
+            acceptCalled = true;
+            return true;
+        };
+        var escape = Key(Code.Escape);
+
+        _ = Router.Route(probe, Events.Key, escape);
+
+        escape.IsHandled.ShouldBeTrue();
+        probe.IsOpen.ShouldBeFalse();
+        probe.DropDownClosedCount.ShouldBe(1);
+        acceptCalled.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Enter invokes the configured acceptance callback and, once that callback
+    /// closes the popup through <see cref="ControlBase.AcceptPopupAndClose"/>, marks the stroke
+    /// handled from the shared coordinator prologue.</summary>
+    [Fact]
+    public void EnablePopupNavigationSession_WhenEnterPressed_AcceptsCurrentAndCloses()
+    {
+        var probe = new PopupListInputProbe { IsOpen = true };
+        probe.AcceptCurrentOverride = _ =>
+        {
+            probe.ProbeAcceptPopupAndClose();
+            return true;
+        };
+        var enter = Enter();
+
+        _ = Router.Route(probe, Events.Key, enter);
+
+        enter.IsHandled.ShouldBeTrue();
+        probe.IsOpen.ShouldBeFalse();
+        probe.DropDownClosedCount.ShouldBe(1);
+    }
+
+    #endregion
+
+    #region Placeholder
+
+    /// <summary>Verifies the shared placeholder helper paints a dimmed field style without any
+    /// capability enabled, matching the Dim style TextInput's own surface tests already prove for
+    /// its integration - this proves the protected authoring seam works standalone for any
+    /// derivative, not only through TextInput's wiring.</summary>
+    [Fact]
+    public void RenderInputPlaceholder_WhenTextIsEmpty_PaintsPlaceholderStyle()
+    {
+        var probe = new NoCapabilityInputProbe();
+        using Frame frame = new(new Size(6, 1));
+
+        probe.ProbeRenderInputPlaceholder(frame.Canvas, new Rect(0, 0, 6, 1), "Name");
+
+        FrameOracle.Get(frame, default).ShouldBe("N");
+        (frame.GetCell(default).Style.Attributes & TerminalAttributes.Dim).ShouldBe(TerminalAttributes.Dim);
+    }
+
     #endregion
 
     private static KeyEventArgs Key(Code code, Modifiers modifiers = Modifiers.None) => new(new Stroke(

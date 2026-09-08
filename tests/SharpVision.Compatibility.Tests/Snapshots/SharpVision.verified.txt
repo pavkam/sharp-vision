@@ -437,6 +437,8 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.ControlBase? Parent { get; }
         protected virtual string PopupOpenPropertyName { get; }
+        protected ulong PopupSessionGeneration { get; }
+        protected ulong PopupTransitionVersion { get; }
         protected virtual bool ReceivesInheritedSelectionState { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
         public virtual string SelectedText { get; }
@@ -500,6 +502,26 @@ namespace SharpVision.Controls
         protected void EnableChromeAuthoring() { }
         protected void EnableDrag(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Func<bool>? tryCapture = null, System.Func<bool>? isAvailable = null) { }
         protected SharpVision.Popups.Popup EnablePopup(SharpVision.Controls.ControlBase content, SharpVision.Popups.PopupPlacement placement = 0, bool focusOnOpen = false, SharpVision.Input.TabNavigation popupTabNavigation = 3, System.Action? beforeOpen = null, System.Action? beforeCloseFocusRestore = null, SharpVision.Controls.ControlBase? anchor = null, SharpVision.Controls.ControlBase? ownerInitialFocus = null, System.Func<bool>? requestFocus = null, SharpVision.Layout.Length? contentHeightLimit = default, bool connectsToAnchor = true, string partKey = "drop-down") { }
+        protected SharpVision.Popups.Popup EnablePopupNavigationSession(
+                    SharpVision.Controls.ControlBase content,
+                    SharpVision.Popups.PopupPlacement placement = 0,
+                    bool focusOnOpen = false,
+                    SharpVision.Input.TabNavigation popupTabNavigation = 3,
+                    System.Action? beforeOpen = null,
+                    System.Action? beforeCloseFocusRestore = null,
+                    SharpVision.Controls.ControlBase? anchor = null,
+                    SharpVision.Controls.ControlBase? ownerInitialFocus = null,
+                    System.Func<bool>? requestFocus = null,
+                    SharpVision.Layout.Length? contentHeightLimit = default,
+                    bool connectsToAnchor = true,
+                    string partKey = "drop-down",
+                    System.Action? beginSession = null,
+                    System.Func<SharpVision.Input.KeyEventArgs, bool>? handleNavigationKey = null,
+                    System.Action? cancelSession = null,
+                    System.Action? acceptSession = null,
+                    System.Func<SharpVision.Input.KeyEventArgs, bool>? acceptCurrent = null,
+                    bool markEnterHandledWithoutAcceptance = false,
+                    bool enterRequiresActivationEligibleModifiers = false) { }
         protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null, System.Action<bool>? setPressed = null) { }
         protected void EstablishTextSelectionCaret() { }
         protected T? FindAncestor<T>()
@@ -594,6 +616,7 @@ namespace SharpVision.Controls
         protected SharpVision.Styling.BorderGlyphStyle ResolveBorderGlyphs(SharpVision.Styling.BorderGlyphStyle glyphs) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected System.Text.Rune ResolveControlGlyph(SharpVision.Styling.ControlGlyph glyph) { }
+        protected void RestartPopupNavigationSession() { }
         protected virtual void RevealTextSelectionCaret(int caret) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
         protected virtual bool ScrollTextSelectionViewport(int horizontal, int vertical, out SharpVision.Terminal.Geometry.Point hitAdjustment) { }
@@ -706,20 +729,26 @@ namespace SharpVision.Controls
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
         protected void ArrangeCaption(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected void ArrangeSelectionMarkCaption(SharpVision.Terminal.Geometry.Rect bounds, int markWidth, int markGap, SharpVision.Controls.Input.SelectionMarkPlacement placement, int affixGap) { }
         protected void DrawDropDownIndicator(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect content, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected void EnableCaption() { }
         protected void EnableCommand() { }
         protected void ExecuteCommandIfAny() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        protected bool? HandleDropDownOpeningCommand(SharpVision.Input.KeyEventArgs eventArgs) { }
         protected void InvalidateSegmentLayout() { }
         protected SharpVision.Terminal.Geometry.Size MeasureCaption(SharpVision.Layout.Constraint constraint) { }
         protected SharpVision.Terminal.Geometry.Size MeasureSegmentedField() { }
+        protected SharpVision.Terminal.Geometry.Size MeasureSelectionMarkCaption(SharpVision.Layout.Constraint constraint, int markWidth, int markGap, int affixGap) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected virtual void OnAffixChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void RenderInputPlaceholder(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect bounds, string placeholder) { }
         protected void RenderSegmentedField(SharpVision.Terminal.Rendering.TerminalCanvas canvas, bool isPlaceholder) { }
+        protected void RenderSelectionMark(SharpVision.Terminal.Rendering.TerminalCanvas canvas, System.ReadOnlySpan<char> mark, int markWidth, SharpVision.Controls.Input.SelectionMarkPlacement placement, int affixGap) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
         protected SharpVision.Terminal.Geometry.Rect ResolveSegmentBox() { }
         protected new void VerifyMutable() { }
@@ -2436,6 +2465,7 @@ namespace SharpVision.Controls.Input
         protected override int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override int MoveTextSelectionCaret(SharpVision.Terminal.Input.Code code, bool extend, bool word) { }
+        protected override void OnAffixChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }

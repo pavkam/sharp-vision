@@ -3,6 +3,8 @@
 
 namespace SharpVision.Popups;
 
+using SharpVision.Terminal.Input;
+
 /// <summary>
 /// Owns the private-popup open/close lifecycle shared by every composite drop-down field
 /// (<see cref="Controls.Input.ComboBox"/>, <see cref="Controls.Input.DateInput"/>,
@@ -51,6 +53,9 @@ internal sealed class PopupDropDownCoordinator
     private readonly Func<KeyEventArgs, bool>? _handleNavigationKey;
     private readonly Action? _cancelSession;
     private readonly Action? _acceptSession;
+    private readonly Func<KeyEventArgs, bool>? _acceptCurrent;
+    private readonly bool _markEnterHandledWithoutAcceptance;
+    private readonly bool _enterRequiresActivationEligibleModifiers;
     private readonly IDisposable _ownerKeyRegistration;
     private bool _hasActiveSession;
     private bool _sessionAccepted;
@@ -73,12 +78,22 @@ internal sealed class PopupDropDownCoordinator
     /// <param name="beginSession">Optional owner-specific callback that snapshots committed state
     /// and seeds provisional popup state for each newly opened session.</param>
     /// <param name="handleNavigationKey">Optional canonical navigation callback invoked once from
-    /// the owner's preview route for each key while the session remains current. It returns whether
-    /// the coordinator must consume the stroke.</param>
+    /// the owner's preview route for each key that the shared Escape/Enter handling below did not
+    /// already claim, while the session remains current. It returns whether the coordinator must
+    /// consume the stroke.</param>
     /// <param name="cancelSession">Optional owner-specific callback that restores the opening
     /// state when the session closes without acceptance.</param>
     /// <param name="acceptSession">Optional owner-specific callback that commits provisional
     /// state before an accepted session closes.</param>
+    /// <param name="acceptCurrent">Optional canonical acceptance callback invoked once from the
+    /// owner's preview route when Enter is recognized as belonging to the session. Returns whether
+    /// the provisional item was actually accepted. Null means Enter never belongs to the session; it
+    /// reaches <paramref name="handleNavigationKey"/> like any other key instead.</param>
+    /// <param name="markEnterHandledWithoutAcceptance">Whether Enter is marked handled once
+    /// recognized as belonging to the session even when <paramref name="acceptCurrent"/> reports no
+    /// acceptance.</param>
+    /// <param name="enterRequiresActivationEligibleModifiers">Whether Enter belongs to the session
+    /// only under activation-eligible modifiers.</param>
     /// <exception cref="ArgumentNullException">A required argument is null.</exception>
     public PopupDropDownCoordinator(
         ControlBase owner,
@@ -94,7 +109,10 @@ internal sealed class PopupDropDownCoordinator
         Action? beginSession = null,
         Func<KeyEventArgs, bool>? handleNavigationKey = null,
         Action? cancelSession = null,
-        Action? acceptSession = null)
+        Action? acceptSession = null,
+        Func<KeyEventArgs, bool>? acceptCurrent = null,
+        bool markEnterHandledWithoutAcceptance = false,
+        bool enterRequiresActivationEligibleModifiers = false)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(popup);
@@ -118,6 +136,9 @@ internal sealed class PopupDropDownCoordinator
         _handleNavigationKey = handleNavigationKey;
         _cancelSession = cancelSession;
         _acceptSession = acceptSession;
+        _acceptCurrent = acceptCurrent;
+        _markEnterHandledWithoutAcceptance = markEnterHandledWithoutAcceptance;
+        _enterRequiresActivationEligibleModifiers = enterRequiresActivationEligibleModifiers;
 
         _popup.Opened += OnPopupOpened;
         _popup.Closing += OnPopupClosing;
@@ -448,6 +469,20 @@ internal sealed class PopupDropDownCoordinator
         }
     }
 
+    /// <summary>Routes the shared Escape/Enter prologue, then the owner's own navigation delegate,
+    /// for one preview-phase key while a provisional session remains current.</summary>
+    /// <remarks>
+    /// Escape (initial key down, activation-eligible modifiers) always restores the opening state
+    /// and closes without acceptance - identical across every owner, so it needs no per-owner
+    /// callback. Enter, when <see cref="_acceptCurrent"/> is configured and (optionally) carries
+    /// activation-eligible modifiers, calls it once and marks the stroke handled according to
+    /// <see cref="_markEnterHandledWithoutAcceptance"/>; because acceptance can synchronously close
+    /// the popup and end the session (a typical owner accepts by firing an item-invocation event it
+    /// handles by calling <see cref="ControlBase.AcceptPopupAndClose"/> from inside this very call),
+    /// neither branch re-checks session currency afterward - unlike the trailing navigation branch,
+    /// which still must, since <see cref="_handleNavigationKey"/> can itself restart or end the
+    /// session (see <see cref="RestartSession"/>).
+    /// </remarks>
     private void OnOwnerPreviewKey(object? sender, KeyEventArgs eventArgs)
     {
         _ = sender;
@@ -456,6 +491,32 @@ internal sealed class PopupDropDownCoordinator
             _handleNavigationKey is null ||
             !IsCurrentSession(SessionGeneration))
         {
+            return;
+        }
+
+        var stroke = eventArgs.Stroke;
+
+        if (eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Escape &&
+            stroke.Modifiers.IsActivationEligible())
+        {
+            eventArgs.IsHandled = true;
+            SetOpen(false);
+            return;
+        }
+
+        if (_acceptCurrent is not null &&
+            eventArgs.IsInitialKeyDown &&
+            stroke.Code == Code.Enter &&
+            (!_enterRequiresActivationEligibleModifiers || stroke.Modifiers.IsActivationEligible()))
+        {
+            var accepted = _acceptCurrent(eventArgs);
+
+            if (accepted || _markEnterHandledWithoutAcceptance)
+            {
+                eventArgs.IsHandled = true;
+            }
+
             return;
         }
 

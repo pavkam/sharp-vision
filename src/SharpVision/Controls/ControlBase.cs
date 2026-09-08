@@ -1106,10 +1106,59 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             beginSession: null,
             handleNavigationKey: null,
             cancelSession: null,
-            acceptSession: null);
+            acceptSession: null,
+            acceptCurrent: null,
+            markEnterHandledWithoutAcceptance: false,
+            enterRequiresActivationEligibleModifiers: false);
 
-    /// <summary>Opts an in-assembly control into the owned-popup lifecycle plus provisional
-    /// navigation delegated once from the owner's preview route.</summary>
+    /// <summary>Opts a control into the owned-popup lifecycle plus a provisional navigation session:
+    /// Escape restores the opening state, Enter (or another owner-recognized acceptance key) commits
+    /// it, and a stale continuation from an already-superseded session can never clobber a newer
+    /// one.</summary>
+    /// <remarks>
+    /// <para>
+    /// The four session callbacks run at these points in the popup's lifecycle:
+    /// </para>
+    /// <list type="table">
+    /// <listheader><term>Callback</term><description>Runs</description></listheader>
+    /// <item><term><paramref name="beginSession"/></term>
+    /// <description>Once per opening, immediately after the popup is marked open, before
+    /// <see cref="OnDropDownOpened"/>. Snapshots the owner's committed state and seeds the popup
+    /// content's provisional state from it.</description></item>
+    /// <item><term><paramref name="handleNavigationKey"/></term>
+    /// <description>Once per routed key that reaches the owner's preview route while the session
+    /// remains current, for every key <paramref name="acceptCurrent"/> and the shared Escape
+    /// handling did not already claim. Returns whether the coordinator must mark the stroke
+    /// handled; a key that cannot move the provisional selection (Up at the first row, for example)
+    /// still returns true when letting it bubble would reach an enclosing control behind the open
+    /// popup instead.</description></item>
+    /// <item><term><paramref name="acceptCurrent"/></term>
+    /// <description>Once when Enter is pressed while the session remains current (gated by
+    /// <paramref name="enterRequiresActivationEligibleModifiers"/>). Commits the provisional
+    /// selection through whatever public activation path the owner's content already exposes -
+    /// typically firing an item-invocation event the owner itself handles by calling
+    /// <see cref="AcceptPopupAndClose"/> - and returns whether something was actually accepted.
+    /// Because that acceptance path may close the popup and end the session synchronously before
+    /// this callback returns, its result is read immediately and never checked against session
+    /// currency.</description></item>
+    /// <item><term><paramref name="cancelSession"/></term>
+    /// <description>Once when the session ends without acceptance: Escape, Tab traversal, light
+    /// dismissal, an owner API closing the popup, unavailability, or disposal. Restores or rebases
+    /// the owner's committed state to what it was when the session began.</description></item>
+    /// <item><term><paramref name="acceptSession"/></term>
+    /// <description>Once when <see cref="AcceptPopupAndClose"/> commits an active session, before
+    /// the popup actually closes. Commits the provisional state as the owner's new accepted
+    /// value.</description></item>
+    /// </list>
+    /// <para>
+    /// <strong>Stale continuation.</strong> <see cref="PopupSessionGeneration"/> increments every
+    /// time a session begins or ends. A callback that defers work past its own synchronous return -
+    /// for example an async suggestion resolution - captures the generation before deferring and
+    /// compares it after resuming; a mismatch means a newer session has already begun (or the popup
+    /// has already closed and reopened) and the deferred continuation must not touch state that no
+    /// longer belongs to it.
+    /// </para>
+    /// </remarks>
     /// <param name="content">The non-null popup content, also used as its focus scope.</param>
     /// <param name="placement">The preferred anchor-relative placement.</param>
     /// <param name="focusOnOpen">Whether opening transfers focus into <paramref name="content"/>.</param>
@@ -1125,11 +1174,24 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="connectsToAnchor">Whether the popup surface omits the frame edge adjoining its anchor.</param>
     /// <param name="partKey">The framework-part key identifying the owned popup slot.</param>
     /// <param name="beginSession">Snapshots and seeds one provisional session.</param>
-    /// <param name="handleNavigationKey">Delegates one live owner-preview navigation stroke.</param>
+    /// <param name="handleNavigationKey">Delegates one live owner-preview navigation stroke that the
+    /// shared Escape/Enter handling below did not already claim.</param>
     /// <param name="cancelSession">Restores or rebases a session closed without acceptance.</param>
     /// <param name="acceptSession">Commits provisional state before an accepted close.</param>
+    /// <param name="acceptCurrent">Optional canonical acceptance callback invoked once from the
+    /// owner's preview route when Enter is pressed while the session remains current. Returns
+    /// whether the provisional item was actually accepted; when null, Enter never belongs to the
+    /// session and reaches <paramref name="handleNavigationKey"/> like any other key instead.</param>
+    /// <param name="markEnterHandledWithoutAcceptance">Whether Enter is always marked handled once
+    /// it is recognized as belonging to the session, even when <paramref name="acceptCurrent"/>
+    /// reports nothing was accepted - so the field's ordinary activation never treats an open
+    /// session's Enter as its own. False marks Enter handled only when acceptance succeeds,
+    /// leaving an unaccepted Enter to reach the owner's own fallback handling.</param>
+    /// <param name="enterRequiresActivationEligibleModifiers">Whether Enter belongs to the session
+    /// only when its modifiers carry no more than Shift and the lock keys (activation-eligible
+    /// modifiers); false treats every Enter, regardless of modifiers, as the session's own.</param>
     /// <returns>The newly constructed, owned popup.</returns>
-    private protected Popup EnablePopupNavigationSession(
+    protected Popup EnablePopupNavigationSession(
         ControlBase content,
         PopupPlacement placement = PopupPlacement.Below,
         bool focusOnOpen = false,
@@ -1145,7 +1207,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Action? beginSession = null,
         Func<KeyEventArgs, bool>? handleNavigationKey = null,
         Action? cancelSession = null,
-        Action? acceptSession = null) =>
+        Action? acceptSession = null,
+        Func<KeyEventArgs, bool>? acceptCurrent = null,
+        bool markEnterHandledWithoutAcceptance = false,
+        bool enterRequiresActivationEligibleModifiers = false) =>
         EnablePopupCore(
             content,
             placement,
@@ -1162,7 +1227,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             beginSession,
             handleNavigationKey,
             cancelSession,
-            acceptSession);
+            acceptSession,
+            acceptCurrent,
+            markEnterHandledWithoutAcceptance,
+            enterRequiresActivationEligibleModifiers);
 
     private Popup EnablePopupCore(
         ControlBase content,
@@ -1180,7 +1248,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         Action? beginSession,
         Func<KeyEventArgs, bool>? handleNavigationKey,
         Action? cancelSession,
-        Action? acceptSession)
+        Action? acceptSession,
+        Func<KeyEventArgs, bool>? acceptCurrent,
+        bool markEnterHandledWithoutAcceptance,
+        bool enterRequiresActivationEligibleModifiers)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentException.ThrowIfNullOrEmpty(partKey);
@@ -1238,7 +1309,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             beginSession: beginSession,
             handleNavigationKey: handleNavigationKey,
             cancelSession: cancelSession,
-            acceptSession: acceptSession);
+            acceptSession: acceptSession,
+            acceptCurrent: acceptCurrent,
+            markEnterHandledWithoutAcceptance: markEnterHandledWithoutAcceptance,
+            enterRequiresActivationEligibleModifiers: enterRequiresActivationEligibleModifiers);
         return popup;
     }
 
@@ -1263,14 +1337,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Retires the active popup session and begins a fresh one without closing the popup.</summary>
-    /// <remarks>An in-assembly drop-down owner calls this from its acceptance callback when a
-    /// selection callback committed a newer selection than the accepted row: the newer decision
-    /// keeps the popup open over the current state instead of being dismissed by the superseded
-    /// acceptance, and no close or reopen is published. A no-op without an open session.</remarks>
+    /// <remarks>
+    /// A drop-down owner calls this from its <c>acceptSession</c> callback when a selection
+    /// callback committed a newer selection than the row <see cref="AcceptPopupAndClose"/> is in
+    /// the middle of accepting: the newer decision keeps the popup open over the current state
+    /// instead of being dismissed by the superseded acceptance, and no close or reopen is
+    /// published. Calling this from anywhere else - such as an ordinary <c>handleNavigationKey</c>
+    /// stroke - restarts a session that had nothing to supersede. A no-op without an open session.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The popup capability is not enabled or the
     /// control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    private protected void RestartPopupNavigationSession()
+    protected void RestartPopupNavigationSession()
     {
         VerifyMutable();
 
@@ -1330,13 +1408,30 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
     }
 
-    /// <summary>Gets the current owned-popup request version for continuation validation.</summary>
-    internal ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
+    /// <summary>Gets the current owned-popup open/close request version.</summary>
+    /// <remarks>
+    /// Increments once for every call to <see cref="IsPopupOpen"/>'s setter (through
+    /// <see cref="InputBase.IsOpen"/> or any other public forwarding name), whether or not that
+    /// call actually changes the open state. A deferred continuation that must not act on a popup
+    /// request superseded by a later one - a pointer activation's item-invocation callback, for
+    /// example - captures this value when the request begins and compares it once the deferred
+    /// work resumes; a mismatch means a newer open/close request has already run.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
+    protected ulong PopupTransitionVersion => _popupCoordinator is { } coordinator
         ? coordinator.TransitionVersion
         : throw new InvalidOperationException("The popup capability is not enabled.");
 
-    /// <summary>Gets the current owned-popup navigation-session identity for stale-continuation validation.</summary>
-    internal ulong PopupSessionGeneration => _popupCoordinator is { } coordinator
+    /// <summary>Gets the current or most recently ended owned-popup navigation session's identity.</summary>
+    /// <remarks>
+    /// Increments once every time a provisional navigation session begins or ends - see
+    /// <see cref="EnablePopupNavigationSession"/> for when each session callback runs. A deferred
+    /// continuation captures this value when it starts and compares it once resumed; a mismatch
+    /// means the session it captured has already ended (accepted, cancelled, or superseded by a
+    /// fresh open), so the continuation must not mutate that session's state.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
+    protected ulong PopupSessionGeneration => _popupCoordinator is { } coordinator
         ? coordinator.SessionGeneration
         : throw new InvalidOperationException("The popup capability is not enabled.");
 

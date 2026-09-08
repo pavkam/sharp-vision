@@ -68,7 +68,8 @@ public sealed class CommandPalette: CompositeControlBase
             partKey: "results",
             beginSession: BeginNavigationSession,
             handleNavigationKey: HandleNavigationKey,
-            cancelSession: CancelNavigationSession);
+            cancelSession: CancelNavigationSession,
+            acceptCurrent: AcceptCurrent);
         InitializeContent(_input);
         _placeholder = ForwardPartProperty(
             _input,
@@ -514,18 +515,29 @@ public sealed class CommandPalette: CompositeControlBase
         _itemActivation = null;
     }
 
+    /// <summary>Activates the provisional row for the shared Enter-acceptance prologue, swallowing
+    /// Enter without activating while a request is still resolving.</summary>
+    /// <remarks>A resolving palette owns Enter without accepting anything yet: reporting acceptance
+    /// here still marks the stroke handled (the coordinator's <c>markEnterHandledWithoutAcceptance</c>
+    /// stays false for this owner, so only a true result marks it), which prevents Enter from
+    /// falling through to the editor's own fallback handling while results are still in
+    /// flight.</remarks>
+    /// <param name="eventArgs">The routed Enter key event.</param>
+    /// <returns>True when resolving (swallowed) or the provisional row activated.</returns>
+    private bool AcceptCurrent(KeyEventArgs eventArgs)
+    {
+        if (IsResolving)
+        {
+            return true;
+        }
+
+        var stroke = eventArgs.Stroke;
+        return _list.ActivateCurrent(ActivationCause.Keyboard, stroke.Code, stroke.Modifiers);
+    }
+
     private bool HandleNavigationKey(KeyEventArgs eventArgs)
     {
         var stroke = eventArgs.Stroke;
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Escape &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            eventArgs.IsHandled = true;
-            base.IsPopupOpen = false;
-            return true;
-        }
 
         if (eventArgs.IsInitialKeyDown &&
             stroke.Code == Code.Tab &&
@@ -533,22 +545,6 @@ public sealed class CommandPalette: CompositeControlBase
         {
             base.IsPopupOpen = false;
             return false;
-        }
-
-        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
-        {
-            if (IsResolving)
-            {
-                eventArgs.IsHandled = true;
-                return true;
-            }
-
-            var handled = _list.ActivateCurrent(
-                ActivationCause.Keyboard,
-                stroke.Code,
-                stroke.Modifiers);
-            eventArgs.IsHandled |= handled;
-            return handled;
         }
 
         var navigated = _list.HandleSelectionNavigationKey(eventArgs);

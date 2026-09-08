@@ -64,7 +64,9 @@ public sealed class ComboBox: InputBase
             beginSession: BeginNavigationSession,
             handleNavigationKey: HandleNavigationKey,
             cancelSession: CancelNavigationSession,
-            acceptSession: AcceptNavigationSession);
+            acceptSession: AcceptNavigationSession,
+            acceptCurrent: AcceptCurrent,
+            markEnterHandledWithoutAcceptance: true);
         _popup.ContentHeightLimit = Length.Cells(8);
         EnablePressActivation();
         _scrollBarStyle = InitializePartStyle(
@@ -502,28 +504,19 @@ public sealed class ComboBox: InputBase
         _list.SetProvisionalCurrentIndex(_selectedIndex);
     }
 
+    /// <summary>Activates the provisional row for the shared Enter-acceptance prologue.</summary>
+    /// <remarks>Enter belongs to the open session even when no item is available; the coordinator
+    /// marks the stroke handled regardless of this method's result (see the
+    /// <c>markEnterHandledWithoutAcceptance: true</c> argument at the enable call), which prevents
+    /// the field's ordinary press activation from toggling the popup closed.</remarks>
+    /// <param name="eventArgs">The routed Enter key event.</param>
+    /// <returns>True when the provisional row activated.</returns>
+    private bool AcceptCurrent(KeyEventArgs eventArgs) =>
+        _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, eventArgs.Stroke.Modifiers);
+
     private bool HandleNavigationKey(KeyEventArgs eventArgs)
     {
         var stroke = eventArgs.Stroke;
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Escape &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            eventArgs.IsHandled = true;
-            IsOpen = false;
-            return true;
-        }
-
-        if (eventArgs.IsInitialKeyDown && stroke.Code == Code.Enter)
-        {
-            // Enter belongs to the open session even when no item is available. Consuming it here
-            // prevents the field's ordinary press activation from toggling the popup closed.
-            eventArgs.IsHandled = true;
-            var accepted = _list.ActivateCurrent(ActivationCause.Keyboard, Code.Enter, stroke.Modifiers);
-            return accepted;
-        }
-
         var moved = _list.HandleCurrentNavigationKey(eventArgs);
 
         if (moved)

@@ -84,8 +84,17 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         }
     }
 
-    /// <summary>Lets an in-assembly input reconcile cached viewport geometry after either affix changes.</summary>
-    private protected virtual void OnAffixChanged()
+    /// <summary>Lets a derived input reconcile cached viewport geometry after either affix
+    /// changes.</summary>
+    /// <remarks>
+    /// Runs after the changed affix's own property has already committed and requested its
+    /// invalidation impact, so an override reads <see cref="StartAffix"/> and
+    /// <see cref="EndAffix"/> at their new values. The base implementation does nothing; a control
+    /// that caches an affix-dependent value box, such as a segmented field's reserved content
+    /// bounds, overrides this instead of adding its own <see cref="StartAffix"/>/<see cref="EndAffix"/>
+    /// change subscriptions.
+    /// </remarks>
+    protected virtual void OnAffixChanged()
     {
     }
 
@@ -257,12 +266,22 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     /// <summary>Measures one fixed-width selection mark followed or preceded by the owned caption,
     /// with the inherited affixes outside that combined content.</summary>
+    /// <remarks>
+    /// Call this from <c>MeasureOverride</c> once <see cref="EnableCaption"/> has run - the pair
+    /// <see cref="CheckBox"/> and <see cref="RadioButton"/> both call from their constructors. A
+    /// control that never enables the caption capability may still call this: the mark reserves its
+    /// own width and the caption side reports zero, exactly as if <see cref="Text"/> were empty.
+    /// Pair this with <see cref="ArrangeSelectionMarkCaption"/> passing the identical
+    /// <paramref name="markWidth"/>, <paramref name="markGap"/>, and <paramref name="affixGap"/>, or
+    /// the measured and arranged caption box diverge.
+    /// </remarks>
     /// <param name="constraint">The available layout constraint.</param>
     /// <param name="markWidth">The positive terminal-cell width of the formatted mark.</param>
-    /// <param name="markGap">The non-negative terminal-cell gap beside a present caption.</param>
-    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
+    /// <param name="markGap">The non-negative terminal-cell gap kept between the mark and a present
+    /// caption; ignored when the caption is empty or collapsed.</param>
+    /// <param name="affixGap">The non-negative terminal-cell gap kept beside each present affix.</param>
     /// <returns>The desired marked-caption size, including affixes.</returns>
-    private protected Size MeasureSelectionMarkCaption(
+    protected Size MeasureSelectionMarkCaption(
         Constraint constraint,
         int markWidth,
         int markGap,
@@ -297,12 +316,19 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     /// <summary>Arranges the owned caption on the configured side opposite a fixed-width selection
     /// mark, inside inherited affix reservations.</summary>
+    /// <remarks>
+    /// Call this from <c>ArrangeOverride</c> with the identical <paramref name="markWidth"/>,
+    /// <paramref name="markGap"/>, and <paramref name="affixGap"/> passed to the matching
+    /// <see cref="MeasureSelectionMarkCaption"/> call for the same pass. A no-op when
+    /// <see cref="EnableCaption"/> was never called or <see cref="Text"/> is still empty.
+    /// </remarks>
     /// <param name="bounds">The marked-caption bounds.</param>
     /// <param name="markWidth">The positive terminal-cell width of the formatted mark.</param>
-    /// <param name="markGap">The non-negative terminal-cell gap beside a present caption.</param>
+    /// <param name="markGap">The non-negative terminal-cell gap kept between the mark and a present
+    /// caption; ignored when the caption is empty or collapsed.</param>
     /// <param name="placement">The validated edge that owns the mark.</param>
-    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
-    private protected void ArrangeSelectionMarkCaption(
+    /// <param name="affixGap">The non-negative terminal-cell gap kept beside each present affix.</param>
+    protected void ArrangeSelectionMarkCaption(
         Rect bounds,
         int markWidth,
         int markGap,
@@ -332,12 +358,19 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     /// <summary>Paints one selection mark at the configured caption edge and renders inherited
     /// affixes after applying the control's resolved opaque fill.</summary>
+    /// <remarks>
+    /// Call this from <c>OnRenderContent</c> after <see cref="ArrangeSelectionMarkCaption"/> has
+    /// already positioned the caption for the current bounds, passing the identical
+    /// <paramref name="markWidth"/> and <paramref name="affixGap"/>. An affix is drawn only when its
+    /// full reserved width still fits inside <c>ContentBounds</c> alongside the mark; a starved
+    /// layout drops the affix rather than truncating it or the mark.
+    /// </remarks>
     /// <param name="canvas">The frame-owned terminal canvas.</param>
     /// <param name="mark">The already formatted mark text.</param>
     /// <param name="markWidth">The positive terminal-cell width reserved for <paramref name="mark"/>.</param>
     /// <param name="placement">The validated edge that owns the mark.</param>
-    /// <param name="affixGap">The non-negative terminal-cell gap beside each present affix.</param>
-    private protected void RenderSelectionMark(
+    /// <param name="affixGap">The non-negative terminal-cell gap kept beside each present affix.</param>
+    protected void RenderSelectionMark(
         TerminalCanvas canvas,
         ReadOnlySpan<char> mark,
         int markWidth,
@@ -1153,10 +1186,19 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     /// <summary>Draws a single-line placeholder as complete grapheme clusters with a dimmed field
     /// style.</summary>
+    /// <remarks>
+    /// Draws from <paramref name="bounds"/>'s top-left cell, stopping at the first embedded line
+    /// break or once the next grapheme cluster would cross <c>bounds.Right</c> - it never wraps or
+    /// clips a cluster in half. The dimmed style keeps every other resolved channel (foreground,
+    /// background, underline, hyperlink) from <c>ResolvedStyle</c>, so a themed placeholder still
+    /// reads as this control's own face rather than a fixed gray. Call this only while the field's
+    /// live content is empty; it does not check emptiness itself.
+    /// </remarks>
     /// <param name="canvas">The semantic cell canvas to draw into.</param>
     /// <param name="bounds">The available single-line content bounds.</param>
-    /// <param name="placeholder">The non-empty hint text.</param>
-    private protected void RenderInputPlaceholder(TerminalCanvas canvas, Rect bounds, string placeholder)
+    /// <param name="placeholder">The non-null, non-empty hint text.</param>
+    /// <exception cref="ArgumentException"><paramref name="placeholder"/> is null or empty.</exception>
+    protected void RenderInputPlaceholder(TerminalCanvas canvas, Rect bounds, string placeholder)
     {
         ArgumentException.ThrowIfNullOrEmpty(placeholder);
 
@@ -1370,12 +1412,20 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     }
 
     /// <summary>Handles the conventional Alt+Down and F4 gestures for an enabled owned popup.</summary>
+    /// <remarks>
+    /// Requires the popup capability (<see cref="ControlBase.EnablePopup"/> or
+    /// <see cref="ControlBase.EnablePopupNavigationSession"/>) to already be enabled; call this from
+    /// <c>OnEvent</c> for every routed key while the popup is closed. Setting <see cref="IsOpen"/>
+    /// runs every configured <c>beforeOpen</c> hook and raises <c>DropDownOpened</c> synchronously,
+    /// so a caller that also owns other opening side effects sequences them after this call
+    /// returns non-null.
+    /// </remarks>
     /// <param name="eventArgs">The routed key event.</param>
     /// <returns>True when an exact opening gesture opens the popup, false when a candidate has
     /// extra modifiers, or null when the key is not an initial opening gesture.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
-    private protected bool? HandleDropDownOpeningCommand(KeyEventArgs eventArgs)
+    protected bool? HandleDropDownOpeningCommand(KeyEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         var stroke = eventArgs.Stroke;
