@@ -1002,7 +1002,10 @@ public sealed class TreeViewTests
         {
             if (eventArgs.Current == TreeViewChildState.Loaded)
             {
-                tree.BringItemIntoView(child).ShouldBeTrue();
+                // The child is already a realized descendant - an unrealized one is rejected with
+                // ArgumentException - but the tree has never been laid out, so the reveal is
+                // retained for the first arrange pass rather than reported as contained.
+                tree.BringItemIntoView(child).ShouldBeFalse();
             }
         };
 
@@ -3318,7 +3321,8 @@ public sealed class TreeViewTests
         {
             if (eventArgs.Current == TreeViewChildState.Loaded)
             {
-                tree.BringItemIntoView(root.Children[0]).ShouldBeTrue();
+                // Realized, so accepted; not yet laid out, so retained rather than contained.
+                tree.BringItemIntoView(root.Children[0]).ShouldBeFalse();
                 callbackCompleted.SetResult();
             }
         };

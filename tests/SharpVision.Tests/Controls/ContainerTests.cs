@@ -1149,6 +1149,91 @@ public sealed class ContainerTests
         container.VerticalOffset.ShouldBe(revealedOffset);
     }
 
+    /// <summary>Verifies a reveal requested for a child added after the last layout - one that has
+    /// no arranged bounds yet - is retained instead of being computed against the container's
+    /// previous geometry, reports the descendant as not yet contained, and completes inside the
+    /// next arrange pass, which already leaves the child placed at the revealed offset.</summary>
+    [Fact]
+    public void BringIntoView_WhenTargetHasNotBeenArrangedYet_RetainsTheRevealUntilTheNextArrange()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var target = new ProbeControl(new Size(4, 1));
+        container.Children.Add(target);
+
+        var revealed = container.BringIntoView(target);
+
+        revealed.ShouldBeFalse();
+        container.VerticalOffset.ShouldBe(0);
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        container.VerticalOffset.ShouldBe(11);
+        target.Bounds.Y.ShouldBe(9);
+    }
+
+    /// <summary>Verifies a reveal requested after an offset moved but before the arrange that
+    /// translates the children by it reads each child's bounds against the offset it was arranged
+    /// under: scrolling back to the top and then revealing the first child - a Home keystroke the
+    /// host handles before its owner reveals the new current entry - must neither treat the
+    /// child's still-scrolled bounds as negative geometry nor leave it hidden.</summary>
+    [Fact]
+    public void BringIntoView_WhenAnOffsetMovedSinceTheLastArrange_ReadsBoundsAgainstTheArrangedOffset()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var first = new ProbeControl(new Size(4, 1));
+        container.Children.Add(first);
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        var layout = new LayoutEngine();
+        layout.Layout(container, new Size(4, 10));
+        _ = container.ScrollBy(0, 6);
+        layout.Layout(container, new Size(4, 10));
+        first.Bounds.Y.ShouldBe(-6);
+        _ = container.ScrollBy(0, -6);
+
+        var revealed = container.BringIntoView(first);
+
+        revealed.ShouldBeTrue();
+        container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a reveal issued right after a scroll away from the target, before the
+    /// arrange that would move the target's bounds, still scrolls the target back into view instead
+    /// of mistaking its not-yet-translated bounds for a visible position.</summary>
+    [Fact]
+    public void BringIntoView_WhenScrolledAwayFromTargetSinceTheLastArrange_ScrollsItBackIntoView()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        var first = new ProbeControl(new Size(4, 1));
+        container.Children.Add(first);
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        _ = container.ScrollBy(0, 5);
+
+        var revealed = container.BringIntoView(first);
+
+        revealed.ShouldBeTrue();
+        container.VerticalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a retained reveal whose target leaves the tree before the next arrange is
+    /// dropped silently rather than rejected or applied to a control that is no longer content.</summary>
+    [Fact]
+    public void BringIntoView_WhenRetainedTargetIsRemovedBeforeArrange_DropsTheRevealWithoutThrowing()
+    {
+        var container = new Stack { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var target = new ProbeControl(new Size(4, 1));
+        container.Children.Add(target);
+        container.BringIntoView(target).ShouldBeFalse();
+        _ = container.Children.Remove(target);
+        target.Dispose();
+
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        container.VerticalOffset.ShouldBe(0);
+    }
+
     /// <summary>Verifies BringIntoView rejects a control that is not a descendant of this container.</summary>
     [Fact]
     public void BringIntoView_WhenNotDescendant_ThrowsArgumentException()

@@ -38,6 +38,39 @@ public sealed class ListViewSurfaceTests
         OwnedTree.FindAll<ListItem>(list).ShouldHaveSingleItem().ActualFace.Underline.ShouldBe(Underline.Dotted);
     }
 
+    /// <summary>Verifies replacing Items and selecting a row in the same dispatcher turn, on a list
+    /// whose viewport does not start at the surface origin, neither fails on the not-yet-arranged
+    /// replacement rows nor loses the reveal: the selected row is scrolled into view once the
+    /// replacement rows have been laid out.</summary>
+    [Fact]
+    public async Task SelectedIndex_WhenAssignedInTheSameTurnAsReplacementItems_RevealsTheRowAfterLayoutAsync()
+    {
+        var list = new UiListView
+        {
+            Height = Length.Cells(3),
+            Items = Enumerable.Range(0, 5).Select(index => (object?) $"Item {index}").ToArray()
+        };
+        var root = new Stack { Children = { new ControlText("Header"), list } };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(12, 6),
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                list.Items = Enumerable.Range(0, 20).Select(index => (object?) $"Row {index}").ToArray();
+                list.SelectedIndex = 15;
+            },
+            "replace the rows and select one below the viewport");
+
+        list.SelectedIndex.ShouldBe(15);
+        list.VerticalOffset.ShouldBe(13);
+        var row = OwnedTree.FindAll<ListItem>(list).Single(item => item.Index == 15);
+        row.Bounds.Y.ShouldBe(list.Bounds.Y + 2);
+        surface.Cell(new Point(row.Bounds.X, row.Bounds.Y)).Text.ShouldBe("R");
+    }
+
     /// <summary>Verifies a percentage row uses the final viewport after both scrollbar rails are
     /// reserved and re-resolves in the same mounted resize transaction.</summary>
     [Fact]

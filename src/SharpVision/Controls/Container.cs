@@ -438,6 +438,30 @@ public abstract class Container: ControlBase
 
     private readonly ScrollBarPairController _scroll;
     private ulong _scrollTransitionVersion;
+    private ControlBase? _pendingBringIntoView;
+
+    /// <summary>Gets the offsets the last arrange pass translated the content by.</summary>
+    /// <remarks>
+    /// Arranged children carry bounds shifted by these offsets, not by the live ones, until the
+    /// next pass: an offset change takes effect immediately while the arrange it requests is
+    /// deferred. A computation that combines a child's bounds with an offset - the reveal walk in
+    /// <see cref="BringIntoView"/> - must use the offset the child was arranged under, or a scroll
+    /// committed earlier in the same dispatcher turn (a Home keystroke the host handles before
+    /// its owner reveals the new current entry) skews the result into negative geometry.
+    /// </remarks>
+    private Point ArrangedOffset { get; set; }
+
+    /// <summary>Records that every arranged child now carries bounds translated by the live
+    /// offsets, for a subclass that re-arranges its content outside a layout pass.</summary>
+    /// <remarks>
+    /// <see cref="ResolveContentSlot"/> records the offsets a genuine pass arranges under. A
+    /// container that bridges a scroll by re-arranging its realized children itself before the
+    /// next pass - <see cref="Collections.ListViewHost"/> after <c>ListView</c> rewindows its rows - has moved
+    /// those children onto the live offsets, and calls this so <see cref="BringIntoView"/> reads
+    /// their bounds against the offsets they were actually placed under.
+    /// </remarks>
+    private protected void CommitContentArrangedAtCurrentOffset() =>
+        ArrangedOffset = new Point(HorizontalOffset, VerticalOffset);
 
     /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
     private protected ControlCollection? Bars => _scroll.Bars;
@@ -739,10 +763,19 @@ public abstract class Container: ControlBase
     /// <returns>
     /// True when the descendant's complete arranged bounds end up contained within this
     /// container's viewport; false when clamping at an extent boundary - here or in an
-    /// intervening armed container - leaves any part of it still outside.
+    /// intervening armed container - leaves any part of it still outside, when the descendant or
+    /// a control between it and this container is collapsed, or when such a control has not been
+    /// arranged yet and the request was retained for this container's next arrange.
     /// </returns>
-    /// <remarks>An oversized descendant exposes the nearest edge when wholly outside, then keeps
-    /// an already-visible slice stable across later arranged passes.</remarks>
+    /// <remarks>
+    /// An oversized descendant exposes the nearest edge when wholly outside, then keeps an
+    /// already-visible slice stable across later arranged passes. A request naming a descendant
+    /// that has not been arranged yet - a row wrapper built for a replaced item set, a child
+    /// inserted after the last layout, content shown again after a collapse - is not computed
+    /// against its default bounds: it is retained, only the newest such request survives, and it
+    /// completes inside this container's next arrange pass, once that pass has placed the
+    /// descendant. A collapsed descendant has nothing to reveal and is never scrolled to.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
     /// <exception cref="ArgumentException">The control is not a descendant of this container.</exception>
     /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
@@ -755,6 +788,36 @@ public abstract class Container: ControlBase
         if (!IsContentDescendant(descendant))
         {
             throw new ArgumentException("The control must be a descendant of this container.", nameof(descendant));
+        }
+
+        // The math below mixes the descendant's arranged bounds with this container's own
+        // viewport geometry, which only holds when both came out of the same arrange pass. A link
+        // that has never been given bounds - a row wrapper built for a replaced item set, a child
+        // inserted after the last layout, content shown again after a collapse - still carries
+        // default bounds against a viewport that describes the previous tree, so a fresh row at
+        // (0, 0) would appear to sit above a viewport that starts at y = 5. Such a request is
+        // retained and completed from ArrangeOverlays, inside the pass that places every link;
+        // the newest request wins, matching the last-writer outcome of two immediate calls. A
+        // pending measure or arrange on an already-placed link is deliberately not a reason to
+        // wait: its bounds are still the ones this viewport was resolved against, and a container
+        // routinely carries pending phases from its own generated parts between passes.
+        for (var current = descendant; current is not null; current = current.Parent)
+        {
+            if (current.Visibility == Visibility.Collapsed)
+            {
+                return false;
+            }
+
+            if (!current.HasCommittedArrangement)
+            {
+                _pendingBringIntoView = descendant;
+                return false;
+            }
+
+            if (ReferenceEquals(current, this))
+            {
+                break;
+            }
         }
 
         // descendant.Bounds is already translated by every intervening armed container's own
@@ -783,12 +846,15 @@ public abstract class Container: ControlBase
                 continue;
             }
 
-            var beforeX = scrollable.HorizontalOffset;
-            var beforeY = scrollable.VerticalOffset;
-            var scrollableLogicalX = bounds.X.SaturatingSubtract(scrollable.ViewportBounds.X).Add(beforeX);
-            var scrollableLogicalY = bounds.Y.SaturatingSubtract(scrollable.ViewportBounds.Y).Add(beforeY);
-            var revealX = Reveal(beforeX, scrollable.Viewport.Width, scrollableLogicalX, bounds.Width);
-            var revealY = Reveal(beforeY, scrollable.Viewport.Height, scrollableLogicalY, bounds.Height);
+            // Bounds are translated by the offset the child was arranged under - not the live
+            // one, which a scroll earlier in this same turn can already have moved - so the
+            // logical position is recovered with ArrangedOffset, while the reveal itself starts
+            // from the live offset it is about to move.
+            var arranged = scrollable.ArrangedOffset;
+            var scrollableLogicalX = bounds.X.SaturatingSubtract(scrollable.ViewportBounds.X).Add(arranged.X);
+            var scrollableLogicalY = bounds.Y.SaturatingSubtract(scrollable.ViewportBounds.Y).Add(arranged.Y);
+            var revealX = Reveal(scrollable.HorizontalOffset, scrollable.Viewport.Width, scrollableLogicalX, bounds.Width);
+            var revealY = Reveal(scrollable.VerticalOffset, scrollable.Viewport.Height, scrollableLogicalY, bounds.Height);
             _ = scrollable.Apply(revealX, revealY, ScrollCause.BringIntoView);
 
             // Apply above can run a caller's ScrollChanged handler synchronously, and that handler
@@ -799,15 +865,17 @@ public abstract class Container: ControlBase
                 return false;
             }
 
+            // The bounds the pending arrange will commit: the arranged translation undone, the
+            // offset just committed applied.
             bounds = new Rect(
-                bounds.X.Add(beforeX - scrollable.HorizontalOffset),
-                bounds.Y.Add(beforeY - scrollable.VerticalOffset),
+                bounds.X.Add(arranged.X - scrollable.HorizontalOffset),
+                bounds.Y.Add(arranged.Y - scrollable.VerticalOffset),
                 bounds.Width,
                 bounds.Height);
         }
 
-        var logicalX = bounds.X.SaturatingSubtract(_scroll.ViewportBounds.X).Add(HorizontalOffset);
-        var logicalY = bounds.Y.SaturatingSubtract(_scroll.ViewportBounds.Y).Add(VerticalOffset);
+        var logicalX = bounds.X.SaturatingSubtract(_scroll.ViewportBounds.X).Add(ArrangedOffset.X);
+        var logicalY = bounds.Y.SaturatingSubtract(_scroll.ViewportBounds.Y).Add(ArrangedOffset.Y);
         var x = Reveal(HorizontalOffset, Viewport.Width, logicalX, bounds.Width);
         var y = Reveal(VerticalOffset, Viewport.Height, logicalY, bounds.Height);
         _ = Apply(x, y, ScrollCause.BringIntoView);
@@ -850,6 +918,14 @@ public abstract class Container: ControlBase
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
+
+        if (reason is ReleaseReason.Detached or ReleaseReason.Disposed)
+        {
+            // A reveal retained for the next arrange names geometry of the tree this container is
+            // leaving; a later re-attachment lays out afresh, and a caller that still cares asks
+            // again against that layout.
+            _pendingBringIntoView = null;
+        }
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -1048,6 +1124,7 @@ public abstract class Container: ControlBase
             _ = SetProperty(ref _scroll.Viewport, box, InvalidationImpact.None, nameof(Viewport));
             _scroll.ViewportBounds = padded;
             _ = Apply(0, 0, ScrollCause.Programmatic);
+            ArrangedOffset = default;
             return padded;
         }
 
@@ -1095,6 +1172,7 @@ public abstract class Container: ControlBase
 
         var scrollsHorizontally = (ScrollBars & ScrollBars.Horizontal) != 0;
         var scrollsVertically = (ScrollBars & ScrollBars.Vertical) != 0;
+        ArrangedOffset = new Point(HorizontalOffset, VerticalOffset);
 
         return new Rect(
             padded.X.SaturatingSubtract(HorizontalOffset),
@@ -1106,7 +1184,9 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     internal override void ArrangeOverlays(Rect padded)
     {
-        if (!AutoScroll || _scroll.Bars is null)
+        CompleteRetainedBringIntoView(padded);
+
+        if (IsDisposed || !AutoScroll || _scroll.Bars is null)
         {
             return;
         }
@@ -1117,6 +1197,86 @@ public abstract class Container: ControlBase
             _scroll.ReserveHorizontal,
             _scroll.ReserveVertical);
         Synchronize();
+    }
+
+    /// <summary>Completes a reveal retained by <see cref="BringIntoView"/> now that this pass has
+    /// arranged the content, and re-arranges the content when the reveal moved an offset so the
+    /// pass ends with bounds that already reflect it.</summary>
+    /// <param name="padded">The border-and-padding-deflated content-box rectangle of this pass.</param>
+    private void CompleteRetainedBringIntoView(Rect padded)
+    {
+        if (_pendingBringIntoView is not { } descendant)
+        {
+            return;
+        }
+
+        _pendingBringIntoView = null;
+
+        // The retained target can have left the tree between the request and this pass - a
+        // second Items replacement disposes the wrappers an earlier request still names. Such a
+        // request is dropped rather than rejected: it was valid when made, and nothing remains to
+        // reveal. A live target goes through the public entry point again, so a link that this
+        // pass still could not place - one inside a collapsed subtree, say - simply retains it
+        // for the pass that does.
+        if (descendant.IsDisposed || !IsContentDescendant(descendant))
+        {
+            return;
+        }
+
+        var before = new Point(HorizontalOffset, VerticalOffset);
+        var ancestorsBefore = SumArmedAncestorScrollVersions();
+        _ = BringIntoView(descendant);
+
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        // Apply treats an offset committed inside an arrange transaction as already incorporated
+        // by that pass and requests only a repaint, which holds for ResolveContentSlot's clamp
+        // but not here: ArrangeOverride has already placed the children at the previous offset.
+        // Arrange them again against the re-resolved slot, the same way TabControl re-arranges
+        // its header strip after revealing the selected header, so this pass - and a caller that
+        // drives exactly one layout pass - ends with consistent bounds. An intervening armed
+        // ancestor the reveal walked through is still mid-arrange with its own children already
+        // placed, and its repaint-only Apply would leave them at the old offset until something
+        // else invalidates it; requesting Arrange here propagates through that ancestor (withheld
+        // while it arranges, replayed when it finishes) so the next pass settles it. Both requests
+        // are conditional on an offset actually moving: a reveal converges, so this cannot
+        // re-request a pass forever, whereas a target that stays retained pass after pass (one
+        // inside a collapsed subtree) moves nothing and requests nothing.
+        var moved = HorizontalOffset != before.X || VerticalOffset != before.Y;
+
+        if (moved)
+        {
+            ArrangeOverride(ResolveContentSlot(padded));
+        }
+
+        if (!IsDisposed && (moved || SumArmedAncestorScrollVersions() != ancestorsBefore))
+        {
+            Invalidate(InvalidationImpact.Arrange);
+        }
+    }
+
+    /// <summary>Sums the scroll transition versions of every armed ancestor, a value that changes
+    /// exactly when one of them commits an offset.</summary>
+    [Pure]
+    private ulong SumArmedAncestorScrollVersions()
+    {
+        var sum = 0UL;
+
+        for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if (ancestor is Container { AutoScroll: true } scrollable)
+            {
+                unchecked
+                {
+                    sum += scrollable._scrollTransitionVersion;
+                }
+            }
+        }
+
+        return sum;
     }
 
     private void Synchronize(int? maximumYOverride = null)

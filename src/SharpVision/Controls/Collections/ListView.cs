@@ -917,6 +917,11 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
                     rowWidth,
                     height));
         }
+
+        // Every realized row now sits at the CURRENT offset, so a reveal requested before the
+        // next layout pass - CommitCurrent after the arithmetic scroll that realized these rows -
+        // must read their bounds against that offset, not the one the last genuine pass recorded.
+        _stack.CommitRowsArrangedAtCurrentOffset();
     }
 
     /// <summary>Resolves the uniform row height against one viewport height and commits it to the

@@ -1330,6 +1330,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     private Rect? LastArrangeSlot { get; set; }
 
+    /// <summary>Gets whether <see cref="Bounds"/> come from a committed arrange pass rather than
+    /// the default a control carries before it has ever been placed.</summary>
+    /// <remarks>
+    /// A control whose arrange is still pending while its bounds are still default was created,
+    /// inserted, or shown again after the last pass and has not been positioned yet. A layout
+    /// consumer that combines a descendant's bounds with its own geometry - <see cref="Container"/>
+    /// revealing a descendant against its viewport - checks this on every link between the two
+    /// before trusting that combination, because the two would otherwise describe different trees.
+    /// </remarks>
+    internal bool HasCommittedArrangement => (Pending & Invalidation.Arrange) == 0 || Bounds != default;
+
     private bool LastWidthResolved { get; set; }
 
     private bool LastHeightResolved { get; set; }

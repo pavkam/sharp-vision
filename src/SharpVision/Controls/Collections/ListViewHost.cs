@@ -83,6 +83,12 @@ internal sealed class ListViewHost: Container
     /// row outside this container's own measure or arrange.</summary>
     public Rect RowOrigin => ViewportBounds;
 
+    /// <summary>Records that <see cref="ListView"/> has just re-arranged every realized row against
+    /// the live offsets outside this host's own arrange pass, so a reveal that follows in the same
+    /// dispatcher turn reads row bounds against those offsets rather than the ones the last genuine
+    /// pass committed.</summary>
+    internal void CommitRowsArrangedAtCurrentOffset() => CommitContentArrangedAtCurrentOffset();
+
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {

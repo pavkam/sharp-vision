@@ -200,7 +200,22 @@ bounds are actually contained within the receiver's own viewport afterward, not
 merely whether some offset changed, so a boundary clamp that still leaves it
 partially hidden reports `false`. The same `false` result covers a
 `ScrollChanged` subscriber disposing the container or an intervening ancestor
-mid-walk. Content and resize changes clamp offsets before the typed
+mid-walk. Each child's bounds are read against the offset it was arranged under
+rather than the live offset, because an offset change takes effect immediately
+while the arrange it requests is deferred: a Home keystroke that the host
+scrolls on before its owner reveals the new current entry still yields the
+entry's true logical position. A request naming a descendant that has not been
+arranged yet - a row wrapper built for a replaced item set, a child inserted
+after the last layout, content shown again after a collapse, or any control
+between it and the receiver in that state - cannot be computed: its default
+bounds and the receiver's viewport describe different trees. The receiver
+retains that request, reports `false`, and completes it inside its next arrange
+pass once that pass has placed the descendant, so a selection or focus change
+applied in the same dispatcher turn as the structural change still ends the
+frame revealed and a single layout pass already leaves the content at the
+revealed offset. Only the newest retained request survives, a retained target
+that leaves the tree before that arrange is dropped, and a collapsed descendant
+is never scrolled to. Content and resize changes clamp offsets before the typed
 `ScrollChanged` event is raised (carrying the previous and committed offsets,
 `Extent`, `Viewport`, and the typed `ScrollCause`) and before the translated
 arrangement runs.
