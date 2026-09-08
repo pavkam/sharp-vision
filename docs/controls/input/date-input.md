@@ -38,7 +38,10 @@ precedence, consistent active/null segment styling, and focus continuation -
 with [`TimeInput`](time-input.md) and [`DateTimeInput`](date-time-input.md)
 through [`InputBase.EnableSegmentEditing`](../input-base.md#api). Each control
 keeps its own calendar/clock arithmetic and pattern (`ResolveDatePattern` here)
-on top of that shared engine.
+on top of that shared engine. `InputBase.OnEvent` itself performs the routed
+dispatch: it seeds the value first, then swallows every key and pointer event
+outright while the Calendar popup is open, before segment routing, press
+activation, or base routing ever see it.
 
 The three temporal fields also use one generic nullable value state for lazy
 dispatcher-clock seeding, inclusive bounds, endpoint repair, and reentrant-safe

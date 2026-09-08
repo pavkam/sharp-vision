@@ -24,17 +24,21 @@ complete routed key and pointer editing engine - active-segment navigation,
 digit-entry buffering, popup precedence, AM/PM commands, active/null segment
 styling, and focus continuation - with [`DateInput`](date-input.md) and
 [`TimeInput`](time-input.md) through
-[`InputBase.EnableSegmentEditing`](../input-base.md#api). The three controls use
-one generic nullable value state for dispatcher-clock seeding, bounds, repair,
-and current-aware event publication. `DateInput` and `DateTimeInput` also use
-one Calendar drop-down coordinator for Calendar ownership, culture/bounds/value
-synchronization, open-session rollback, user acceptance, and cleanup. The
-date-time combiner preserves the current time, sub-second ticks, and
-`DateTimeKind` when a date is accepted. `Culture` drives both the popup
-calendar's month/day names _and_ the typed field's own date segment order,
-widths, and separators - the same way `DateInput.Culture` does, deriving the
-layout from `DateTimeFormatInfo.ShortDatePattern` - so a German culture, for
-example, renders day before month with a period separator. A distinct customized
+[`InputBase.EnableSegmentEditing`](../input-base.md#api). `InputBase.OnEvent`
+performs the routed dispatch itself: it seeds the value first, then swallows
+every key and pointer event outright while the Calendar popup is open, before
+segment routing, press activation, or base routing ever see it - the same
+contract `DateInput` follows. The three controls use one generic nullable value
+state for dispatcher-clock seeding, bounds, repair, and current-aware event
+publication. `DateInput` and `DateTimeInput` also use one Calendar drop-down
+coordinator for Calendar ownership, culture/bounds/value synchronization,
+open-session rollback, user acceptance, and cleanup. The date-time combiner
+preserves the current time, sub-second ticks, and `DateTimeKind` when a date is
+accepted. `Culture` drives both the popup calendar's month/day names _and_ the
+typed field's own date segment order, widths, and separators - the same way
+`DateInput.Culture` does, deriving the layout from
+`DateTimeFormatInfo.ShortDatePattern` - so a German culture, for example,
+renders day before month with a period separator. A distinct customized
 same-name `CultureInfo` clone is a real transition: it refreshes the segments
 and synchronizes the retained Calendar before publication; only the identical
 instance is silent. The time portion keeps the fixed

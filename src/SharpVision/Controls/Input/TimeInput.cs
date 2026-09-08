@@ -21,8 +21,6 @@ namespace SharpVision.Controls.Input;
 [PublicAPI]
 public sealed class TimeInput: InputBase
 {
-    private const int _contentHeight = 1;
-
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
         new Dictionary<char, TemporalSegmentKind>
         {
@@ -36,7 +34,6 @@ public sealed class TimeInput: InputBase
         };
 
     private readonly SegmentFieldBehavior _segments;
-    private readonly SegmentFieldKeyOptions _segmentKeyOptions;
     private readonly TemporalValueState<TimeOnly> _state;
     private CultureInfo _culture;
 
@@ -63,12 +60,13 @@ public sealed class TimeInput: InputBase
             BuildSegments,
             ApplyDigitValue,
             IncrementSegmentValue,
-            ClearSegmentValue);
-        _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveSegmentStepDelta,
-            ClearValue,
-            HandleCharacterCommand,
-            handleRecognizedWithoutChange: true);
+            ClearSegmentValue,
+            new SegmentFieldKeyOptions(
+                ResolveSegmentStepDelta,
+                ClearValue,
+                HandleCharacterCommand,
+                handleRecognizedWithoutChange: true),
+            beforeInput: EnsureSeeded);
         TabNavigation = TabNavigation.None;
     }
 
@@ -133,8 +131,7 @@ public sealed class TimeInput: InputBase
                 InvalidationImpact.Measure,
                 ReferenceEqualityComparer.Instance))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     }
@@ -149,8 +146,7 @@ public sealed class TimeInput: InputBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     } = true;
@@ -165,8 +161,7 @@ public sealed class TimeInput: InputBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     }
@@ -197,8 +192,7 @@ public sealed class TimeInput: InputBase
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     }
@@ -247,62 +241,12 @@ public sealed class TimeInput: InputBase
     {
         _ = constraint;
         EnsureSeeded();
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var width = affixes.StartCells + affixes.EndCells;
-
-        foreach (var segment in BuildSegments())
-        {
-            width += MeasureCells(segment.Text);
-        }
-
-        return new Size(width, _contentHeight);
-    }
-
-    /// <summary>Resolves the box editable segment text is drawn into - the content box deflated
-    /// for any active <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/>. There is no drop-down
-    /// indicator to further deflate around: unlike <see cref="ComboBox"/>, <see
-    /// cref="DateInput"/>, and <see cref="DateTimeInput"/>, TimeInput has no popup.</summary>
-    private Rect ResolveTextBox()
-    {
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        return DeflateForAffixes(ContentBounds, affixes);
+        return MeasureSegmentedField();
     }
 
     #endregion
 
     #region Input
-
-    /// <inheritdoc/>
-    /// <remarks>Every recognized segment key is consumed even when it cannot change anything: Up
-    /// or Down at a bound, Left or Right at the first or last segment, Home or End already there,
-    /// Delete or Backspace over an empty value, and a repeated "a"/"p" that only moves the
-    /// designator highlight. The key is the field's own, so a bounded field inside a scrolling or
-    /// directionally navigating container never scrolls or moves focus in that container.</remarks>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        ArgumentNullException.ThrowIfNull(eventArgs);
-        EnsureSeeded();
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            base.OnEvent(eventArgs);
-            return;
-        }
-
-        if (eventArgs is KeyEventArgs key)
-        {
-            _segments.HandleKey(key, _segmentKeyOptions);
-        }
-        else if (eventArgs is PointerEventArgs pointer)
-        {
-            HandleSegmentPointer(pointer, ResolveTextBox());
-        }
-
-        if (!eventArgs.IsHandled)
-        {
-            base.OnEvent(eventArgs);
-        }
-    }
 
     // "a" selects AM and "p" selects PM rather than toggling: a user who presses the letter of
     // the half of the day they want must never be flipped to the other half because the value
@@ -480,16 +424,7 @@ public sealed class TimeInput: InputBase
         }
 
         EnsureSeeded();
-        var style = ResolvedStyle;
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        RenderAffixes(canvas, content, affixes, StartAffix, EndAffix, style);
-        var textBox = DeflateForAffixes(content, affixes);
-        RenderSegmentedValue(
-            canvas,
-            textBox,
-            BuildSegments(),
-            isPlaceholder: _state.Value is null,
-            canHighlight: IsFocused);
+        RenderSegmentedField(canvas, isPlaceholder: _state.Value is null);
     }
 
     #endregion
@@ -575,20 +510,6 @@ public sealed class TimeInput: InputBase
         return descriptors;
     }
 
-    /// <summary>Sums the resolved cell width of every rendered segment for a candidate value,
-    /// without committing it, so a value transition can be graded before it is applied.</summary>
-    private int MeasureFormattedWidth(TimeOnly? value)
-    {
-        var width = 0;
-
-        foreach (var segment in BuildSegments(value))
-        {
-            width += MeasureCells(segment.Text);
-        }
-
-        return width;
-    }
-
     /// <summary>Grades a value transition by its resolved display-width delta, mirroring
     /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
     /// example incrementing a zero-padded minute segment) needs only
@@ -601,9 +522,7 @@ public sealed class TimeInput: InputBase
     /// wired here so every <see cref="TemporalValueState{T}"/> consumer shares the same
     /// mechanism.</summary>
     private InvalidationImpact ResolveValueWidthImpact(TimeOnly? previous, TimeOnly? candidate) =>
-        MeasureFormattedWidth(previous) == MeasureFormattedWidth(candidate)
-            ? InvalidationImpact.Render
-            : InvalidationImpact.Measure;
+        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
 
 #pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
     [Pure]

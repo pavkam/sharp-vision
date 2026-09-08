@@ -672,6 +672,7 @@ namespace SharpVision.Controls
     }
     public abstract class InputBase : SharpVision.Controls.ControlBase
     {
+        protected const int DropDownIndicatorReservedWidth = 2;
         protected const int DropDownIndicatorWidth = 1;
         protected InputBase() { }
         protected override string? AccessKeyText { get; }
@@ -683,6 +684,7 @@ namespace SharpVision.Controls
         protected override string PopupOpenPropertyName { get; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
         protected override bool StateAffectsAmbientAppearance { get; }
+        protected virtual bool SwallowsInputWhilePopupOpen { get; }
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
         protected void ArrangeCaption(SharpVision.Terminal.Geometry.Rect bounds) { }
@@ -692,12 +694,16 @@ namespace SharpVision.Controls
         protected void ExecuteCommandIfAny() { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
+        protected void InvalidateSegmentLayout() { }
         protected SharpVision.Terminal.Geometry.Size MeasureCaption(SharpVision.Layout.Constraint constraint) { }
+        protected SharpVision.Terminal.Geometry.Size MeasureSegmentedField() { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void RenderSegmentedField(SharpVision.Terminal.Rendering.TerminalCanvas canvas, bool isPlaceholder) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
+        protected SharpVision.Terminal.Geometry.Rect ResolveSegmentBox() { }
         protected new void VerifyMutable() { }
         protected static bool TryGetStepDelta(SharpVision.Input.KeyEventArgs eventArgs, out int delta) { }
     }
@@ -2015,7 +2021,6 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
@@ -2052,7 +2057,6 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
@@ -2345,7 +2349,6 @@ namespace SharpVision.Controls.Input
         public System.TimeOnly? Value { get; set; }
         public event System.EventHandler<SharpVision.Input.TimeInputValueChangedEventArgs>? ValueChanged;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }

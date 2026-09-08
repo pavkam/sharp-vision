@@ -1041,6 +1041,46 @@ public sealed class InputBaseTests
         _ = Should.Throw<InvalidOperationException>(probe.EnableSegmentEditingAgain);
     }
 
+    /// <summary>Verifies a segmented field with no popup capability - mirroring
+    /// <see cref="TimeInput"/> - routes a recognized key straight to the shared segment engine
+    /// through <see cref="InputBase.OnEvent"/>, since it never reaches the popup-swallow check at
+    /// all.</summary>
+    [Fact]
+    public void SegmentEditing_WhenNoPopup_RoutesKeyToSegments()
+    {
+        var probe = new SegmentOnlyInputProbe();
+        var digit = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune('5'),
+            nativeCode: 0,
+            Modifiers.None,
+            KeyAction.Press));
+
+        _ = Router.Route(probe, Events.Key, digit);
+
+        probe.Value.ShouldBe(5);
+        digit.IsHandled.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies every routed event - key and pointer alike - is swallowed without
+    /// reaching the shared segment engine or press activation while the owned popup is open,
+    /// matching <see cref="DateInput"/> and <see cref="DateTimeInput"/>.</summary>
+    [Fact]
+    public void SegmentEditing_WhenPopupOpen_SwallowsPointerAndKeyInput()
+    {
+        var probe = new PopupCalendarInputProbe { IsOpen = true };
+        var key = Key(Code.Left);
+        var pointer = new PointerEventArgs(Pointer(new Point(0, 0), PointerAction.Press));
+
+        _ = Router.Route(probe, Events.Key, key);
+        _ = Router.Route(probe, Events.Pointer, pointer);
+
+        key.IsHandled.ShouldBeFalse();
+        pointer.IsHandled.ShouldBeFalse();
+        probe.Value.ShouldBe(0);
+        probe.Activations.ShouldBeEmpty();
+    }
+
     #endregion
 
     #region Stepping

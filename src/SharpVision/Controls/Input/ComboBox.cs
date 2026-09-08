@@ -22,7 +22,7 @@ public sealed class ComboBox: InputBase
     // indicator cell after the label. The border is not part of content: measure
     // resolution adds the border inset on top of the content size returned here.
     private const int _fieldContentHeight = 1;
-    private const int _indicatorReservedWidth = 2;
+    private const int _indicatorReservedWidth = DropDownIndicatorReservedWidth;
     private readonly ListView _list;
     private readonly Popup _popup;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;

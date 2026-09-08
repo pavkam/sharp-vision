@@ -13,14 +13,24 @@ internal sealed class SegmentOnlyInputProbe: InputBase
 
     /// <summary>Initializes a probe with only segment editing enabled.</summary>
     internal SegmentOnlyInputProbe() =>
-        _segments = EnableSegmentEditing(BuildSegments, ApplyDigit, Increment, Clear);
+        _segments = EnableSegmentEditing(
+            BuildSegments,
+            ApplyDigit,
+            Increment,
+            Clear,
+            new SegmentFieldKeyOptions(ResolveSegmentStepDelta, ClearValue));
 
     /// <summary>Gets the current backing value, clamped to 0 through 23.</summary>
     internal int Value { get; private set; }
 
     /// <summary>Attempts to enable segment editing a second time.</summary>
     internal void EnableSegmentEditingAgain() =>
-        _ = EnableSegmentEditing(BuildSegments, ApplyDigit, Increment, Clear);
+        _ = EnableSegmentEditing(
+            BuildSegments,
+            ApplyDigit,
+            Increment,
+            Clear,
+            new SegmentFieldKeyOptions(ResolveSegmentStepDelta, ClearValue));
 
     /// <summary>Moves the active segment through the protected seam.</summary>
     internal bool MoveSegment(int direction, bool wrap) => _segments.MoveSegment(direction, wrap);
@@ -30,6 +40,17 @@ internal sealed class SegmentOnlyInputProbe: InputBase
 
     /// <summary>Increments the active segment through the protected seam.</summary>
     internal bool IncrementSegment(int delta) => _segments.Increment(delta);
+
+    private bool ClearValue()
+    {
+        if (Value == 0)
+        {
+            return false;
+        }
+
+        Value = 0;
+        return true;
+    }
 
     private SegmentDescriptor[] BuildSegments() =>
         [new SegmentDescriptor(Value.ToString("D2", CultureInfo.InvariantCulture), TemporalSegmentKind.Hour, 2, 23)];

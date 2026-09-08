@@ -689,10 +689,15 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     #region Segment editing
 
     private SegmentFieldBehavior? _segmentEditing;
+    private Func<IReadOnlyList<SegmentDescriptor>>? _segmentsProvider;
+    private SegmentFieldKeyOptions? _segmentKeyOptions;
+    private Action? _beforeSegmentInput;
+    private bool _segmentReservesDropDownIndicator;
     private bool _activateFirstSegmentOnFocus;
 
-    /// <summary>Opts into the shared active-segment navigation, digit-entry buffering, and
-    /// pointer hit-testing state machine used by every segmented temporal field control.</summary>
+    /// <summary>Opts into the shared active-segment navigation, digit-entry buffering, pointer
+    /// hit-testing, and routed key/pointer dispatch used by every segmented temporal field
+    /// control.</summary>
     /// <param name="segmentsProvider">Returns the current, possibly culture- or format-dependent, segment layout.</param>
     /// <param name="applyDigitValue">
     /// Applies a fully or partially typed numeric value to a segment descriptor, clamping as the
@@ -700,16 +705,31 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     /// </param>
     /// <param name="incrementSegment">Applies a one-step increment (positive or negative delta) to a segment descriptor and returns whether the value changed.</param>
     /// <param name="clearSegment">Resets a segment descriptor to its lowest representable value and returns whether the value changed.</param>
+    /// <param name="keyOptions">The owner's typed step, clear, character, and popup key commands,
+    /// consulted by the shared routed key dispatch <see cref="OnEvent"/> now performs on this
+    /// capability's behalf.</param>
+    /// <param name="reservesDropDownIndicator">Whether <see cref="ResolveSegmentBox"/>,
+    /// <see cref="MeasureSegmentedField"/>, and <see cref="RenderSegmentedField"/> reserve
+    /// <see cref="DropDownIndicatorReservedWidth"/> for an owned drop-down indicator (true for
+    /// <see cref="DateInput"/> and <see cref="DateTimeInput"/>;
+    /// false for a field with no popup, such as <see cref="TimeInput"/>).</param>
     /// <param name="activateFirstSegmentOnFocus">Whether each focus entry returns to the first editable segment.</param>
+    /// <param name="beforeInput">Optional work the shared routed dispatch runs first, before any
+    /// other check, such as lazily seeding the value from the current clock on first interaction.</param>
     /// <returns>The newly constructed behavior, whose focus lifecycle is owned by this base class.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="keyOptions"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Segment editing is already enabled.</exception>
     private protected SegmentFieldBehavior EnableSegmentEditing(
         Func<IReadOnlyList<SegmentDescriptor>> segmentsProvider,
         Func<SegmentDescriptor, int, bool> applyDigitValue,
         Func<SegmentDescriptor, int, bool> incrementSegment,
         Func<SegmentDescriptor, bool> clearSegment,
-        bool activateFirstSegmentOnFocus = false)
+        SegmentFieldKeyOptions keyOptions,
+        bool reservesDropDownIndicator = false,
+        bool activateFirstSegmentOnFocus = false,
+        Action? beforeInput = null)
     {
+        ArgumentNullException.ThrowIfNull(keyOptions);
         VerifyMutable();
 
         if (_segmentEditing is not null)
@@ -718,6 +738,10 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         }
 
         _activateFirstSegmentOnFocus = activateFirstSegmentOnFocus;
+        _segmentReservesDropDownIndicator = reservesDropDownIndicator;
+        _segmentKeyOptions = keyOptions;
+        _beforeSegmentInput = beforeInput;
+        _segmentsProvider = segmentsProvider;
         _segmentEditing = new SegmentFieldBehavior(
             segmentsProvider,
             applyDigitValue,
@@ -726,6 +750,155 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             () => Invalidate(InvalidationImpact.Render));
         return _segmentEditing;
     }
+
+    /// <summary>Gets whether an owner with an enabled popup capability swallows every routed
+    /// event - key and pointer alike - while <see cref="ControlBase.IsPopupOpen"/> is true, before
+    /// segment routing ever inspects it.</summary>
+    /// <remarks>
+    /// Defaults to true, matching every shipped segmented field that also owns a popup
+    /// (<see cref="DateInput"/>, <see cref="DateTimeInput"/>): the
+    /// popup owns the interaction surface while open, so nothing beneath it - not even a pointer
+    /// press into the closed field's own segment box - can reach the field underneath. This is
+    /// only consulted when the popup capability is enabled at all (see
+    /// <see cref="ControlBase.HasPopupCapability"/>); a segmented field without a popup
+    /// (<see cref="TimeInput"/>) never reaches this check, so it never swallows on
+    /// this account.
+    /// </remarks>
+    protected virtual bool SwallowsInputWhilePopupOpen => true;
+
+    /// <summary>Resolves the box editable segment text is drawn into: the content box with the
+    /// drop-down indicator's own reserved columns subtracted first when
+    /// <see cref="EnableSegmentEditing"/> reserved one, then deflated for any active
+    /// <see cref="StartAffix"/>/<see cref="EndAffix"/> - keeping both affixes strictly inboard of
+    /// the indicator, and never overlapping it.</summary>
+    /// <returns>The rendered segment rectangle, excluding affixes and any reserved indicator.</returns>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    protected Rect ResolveSegmentBox()
+    {
+        if (_segmentEditing is null)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        var content = ContentBounds;
+        var fieldBox = _segmentReservesDropDownIndicator
+            ? new Rect(content.X, content.Y, Math.Max(0, content.Width - DropDownIndicatorReservedWidth), 1)
+            : content;
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        return DeflateForAffixes(fieldBox, affixes);
+    }
+
+    /// <summary>Measures a segmented field's full desired size: the current segment layout's
+    /// resolved cell width, plus affixes, plus <see cref="DropDownIndicatorReservedWidth"/> when
+    /// <see cref="EnableSegmentEditing"/> reserved one, on a single content row.</summary>
+    /// <returns>The desired size for the enclosing <c>MeasureOverride</c> to return.</returns>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    protected Size MeasureSegmentedField()
+    {
+        if (_segmentsProvider is not { } provider)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        var width = affixes.StartCells.Add(affixes.EndCells).Add(MeasureSegmentedWidth(provider()));
+
+        if (_segmentReservesDropDownIndicator)
+        {
+            width = width.Add(DropDownIndicatorReservedWidth);
+        }
+
+        return new Size(width, 1);
+    }
+
+    /// <summary>Renders one segmented field's affixes, active-segment highlighted value, and
+    /// reserved drop-down indicator in the shared layout every segmented field composes: affixes
+    /// at the field edges, the shared engine's active-segment highlight (suppressed while an
+    /// enabled popup is open), and - only when <see cref="EnableSegmentEditing"/> reserved one -
+    /// the drop-down glyph beyond the segment box.</summary>
+    /// <param name="canvas">The destination canvas.</param>
+    /// <param name="isPlaceholder">Whether the current segments represent a null value.</param>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    protected void RenderSegmentedField(TerminalCanvas canvas, bool isPlaceholder)
+    {
+        if (_segmentsProvider is not { } provider)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        var content = ContentBounds;
+        var style = ResolvedStyle;
+        var fieldBox = _segmentReservesDropDownIndicator
+            ? new Rect(content.X, content.Y, Math.Max(0, content.Width - DropDownIndicatorReservedWidth), 1)
+            : content;
+        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
+        RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
+        var segmentBox = DeflateForAffixes(fieldBox, affixes);
+        RenderSegmentedValue(
+            canvas,
+            segmentBox,
+            provider(),
+            isPlaceholder,
+            canHighlight: IsFocused && !(HasPopupCapability && IsPopupOpen));
+
+        if (_segmentReservesDropDownIndicator)
+        {
+            DrawDropDownIndicator(canvas, content, style);
+        }
+    }
+
+    /// <summary>Clamps the active segment back into range and discards any partially typed digit,
+    /// the pair every owner repeats after a layout-affecting property change (a new
+    /// <c>Format</c>, culture, or structural flag) shrinks or reorders the segment layout. Does
+    /// not itself invalidate: the property setter's own <c>SetProperty</c> or
+    /// <c>SetPropertyAndSynchronize</c> call already carries the
+    /// <see cref="InvalidationImpact"/> for the property change.</summary>
+    /// <exception cref="InvalidOperationException">Segment editing is not enabled.</exception>
+    protected void InvalidateSegmentLayout()
+    {
+        if (_segmentEditing is not { } segments)
+        {
+            throw new InvalidOperationException("Segment editing is not enabled.");
+        }
+
+        segments.ClampActiveSegment();
+        segments.ResetDigitBuffer();
+    }
+
+    /// <summary>Sums the resolved cell width of a candidate segment layout, without requiring a
+    /// concrete value type, so an owner can measure a layout or grade a value transition before
+    /// committing it.</summary>
+    /// <param name="segments">The ordered literal and editable segments to measure.</param>
+    /// <returns>The total terminal-cell width of every segment's rendered text.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="segments"/> is null.</exception>
+    private protected int MeasureSegmentedWidth(IReadOnlyList<SegmentDescriptor> segments)
+    {
+        ArgumentNullException.ThrowIfNull(segments);
+        var width = 0;
+
+        foreach (var segment in segments)
+        {
+            width += MeasureCells(segment.Text);
+        }
+
+        return width;
+    }
+
+    /// <summary>Grades a segmented value transition by its resolved display-width delta: a
+    /// same-width transition (for example incrementing a zero-padded segment) needs only
+    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
+    /// formatted text (a single-digit month or day widening to two digits under a non-padded
+    /// format) needs <see cref="InvalidationImpact.Measure"/> so the field box is remeasured
+    /// instead of leaving stale geometry behind.</summary>
+    /// <param name="previousSegments">The segment layout rendering the previous value.</param>
+    /// <param name="candidateSegments">The segment layout rendering the candidate value.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="previousSegments"/> or <paramref name="candidateSegments"/> is null.</exception>
+    private protected InvalidationImpact ResolveSegmentWidthImpact(
+        IReadOnlyList<SegmentDescriptor> previousSegments,
+        IReadOnlyList<SegmentDescriptor> candidateSegments) =>
+        MeasureSegmentedWidth(previousSegments) == MeasureSegmentedWidth(candidateSegments)
+            ? InvalidationImpact.Render
+            : InvalidationImpact.Measure;
 
     /// <summary>Routes a primary pointer press to the segmented field's shared hit testing and
     /// guarded focus transfer.</summary>
@@ -1043,7 +1216,20 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
         }
     }
 
+    #endregion
+
+    #region Event routing
+
     /// <inheritdoc/>
+    /// <remarks>
+    /// Routes exactly one enabled editing capability's own event dispatch, falling through to
+    /// <see cref="ControlBase.OnEvent"/> when neither is enabled or neither claims the event.
+    /// Segment routing additionally swallows every event - without reaching
+    /// <see cref="ControlBase.OnEvent"/> at all - while an owned popup is open and
+    /// <see cref="SwallowsInputWhilePopupOpen"/> holds, matching <see cref="DateInput"/>
+    /// and <see cref="DateTimeInput"/>; a segmented field with no popup
+    /// (<see cref="TimeInput"/>) never reaches that check at all.
+    /// </remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -1053,6 +1239,53 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             EffectiveIsVisible &&
             _numericEditing.HandleEvent(eventArgs))
         {
+            return;
+        }
+
+        if (_segmentEditing is { } segments)
+        {
+            _beforeSegmentInput?.Invoke();
+
+            if (!EffectiveIsEnabled || !EffectiveIsVisible)
+            {
+                base.OnEvent(eventArgs);
+                return;
+            }
+
+            if (HasPopupCapability && SwallowsInputWhilePopupOpen && IsPopupOpen)
+            {
+                return;
+            }
+
+            if (eventArgs is KeyEventArgs keyEventArgs)
+            {
+                segments.HandleKey(keyEventArgs, _segmentKeyOptions!);
+
+                if (keyEventArgs.IsHandled)
+                {
+                    return;
+                }
+            }
+            else if (eventArgs is PointerEventArgs pointer)
+            {
+                HandleSegmentPointer(pointer, ResolveSegmentBox());
+
+                if (pointer.IsHandled)
+                {
+                    return;
+                }
+            }
+
+            if (!eventArgs.IsHandled)
+            {
+                HandlePressActivation(eventArgs);
+            }
+
+            if (!eventArgs.IsHandled)
+            {
+                base.OnEvent(eventArgs);
+            }
+
             return;
         }
 
@@ -1100,6 +1333,14 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
     /// <summary>Gets the cell width reserved for a drop-down disclosure indicator.</summary>
     protected const int DropDownIndicatorWidth = 1;
+
+    /// <summary>Gets the cell width reserved for a drop-down disclosure indicator together with
+    /// the one-cell gap it keeps before the field's own content: <see cref="DropDownIndicatorWidth"/>
+    /// plus one. Every drop-down-backed field (<see cref="ComboBox"/>,
+    /// <see cref="DateInput"/>, <see cref="DateTimeInput"/>) reserves
+    /// this exact width ahead of its indicator, whether or not it also uses the segment-editing
+    /// capability.</summary>
+    protected const int DropDownIndicatorReservedWidth = DropDownIndicatorWidth + 1;
 
     /// <summary>Resolves the disclosure chevron from the active theme's input style.</summary>
     /// <remarks>

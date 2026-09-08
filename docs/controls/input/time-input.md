@@ -38,8 +38,12 @@ focus-continuation engine with [`DateInput`](date-input.md) and
 [`DateTimeInput`](date-time-input.md) through
 [`InputBase.EnableSegmentEditing`](../input-base.md#api). Only the
 calendar/clock arithmetic and pattern for each control's own value type differ.
-The three controls also use the same generic nullable value state for one-shot
-dispatcher-clock seeding, inclusive clamping, endpoint repair, and
+`InputBase.OnEvent` performs the routed key and pointer dispatch itself, after
+seeding the value; because `TimeInput` never enables the popup capability, it
+never reaches the popup-swallow check `DateInput` and `DateTimeInput` are
+subject to, so every event always routes straight through to the shared segment
+engine. The three controls also use the same generic nullable value state for
+one-shot dispatcher-clock seeding, inclusive clamping, endpoint repair, and
 reentrant-safe event publication. AM/PM discovery and conversion remain pure
 shared temporal classification helpers used by the two clock-capable fields.
 

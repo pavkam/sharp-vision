@@ -19,7 +19,12 @@ internal sealed class PopupCalendarInputProbe: InputBase
         Content.Children.Add(Item);
         Popup = EnablePopup(Content, focusOnOpen: true);
         EnablePressActivation();
-        _segments = EnableSegmentEditing(BuildSegments, ApplyDigit, Increment, Clear);
+        _segments = EnableSegmentEditing(
+            BuildSegments,
+            ApplyDigit,
+            Increment,
+            Clear,
+            new SegmentFieldKeyOptions(ResolveSegmentStepDelta, ClearValue));
     }
 
     /// <summary>Gets the popup's owned container content.</summary>
@@ -52,13 +57,6 @@ internal sealed class PopupCalendarInputProbe: InputBase
     {
         Activations.Add(cause);
         IsOpen = !IsOpen;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        base.OnEvent(eventArgs);
-        HandlePressActivation(eventArgs);
     }
 
     private SegmentDescriptor[] BuildSegments() =>
@@ -96,6 +94,17 @@ internal sealed class PopupCalendarInputProbe: InputBase
     {
         _ = segment;
 
+        if (Value == 0)
+        {
+            return false;
+        }
+
+        Value = 0;
+        return true;
+    }
+
+    private bool ClearValue()
+    {
         if (Value == 0)
         {
             return false;

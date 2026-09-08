@@ -19,11 +19,6 @@ using Popups;
 [PublicAPI]
 public sealed class DateTimeInput: InputBase
 {
-    // Terminal field geometry: one content row and two border columns. The indicator cell is
-    // InputBase.DropDownIndicatorWidth.
-    private const int _fieldContentHeight = 1;
-    private const int _fieldBorderWidth = 2;
-
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
         new Dictionary<char, TemporalSegmentKind>
         {
@@ -42,7 +37,6 @@ public sealed class DateTimeInput: InputBase
     private readonly CalendarDropDownCoordinator<DateTime> _calendarDropDown;
     private readonly Popup _popup;
     private readonly SegmentFieldBehavior _segments;
-    private readonly SegmentFieldKeyOptions _segmentKeyOptions;
     private readonly TemporalValueState<DateTime> _state;
 
     private CultureInfo _culture;
@@ -110,13 +104,15 @@ public sealed class DateTimeInput: InputBase
             BuildSegments,
             ApplyDigitValue,
             IncrementSegmentValue,
-            ClearSegmentValue);
-        _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveSegmentStepDelta,
-            ClearValue,
-            HandleCharacterCommand,
-            HandleDropDownOpeningCommand,
-            handleRecognizedWithoutChange: true);
+            ClearSegmentValue,
+            new SegmentFieldKeyOptions(
+                ResolveSegmentStepDelta,
+                ClearValue,
+                HandleCharacterCommand,
+                HandleDropDownOpeningCommand,
+                handleRecognizedWithoutChange: true),
+            reservesDropDownIndicator: true,
+            beforeInput: EnsureSeeded);
         TabNavigation = TabNavigation.None;
     }
 
@@ -205,8 +201,7 @@ public sealed class DateTimeInput: InputBase
                 () =>
                 {
                     _calendarDropDown.SyncCulture(Culture);
-                    _segments.ClampActiveSegment();
-                    _segments.ResetDigitBuffer();
+                    InvalidateSegmentLayout();
                 },
                 ReferenceEqualityComparer.Instance);
         }
@@ -222,8 +217,7 @@ public sealed class DateTimeInput: InputBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     } = true;
@@ -238,8 +232,7 @@ public sealed class DateTimeInput: InputBase
         {
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     }
@@ -271,8 +264,7 @@ public sealed class DateTimeInput: InputBase
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     }
@@ -398,31 +390,7 @@ public sealed class DateTimeInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var width = _fieldBorderWidth + affixes.StartCells + affixes.EndCells;
-
-        foreach (var segment in BuildSegments())
-        {
-            width += MeasureCells(segment.Text);
-        }
-
-        return new Size(width, _fieldContentHeight);
-    }
-
-    /// <summary>Resolves the box editable segment text is drawn into: the content box with the
-    /// drop-down indicator's own reserved columns (<see cref="_fieldBorderWidth"/>) subtracted
-    /// first, then deflated for any active <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/> -
-    /// keeping both affixes strictly inboard of the indicator, and never overlapping it.</summary>
-    private Rect ResolveTextBox()
-    {
-        var content = ContentBounds;
-        var fieldBox = new Rect(
-            content.X,
-            content.Y,
-            Math.Max(0, content.Width - _fieldBorderWidth),
-            _fieldContentHeight);
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        return DeflateForAffixes(fieldBox, affixes);
+        return MeasureSegmentedField();
     }
 
     /// <inheritdoc/>
@@ -436,76 +404,7 @@ public sealed class DateTimeInput: InputBase
         }
 
         EnsureSeeded();
-        var style = ResolvedStyle;
-        var fieldBox = new Rect(
-            content.X,
-            content.Y,
-            Math.Max(0, content.Width - _fieldBorderWidth),
-            _fieldContentHeight);
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
-        var textBox = DeflateForAffixes(fieldBox, affixes);
-        RenderSegmentedValue(
-            canvas,
-            textBox,
-            BuildSegments(),
-            isPlaceholder: _state.Value is null,
-            canHighlight: IsFocused && !IsOpen);
-
-        DrawDropDownIndicator(canvas, content, style);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>While the popup is closed, every recognized segment key is consumed even when it
-    /// cannot change anything: Up or Down at a bound, Left or Right at the first or last segment,
-    /// Home or End already there, Delete or Backspace over an empty value, and a repeated "a"/"p"
-    /// that only moves the designator highlight. The key is the field's own, so a bounded field
-    /// inside a scrolling or directionally navigating container never scrolls or moves focus in
-    /// that container.</remarks>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        EnsureSeeded();
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            base.OnEvent(eventArgs);
-            return;
-        }
-
-        if (IsOpen)
-        {
-            return;
-        }
-
-        if (eventArgs is KeyEventArgs key && !IsOpen)
-        {
-            _segments.HandleKey(key, _segmentKeyOptions);
-
-            if (key.IsHandled)
-            {
-                return;
-            }
-        }
-
-        if (eventArgs is PointerEventArgs pointer && !IsOpen)
-        {
-            HandleSegmentPointer(pointer, ResolveTextBox());
-
-            if (pointer.IsHandled)
-            {
-                return;
-            }
-        }
-
-        if (!eventArgs.IsHandled)
-        {
-            HandlePressActivation(eventArgs);
-        }
-
-        if (!eventArgs.IsHandled)
-        {
-            base.OnEvent(eventArgs);
-        }
+        RenderSegmentedField(canvas, isPlaceholder: _state.Value is null);
     }
 
     /// <inheritdoc/>
@@ -888,20 +787,6 @@ public sealed class DateTimeInput: InputBase
         return normalized.ToString();
     }
 
-    /// <summary>Sums the resolved cell width of every rendered segment for a candidate value,
-    /// without committing it, so a value transition can be graded before it is applied.</summary>
-    private int MeasureFormattedWidth(DateTime? value)
-    {
-        var width = 0;
-
-        foreach (var segment in BuildSegments(value))
-        {
-            width += MeasureCells(segment.Text);
-        }
-
-        return width;
-    }
-
     /// <summary>Grades a value transition by its resolved display-width delta, mirroring
     /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
     /// example incrementing a zero-padded minute segment) needs only
@@ -910,9 +795,7 @@ public sealed class DateTimeInput: InputBase
     /// <see cref="Culture"/> pattern) needs <see cref="InvalidationImpact.Measure"/> so the field
     /// box is remeasured instead of leaving stale geometry behind.</summary>
     private InvalidationImpact ResolveValueWidthImpact(DateTime? previous, DateTime? candidate) =>
-        MeasureFormattedWidth(previous) == MeasureFormattedWidth(candidate)
-            ? InvalidationImpact.Render
-            : InvalidationImpact.Measure;
+        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
 
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
     [Pure]

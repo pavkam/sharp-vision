@@ -9,9 +9,6 @@ using Popups;
 [PublicAPI]
 public sealed class DateInput: InputBase
 {
-    // The indicator cell (InputBase.DropDownIndicatorWidth) plus its one-cell separating gap.
-    private const int _indicatorReservedWidth = 2;
-
     // A stable, representative date used to validate candidate formatting patterns.
     private static readonly DateOnly _probeDate = DateOnly.FromDateTime(DateTime.UnixEpoch);
 
@@ -25,8 +22,6 @@ public sealed class DateInput: InputBase
 
     private readonly CalendarDropDownCoordinator<DateOnly> _calendarDropDown;
     private readonly Popup _popup;
-    private readonly SegmentFieldBehavior _segments;
-    private readonly SegmentFieldKeyOptions _segmentKeyOptions;
     private readonly TemporalValueState<DateOnly> _state;
     private CultureInfo _culture;
 
@@ -91,17 +86,19 @@ public sealed class DateInput: InputBase
             nameof(ActualCalendarStyle),
             () => _calendarDropDown.Calendar.ActualStyle);
         EnablePressActivation();
-        _segments = EnableSegmentEditing(
+        _ = EnableSegmentEditing(
             BuildSegments,
             ApplySegmentDigit,
             ApplySegmentIncrement,
             ClearSegmentValue,
-            activateFirstSegmentOnFocus: true);
-        _segmentKeyOptions = new SegmentFieldKeyOptions(
-            ResolveSegmentStepDelta,
-            ClearValueCommand,
-            handlePopupCommand: HandleDropDownOpeningCommand,
-            handleRecognizedWithoutChange: true);
+            new SegmentFieldKeyOptions(
+                ResolveSegmentStepDelta,
+                ClearValueCommand,
+                handlePopupCommand: HandleDropDownOpeningCommand,
+                handleRecognizedWithoutChange: true),
+            reservesDropDownIndicator: true,
+            activateFirstSegmentOnFocus: true,
+            beforeInput: EnsureSeeded);
         TabNavigation = TabNavigation.None;
     }
 
@@ -171,8 +168,7 @@ public sealed class DateInput: InputBase
                 () =>
                 {
                     _calendarDropDown.SyncCulture(Culture);
-                    _segments.ClampActiveSegment();
-                    _segments.ResetDigitBuffer();
+                    InvalidateSegmentLayout();
                 },
                 ReferenceEqualityComparer.Instance);
         }
@@ -197,8 +193,7 @@ public sealed class DateInput: InputBase
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
-                _segments.ClampActiveSegment();
-                _segments.ResetDigitBuffer();
+                InvalidateSegmentLayout();
             }
         }
     } = "d";
@@ -309,24 +304,7 @@ public sealed class DateInput: InputBase
     protected override Size MeasureOverride(Constraint constraint)
     {
         EnsureSeeded();
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        var width = MeasureCells(FormatValue())
-            .Add(_indicatorReservedWidth)
-            .Add(affixes.StartCells)
-            .Add(affixes.EndCells);
-        return new Size(width, 1);
-    }
-
-    /// <summary>Resolves the box editable segment text is drawn into: the content box with the
-    /// drop-down indicator's own reserved columns subtracted first, then deflated for any active
-    /// <see cref="InputBase.StartAffix"/>/<see cref="InputBase.EndAffix"/> - keeping both affixes strictly inboard of
-    /// the indicator, and never overlapping it.</summary>
-    private Rect ResolveTextBox()
-    {
-        var content = ContentBounds;
-        var fieldBox = new Rect(content.X, content.Y, Math.Max(0, content.Width - _indicatorReservedWidth), 1);
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        return DeflateForAffixes(fieldBox, affixes);
+        return MeasureSegmentedField();
     }
 
     /// <inheritdoc/>
@@ -338,72 +316,7 @@ public sealed class DateInput: InputBase
         }
 
         EnsureSeeded();
-        var content = ContentBounds;
-        var style = ResolvedStyle;
-        var fieldBox = new Rect(content.X, content.Y, Math.Max(0, content.Width - _indicatorReservedWidth), 1);
-        var affixes = MeasureAffixes(StartAffix, EndAffix, ResolveAffixGap());
-        RenderAffixes(canvas, fieldBox, affixes, StartAffix, EndAffix, style);
-        var textBox = DeflateForAffixes(fieldBox, affixes);
-        RenderSegmentedValue(
-            canvas,
-            textBox,
-            BuildSegments(),
-            isPlaceholder: _state.Value is null,
-            canHighlight: IsFocused && !IsOpen);
-
-        DrawDropDownIndicator(canvas, content, style);
-    }
-
-    /// <inheritdoc/>
-    /// <remarks>While the popup is closed, every recognized segment key is consumed even when it
-    /// cannot change anything: Up or Down at a bound, Left or Right at the first or last segment,
-    /// Home or End already there, and Delete or Backspace over an empty value. The key is the
-    /// field's own, so a bounded field inside a scrolling or directionally navigating container
-    /// never scrolls or moves focus in that container.</remarks>
-    protected override void OnEvent(RoutedEventArgs eventArgs)
-    {
-        EnsureSeeded();
-
-        if (!EffectiveIsEnabled || !EffectiveIsVisible)
-        {
-            base.OnEvent(eventArgs);
-            return;
-        }
-
-        if (IsOpen)
-        {
-            return;
-        }
-
-        if (!IsOpen && eventArgs is KeyEventArgs keyEventArgs)
-        {
-            _segments.HandleKey(keyEventArgs, _segmentKeyOptions);
-
-            if (keyEventArgs.IsHandled)
-            {
-                return;
-            }
-        }
-
-        if (!IsOpen && eventArgs is PointerEventArgs pointer)
-        {
-            HandleSegmentPointer(pointer, ResolveTextBox());
-
-            if (pointer.IsHandled)
-            {
-                return;
-            }
-        }
-
-        if (!eventArgs.IsHandled)
-        {
-            HandlePressActivation(eventArgs);
-        }
-
-        if (!eventArgs.IsHandled)
-        {
-            base.OnEvent(eventArgs);
-        }
+        RenderSegmentedField(canvas, isPlaceholder: _state.Value is null);
     }
 
     /// <inheritdoc/>
@@ -672,20 +585,6 @@ public sealed class DateInput: InputBase
         return descriptors;
     }
 
-    private string FormatValue() => FormatValue(_state.Value);
-
-    private string FormatValue(DateOnly? value)
-    {
-        var builder = new StringBuilder();
-
-        foreach (var segment in BuildSegments(value))
-        {
-            _ = builder.Append(segment.Text);
-        }
-
-        return builder.ToString();
-    }
-
     /// <summary>Grades a value transition by its resolved display-width delta, mirroring
     /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
     /// example incrementing a zero-padded day segment) needs only
@@ -694,9 +593,7 @@ public sealed class DateInput: InputBase
     /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
     /// remeasured instead of leaving stale geometry behind.</summary>
     private InvalidationImpact ResolveValueWidthImpact(DateOnly? previous, DateOnly? candidate) =>
-        MeasureCells(FormatValue(previous)) == MeasureCells(FormatValue(candidate))
-            ? InvalidationImpact.Render
-            : InvalidationImpact.Measure;
+        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
 
     #endregion
 

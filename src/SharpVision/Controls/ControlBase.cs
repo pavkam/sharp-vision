@@ -1235,6 +1235,15 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </remarks>
     protected virtual string PopupOpenPropertyName => nameof(IsPopupOpen);
 
+    /// <summary>Gets whether the popup capability is enabled, without throwing when it is not.</summary>
+    /// <remarks>
+    /// <see cref="IsPopupOpen"/> throws when the popup capability is not enabled, so an in-assembly
+    /// capability that only conditionally involves an owned popup - such as <see cref="InputBase"/>
+    /// routing segment-editing input while the popup owner still supports a popup-less field
+    /// (<see cref="Input.TimeInput"/>) - checks this first.
+    /// </remarks>
+    private protected bool HasPopupCapability => _popupCoordinator is not null;
+
     /// <summary>Gets or sets whether the owned popup is open.</summary>
     /// <remarks>
     /// This is the capability-level open state shared by every popup owner; a control family
