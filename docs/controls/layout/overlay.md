@@ -85,6 +85,10 @@ Children with equal values keep their stable collection order, and default focus
 traversal always remains collection order regardless of z-order. The same stable
 z-order governs elevated popup descendants: higher-z branches render later and
 hit-test first, including when a generated scrollbar occupies the same cells.
+Z-order flows through the inherited
+[`GetChildOrder`](../container.md#child-order) seam that drives hit testing and
+both render passes; `NavigationAt` and selectable-text aggregation deliberately
+override that inherited wiring to keep reading collection order instead.
 
 When `AutoScroll` is armed, ordinary z-ordered content renders and hit-tests
 only inside the committed viewport. Generated scrollbar parts render above

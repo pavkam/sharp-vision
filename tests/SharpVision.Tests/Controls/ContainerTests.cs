@@ -1539,6 +1539,39 @@ public sealed class ContainerTests
         container.HitTest(new Point(3, 0)).ShouldBeSameAs(content);
     }
 
+    /// <summary>Verifies content rendering honors a <see cref="Container.GetChildOrder"/> override:
+    /// reversing the permutation paints the collection-last child first, so the collection-first
+    /// child paints last and ends up visible on top of the full overlap.</summary>
+    [Fact]
+    public void GetChildOrder_WhenOverriddenToReverse_RendersLastChildFirst()
+    {
+        var container = new ProbeContainer { ReverseChildOrder = true, Bounds = new Rect(0, 0, 1, 1) };
+        var first = new ProbeControl(new Size(1, 1)) { Bounds = new Rect(0, 0, 1, 1), Content = "F".AsMemory() };
+        var second = new ProbeControl(new Size(1, 1)) { Bounds = new Rect(0, 0, 1, 1), Content = "S".AsMemory() };
+        container.Children.Add(first);
+        container.Children.Add(second);
+        using Frame frame = new(new Size(1, 1));
+
+        container.Render(frame.Canvas);
+
+        FrameOracle.Get(frame, default).ShouldBe("F");
+    }
+
+    /// <summary>Verifies ordinary hit testing honors a <see cref="Container.GetChildOrder"/>
+    /// override: reversing the permutation makes the collection-first child the front-most one, so
+    /// it is the first (and only, given full overlap) match a pointer search reaches.</summary>
+    [Fact]
+    public void GetChildOrder_WhenOverriddenToReverse_HitTestsTopmostFirst()
+    {
+        var container = new ProbeContainer { ReverseChildOrder = true, Bounds = new Rect(0, 0, 1, 1) };
+        var first = new ProbeControl(new Size(1, 1)) { Bounds = new Rect(0, 0, 1, 1), Content = "F".AsMemory() };
+        var second = new ProbeControl(new Size(1, 1)) { Bounds = new Rect(0, 0, 1, 1), Content = "S".AsMemory() };
+        container.Children.Add(first);
+        container.Children.Add(second);
+
+        container.HitTest(default).ShouldBeSameAs(first);
+    }
+
     /// <summary>Verifies a hidden horizontal bar gives word-wrapping content the committed viewport width during measurement.</summary>
     [Fact]
     public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()

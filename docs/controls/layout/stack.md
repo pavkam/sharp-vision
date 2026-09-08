@@ -42,7 +42,9 @@ children consume neither a track nor adjacent spacing. `Reverse` defaults to
 consistently, without reparenting any child. Elevated popup descendants follow
 that same order, so reversing the stack also reverses popup drawing and hit
 priority. Selectable-text aggregation follows the same visual reading order, so
-semantic offsets, pointer geometry, and copied text remain aligned.
+semantic offsets, pointer geometry, and copied text remain aligned. `Reverse` is
+applied through the inherited [`GetChildOrder`](../container.md#child-order)
+seam, not a separate reimplementation of each traversal.
 
 ## Keyboard
 

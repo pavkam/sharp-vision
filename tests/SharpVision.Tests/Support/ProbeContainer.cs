@@ -49,6 +49,26 @@ internal sealed class ProbeContainer: Container
     /// <inheritdoc/>
     protected override bool ClipsChildren => ClipChildren;
 
+    /// <summary>Gets or sets whether <see cref="GetChildOrder"/> reverses the identity
+    /// permutation, exercising a third-party <see cref="Container.GetChildOrder"/> override
+    /// without a dedicated probe type.</summary>
+    internal bool ReverseChildOrder { get; set; }
+
+    /// <inheritdoc/>
+    protected override void GetChildOrder(Span<int> indices)
+    {
+        if (!ReverseChildOrder)
+        {
+            base.GetChildOrder(indices);
+            return;
+        }
+
+        for (var index = 0; index < indices.Length; index++)
+        {
+            indices[index] = indices.Length - index - 1;
+        }
+    }
+
     /// <inheritdoc/>
     protected override Rect VisualBounds
     {

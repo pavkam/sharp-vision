@@ -55,6 +55,7 @@ classDiagram
 | `OnChildrenChanged()`                                      | `void`                                 | —                            | Protected virtual; runs after a `Children` mutation structurally commits.                                                                                                                                                                                                                                                                                                                               |
 | `MeasureOverride(Constraint constraint)`                   | `Size`                                 | —                            | Protected abstract; measures owned children and returns their intrinsic content size.                                                                                                                                                                                                                                                                                                                   |
 | `ArrangeOverride(Rect bounds)`                             | `void`                                 | —                            | Protected abstract; assigns the final content-box slots of owned children.                                                                                                                                                                                                                                                                                                                              |
+| `GetChildOrder(Span<int> indices)`                         | `void`                                 | Identity                     | Protected virtual; fills `indices` with the child traversal order shared by default focus navigation, selectable-text aggregation, popup hit testing, ordinary hit testing, content rendering, and popup-layer rendering.                                                                                                                                                                               |
 | `ScrollMeasureViewport`                                    | `Constraint`                           | Empty                        | Protected, read-only outside this type; the finite content constraint that supplied the current scroll measurement. A specialized container uses this candidate viewport, valid only during the current measure override, to resolve viewport-relative child requests and limits while its scroll axis stays unbounded for extent discovery; an arrange override uses the committed `Viewport` instead. |
 | `RemeasureInitialScrollContent`                            | `bool`                                 | `AutoSize`                   | Protected virtual; whether arrange-time scrollbar resolution first remeasures content against its final padded host size before committing the extent and viewport. A specialized container whose track allocation couples one final axis to content measured on the other overrides this to opt in.                                                                                                    |
 | `ScrollBy(int x, int y, ScrollCause cause = Programmatic)` | `bool`                                 | —                            | Adds signed axis deltas with saturation and endpoint clamping.                                                                                                                                                                                                                                                                                                                                          |
@@ -123,6 +124,25 @@ Use a shipped semantic panel when its algorithm matches the application:
 [`Dock`](layout/dock.md#overview), or [`Overlay`](layout/overlay.md#overview).
 The shared [layout rules](../concepts/layout.md#overview) own constraints,
 alignment, margins, sizing, and rounding.
+
+## Child order
+
+`GetChildOrder` is the one seam that reorders a container's children without
+reimplementing any traversal. Default focus navigation, selectable-text
+aggregation, popup hit testing, ordinary hit testing, content rendering, and
+popup-layer rendering all call it and honor the permutation it returns instead
+of `Children`'s own insertion order. An override fills `indices` - already sized
+to `Children.Count` - with a permutation of `0` through `Count - 1`; index `0`
+names the back-most child and the last index names the front-most child.
+Rendering walks the permutation front-to-back (index `0` first), so the
+front-most child paints last and ends up on top; hit testing walks it
+back-to-front (the last index first), so a pointer or popup search reaches the
+topmost child first. The default identity permutation preserves insertion order.
+Every traversal evaluates the permutation independently on every pass, so an
+override must be cheap and allocation-free - rent a scratch buffer from
+`ArrayPool<int>` or use a stack-allocated span, never a fresh array or list.
+[`Stack`](layout/stack.md#overview) reverses the identity permutation when
+`Reverse` is set; [`Overlay`](layout/overlay.md#overview) sorts it by z-order.
 
 ## Auto-size and scrolling
 

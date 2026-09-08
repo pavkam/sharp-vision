@@ -56,44 +56,25 @@ public sealed class Stack: Container
     }
 
     /// <inheritdoc/>
-    internal override ControlBase NavigationAt(int index) =>
-        Reverse && index < Children.Count ? Children[Children.Count - index - 1] : base.NavigationAt(index);
-
-    /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
-    {
-        ArgumentNullException.ThrowIfNull(children);
-
-        if (!Reverse)
-        {
-            return base.AddSelectableTextChildren(children);
-        }
-
-        for (var index = Children.Count - 1; index >= 0; index--)
-        {
-            children.Add(Children[index]);
-        }
-
-        return true;
-    }
-
-    /// <inheritdoc/>
-    internal override ControlBase? HitTestPopupCore(Point point)
+    /// <remarks>
+    /// Reverses the identity permutation when <see cref="Reverse"/> is set, so index <c>0</c> -
+    /// the back-most slot <see cref="Container.GetChildOrder"/> defines - names the last child
+    /// and the last index names the first. This drives every traversal
+    /// <see cref="Container.GetChildOrder"/> lists, matching the reversal previously reimplemented
+    /// separately for navigation, selectable text, popup hit testing, and both render passes.
+    /// </remarks>
+    protected override void GetChildOrder(Span<int> indices)
     {
         if (!Reverse)
         {
-            return base.HitTestPopupCore(point);
+            base.GetChildOrder(indices);
+            return;
         }
 
-        for (var index = 0; index < Children.Count; index++)
+        for (var index = 0; index < indices.Length; index++)
         {
-            if (Children[index].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
-            {
-                return popup;
-            }
+            indices[index] = indices.Length - index - 1;
         }
-
-        return null;
     }
 
     /// <inheritdoc/>
@@ -199,39 +180,6 @@ public sealed class Stack: Container
             ArrayPool<int>.Shared.Return(rentedMinimum);
             ArrayPool<int>.Shared.Return(rentedMaximum);
             ArrayPool<int>.Shared.Return(rentedExtents);
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void RenderContent(TerminalCanvas canvas, Rect contentClip)
-    {
-        if (!Reverse)
-        {
-            base.RenderContent(canvas, contentClip);
-            return;
-        }
-
-        for (var index = Children.Count - 1; index >= 0; index--)
-        {
-            if (Children[index].RendersInNormalLayer)
-            {
-                Children[index].Render(canvas, contentClip);
-            }
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
-    {
-        if (!Reverse)
-        {
-            base.RenderOwnedPopupDescendants(canvas);
-            return;
-        }
-
-        for (var index = Children.Count - 1; index >= 0; index--)
-        {
-            Children[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
         }
     }
 

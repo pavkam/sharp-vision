@@ -44,6 +44,35 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     protected internal override bool ClipsDescendantVisualOverflow => AutoScroll || ClipToBounds;
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Deliberately bypasses <see cref="GetChildOrder"/>: default focus navigation stays in
+    /// collection order regardless of z-order, matching every documented navigation contract and
+    /// the pinned <c>MoveNext_WhenZOrderDiffers_UsesCollectionOrderAsync</c> regression. Only hit
+    /// testing and rendering honor z-order.
+    /// </remarks>
+    internal override ControlBase NavigationAt(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        return index < Children.Count
+            ? Children[index]
+            : throw new ArgumentOutOfRangeException(
+                nameof(index),
+                index,
+                "The navigation position is outside the eligible controls.");
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>Deliberately bypasses <see cref="GetChildOrder"/> for the same reason as <see
+    /// cref="NavigationAt"/>: selectable text reads in collection order, not z-order.</remarks>
+    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        children.AddRange(Children);
+        return true;
+    }
+
     /// <summary>Gets one control's attached leading horizontal offset.</summary>
     /// <param name="control">The non-null control.</param>
     /// <returns>The attached offset, or null when unset.</returns>
@@ -153,84 +182,7 @@ public sealed class Overlay: Container
         => _zIndices.Set(control, value);
 
     /// <inheritdoc/>
-    protected internal override ControlBase? HitTest(Point point) =>
-        CanHitTestSelf(point, requireContainment: false)
-            ? HitTestPopup(point) ?? (AutoScroll ? HitTestScrollable(point) : HitTestUnscrolled(point))
-            : null;
-
-    private ControlBase? HitTestScrollable(Point point) => Bounds.Contains(point)
-        ? HitTestBars(point) ??
-          (ViewportBounds.Contains(point) ? HitTestOrderedContent(point) : null) ??
-          (HitTestsOwnBounds ? this : null)
-        : null;
-
-    private ControlBase? HitTestUnscrolled(Point point) =>
-        !ClipToBounds || Bounds.Contains(point)
-            ? HitTestOrderedContent(point) ?? (HitTestsOwnBounds && Bounds.Contains(point) ? this : null)
-            : null;
-
-    private ControlBase? HitTestBars(Point point)
-    {
-        if (Bars is null)
-        {
-            return null;
-        }
-
-        for (var index = Bars.Count - 1; index >= 0; index--)
-        {
-            if (Bars[index].HitTest(point) is { } bar)
-            {
-                return bar;
-            }
-        }
-
-        return null;
-    }
-
-    private ControlBase? HitTestOrderedContent(Point point)
-    {
-        var rented = RentOrdered();
-
-        try
-        {
-            for (var index = Children.Count - 1; index >= 0; index--)
-            {
-                if (rented[index].HitTest(point) is { } child)
-                {
-                    return child;
-                }
-            }
-        }
-        finally
-        {
-            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
-        }
-
-        return null;
-    }
-
-    /// <inheritdoc/>
-    internal override ControlBase? HitTestPopupCore(Point point)
-    {
-        var rented = RentOrdered();
-
-        try
-        {
-            for (var index = Children.Count - 1; index >= 0; index--)
-            {
-                if (rented[index].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
-                {
-                    return popup;
-                }
-            }
-        }
-        finally
-        {
-            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
-        }
-
-        return null;
-    }
+    internal override bool HitTestsSelf => HitTestsOwnBounds;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -426,73 +378,35 @@ public sealed class Overlay: Container
     }
 
     /// <inheritdoc/>
-    internal override void RenderContent(TerminalCanvas canvas, Rect contentClip)
+    /// <remarks>
+    /// Orders children ascending by <see cref="GetZIndex"/>, so index <c>0</c> (the back-most
+    /// slot <see cref="Container.GetChildOrder"/> defines) is the lowest z-order child and the
+    /// last index (the front-most slot) is the highest. This drives hit testing and both render
+    /// passes; <see cref="NavigationAt"/> and <see cref="AddSelectableTextChildren"/> deliberately
+    /// override this container's default wiring to keep reading collection order instead.
+    /// </remarks>
+    protected override void GetChildOrder(Span<int> indices)
     {
-        var rented = RentOrdered();
-
-        try
+        for (var index = 0; index < indices.Length; index++)
         {
-            for (var index = 0; index < Children.Count; index++)
-            {
-                if (rented[index].RendersInNormalLayer)
-                {
-                    rented[index].Render(canvas, contentClip);
-                }
-            }
-        }
-        finally
-        {
-            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
-        }
-    }
-
-    /// <inheritdoc/>
-    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
-    {
-        var rented = RentOrdered();
-
-        try
-        {
-            for (var index = 0; index < Children.Count; index++)
-            {
-                rented[index].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
-            }
-        }
-        finally
-        {
-            ArrayPool<ControlBase>.Shared.Return(rented, clearArray: true);
-        }
-    }
-
-    private ControlBase[] RentOrdered()
-    {
-        Debug.Assert(Children.Count >= 0, "Overlay child count cannot be negative.");
-
-        var result = ArrayPool<ControlBase>.Shared.Rent(Children.Count);
-
-        for (var index = 0; index < Children.Count; index++)
-        {
-            result[index] = Children[index];
+            indices[index] = index;
         }
 
         // Insertion sort is stable for equal z-values and avoids comparer or
         // tuple allocation for the small layer sets common in terminal UIs.
-        for (var index = 1; index < Children.Count; index++)
+        for (var index = 1; index < indices.Length; index++)
         {
-            var current = result[index];
-            var currentZ = GetZIndex(current);
+            var current = indices[index];
+            var currentZ = GetZIndex(Children[current]);
             var insertion = index - 1;
 
-            while (insertion >= 0 && GetZIndex(result[insertion]) > currentZ)
+            while (insertion >= 0 && GetZIndex(Children[indices[insertion]]) > currentZ)
             {
-                result[insertion + 1] = result[insertion];
+                indices[insertion + 1] = indices[insertion];
                 insertion--;
             }
 
-            result[insertion + 1] = current;
+            indices[insertion + 1] = current;
         }
-
-        Debug.Assert(result.Length >= Children.Count, "Rented overlay buffer must cover every child.");
-        return result;
     }
 }

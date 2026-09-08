@@ -71,7 +71,21 @@ public abstract class Container: ControlBase
     internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
-        children.AddRange(Children);
+
+        var order = RentChildOrder();
+
+        try
+        {
+            for (var index = 0; index < Children.Count; index++)
+            {
+                children.Add(Children[order[index]]);
+            }
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
+        }
+
         return true;
     }
 
@@ -107,6 +121,69 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     protected internal override bool ClipsDescendantVisualOverflow => AutoScroll;
 
+    /// <summary>Computes the traversal order shared by default focus navigation, selectable-text
+    /// aggregation, popup hit testing, ordinary hit testing, content rendering, and popup-layer
+    /// rendering.</summary>
+    /// <param name="indices">A span exactly <see cref="Children"/>'s current <see
+    /// cref="ControlCollection.Count"/> long, to fill with a permutation of <c>0</c> through
+    /// <c>Count - 1</c>. Index <c>0</c> names the back-most child - the first one content
+    /// rendering paints and the last one hit testing tries. The last index names the front-most
+    /// child - the last one content rendering paints, so it draws over its siblings, and the
+    /// first one hit testing tries, so a pointer or popup search picks the topmost match.</param>
+    /// <remarks>
+    /// Every traversal named above calls this independently on every pass - a render, a hit test,
+    /// and a navigation step each evaluate it fresh - so an override must be cheap and
+    /// allocation-free: rent a scratch buffer from <see cref="ArrayPool{T}"/> (see <see
+    /// cref="Layout.Overlay.GetChildOrder"/> for a stable z-order comparison) or use a
+    /// stack-allocated span for a small, bounded child count. Never allocate a new array or list
+    /// per call. The default identity permutation - <c>indices[i] = i</c> - preserves insertion
+    /// order, matching every traversal's behavior before this seam existed.
+    /// </remarks>
+    protected virtual void GetChildOrder(Span<int> indices)
+    {
+        for (var index = 0; index < indices.Length; index++)
+        {
+            indices[index] = index;
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override int NavigationCount => Children.Count;
+
+    /// <inheritdoc/>
+    internal override ControlBase NavigationAt(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+
+        if (index >= Children.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                index,
+                "The navigation position is outside the eligible controls.");
+        }
+
+        var order = RentChildOrder();
+
+        try
+        {
+            return Children[order[index]];
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
+        }
+    }
+
+    /// <summary>Gets whether an unmatched point within this container's own committed bounds
+    /// resolves to this container itself, rather than passing through to whatever lies behind
+    /// it.</summary>
+    /// <remarks>Default true. <see cref="Layout.Overlay"/> forwards its own settable <see
+    /// cref="Layout.Overlay.HitTestsOwnBounds"/> through this seam so a transparent presentation
+    /// root - the private overlay <see cref="Screen"/> owns - never claims a click that missed
+    /// every child.</remarks>
+    internal virtual bool HitTestsSelf => true;
+
     /// <inheritdoc/>
     protected internal override ControlBase? HitTest(Point point)
     {
@@ -131,20 +208,52 @@ public abstract class Container: ControlBase
         {
             var bar = _scroll.HitTest(point);
 
-            return bar ?? (_scroll.ViewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? this;
+            return bar ?? (_scroll.ViewportBounds.Contains(point) ? HitTestChildren(point) : null) ?? (HitTestsSelf ? this : null);
         }
 
-        return HitTestChildren(point) ?? (contains ? this : null);
+        return HitTestChildren(point) ?? (contains && HitTestsSelf ? this : null);
     }
 
     private ControlBase? HitTestChildren(Point point)
     {
-        for (var index = Children.Count - 1; index >= 0; index--)
+        var order = RentChildOrder();
+
+        try
         {
-            if (Children[index].HitTest(point) is { } child)
+            for (var index = Children.Count - 1; index >= 0; index--)
             {
-                return child;
+                if (Children[order[index]].HitTest(point) is { } child)
+                {
+                    return child;
+                }
             }
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
+        }
+
+        return null;
+    }
+
+    /// <inheritdoc/>
+    internal override ControlBase? HitTestPopupCore(Point point)
+    {
+        var order = RentChildOrder();
+
+        try
+        {
+            for (var index = Children.Count - 1; index >= 0; index--)
+            {
+                if (Children[order[index]].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
+                {
+                    return popup;
+                }
+            }
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
         }
 
         return null;
@@ -168,13 +277,55 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     internal override void RenderContent(TerminalCanvas canvas, Rect contentClip)
     {
-        foreach (var child in Children)
+        var order = RentChildOrder();
+
+        try
         {
-            if (child.RendersInNormalLayer)
+            for (var index = 0; index < Children.Count; index++)
             {
-                child.Render(canvas, contentClip);
+                var child = Children[order[index]];
+
+                if (child.RendersInNormalLayer)
+                {
+                    child.Render(canvas, contentClip);
+                }
             }
         }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
+        }
+    }
+
+    /// <inheritdoc/>
+    internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
+    {
+        var order = RentChildOrder();
+
+        try
+        {
+            for (var index = 0; index < Children.Count; index++)
+            {
+                Children[order[index]].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
+            }
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(order);
+        }
+    }
+
+    /// <summary>Rents a pooled buffer filled with the current <see cref="GetChildOrder"/>
+    /// permutation for <see cref="Children"/>.</summary>
+    /// <returns>An <see cref="ArrayPool{T}"/>-rented buffer whose first <see
+    /// cref="ControlCollection.Count"/> elements hold the permutation; the caller must return it
+    /// with <see cref="ArrayPool{T}.Return"/>.</returns>
+    private int[] RentChildOrder()
+    {
+        var count = Children.Count;
+        var buffer = ArrayPool<int>.Shared.Rent(count);
+        GetChildOrder(buffer.AsSpan(0, count));
+        return buffer;
     }
 
     #region Grow and shrink
@@ -464,9 +615,6 @@ public abstract class Container: ControlBase
     /// </remarks>
     private protected void CommitContentArrangedAtCurrentOffset() =>
         ArrangedOffset = new Point(HorizontalOffset, VerticalOffset);
-
-    /// <summary>Gets the private generated scrollbar parts for specialized container layout.</summary>
-    private protected ControlCollection? Bars => _scroll.Bars;
 
     /// <summary>Gets the committed content-box rectangle, after scrollbar reservation, that a
     /// specialized container clips and hit-tests its scrollable content against.</summary>

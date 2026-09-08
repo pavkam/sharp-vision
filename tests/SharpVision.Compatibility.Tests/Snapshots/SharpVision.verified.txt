@@ -346,6 +346,7 @@ namespace SharpVision.Controls
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
+        protected virtual void GetChildOrder(System.Span<int> indices) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
         protected void InitializePanelPresentation() { }
@@ -2594,7 +2595,7 @@ namespace SharpVision.Controls.Layout
         protected override bool ClipsChildren { get; }
         protected override bool ClipsDescendantVisualOverflow { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
-        protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
+        protected override void GetChildOrder(System.Span<int> indices) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.ControlBase control) { }
         public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.ControlBase control) { }
@@ -2643,6 +2644,7 @@ namespace SharpVision.Controls.Layout
         public bool Reverse { get; set; }
         public int Spacing { get; set; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override void GetChildOrder(System.Span<int> indices) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
     }
     public sealed class Table : SharpVision.Controls.ScrollableItemsControl, SharpVision.Controls.IStyled<SharpVision.Controls.Layout.TableStyle>
