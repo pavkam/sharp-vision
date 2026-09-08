@@ -8,13 +8,13 @@ namespace SharpVision.Controls.Display;
 [PublicAPI]
 public abstract class AnimatedIndicatorBase: ControlBase
 {
-    private readonly AnimationTimer _animation;
+    private readonly ControlTimer _animation;
     private bool _wasEffectiveIsVisible = true;
 
     /// <summary>Initializes a playing, non-interactive indicator with a 200 millisecond cadence.</summary>
     protected AnimatedIndicatorBase()
     {
-        _animation = new AnimationTimer(Interval, DispatchAnimationTick, () => EffectiveIsVisible)
+        _animation = new ControlTimer(Interval, DispatchAnimationTick, () => EffectiveIsVisible)
         {
             IsPlaying = true
         };

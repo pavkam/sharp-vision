@@ -27,7 +27,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     private Action? _deferredCloseCompletion;
     private Action? _deferredUnavailableCommit;
     private EventHandler? _deferredClosedHandlers;
-    private DispatcherTimer? _fadeTimer;
+    private readonly ControlTimer _fadeTimer;
     private FloatingSurfaceTransition? _fadeTransition;
     private long _fadePresentationVersion;
     private bool _deferredWasPresented;
@@ -41,10 +41,14 @@ public abstract class FloatingSurfaceBase: ContentControl
     private bool _presentationReleasedForPendingDetach;
 
     /// <summary>Initializes one surface with shared modal-session policy routing.</summary>
-    protected FloatingSurfaceBase() =>
+    protected FloatingSurfaceBase()
+    {
         _modalSession = new ModalSession(
             OnSurfaceModalDismissRequested,
             OnSurfaceModalExited);
+        _fadeTimer = new ControlTimer(_fadeRefreshInterval, OnFadeTimerTick);
+        RegisterAttachmentParticipant(_fadeTimer);
+    }
 
     /// <summary>Initializes the one capture-aware close affordance owned by a concrete surface.</summary>
     /// <param name="bounds">Resolves the current close target in absolute cells.</param>
@@ -243,9 +247,10 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// <summary>Gets the identity of the current common presentation transaction.</summary>
     internal long SurfacePresentationVersion { get; private set; }
 
-    /// <summary>Gets whether this surface retains a dispatcher timer or clock plan; exposed
-    /// internally to prove that terminal lifetime transitions retire both together.</summary>
-    internal bool HasActiveFadeTransition => _fadeTimer is not null || _fadeTransition is not null;
+    /// <summary>Gets whether this surface currently has fade playback running or a clock plan
+    /// pending; exposed internally to prove that terminal lifetime transitions retire both
+    /// together.</summary>
+    internal bool HasActiveFadeTransition => _fadeTimer.IsPlaying || _fadeTransition is not null;
 
     /// <summary>Gets whether this surface retains any deferred-close state; exposed internally to
     /// prove that detach and disposal cannot strand cleanup or completion continuations.</summary>
@@ -256,16 +261,15 @@ public abstract class FloatingSurfaceBase: ContentControl
         _deferredCloseCompletion is not null ||
         _deferredCloseAbandonment is not null;
 
-    /// <summary>Captures the exact current timer, clock plan, and presentation generation so tests
-    /// can deliver a genuinely stale in-flight tick after that presentation has been replaced.</summary>
+    /// <summary>Captures the exact current clock plan and presentation generation so tests can
+    /// deliver a genuinely stale in-flight tick after that presentation has been replaced.</summary>
     /// <returns>A dispatcher-affine callback carrying the captured transition identity.</returns>
     /// <exception cref="InvalidOperationException">No fade transition is active.</exception>
     internal Action CaptureFadeTickForInvariant()
     {
-        var timer = _fadeTimer ?? throw new InvalidOperationException("A fade transition must be active.");
         var transition = _fadeTransition ?? throw new InvalidOperationException("A fade transition must be active.");
         var presentationVersion = _fadePresentationVersion;
-        return () => ApplyFadeTimerTick(timer, transition, presentationVersion);
+        return () => ApplyFadeTimerTick(transition, presentationVersion);
     }
 
     /// <summary>Raises the inherited opened notification after the surface becomes presented.</summary>
@@ -824,7 +828,7 @@ public abstract class FloatingSurfaceBase: ContentControl
                 // A post-Closing family may hide and restore itself while the handler runs. That
                 // provisional reopen belongs only to the retention decision, not a second visual
                 // presentation; retire its timer and leave the retained Window fully visible.
-                DisposeFadeTimer();
+                StopFadeTimer();
                 _isEnteringFade = false;
                 SetFadeProgressCapturing(1, ref failure);
             }
@@ -861,7 +865,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         Action? completion,
         Action? completionAbandoned)
     {
-        DisposeFadeTimer();
+        StopFadeTimer();
         _isEnteringFade = false;
         IsSurfaceExiting = true;
         _deferredUnavailableCommit = commitUnavailableState;
@@ -944,7 +948,7 @@ public abstract class FloatingSurfaceBase: ContentControl
         Action? completion,
         ref ExceptionDispatchInfo? failure)
     {
-        DisposeFadeTimer();
+        StopFadeTimer();
         _isEnteringFade = false;
         IsSurfaceOpen = false;
         _isCompletingClose = true;
@@ -997,30 +1001,26 @@ public abstract class FloatingSurfaceBase: ContentControl
         long presentationVersion)
     {
         Debug.Assert(duration > TimeSpan.Zero, "Only positive fades own a timer.");
-        var dispatcher = Dispatcher ?? throw new InvalidOperationException(
-            "A floating-surface fade requires an attached dispatcher.");
-        DisposeFadeTimer();
-        _fadeTransition = new FloatingSurfaceTransition(dispatcher.TimeProvider, duration, start, target);
+        if (Dispatcher is null)
+        {
+            throw new InvalidOperationException("A floating-surface fade requires an attached dispatcher.");
+        }
+
+        StopFadeTimer();
+        _fadeTransition = new FloatingSurfaceTransition(Dispatcher.TimeProvider, duration, start, target);
         _fadePresentationVersion = presentationVersion;
-        var timer = new DispatcherTimer(dispatcher, ResolveFadeTimerInterval(duration));
-        timer.Tick += OnFadeTimerTick;
-        _fadeTimer = timer;
-        timer.Start();
+        _fadeTimer.OnOwnerAttached(Dispatcher);
+        _fadeTimer.Interval = ResolveFadeTimerInterval(duration);
+        _fadeTimer.IsPlaying = true;
     }
 
-    private void OnFadeTimerTick(object? sender, EventArgs eventArgs)
-    {
-        _ = eventArgs;
-        ApplyFadeTimerTick(sender, _fadeTransition, _fadePresentationVersion);
-    }
+    private void OnFadeTimerTick() => ApplyFadeTimerTick(_fadeTransition, _fadePresentationVersion);
 
     private void ApplyFadeTimerTick(
-        object? sender,
         FloatingSurfaceTransition? capturedTransition,
         long capturedPresentationVersion)
     {
-        if (!ReferenceEquals(sender, _fadeTimer) ||
-            !IsSurfacePresented ||
+        if (!IsSurfacePresented ||
             Dispatcher is null ||
             capturedPresentationVersion != _fadePresentationVersion ||
             capturedPresentationVersion != SurfacePresentationVersion ||
@@ -1035,7 +1035,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         if (completed)
         {
-            DisposeFadeTimer();
+            StopFadeTimer();
 
             if (IsSurfaceExiting)
             {
@@ -1053,9 +1053,9 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         var interval = ResolveFadeTimerInterval(transition.Remaining);
 
-        if (_fadeTimer is { } timer && timer.Interval != interval)
+        if (_fadeTimer.Interval != interval)
         {
-            timer.Interval = interval;
+            _fadeTimer.Interval = interval;
         }
 
         failure?.Throw();
@@ -1071,25 +1071,23 @@ public abstract class FloatingSurfaceBase: ContentControl
         }
     }
 
-    private void DisposeFadeTimer()
+    private void StopFadeTimer()
     {
-        var timer = _fadeTimer;
-        _fadeTimer = null;
+        // A fade timer is only ever wanted for the bounded duration of one active transition, so
+        // its dispatcher resource is fully released here rather than merely paused - matching what
+        // creating a fresh DispatcherTimer per transition and disposing the previous one always did.
+        // A subsequent StartFadeTransition recreates it through OnOwnerAttached.
+        _fadeTimer.OnOwnerDetached();
+        _fadeTimer.IsPlaying = false;
         _fadeTransition = null;
-
-        if (timer is not null)
-        {
-            timer.Tick -= OnFadeTimerTick;
-            timer.Dispose();
-        }
     }
 
     private void AbortFadeTransition()
     {
-        var wasTransitioning = _isEnteringFade || IsSurfaceExiting || _fadeTimer is not null;
+        var wasTransitioning = _isEnteringFade || IsSurfaceExiting || _fadeTimer.IsPlaying;
         var completion = _deferredCloseCompletion;
         var completionAbandoned = _deferredCloseAbandonment;
-        DisposeFadeTimer();
+        StopFadeTimer();
         _isEnteringFade = false;
         IsSurfaceExiting = false;
         ClearDeferredClose();

@@ -3,10 +3,11 @@
 ## Overview
 
 `AnimatedIndicatorBase` is the authoring base for passive display indicators
-whose visual frame advances on the dispatcher clock. It owns timer attachment,
-play/pause state, cadence validation, effective-visibility suspension, pointer
-exclusion, and content-box rendering so concrete indicators implement only their
-frame state and drawing.
+whose visual frame advances on the dispatcher clock. It owns timer attachment
+through a [`ControlTimer`](../control.md#owner-bound-helpers), play/pause state,
+cadence validation, effective-visibility suspension, pointer exclusion, and
+content-box rendering so concrete indicators implement only their frame state
+and drawing.
 
 ## Inheritance
 

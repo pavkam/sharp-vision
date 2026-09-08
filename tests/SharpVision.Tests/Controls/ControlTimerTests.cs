@@ -1,17 +1,17 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Tests.Controls.Display;
+namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies AnimationTimer lifecycle, interval propagation, and playback state.</summary>
-public sealed class AnimationTimerTests
+/// <summary>Verifies ControlTimer lifecycle, interval propagation, and playback state.</summary>
+public sealed class ControlTimerTests
 {
     /// <summary>Verifies documented construction defaults.</summary>
     [Fact]
     public void Constructor_WhenCreated_StoresIntervalAndDoesNotPlay()
     {
         // Arrange and act
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(150), static () => { });
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(150), static () => { });
 
         // Assert
         timer.Interval.ShouldBe(TimeSpan.FromMilliseconds(150));
@@ -27,7 +27,7 @@ public sealed class AnimationTimerTests
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(200), () =>
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(200), () =>
         {
             ticks++;
             _ = completed.TrySetResult();
@@ -57,7 +57,7 @@ public sealed class AnimationTimerTests
         var clock = new ManualTimeProvider();
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++);
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++);
         await dispatcher.InvokeAsync(
             () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
@@ -79,7 +79,7 @@ public sealed class AnimationTimerTests
         var clock = new ManualTimeProvider();
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
             () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
@@ -104,7 +104,7 @@ public sealed class AnimationTimerTests
         var clock = new ManualTimeProvider();
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
             () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
@@ -130,7 +130,7 @@ public sealed class AnimationTimerTests
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () =>
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () =>
         {
             ticks++;
             _ = completed.TrySetResult();
@@ -161,7 +161,7 @@ public sealed class AnimationTimerTests
         var clock = new ManualTimeProvider();
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
             () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);
@@ -188,7 +188,7 @@ public sealed class AnimationTimerTests
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(500), () =>
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(500), () =>
         {
             ticks++;
             _ = completed.TrySetResult();
@@ -220,7 +220,7 @@ public sealed class AnimationTimerTests
     public void Interval_WhenChangedBeforeAttach_StoresValue()
     {
         // Arrange
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(200), static () => { })
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(200), static () => { })
         {
             // Act
             Interval = TimeSpan.FromMilliseconds(300)
@@ -236,7 +236,7 @@ public sealed class AnimationTimerTests
     public void EnsureRunning_WhenNeverAttached_DoesNotThrow()
     {
         // Arrange
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), static () => { }) { IsPlaying = true };
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), static () => { }) { IsPlaying = true };
 
         // Act and assert
         Should.NotThrow(timer.EnsureRunning);
@@ -244,7 +244,7 @@ public sealed class AnimationTimerTests
 
     /// <summary>Verifies EnsureRunning restarts a timer that stopped itself through the
     /// <c>shouldTick</c> callback (for example, a control that became invisible) even though
-    /// <see cref="AnimationTimer.IsPlaying"/> was never toggled - exactly the seam
+    /// <see cref="ControlTimer.IsPlaying"/> was never toggled - exactly the seam
     /// <see cref="Spinner"/> and <see cref="ChaseIndicator"/> rely on inside their own
     /// <c>OnRenderContent</c> to resume playback after visibility recovers.</summary>
     [Fact]
@@ -255,7 +255,7 @@ public sealed class AnimationTimerTests
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
         var canTick = true;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++, () => canTick)
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++, () => canTick)
         {
             IsPlaying = true
         };
@@ -299,7 +299,7 @@ public sealed class AnimationTimerTests
         var clock = new ManualTimeProvider();
         await using var dispatcher = Dispatcher.Start(timeProvider: clock);
         var ticks = 0;
-        var timer = new AnimationTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
+        var timer = new ControlTimer(TimeSpan.FromMilliseconds(100), () => ticks++) { IsPlaying = true };
         await dispatcher.InvokeAsync(
             () => timer.OnOwnerAttached(dispatcher),
             TestContext.Current.CancellationToken);

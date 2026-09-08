@@ -19,10 +19,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     private static readonly TimeSpan _animationRefreshInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly StyleSlot<ToastStyle> _style;
-    private DispatcherTimer? _animationTimer;
+    private readonly ControlTimer _animationTimer;
     private ToastAnimationState? _animationState;
     private ToastCoordinator? _coordinator;
-    private DispatcherTimer? _displayTimer;
+    private readonly ControlTimer _displayTimer;
     private Dispatcher? _removalDispatcher;
     private ToastCoordinator? _pendingRemovalCoordinator;
 
@@ -32,6 +32,10 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     public Toast()
     {
         _style = InitializeStyle(ToastStyle.Definition);
+        _animationTimer = new ControlTimer(_animationRefreshInterval, OnAnimationTick);
+        _displayTimer = new ControlTimer(DisplayDuration, OnDisplayTimerTick);
+        RegisterAttachmentParticipant(_animationTimer);
+        RegisterAttachmentParticipant(_displayTimer);
         InitializeSurfaceCloseInteraction(
             ResolveCloseTargetBounds,
             () => !IsDisposed && IsDismissible && IsOpen && EffectiveIsEnabled && EffectiveIsVisible &&
@@ -299,7 +303,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         void CommitClosedState()
         {
-            DisposeTimers();
+            StopTimers();
             IsOpen = false;
             AnimationProgress = 0;
             NotifyPropertyChanged(nameof(IsOpen), InvalidationImpact.None);
@@ -502,7 +506,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
         if (reason is ReleaseReason.Detached or ReleaseReason.Hidden or ReleaseReason.Disposed)
         {
-            CaptureFailure(DisposeTimers, ref failure);
+            CaptureFailure(StopTimers, ref failure);
             var coordinator = _coordinator;
             _coordinator = null;
             hiddenCoordinator = reason == ReleaseReason.Hidden ? coordinator : null;
@@ -707,15 +711,13 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         var interval = AnimationDuration < _animationRefreshInterval
             ? AnimationDuration
             : _animationRefreshInterval;
-        _animationTimer = new DispatcherTimer(Dispatcher, interval);
-        _animationTimer.Tick += OnAnimationTick;
-        _animationTimer.Start();
+        _animationTimer.OnOwnerAttached(Dispatcher);
+        _animationTimer.Interval = interval;
+        _animationTimer.IsPlaying = true;
     }
 
-    private void OnAnimationTick(object? sender, EventArgs eventArgs)
+    private void OnAnimationTick()
     {
-        _ = sender;
-        _ = eventArgs;
         var progress = _animationState?.Progress ?? 1;
         SetAnimationProgress(progress);
 
@@ -724,10 +726,19 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             return;
         }
 
-        _animationTimer?.Dispose();
-        _animationTimer = null;
-        _animationState = null;
+        StopAnimationTimer();
         TryStartDisplayTimer();
+    }
+
+    private void StopAnimationTimer()
+    {
+        // The geometry-animation timer is only ever wanted for the bounded duration of one
+        // entrance, so its dispatcher resource is fully released here rather than merely paused -
+        // matching what creating a fresh timer per entrance and disposing it on completion always
+        // did. A later Show() reallocates it through OnOwnerAttached above.
+        _animationTimer.OnOwnerDetached();
+        _animationTimer.IsPlaying = false;
+        _animationState = null;
     }
 
     private void SetAnimationProgress(double value)
@@ -748,7 +759,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     {
         Debug.Assert(Dispatcher is not null, "An open Toast has an owning dispatcher.");
 
-        if (_displayTimer is not null ||
+        if (_displayTimer.IsPlaying ||
             DisplayDuration == Timeout.InfiniteTimeSpan ||
             !IsOpen ||
             IsSurfaceExiting ||
@@ -758,25 +769,26 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
             return;
         }
 
-        _displayTimer = new DispatcherTimer(Dispatcher, DisplayDuration);
-        _displayTimer.Tick += OnDisplayTimerTick;
-        _displayTimer.Start();
+        _displayTimer.OnOwnerAttached(Dispatcher);
+        _displayTimer.Interval = DisplayDuration;
+        _displayTimer.IsPlaying = true;
     }
 
-    private void OnDisplayTimerTick(object? sender, EventArgs eventArgs)
+    private void OnDisplayTimerTick() => Dismiss();
+
+    private void StopDisplayTimer()
     {
-        _ = sender;
-        _ = eventArgs;
-        Dismiss();
+        // Same reasoning as StopAnimationTimer: the visible-lifetime timer is only ever wanted for
+        // the bounded duration of one presentation, so it is fully released rather than merely
+        // paused.
+        _displayTimer.OnOwnerDetached();
+        _displayTimer.IsPlaying = false;
     }
 
-    private void DisposeTimers()
+    private void StopTimers()
     {
-        _animationTimer?.Dispose();
-        _animationTimer = null;
-        _animationState = null;
-        _displayTimer?.Dispose();
-        _displayTimer = null;
+        StopAnimationTimer();
+        StopDisplayTimer();
     }
 
     /// <inheritdoc/>
@@ -806,7 +818,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
     {
         ExceptionDispatchInfo? failure = null;
         CaptureFailure(base.OnSurfaceExitAccepted, ref failure);
-        CaptureFailure(DisposeTimers, ref failure);
+        CaptureFailure(StopTimers, ref failure);
         failure?.Throw();
     }
 

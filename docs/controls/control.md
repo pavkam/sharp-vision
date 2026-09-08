@@ -79,6 +79,7 @@ authoring-role diagram.
 | `SetCurrentState(bool)`                                                                                   | `void`                                        | —                 | Protected internal; an owning navigator paints its realized item's collection-current state. Does not propagate to children; invalidates render only. Throws `InvalidOperationException` if accessed off-dispatcher, `ObjectDisposedException` if disposed.                                                                                                     |
 | `ReceivesInheritedSelectionState`                                                                         | `bool`                                        | `true`            | Protected internal virtual; whether an ancestor's `SetSelectedState` selection crosses into this owned branch. `FloatingSurfaceBase` overrides it to `false` to stop inherited selection at an independent interaction plane.                                                                                                                                   |
 | `OnDirectDisposalRequested()`                                                                             | `void`                                        | —                 | Protected internal virtual, no-op by default; runs on the disposing control before disposal publication so a control tracked outside the ordinary retained-child registry may detach itself through its owner's own removal path first. Skipped during owner-driven teardown. An override must not throw.                                                       |
+| `RegisterAttachmentParticipant(IControlAttachmentParticipant)`                                            | `void`                                        | —                 | Protected; registers one owner-bound helper, such as a `ControlTimer`, that follows this control's dispatcher attachment. See [Owner-bound helpers](#owner-bound-helpers).                                                                                                                                                                                      |
 | `ContextMenu`                                                                                             | `ContextMenu?`                                | `null`            | Optional context menu shown on a secondary pointer press. A menu's presentation control may belong to only one owner at a time; assigning an already-presented menu throws `ArgumentException`.                                                                                                                                                                 |
 | `EnablePopup(...)`                                                                                        | `Popup`                                       | —                 | Protected; opts into an owner-managed popup whose layout and attach/unavailable lifecycle the base class owns. See [Owned popups](#owned-popups).                                                                                                                                                                                                               |
 | `IsPopupOpen`                                                                                             | `bool`                                        | —                 | Public virtual; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs. `InputBase` exposes it as `IsOpen`.                                                                                                                                                                                                   |
@@ -584,6 +585,28 @@ before `OnEvent`. `PointerPressed` publishes only for a primary-button press.
 Setting `IsHandled` from one of these convenience events suppresses the concrete
 control default, and an `OnEvent` override cannot omit the inherited event by
 skipping `base.OnEvent`.
+
+### Owner-bound helpers
+
+`RegisterAttachmentParticipant` registers one `IControlAttachmentParticipant`
+whose own lifetime should follow this control's dispatcher attachment rather
+than this control's construction or disposal alone. Register from the
+constructor, before this control is ever attached; a control instance is
+off-dispatcher during construction, so every legitimate call satisfies that
+ordering naturally, and registering after attachment throws
+`InvalidOperationException` instead of attaching the participant immediately.
+Once registered, a participant is attached and detached exactly once per
+committed dispatcher attachment and detachment this control undergoes afterward,
+including every later reattachment, and is disposed exactly once when this
+control itself is disposed. Registering the same participant instance twice
+throws `ArgumentException`.
+
+`ControlTimer` is the shared participant behind any feature that needs a
+dispatcher-affine repeating callback - a blinking caret, a marquee, an
+auto-dismiss delay, or an entrance or fade animation. `AnimatedIndicatorBase`,
+`Toast`, `Tooltip`, and `FloatingSurfaceBase` all register one or more through
+this seam instead of hand-rolling their own dispatcher-timer create, tick, and
+dispose cycle.
 
 ## Layout extension points
 

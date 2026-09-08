@@ -199,11 +199,21 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Registers one unique resource that follows this control's committed dispatcher
     /// attachment and final disposal.</summary>
     /// <param name="participant">The non-null owner-bound participant.</param>
+    /// <remarks>
+    /// Register from the constructor, before this control is ever attached - a control instance is
+    /// off-dispatcher during construction, so every legitimate call satisfies that ordering
+    /// naturally. Once registered, a participant is attached and detached exactly once per
+    /// committed dispatcher attachment and detachment this control undergoes afterward, including
+    /// every later reattachment, and is disposed exactly once when this control itself is disposed.
+    /// Registering the same participant instance twice is rejected; registering after this control
+    /// has already attached is rejected rather than attaching the participant immediately, so a
+    /// derived constructor cannot silently race the control's own first attachment.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="participant"/> is null.</exception>
     /// <exception cref="ArgumentException">The same participant is already registered.</exception>
     /// <exception cref="InvalidOperationException">The control is already attached.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    internal void RegisterAttachmentParticipant(IControlAttachmentParticipant participant)
+    protected void RegisterAttachmentParticipant(IControlAttachmentParticipant participant)
     {
         ArgumentNullException.ThrowIfNull(participant);
         ThrowIfDisposed();

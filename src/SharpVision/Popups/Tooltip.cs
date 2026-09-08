@@ -14,8 +14,8 @@ public sealed class Tooltip: Popup
     private const string _tooltipPartKey = "tooltip";
     private static readonly ConditionalWeakTable<ControlBase, Tooltip> _attachedTooltips = [];
 
-    private DispatcherTimer? _showTimer;
-    private DispatcherTimer? _hideTimer;
+    private readonly ControlTimer _showTimer;
+    private readonly ControlTimer _hideTimer;
     private ControlBase? _attachedAnchor;
     private DisplayText? _textContent;
     private ControlBase? _layoutRoot;
@@ -29,6 +29,10 @@ public sealed class Tooltip: Popup
         CloseOnEscape = false;
         IsHitTestVisible = false;
         IsFocusable = false;
+        _showTimer = new ControlTimer(ShowDelay, OnShowTimerTick);
+        _hideTimer = new ControlTimer(HideDelay, OnHideTimerTick);
+        RegisterAttachmentParticipant(_showTimer);
+        RegisterAttachmentParticipant(_hideTimer);
 
         // A Tooltip is never a normal tree member of its anchor - it lives in the anchor's
         // Popup-layer owned slot, which the framework's cascading Measure/Arrange walk never
@@ -473,20 +477,21 @@ public sealed class Tooltip: Popup
     }
 
     /// <summary>Gets the show timer's current Tick subscriber count for duplicate-subscription
-    /// test seams, or zero when no show timer has been created yet.</summary>
-    internal int ShowTimerTickSubscribers => _showTimer?.TickSubscribers ?? 0;
+    /// test seams, or zero while no dispatcher timer is currently attached.</summary>
+    internal int ShowTimerTickSubscribers => _showTimer.TickSubscribers;
 
     /// <summary>Gets the hide timer's current Tick subscriber count for duplicate-subscription
-    /// test seams, or zero when no hide timer has been created yet.</summary>
-    internal int HideTimerTickSubscribers => _hideTimer?.TickSubscribers ?? 0;
+    /// test seams, or zero while no dispatcher timer is currently attached.</summary>
+    internal int HideTimerTickSubscribers => _hideTimer.TickSubscribers;
 
-    /// <summary>Gets whether a show-delay timer is retained, proving detachment releases the
-    /// dispatcher-owned timer rather than merely stopping it for reuse under another owner.</summary>
-    internal bool HasShowTimer => _showTimer is not null;
+    /// <summary>Gets whether the show-delay timer currently owns a live dispatcher timer, proving
+    /// unavailability releases the dispatcher-owned resource rather than merely stopping it for
+    /// reuse under another owner.</summary>
+    internal bool HasShowTimer => _showTimer.HasUnderlyingTimer;
 
-    /// <summary>Gets whether the retained show-delay timer is armed, proving cancellation state
-    /// without exposing the timer object itself.</summary>
-    internal bool IsShowTimerRunning => _showTimer?.IsRunning == true;
+    /// <summary>Gets whether the show-delay timer is armed, proving cancellation state without
+    /// exposing the timer object itself.</summary>
+    internal bool IsShowTimerRunning => _showTimer.IsPlaying;
 
     /// <summary>Gets whether this tooltip still holds a presented surface's relayout
     /// subscription, proving release without exposing the subscribed root itself.</summary>
@@ -498,87 +503,66 @@ public sealed class Tooltip: Popup
 
     private void StartShowTimer()
     {
-        if (IsOpen || _attachedAnchor?.Dispatcher is not { } dispatcher)
+        if (IsOpen || _attachedAnchor?.Dispatcher is null)
         {
             return;
         }
 
-        if (_showTimer is null)
-        {
-            _showTimer = new DispatcherTimer(dispatcher, ShowDelay);
-            _showTimer.Tick += OnShowTimerTick;
-        }
-
+        EnsureTimerAttached(_showTimer);
         _showTimer.Interval = ShowDelay;
-        _showTimer.Start();
+        _showTimer.IsPlaying = true;
     }
 
-    private void CancelShowTimer()
-    {
-        if (_showTimer is { IsRunning: true })
-        {
-            _showTimer.Stop();
-        }
-    }
+    private void CancelShowTimer() => _showTimer.Stop();
 
     private void StartHideTimer()
     {
-        if (!IsOpen || _attachedAnchor?.Dispatcher is not { } dispatcher)
+        if (!IsOpen || _attachedAnchor?.Dispatcher is null)
         {
             return;
         }
 
-        if (_hideTimer is null)
-        {
-            _hideTimer = new DispatcherTimer(dispatcher, HideDelay);
-            _hideTimer.Tick += OnHideTimerTick;
-        }
-
+        EnsureTimerAttached(_hideTimer);
         _hideTimer.Interval = HideDelay;
-        _hideTimer.Start();
+        _hideTimer.IsPlaying = true;
     }
 
-    private void CancelHideTimer()
+    private void CancelHideTimer() => _hideTimer.Stop();
+
+    /// <summary>Recreates one show/hide timer's dispatcher resource after
+    /// <see cref="ForceReleaseTimers"/> force-released it while this tooltip remained attached.</summary>
+    /// <remarks>
+    /// A real dispatcher (re)attachment already runs this timer's own
+    /// <see cref="ControlTimer.OnOwnerAttached"/> through the registered attachment-participant
+    /// lifecycle; this only covers the logical-unavailability case (<see cref="ReleaseReason.Hidden"/>)
+    /// where the dispatcher attachment never actually changed, so the framework never calls it again
+    /// on its own.
+    /// </remarks>
+    private void EnsureTimerAttached(ControlTimer timer)
     {
-        if (_hideTimer is { IsRunning: true })
+        if (!timer.HasUnderlyingTimer && Dispatcher is { } dispatcher)
         {
-            _hideTimer.Stop();
+            timer.OnOwnerAttached(dispatcher);
         }
     }
 
-    private void ReleaseTimers()
+    /// <summary>Force-releases both timers' dispatcher resources for a logical unavailability that
+    /// does not itself detach this tooltip's dispatcher attachment.</summary>
+    /// <remarks>
+    /// A genuine detachment already releases both through the registered attachment-participant
+    /// lifecycle (see <see cref="OnDetached"/>), and disposal releases them even earlier, before
+    /// <see cref="OnUnavailable"/> runs for <see cref="ReleaseReason.Disposed"/>. Only
+    /// <see cref="ReleaseReason.Hidden"/> needs this explicit call.
+    /// </remarks>
+    private void ForceReleaseTimers()
     {
-        var showTimer = _showTimer;
-        var hideTimer = _hideTimer;
-        _showTimer = null;
-        _hideTimer = null;
-
-        if (showTimer is not null)
-        {
-            showTimer.Tick -= OnShowTimerTick;
-            showTimer.Dispose();
-        }
-
-        if (hideTimer is not null)
-        {
-            hideTimer.Tick -= OnHideTimerTick;
-            hideTimer.Dispose();
-        }
+        _showTimer.OnOwnerDetached();
+        _hideTimer.OnOwnerDetached();
     }
 
-    private void OnShowTimerTick(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        Show();
-    }
+    private void OnShowTimerTick() => Show();
 
-    private void OnHideTimerTick(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-        Hide();
-    }
+    private void OnHideTimerTick() => Hide();
 
     #endregion
 
@@ -587,23 +571,17 @@ public sealed class Tooltip: Popup
     /// <inheritdoc/>
     protected override void OnDetached()
     {
-        // Cancel here, not only in OnUnavailable(IsDisposed): OnUnavailable is
-        // only raised for the removed subtree's root (the anchor itself, not
-        // this tooltip, its owned popup-layer child), but OnDetached cascades
-        // to every owned-slot descendant on any detachment — including the
-        // anchor merely detaching from its own parent (e.g. a virtualized
-        // list row being recycled), not just this tooltip being disposed
-        // outright. A pending show/hide timer must not survive that and fire
-        // afterward: Show() would commit IsOpen=true while this popup's
-        // Dispatcher is null, and a later reattachment (the recycled row
-        // reused) would silently re-present the tooltip with no actual
-        // hover/focus interaction from the user. Popup's own OnDetached
-        // already force-closes an already-open popup; this only needs to
-        // additionally stop a timer that hasn't fired yet. Popup's force-close on this path
-        // also bypasses the public Closed event (it commits closed state directly rather than
-        // running the normal CloseSurface sequence), so OnSurfaceClosed's cleanup would never
-        // run here; drop the surface relayout subscription directly instead of leaking it.
-        ReleaseTimers();
+        // No explicit show/hide timer release belongs here anymore: OnDetached always runs after
+        // the registered attachment-participant lifecycle has already released both timers'
+        // dispatcher resources (PublishDetached invokes every participant's OnOwnerDetached before
+        // calling this override), and that lifecycle already cascades to every owned-slot
+        // descendant on any detachment — including the anchor merely detaching from its own parent
+        // (e.g. a virtualized list row being recycled), not just this tooltip being disposed
+        // outright. Popup's own OnDetached already force-closes an already-open popup; its
+        // force-close on this path also bypasses the public Closed event (it commits closed state
+        // directly rather than running the normal CloseSurface sequence), so OnSurfaceClosed's
+        // cleanup would never run here - drop the surface relayout subscription directly instead of
+        // leaking it.
         base.OnDetached();
         UnsubscribeSurfaceRelayout();
     }
@@ -619,24 +597,34 @@ public sealed class Tooltip: Popup
             CaptureFailure(() => _ = _attachedTooltips.Remove(anchor), ref failure);
         }
 
+        // A merely Hidden tooltip never reaches OnDetached — its dispatcher attachment is
+        // untouched, only its own Visibility changed — so it is the one reason that needs an
+        // explicit force-release here: Detached is already covered by OnDetached (via the
+        // attachment-participant lifecycle, see the remarks there), and Disposed is already covered
+        // even earlier, by ControlBase disposing every registered attachment participant before this
+        // override ever runs for that reason.
+        if (reason == ReleaseReason.Hidden)
+        {
+            CaptureFailure(ForceReleaseTimers, ref failure);
+        }
+
         // Popup force-closes identically for Hidden and Disposed (see FloatingSurfaceBase and
         // Popup.OnUnavailable), but that force-close commits closed state directly rather than
         // running the normal CloseSurface sequence, so it never raises the public Closed event -
         // OnSurfaceClosed's UnsubscribeSurfaceRelayout call above never runs for either reason.
         // Disposed also reaches OnDetached (disposal cascades a slot removal that detaches this
-        // control), which already releases both; widening this to Hidden too - and calling
+        // control), which already drops it; widening this to Hidden too - calling
         // UnsubscribeSurfaceRelayout here unconditionally for both reasons - means a merely-hidden
-        // tooltip stops leaking its dispatcher timers and relayout subscription the same way an
-        // already-covered Detached/Disposed tooltip does. A later duplicate call from OnDetached
-        // on the Disposed path is a safe no-op: UnsubscribeSurfaceRelayout clears _layoutRoot on
-        // its first call and only unsubscribes when a root is still recorded. No resume-from-Hidden
-        // flow depends on either surviving: Visibility's setter has no re-arm hook, so any real
-        // reshow goes through fresh hover/focus/Attach logic that re-arms timers and
-        // re-subscribes (SubscribeSurfaceRelayout is itself ref-equality guarded against
-        // redundant resubscription).
+        // tooltip stops leaking its relayout subscription the same way an already-covered
+        // Detached/Disposed tooltip does. A later duplicate call from OnDetached on the Disposed
+        // path is a safe no-op: UnsubscribeSurfaceRelayout clears _layoutRoot on its first call and
+        // only unsubscribes when a root is still recorded. No resume-from-Hidden flow depends on
+        // either surviving: Visibility's setter has no re-arm hook, so any real reshow goes through
+        // fresh hover/focus/Attach logic that re-arms timers (see EnsureTimerAttached) and
+        // re-subscribes (SubscribeSurfaceRelayout is itself ref-equality guarded against redundant
+        // resubscription).
         if (reason is ReleaseReason.Hidden or ReleaseReason.Disposed)
         {
-            CaptureFailure(ReleaseTimers, ref failure);
             CaptureFailure(UnsubscribeSurfaceRelayout, ref failure);
         }
 

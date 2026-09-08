@@ -555,6 +555,7 @@ namespace SharpVision.Controls
         protected void PublishTransitionProperty(ref SharpVision.Controls.CallbackTransitionTransaction transition, string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected void RaiseTextSelectionCompatibilityEvent(System.EventHandler? handlers, object? sender, ulong transitionVersion) { }
         protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object? sender, TEventArgs eventArgs, ulong transitionVersion) { }
+        protected void RegisterAttachmentParticipant(SharpVision.Controls.IControlAttachmentParticipant participant) { }
         protected SharpVision.Controls.RetainedPartProperty<T> RegisterRetainedPartProperty<T>(SharpVision.Controls.ControlBase source, string sourcePropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
         protected SharpVision.Controls.RetainedScrollPart RegisterRetainedScrollPart(SharpVision.Controls.Container source, bool forwardsScrollEvent = true) { }
         protected void ReleasePointerCapture() { }
@@ -615,6 +616,17 @@ namespace SharpVision.Controls
         public bool Remove(SharpVision.Controls.ControlBase item) { }
         public void RemoveAt(int index) { }
     }
+    public sealed class ControlTimer : SharpVision.Controls.IControlAttachmentParticipant, System.IDisposable
+    {
+        public ControlTimer(System.TimeSpan interval, System.Action onTick, System.Func<bool>? shouldTick = null) { }
+        public System.TimeSpan Interval { get; set; }
+        public bool IsPlaying { get; set; }
+        public void Dispose() { }
+        public void EnsureRunning() { }
+        public void OnOwnerAttached(SharpVision.Threading.Dispatcher dispatcher) { }
+        public void OnOwnerDetached() { }
+        public void Stop() { }
+    }
     public static class EnumValidation
     {
         extension(System.ArgumentOutOfRangeException)
@@ -636,6 +648,11 @@ namespace SharpVision.Controls
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnHeaderChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+    }
+    public interface IControlAttachmentParticipant : System.IDisposable
+    {
+        void OnOwnerAttached(SharpVision.Threading.Dispatcher dispatcher);
+        void OnOwnerDetached();
     }
     public interface IStyled<TStyle>
         where TStyle : SharpVision.Styling.ControlStyle
