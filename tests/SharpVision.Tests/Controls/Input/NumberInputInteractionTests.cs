@@ -74,7 +74,7 @@ public sealed class NumberInputInteractionTests
         // Arrange
         var input = new NumberInput { Minimum = 0m, Maximum = 100m };
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
 
@@ -144,7 +144,7 @@ public sealed class NumberInputInteractionTests
         // Arrange
         var input = new NumberInput { Value = 5m, DecimalPlaces = 0, AllowNull = allowNull };
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.PressAsync(Code.Backspace);
@@ -241,7 +241,7 @@ public sealed class NumberInputInteractionTests
         // Arrange
         var input = new NumberInput();
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.TypeAsync("12");
@@ -365,7 +365,7 @@ public sealed class NumberInputInteractionTests
         // Arrange
         var input = new NumberInput { Minimum = -1m, Maximum = 1m, DecimalPlaces = 0 };
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
 

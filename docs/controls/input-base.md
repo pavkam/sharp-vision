@@ -53,12 +53,14 @@ needs, the way [`ComboBox`](input/combo-box.md#overview),
 [`DateInput`](input/date-input.md#overview),
 [`DateTimeInput`](input/date-time-input.md#overview), and
 [`TimeInput`](input/time-input.md#overview) do.
+[`NumericInputBase`](input/numeric-input-base.md#overview) - the shared base of
 [`NumberInput`](input/number-input.md#overview) and
-[`CurrencyInput`](input/currency-input.md#overview) enable transient numeric
-editing while retaining their own parsing, formatting, and committed value
-policy. `NavigationViewItem` and the internal `TabHeader` also skip
-`EnableCaption`, since each backs `Text` with its own field and draws its label
-directly instead of through an owned caption child. See the
+[`CurrencyInput`](input/currency-input.md#overview) - enables transient numeric
+editing once for both, while each derivative retains only its own parsing,
+formatting, and committed value policy. `NavigationViewItem` and the internal
+`TabHeader` also skip `EnableCaption`, since each backs `Text` with its own
+field and draws its label directly instead of through an owned caption child.
+See the
 [custom-input walkthrough](../walkthroughs/custom-controls.md#compose-input-capabilities)
 for a complete external derivative.
 

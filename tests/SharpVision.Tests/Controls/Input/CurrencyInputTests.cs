@@ -20,7 +20,7 @@ public sealed class CurrencyInputTests
                 input.Value = 20m;
             }
         };
-        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Current, input.Value));
 
         input.Value = 10m;
 
@@ -186,7 +186,7 @@ public sealed class CurrencyInputTests
     {
         // Arrange
         using var control = new CurrencyInput { Minimum = 5m, Maximum = 10m };
-        CurrencyInputValueChangedEventArgs? observed = null;
+        NumericValueChangedEventArgs? observed = null;
         control.ValueChanged += (_, eventArgs) => observed = eventArgs;
 
         // Act
@@ -195,8 +195,8 @@ public sealed class CurrencyInputTests
         // Assert
         control.Value.ShouldBe(5m);
         _ = observed.ShouldNotBeNull();
-        observed.PreviousValue.ShouldBeNull();
-        observed.Value.ShouldBe(5m);
+        observed.Previous.ShouldBeNull();
+        observed.Current.ShouldBe(5m);
     }
 
     /// <summary>Verifies allow null when disabled while value is already set does not change value.</summary>
@@ -273,7 +273,7 @@ public sealed class CurrencyInputTests
     {
         // Arrange
         using var control = new CurrencyInput { Value = 3m };
-        CurrencyInputValueChangedEventArgs? change = null;
+        NumericValueChangedEventArgs? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -282,8 +282,8 @@ public sealed class CurrencyInputTests
         // Assert
         control.Value.ShouldBe(5m);
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(3m);
-        raised.Value.ShouldBe(5m);
+        raised.Previous.ShouldBe(3m);
+        raised.Current.ShouldBe(5m);
     }
 
     /// <summary>Verifies maximum when lowered below committed value repairs by clamping and raises
@@ -293,7 +293,7 @@ public sealed class CurrencyInputTests
     {
         // Arrange
         using var control = new CurrencyInput { Value = 8m };
-        CurrencyInputValueChangedEventArgs? change = null;
+        NumericValueChangedEventArgs? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -302,8 +302,8 @@ public sealed class CurrencyInputTests
         // Assert
         control.Value.ShouldBe(5m);
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(8m);
-        raised.Value.ShouldBe(5m);
+        raised.Previous.ShouldBe(8m);
+        raised.Current.ShouldBe(5m);
     }
 
     /// <summary>Verifies step when assigned zero or negative throws.</summary>
@@ -1104,7 +1104,7 @@ public sealed class CurrencyInputTests
         // Arrange
         using var control = new CurrencyInput { Value = 1m };
         var raised = 0;
-        CurrencyInputValueChangedEventArgs? observed = null;
+        NumericValueChangedEventArgs? observed = null;
         control.ValueChanged += (_, eventArgs) =>
         {
             raised++;
@@ -1117,8 +1117,8 @@ public sealed class CurrencyInputTests
         // Assert
         raised.ShouldBe(1);
         _ = observed.ShouldNotBeNull();
-        observed.PreviousValue.ShouldBe(1m);
-        observed.Value.ShouldBe(2m);
+        observed.Previous.ShouldBe(1m);
+        observed.Current.ShouldBe(2m);
     }
 
     /// <summary>Verifies commit when value is unchanged does not raise value changed.</summary>

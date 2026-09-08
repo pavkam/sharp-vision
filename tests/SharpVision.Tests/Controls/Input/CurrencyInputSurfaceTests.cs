@@ -158,7 +158,7 @@ public sealed class CurrencyInputSurfaceTests
         // Arrange
         var input = new CurrencyInput { Value = 5m, Step = 2m, DecimalPlaces = 0 };
         var events = new List<decimal?>();
-        input.ValueChanged += (_, eventArgs) => events.Add(eventArgs.Value);
+        input.ValueChanged += (_, eventArgs) => events.Add(eventArgs.Current);
         await using var surface = await ComponentSurface.MountAsync(
             input,
             new Size(12, 1),

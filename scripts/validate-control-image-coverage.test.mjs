@@ -429,6 +429,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
       "headered-content-control",
       "input-base",
       "items-control",
+      "numeric-input-base",
       "pressable",
       "scrollable-composite-control",
     ],

@@ -119,7 +119,7 @@ internal sealed class NumericInputCommitCoordinator
         AllowNull = value;
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
-            () => _notifyPropertyChanged(nameof(Controls.Input.NumberInput.AllowNull), InvalidationImpact.None),
+            () => _notifyPropertyChanged(nameof(Controls.Input.NumericInputBase.AllowNull), InvalidationImpact.None),
             ref failure);
         ExceptionAggregation.Capture(RepairNullPolicy, ref failure);
         failure?.Throw();
@@ -130,14 +130,14 @@ internal sealed class NumericInputCommitCoordinator
     public bool SetMinimum(decimal value)
     {
         ArgumentException.ThrowIfAboveMaximum(value, _maximum, nameof(value), "Minimum cannot exceed Maximum.");
-        return SetBound(ref _minimum, value, nameof(Controls.Input.NumberInput.Minimum));
+        return SetBound(ref _minimum, value, nameof(Controls.Input.NumericInputBase.Minimum));
     }
 
     /// <summary>Validates and commits the inclusive upper bound, then repairs the live value.</summary>
     public bool SetMaximum(decimal value)
     {
         ArgumentException.ThrowIfBelowMinimum(value, _minimum, nameof(value), "Maximum cannot be less than Minimum.");
-        return SetBound(ref _maximum, value, nameof(Controls.Input.NumberInput.Maximum));
+        return SetBound(ref _maximum, value, nameof(Controls.Input.NumericInputBase.Maximum));
     }
 
     /// <summary>Validates and commits the positive step increment.</summary>
@@ -152,7 +152,7 @@ internal sealed class NumericInputCommitCoordinator
         }
 
         Step = value;
-        _notifyPropertyChanged(nameof(Controls.Input.NumberInput.Step), InvalidationImpact.None);
+        _notifyPropertyChanged(nameof(Controls.Input.NumericInputBase.Step), InvalidationImpact.None);
         return true;
     }
 
@@ -212,7 +212,7 @@ internal sealed class NumericInputCommitCoordinator
         }
 
         Value = candidate;
-        _notifyPropertyChanged(nameof(Controls.Input.NumberInput.Value), InvalidationImpact.Render);
+        _notifyPropertyChanged(nameof(Controls.Input.NumericInputBase.Value), InvalidationImpact.Render);
 
         if (_isFocused())
         {

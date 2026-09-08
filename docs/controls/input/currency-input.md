@@ -2,27 +2,31 @@
 
 ## Overview
 
-`CurrencyInput` is declared `public sealed class CurrencyInput : InputBase`. It
-edits a nullable monetary value through a transient typed buffer that commits on
-Enter or when focus leaves the control, formatted and parsed against a culture's
+`CurrencyInput` is declared
+`public sealed class CurrencyInput : NumericInputBase`. It edits a nullable
+monetary value through a transient typed buffer that commits on Enter or when
+focus leaves the control, formatted and parsed against a culture's
 currency-specific globalization data rather than a maintained currency database.
 
 `CurrencyInput` shares its buffer-then-commit editing model with
-[`NumberInput`](number-input.md#overview), including one shared routed editing
-lifecycle, one authoritative nullable value/range state, and the same
-grapheme-safe primitive for digit, separator, and sign buffering. Up/Down step
-by `Step` and Home/End jump directly to `Minimum`/`Maximum` - both commit
+[`NumberInput`](number-input.md#overview) through their common
+[`NumericInputBase`](numeric-input-base.md#overview), including one shared
+routed editing lifecycle, one authoritative nullable value/range state, and the
+same grapheme-safe primitive for digit, separator, and sign buffering. Up/Down
+step by `Step` and Home/End jump directly to `Minimum`/`Maximum` - both commit
 immediately, bypassing the buffer entirely, matching `NumberInput` and
 [`Slider`](slider.md#overview). Escape reverts any uncommitted edit back to the
 committed value's formatting.
 
-`CurrencyInput` derives from [`InputBase`](../input-base.md#overview) and
-enables its in-assembly transient numeric-editing capability. The base owns
-routed key classification, focus entry/exit, selection presentation, placeholder
-drawing, cursor replay, and affix-aware rendering; `CurrencyInput` owns monetary
-policy, currency-pattern composition, parsing, and pointer-to-buffer projection.
-It enables no popup, caption, command, segmented, or press-activation
-capability.
+`CurrencyInput` derives from
+[`NumericInputBase`](numeric-input-base.md#overview), which in turn derives from
+[`InputBase`](../input-base.md#overview) and enables its in-assembly transient
+numeric-editing capability. `NumericInputBase` owns routed key classification,
+focus entry/exit, selection presentation, placeholder drawing, cursor replay,
+the nullable value and range state, and affix-aware rendering; `CurrencyInput`
+owns only its monetary policy, currency-pattern composition, parsing, and
+pointer-to-buffer projection. It enables no popup, caption, command, segmented,
+or press-activation capability.
 
 The edited buffer never contains the currency symbol or code: while focused, the
 rendered text composes the resolved currency identity around the buffered
@@ -54,29 +58,30 @@ formatted buffer.
 ```mermaid
 classDiagram
     ControlBase <|-- InputBase
-    InputBase <|-- CurrencyInput
+    InputBase <|-- NumericInputBase
+    NumericInputBase <|-- CurrencyInput
 ```
 
 ## API
 
-| Member             | Type                                               | Default                         | Description                                                                                                                                  |
-| ------------------ | -------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Value`            | `decimal?`                                         | `null`                          | The nullable value. Assignment clamps silently into `Minimum`/`Maximum`.                                                                     |
-| `AllowNull`        | `bool`                                             | `true`                          | Allows the value to be cleared to null; disabling it while already null eagerly reseeds to zero, clamped into bounds.                        |
-| `Minimum`          | `decimal`                                          | `decimal.MinValue`              | The inclusive lower bound (equal to `Maximum` allowed) that repairs the current value.                                                       |
-| `Maximum`          | `decimal`                                          | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                                       |
-| `Step`             | `decimal`                                          | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                                  |
-| `DecimalPlaces`    | `int?`                                             | `null`                          | A non-negative explicit digit count, or null for culture-derived precision; effective values above 28 preserve Decimal's available value.    |
-| `AllowGrouping`    | `bool`                                             | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`'s currency group separator and sizes; parsing always accepts one. |
-| `RoundingMode`     | `MidpointRounding`                                 | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                                        |
-| `Culture`          | `CultureInfo`                                      | `CultureInfo.InvariantCulture`  | The culture supplying currency-specific separators, sign, group sizes, and positive/negative pattern for display and parsing.                |
-| `DisplayMode`      | `CurrencyDisplayMode`                              | `CurrencyDisplayMode.Symbol`    | Chooses how the currency identity is resolved and composed around the formatted number.                                                      |
-| `CurrencyOverride` | `string?`                                          | `null`                          | Caller-supplied currency identity text that takes precedence over every `DisplayMode` resolution rule.                                       |
-| `Placeholder`      | `string?`                                          | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                                   |
-| `CursorShape`      | `CursorShape`                                      | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                                       |
-| `StartAffix`       | `Affix?`                                           | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                       |
-| `EndAffix`         | `Affix?`                                           | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                      |
-| `ValueChanged`     | `EventHandler<CurrencyInputValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                                   |
+| Member                    | Type                                         | Default                         | Description                                                                                                                                  |
+| ------------------------- | -------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inherited `Value`         | `decimal?`                                   | `null`                          | The nullable value. Assignment clamps silently into `Minimum`/`Maximum`.                                                                     |
+| Inherited `AllowNull`     | `bool`                                       | `true`                          | Allows the value to be cleared to null; disabling it while already null eagerly reseeds to zero, clamped into bounds.                        |
+| Inherited `Minimum`       | `decimal`                                    | `decimal.MinValue`              | The inclusive lower bound (equal to `Maximum` allowed) that repairs the current value.                                                       |
+| Inherited `Maximum`       | `decimal`                                    | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                                       |
+| Inherited `Step`          | `decimal`                                    | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                                  |
+| `DecimalPlaces`           | `int?`                                       | `null`                          | A non-negative explicit digit count, or null for culture-derived precision; effective values above 28 preserve Decimal's available value.    |
+| Inherited `AllowGrouping` | `bool`                                       | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`'s currency group separator and sizes; parsing always accepts one. |
+| Inherited `RoundingMode`  | `MidpointRounding`                           | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                                        |
+| Inherited `Culture`       | `CultureInfo`                                | `CultureInfo.InvariantCulture`  | The culture supplying currency-specific separators, sign, group sizes, and positive/negative pattern for display and parsing.                |
+| `DisplayMode`             | `CurrencyDisplayMode`                        | `CurrencyDisplayMode.Symbol`    | Chooses how the currency identity is resolved and composed around the formatted number.                                                      |
+| `CurrencyOverride`        | `string?`                                    | `null`                          | Caller-supplied currency identity text that takes precedence over every `DisplayMode` resolution rule.                                       |
+| Inherited `Placeholder`   | `string?`                                    | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                                   |
+| Inherited `CursorShape`   | `CursorShape`                                | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                                       |
+| `StartAffix`              | `Affix?`                                     | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                       |
+| `EndAffix`                | `Affix?`                                     | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own composed text.                      |
+| Inherited `ValueChanged`  | `EventHandler<NumericValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                                   |
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column inboard of the
 border, deflated away from the composed currency display and caret before either
@@ -142,7 +147,7 @@ sign.
 
 ```csharp
 var currencyInput = new CurrencyInput { Minimum = 0m, Maximum = 1000m, Step = 5m };
-currencyInput.ValueChanged += (_, e) => Console.Write(e.Value);
+currencyInput.ValueChanged += (_, e) => Console.Write(e.Current);
 ```
 
 ## Expected behavior

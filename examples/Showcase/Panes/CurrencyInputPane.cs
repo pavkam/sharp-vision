@@ -25,7 +25,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
         var invariantStatus = new Text("Value: 0.00");
         var invariant = new CurrencyInput { Width = fieldWidth, Value = 0m };
         invariant.ValueChanged += (_, eventArgs) =>
-            invariantStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            invariantStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // Localized culture with its own separators, sign, and symbol placement.
         var localizedStatus = new Text("Value: 1234.56");
@@ -37,7 +37,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             Value = 1234.56m
         };
         localized.ValueChanged += (_, eventArgs) =>
-            localizedStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            localizedStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // Bounded range with a custom Step.
         var boundedStatus = new Text("Value: 50.00");
@@ -50,7 +50,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             Value = 50m
         };
         bounded.ValueChanged += (_, eventArgs) =>
-            boundedStatus.Content = $"Value: {FormatValue(eventArgs.Value)} (0-100 by 5)";
+            boundedStatus.Content = $"Value: {FormatValue(eventArgs.Current)} (0-100 by 5)";
 
         // Nullable with AllowNull=true.
         var nullableStatus = new Text("Value: (none)");
@@ -61,7 +61,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             Placeholder = "Optional amount"
         };
         nullable.ValueChanged += (_, eventArgs) =>
-            nullableStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            nullableStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // Explicit precision and rounding, overriding the culture-derived decimal places.
         var precisionStatus = new Text("Value: 12.345");
@@ -73,13 +73,13 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             Value = 12.345m
         };
         precision.ValueChanged += (_, eventArgs) =>
-            precisionStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            precisionStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // Grouped display for large magnitudes.
         var groupedStatus = new Text("Value: 1234567.00");
         var grouped = new CurrencyInput { Width = fieldWidth, AllowGrouping = true, Value = 1234567m };
         grouped.ValueChanged += (_, eventArgs) =>
-            groupedStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            groupedStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // Currency identity override: ISO code display mode.
         var identityStatus = new Text("Value: 99.99");
@@ -91,7 +91,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             Value = 99.99m
         };
         identity.ValueChanged += (_, eventArgs) =>
-            identityStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            identityStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         // StartAffix reserves a fixed cell for an application-owned receipt-backed marker.
         var receiptStatus = new Text("Value: 42.50");
@@ -102,7 +102,7 @@ internal sealed class CurrencyInputPane: CompositeControlBase
             StartAffix = new Affix("🧾")
         };
         receipt.ValueChanged += (_, eventArgs) =>
-            receiptStatus.Content = $"Value: {FormatValue(eventArgs.Value)}";
+            receiptStatus.Content = $"Value: {FormatValue(eventArgs.Current)}";
 
         return new DocPage(
             Title,

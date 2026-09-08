@@ -10,18 +10,22 @@ Unlike the segmented temporal fields ([`DateInput`](date-input.md),
 commit their value on every keystroke, `NumberInput` edits a transient
 text-and-selection buffer while typing and only parses and commits it on Enter
 or focus loss. It shares one routed editing lifecycle and one authoritative
-nullable value/range state with `CurrencyInput`; formatting, integer admission,
-and rendered-column projection remain control-specific. Up/Down step by `Step`
-and Home/End jump directly to `Minimum`/`Maximum` - both commit immediately,
-bypassing the buffer entirely, matching [`Slider`](slider.md#overview). Escape
-reverts any uncommitted edit back to the committed value's formatting.
+nullable value/range state with `CurrencyInput` through their common
+[`NumericInputBase`](numeric-input-base.md#overview); formatting, integer
+admission, and rendered-column projection remain control-specific. Up/Down step
+by `Step` and Home/End jump directly to `Minimum`/`Maximum` - both commit
+immediately, bypassing the buffer entirely, matching
+[`Slider`](slider.md#overview). Escape reverts any uncommitted edit back to the
+committed value's formatting.
 
-`NumberInput` derives from [`InputBase`](../input-base.md#overview) and enables
-its in-assembly transient numeric-editing capability. The base owns routed key
-classification, focus entry/exit, selection presentation, placeholder drawing,
-cursor replay, and affix-aware rendering; `NumberInput` owns numeric policy,
-formatting, parsing, and pointer-to-buffer projection. It enables no popup,
-caption, command, segmented, or press-activation capability.
+`NumberInput` derives from [`NumericInputBase`](numeric-input-base.md#overview),
+which in turn derives from [`InputBase`](../input-base.md#overview) and enables
+its in-assembly transient numeric-editing capability. `NumericInputBase` owns
+routed key classification, focus entry/exit, selection presentation, placeholder
+drawing, cursor replay, the nullable value and range state, and affix-aware
+rendering; `NumberInput` owns only its integer/decimal mode policy and
+formatting. It enables no popup, caption, command, segmented, or
+press-activation capability.
 
 `Mode` chooses between `Integer` and `Decimal` editing. In `Integer` mode the
 decimal-separator keystroke is rejected outright - it never appears in the
@@ -55,28 +59,29 @@ buffer for a mode that is no longer active.
 ```mermaid
 classDiagram
     ControlBase <|-- InputBase
-    InputBase <|-- NumberInput
+    InputBase <|-- NumericInputBase
+    NumericInputBase <|-- NumberInput
 ```
 
 ## API
 
-| Member          | Type                                             | Default                         | Description                                                                                                                      |
-| --------------- | ------------------------------------------------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `Value`         | `decimal?`                                       | `null`                          | The nullable value. Assignment clamps silently into `Minimum`/`Maximum`; a fractional assignment throws under `Integer` mode.    |
-| `AllowNull`     | `bool`                                           | `true`                          | Allows the value to be cleared to null; disabling it while already null eagerly reseeds to zero, clamped into bounds.            |
-| `Minimum`       | `decimal`                                        | `decimal.MinValue`              | The inclusive lower bound (equal to `Maximum` allowed) that repairs the current value.                                           |
-| `Maximum`       | `decimal`                                        | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                           |
-| `Step`          | `decimal`                                        | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                      |
-| `Mode`          | `NumberInputMode`                                | `NumberInputMode.Decimal`       | Chooses whole-number-only or fractional editing; switching to `Integer` repairs a fractional committed value.                    |
-| `DecimalPlaces` | `int`                                            | `2`                             | The non-negative fractional digit count while `Mode` is `Decimal`; values above 28 preserve Decimal's available precision.       |
-| `AllowGrouping` | `bool`                                           | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`; parsing always accepts a group separator.            |
-| `RoundingMode`  | `MidpointRounding`                               | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                            |
-| `Culture`       | `CultureInfo`                                    | `CultureInfo.InvariantCulture`  | The culture supplying separators, sign, and grouping for display and parsing; unlike `DateInput.Culture`, defaults to invariant. |
-| `Placeholder`   | `string?`                                        | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                       |
-| `CursorShape`   | `CursorShape`                                    | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                           |
-| `StartAffix`    | `Affix?`                                         | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                    |
-| `EndAffix`      | `Affix?`                                         | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                   |
-| `ValueChanged`  | `EventHandler<NumberInputValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                       |
+| Member                    | Type                                         | Default                         | Description                                                                                                                      |
+| ------------------------- | -------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Inherited `Value`         | `decimal?`                                   | `null`                          | The nullable value. Assignment clamps silently into `Minimum`/`Maximum`; a fractional assignment throws under `Integer` mode.    |
+| Inherited `AllowNull`     | `bool`                                       | `true`                          | Allows the value to be cleared to null; disabling it while already null eagerly reseeds to zero, clamped into bounds.            |
+| Inherited `Minimum`       | `decimal`                                    | `decimal.MinValue`              | The inclusive lower bound (equal to `Maximum` allowed) that repairs the current value.                                           |
+| Inherited `Maximum`       | `decimal`                                    | `decimal.MaxValue`              | The inclusive upper bound (equal to `Minimum` allowed) that repairs the current value.                                           |
+| Inherited `Step`          | `decimal`                                    | `1`                             | The positive increment Up/Down apply, and the jump Home/End commit to `Minimum`/`Maximum` land on directly.                      |
+| `Mode`                    | `NumberInputMode`                            | `NumberInputMode.Decimal`       | Chooses whole-number-only or fractional editing; switching to `Integer` repairs a fractional committed value.                    |
+| `DecimalPlaces`           | `int`                                        | `2`                             | The non-negative fractional digit count while `Mode` is `Decimal`; values above 28 preserve Decimal's available precision.       |
+| Inherited `AllowGrouping` | `bool`                                       | `true`                          | Whether the idle and freshly focused display groups digits under `Culture`; parsing always accepts a group separator.            |
+| Inherited `RoundingMode`  | `MidpointRounding`                           | `MidpointRounding.AwayFromZero` | The rounding applied to a typed value only at commit.                                                                            |
+| Inherited `Culture`       | `CultureInfo`                                | `CultureInfo.InvariantCulture`  | The culture supplying separators, sign, and grouping for display and parsing; unlike `DateInput.Culture`, defaults to invariant. |
+| Inherited `Placeholder`   | `string?`                                    | `null`                          | Optional dim hint shown while the committed value and transient buffer are empty, including while focused.                       |
+| Inherited `CursorShape`   | `CursorShape`                                | `CursorShape.Block`             | The protocol-neutral cursor shape requested while the field has focus.                                                           |
+| `StartAffix`              | `Affix?`                                     | `null`                          | Optional leading edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                    |
+| `EndAffix`                | `Affix?`                                     | `null`                          | Optional trailing edge-pinned decoration, reserved inboard of the border and outboard of the value's own text.                   |
+| Inherited `ValueChanged`  | `EventHandler<NumericValueChangedEventArgs>` | No subscribers                  | Raised after a committed value transition.                                                                                       |
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column inboard of the
 border, deflated away from the value's own text and caret before either draws -
@@ -108,7 +113,7 @@ re-evaluated against the control's actual bounds on every render.
 
 ```csharp
 var numberInput = new NumberInput { Minimum = 0m, Maximum = 100m, Step = 5m };
-numberInput.ValueChanged += (_, e) => Console.Write(e.Value);
+numberInput.ValueChanged += (_, e) => Console.Write(e.Current);
 ```
 
 ## Expected behavior

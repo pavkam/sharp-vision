@@ -1979,27 +1979,21 @@ namespace SharpVision.Controls.Input
         Name = 2,
         Custom = 3,
     }
-    public sealed class CurrencyInput : SharpVision.Controls.InputBase
+    public sealed class CurrencyInput : SharpVision.Controls.Input.NumericInputBase
     {
         public CurrencyInput() { }
-        public bool AllowGrouping { get; set; }
-        public bool AllowNull { get; set; }
-        public System.Globalization.CultureInfo Culture { get; set; }
         public string? CurrencyOverride { get; set; }
-        public SharpVision.Terminal.Rendering.CursorShape CursorShape { get; set; }
         public int? DecimalPlaces { get; set; }
         public SharpVision.Controls.Input.CurrencyDisplayMode DisplayMode { get; set; }
-        public decimal Maximum { get; set; }
-        public decimal Minimum { get; set; }
-        public string? Placeholder { get; set; }
-        public System.MidpointRounding RoundingMode { get; set; }
-        public decimal Step { get; set; }
-        public decimal? Value { get; set; }
-        public event System.EventHandler<SharpVision.Input.CurrencyInputValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnReuseCleanRender(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override int EffectiveDecimalPlaces { get; }
+        protected override bool IsIntegerOnly { get; }
+        protected override System.Globalization.NumberFormatInfo BuildBufferFormat() { }
+        protected override string FormatBufferValue(decimal value) { }
+        protected override string FormatValue(decimal value) { }
+        protected override SharpVision.Input.NumericFocusedDisplay ProjectFocusedDisplay() { }
+        protected override int ResolveBufferIndexAtColumn(int column) { }
+        protected override decimal ResolveCommitRounding(decimal parsed) { }
+        protected override void ValidateCulture(System.Globalization.CultureInfo culture) { }
     }
     public sealed class DateInput : SharpVision.Controls.InputBase
     {
@@ -2084,31 +2078,51 @@ namespace SharpVision.Controls.Input
         public HyperlinkButtonStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
         public new static SharpVision.Controls.Input.HyperlinkButtonStyle Default { get; }
     }
-    public sealed class NumberInput : SharpVision.Controls.InputBase
+    public sealed class NumberInput : SharpVision.Controls.Input.NumericInputBase
     {
         public NumberInput() { }
-        public bool AllowGrouping { get; set; }
-        public bool AllowNull { get; set; }
-        public System.Globalization.CultureInfo Culture { get; set; }
-        public SharpVision.Terminal.Rendering.CursorShape CursorShape { get; set; }
         public int DecimalPlaces { get; set; }
-        public decimal Maximum { get; set; }
-        public decimal Minimum { get; set; }
+        protected override int EffectiveDecimalPlaces { get; }
+        protected override bool IsIntegerOnly { get; }
         public SharpVision.Controls.Input.NumberInputMode Mode { get; set; }
-        public string? Placeholder { get; set; }
-        public System.MidpointRounding RoundingMode { get; set; }
-        public decimal Step { get; set; }
-        public decimal? Value { get; set; }
-        public event System.EventHandler<SharpVision.Input.NumberInputValueChangedEventArgs>? ValueChanged;
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
-        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnReuseCleanRender(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override System.Globalization.NumberFormatInfo BuildBufferFormat() { }
+        protected override string FormatValue(decimal value) { }
+        protected override decimal ResolveCommitRounding(decimal parsed) { }
+        protected override void ValidateValueAssignment(decimal value) { }
     }
     public enum NumberInputMode
     {
         Integer = 0,
         Decimal = 1,
+    }
+    public abstract class NumericInputBase : SharpVision.Controls.InputBase
+    {
+        protected NumericInputBase() { }
+        public bool AllowGrouping { get; set; }
+        public bool AllowNull { get; set; }
+        public System.Globalization.CultureInfo Culture { get; set; }
+        public SharpVision.Terminal.Rendering.CursorShape CursorShape { get; set; }
+        protected abstract int EffectiveDecimalPlaces { get; }
+        protected abstract bool IsIntegerOnly { get; }
+        public decimal Maximum { get; set; }
+        public decimal Minimum { get; set; }
+        public string? Placeholder { get; set; }
+        public System.MidpointRounding RoundingMode { get; set; }
+        public decimal Step { get; set; }
+        public decimal? Value { get; set; }
+        public event System.EventHandler<SharpVision.Input.NumericValueChangedEventArgs>? ValueChanged;
+        protected abstract System.Globalization.NumberFormatInfo BuildBufferFormat();
+        protected virtual string FormatBufferValue(decimal value) { }
+        protected abstract string FormatValue(decimal value);
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnReuseCleanRender(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected virtual SharpVision.Input.NumericFocusedDisplay ProjectFocusedDisplay() { }
+        protected virtual int ResolveBufferIndexAtColumn(int column) { }
+        protected abstract decimal ResolveCommitRounding(decimal parsed);
+        protected virtual void ValidateCulture(System.Globalization.CultureInfo culture) { }
+        protected virtual void ValidateValueAssignment(decimal value) { }
     }
     public sealed class RadioButton : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.RadioButtonStyle>
     {
@@ -3219,12 +3233,6 @@ namespace SharpVision.Input
         public SharpVision.Terminal.Protocols.Color PreviousValue { get; }
         public SharpVision.Terminal.Protocols.Color Value { get; }
     }
-    public sealed class CurrencyInputValueChangedEventArgs : System.EventArgs
-    {
-        public CurrencyInputValueChangedEventArgs(decimal? previousValue, decimal? value) { }
-        public decimal? PreviousValue { get; }
-        public decimal? Value { get; }
-    }
     public sealed class DateInputValueChangedEventArgs : System.EventArgs
     {
         public DateInputValueChangedEventArgs(System.DateOnly? previousValue, System.DateOnly? value) { }
@@ -3350,11 +3358,18 @@ namespace SharpVision.Input
         public void Dispose() { }
         public SharpVision.Input.ModalScope Enter(SharpVision.Controls.ControlBase root, SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
     }
-    public sealed class NumberInputValueChangedEventArgs : System.EventArgs
+    public readonly struct NumericFocusedDisplay
     {
-        public NumberInputValueChangedEventArgs(decimal? previousValue, decimal? value) { }
-        public decimal? PreviousValue { get; }
-        public decimal? Value { get; }
+        public NumericFocusedDisplay(string text, SharpVision.Text.Selection selection, int caret) { }
+        public int Caret { get; }
+        public SharpVision.Text.Selection Selection { get; }
+        public string Text { get; }
+    }
+    public sealed class NumericValueChangedEventArgs : System.EventArgs
+    {
+        public NumericValueChangedEventArgs(decimal? previous, decimal? current) { }
+        public decimal? Current { get; }
+        public decimal? Previous { get; }
     }
     public enum OutsideInteraction
     {

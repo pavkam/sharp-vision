@@ -170,7 +170,7 @@ internal sealed class NumericEditBuffer
     }
 
     /// <summary>Collapses the selection to a caret at a known grapheme boundary, such as one located
-    /// by <see cref="IndexAtColumn"/>.</summary>
+    /// by <see cref="IndexAtColumn(int, Ambiguous)"/>.</summary>
     /// <param name="index">The zero-based UTF-16 index to place the caret at.</param>
     public void SetCaret(int index)
     {
@@ -178,17 +178,30 @@ internal sealed class NumericEditBuffer
         Selection = new Selection(clamped, clamped);
     }
 
-    /// <summary>Resolves the grapheme boundary whose rendered column range contains a column.</summary>
+    /// <summary>Resolves the grapheme boundary whose rendered column range contains a column, within
+    /// this buffer's own text.</summary>
     /// <param name="column">The zero-based column within the field's content area.</param>
     /// <param name="ambiguousWidth">The caller's ambient East Asian Ambiguous width policy.</param>
     /// <returns>The UTF-16 index of the grapheme occupying that column, or the buffer length past the last one.</returns>
-    public int IndexAtColumn(int column, Ambiguous ambiguousWidth)
+    public int IndexAtColumn(int column, Ambiguous ambiguousWidth) =>
+        IndexAtColumn(Text.AsSpan(), column, ambiguousWidth);
+
+    /// <summary>Resolves the grapheme boundary whose rendered column range contains a column, within
+    /// caller-supplied text rather than this buffer's own - used by a control whose focused
+    /// rendering composes the buffer's core text into a larger display, such as
+    /// <see cref="Controls.Input.CurrencyInput"/>'s currency-pattern composition around the
+    /// buffered magnitude.</summary>
+    /// <param name="text">The rendered text to resolve the column against.</param>
+    /// <param name="column">The zero-based column within the field's content area.</param>
+    /// <param name="ambiguousWidth">The caller's ambient East Asian Ambiguous width policy.</param>
+    /// <returns>The UTF-16 index of the grapheme occupying that column, or the text length past the last one.</returns>
+    public static int IndexAtColumn(ReadOnlySpan<char> text, int column, Ambiguous ambiguousWidth)
     {
         var x = 0;
 
-        foreach (var grapheme in Graphemes.Enumerate(Text.AsSpan()))
+        foreach (var grapheme in Graphemes.Enumerate(text))
         {
-            var cluster = Text.AsSpan(grapheme.Offset, grapheme.Length);
+            var cluster = text.Slice(grapheme.Offset, grapheme.Length);
             var width = Width.Measure(cluster, ambiguousWidth).Cells;
 
             if (column < x + width)
@@ -199,7 +212,7 @@ internal sealed class NumericEditBuffer
             x += width;
         }
 
-        return Text.Length;
+        return text.Length;
     }
 
     /// <summary>Strips group separators, normalizes signs and the decimal separator to invariant

@@ -17,6 +17,7 @@ export const excludedAbstractDocSlugs = new Set([
   "headered-content-control",
   "input-base",
   "items-control",
+  "numeric-input-base",
   "pressable",
   "scrollable-composite-control",
 ]);

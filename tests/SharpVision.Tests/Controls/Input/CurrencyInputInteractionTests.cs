@@ -233,7 +233,7 @@ public sealed class CurrencyInputInteractionTests
         // Arrange
         var input = new CurrencyInput { DecimalPlaces = 2 };
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
         await surface.Keyboard.TypeAsync("99");
@@ -342,7 +342,7 @@ public sealed class CurrencyInputInteractionTests
         // Arrange
         var input = new CurrencyInput { Minimum = -1m, Maximum = 10m, DecimalPlaces = 0 };
         var changes = new List<(decimal? Previous, decimal? Value)>();
-        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.PreviousValue, eventArgs.Value));
+        input.ValueChanged += (_, eventArgs) => changes.Add((eventArgs.Previous, eventArgs.Current));
         await using var surface = await MountAsync(input);
         await surface.Keyboard.PressAsync(Code.Tab);
 

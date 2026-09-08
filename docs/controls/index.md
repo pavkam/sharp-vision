@@ -38,10 +38,11 @@ classDiagram
     InputBase <|-- RadioButton
     InputBase <|-- HyperlinkButton
     InputBase <|-- ComboBox
-    InputBase <|-- CurrencyInput
+    InputBase <|-- NumericInputBase
+    NumericInputBase <|-- CurrencyInput
+    NumericInputBase <|-- NumberInput
     InputBase <|-- DateInput
     InputBase <|-- DateTimeInput
-    InputBase <|-- NumberInput
     InputBase <|-- TimeInput
     ItemsControl <|-- CommandBar
     HeaderedContentControl <|-- GroupBox
@@ -108,6 +109,9 @@ Complete modal tasks such as `MessageBox` live in
   or popup-backed input, exposing press activation, segment editing, step-key
   translation, the shared drop-down glyph, and an owned popup as independent
   opt-in capabilities.
+- [NumericInputBase](input/numeric-input-base.md#overview) adds the shared
+  buffer-then-commit transient numeric editing model - nullable value and range
+  state, buffer refresh, measurement, and rendering - to `InputBase`.
 - [Pressable](pressable.md#overview) adds focus and completed activation to the
   single-text-caption role.
 
