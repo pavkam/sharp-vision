@@ -753,10 +753,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     /// <exception cref="ObjectDisposedException">The item is disposed.</exception>
     internal bool RequestMenuFocus() => RequestFocus();
 
-    /// <summary>Commits selected visual state from the containing menu.</summary>
-    /// <param name="value">Whether this item is the menu's selected item.</param>
-    internal void CommitSelection(bool value) => SetSelectedState(value);
-
     /// <summary>Activates this private face through its focus-owning menu.</summary>
     /// <param name="cause">The validated input cause.</param>
     internal void ActivateFromMenu(ActivationCause cause) => Activate(cause);

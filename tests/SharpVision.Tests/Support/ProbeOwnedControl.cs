@@ -172,5 +172,5 @@ internal sealed class ProbeOwnedControl: ControlBase
         ParentChanging?.Invoke(this, previous, current);
 
     /// <inheritdoc/>
-    internal override void OnDirectDisposalRequested() => DirectDisposalRequesting?.Invoke(this);
+    protected internal override void OnDirectDisposalRequested() => DirectDisposalRequesting?.Invoke(this);
 }

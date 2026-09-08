@@ -243,7 +243,7 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     internal NavigationView? FindNavigationView() => FindAncestor<NavigationView>();
 
     /// <inheritdoc/>
-    internal override void OnDirectDisposalRequested()
+    protected internal override void OnDirectDisposalRequested()
     {
         if (FindAncestor<NavigationViewGroup>() is { } group)
         {

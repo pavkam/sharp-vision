@@ -243,9 +243,15 @@ slot rather than inferring an insert, removal, replacement, move, clear, or
 direct disposal from the final list. When such an owner must temporarily impose
 a live child property, it uses the shared ownership-generation lease: caller
 requests remain authored state, attributed owner writes remain live state, and
-only the still-current generation may restore after detachment. These are
-framework infrastructure rules; a consumer-derived `ItemsControl` continues to
-author behavior through the protected helpers and `OnItemControlsChanged`.
+only the still-current generation may restore after detachment. The multi-slot
+compound transaction itself is framework infrastructure; a consumer-derived
+`ItemsControl` continues to author behavior through the protected single-host
+helpers - including `MoveItemControl`, the typed
+`OnItemControlsChanged(OwnedControlChange)` overload for the same immutable
+committed delta framework owners use, and the selected-item Space-activation
+trio (`EnableSelectedItemPressActivation`, `HandleSelectedItemPressActivation`,
+`CancelSelectedItemPressActivation`) for a one-focus collection - never through
+the compound transaction.
 
 ## Chrome and custom rendering
 

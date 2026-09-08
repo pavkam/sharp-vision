@@ -1174,6 +1174,23 @@ public sealed class ControlBaseTests
         control.ProbeAppearanceState.HasFlag(VisualState.Pressed).ShouldBeTrue();
     }
 
+    /// <summary>Verifies an owning collection's <c>SetSelectedState</c> commits the read-side
+    /// <c>IsSelectedState</c> fact - observed here through <c>GetAppearanceState</c>'s
+    /// <see cref="VisualState.Selected"/> flag, since the default read side has no other public
+    /// surface - and requests only the render phase, matching <c>InvalidateVisualStateCore</c>'s
+    /// classification for a control with no registered appearance overlay.</summary>
+    [Fact]
+    public void SetSelectedState_WhenCalledByOwner_UpdatesIsSelectedStateAndInvalidatesRender()
+    {
+        var control = new ProbeControl();
+        control.Clear(Invalidation.All);
+
+        control.SetSelectedState(true);
+
+        control.ProbeAppearanceState.HasFlag(VisualState.Selected).ShouldBeTrue();
+        control.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies lifecycle hooks observe the already-committed attachment state.</summary>
     [Fact]
     public async Task Lifecycle_WhenRootAttachesAndDetaches_PublishesCommittedStateAsync()

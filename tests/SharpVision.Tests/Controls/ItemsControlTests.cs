@@ -206,6 +206,47 @@ public sealed class ItemsControlTests
         replacement.IsDisposed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies MoveItemControl reorders realized controls in place without detaching, disposing,
+    /// or otherwise changing ownership of the moved control.</summary>
+    [Fact]
+    public void MoveItemControl_WhenIndexesValid_ReordersRealizedControls()
+    {
+        var owner = new ProbeItemsControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var third = new ProbeControl();
+        owner.ReplaceAll([first, second, third]);
+        owner.Changes.Clear();
+
+        owner.Move(0, 2);
+
+        owner.At(0).ShouldBeSameAs(second);
+        owner.At(1).ShouldBeSameAs(third);
+        owner.At(2).ShouldBeSameAs(first);
+        owner.Changes.ShouldBe([[second, third, first]]);
+        first.Parent.ShouldBeSameAs(owner.Host);
+        first.IsDisposed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies MoveItemControl rejects an out-of-range position for either index before
+    /// mutating the realized snapshot.</summary>
+    [Fact]
+    public void MoveItemControl_WhenIndexIsOutOfRange_ThrowsBeforeMutation()
+    {
+        var owner = new ProbeItemsControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        owner.ReplaceAll([first, second]);
+        owner.Changes.Clear();
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.Move(0, 2));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => owner.Move(-1, 0));
+
+        owner.At(0).ShouldBeSameAs(first);
+        owner.At(1).ShouldBeSameAs(second);
+        owner.Changes.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies complete batch validation preserves the old snapshot on every rejected candidate.</summary>
     [Fact]
     public void ReplaceItemControls_WhenAnyCandidateIsInvalid_PreservesCompleteOldSnapshot()
@@ -276,6 +317,39 @@ public sealed class ItemsControlTests
         owner.Changes.ShouldBe([[second]]);
         first.IsDisposed.ShouldBeTrue();
         first.Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the protected typed <see cref="ItemsControl.OnItemControlsChanged(OwnedControlChange)"/>
+    /// overload reports <see cref="OwnedControlMutationKind.DirectDisposal"/> for a child that disposed
+    /// itself, distinguishing that case from an ordinary owner-driven removal without the caller having
+    /// to diff the realized-control list.</summary>
+    [Fact]
+    public void OnItemControlsChanged_WhenItemDisposedDirectly_ReportsDirectDisposalKind()
+    {
+        var owner = new ProbeItemsControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        owner.ReplaceAll([first, second]);
+
+        first.Dispose();
+
+        owner.LastChangeKind.ShouldBe(OwnedControlMutationKind.DirectDisposal);
+    }
+
+    /// <summary>Verifies the protected typed overload reports <see cref="OwnedControlMutationKind.Remove"/>
+    /// for an ordinary owner-driven removal, the counterpart case to direct disposal.</summary>
+    [Fact]
+    public void OnItemControlsChanged_WhenOwnerRemovesItem_ReportsRemoveKind()
+    {
+        var owner = new ProbeItemsControl();
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        owner.ReplaceAll([first, second]);
+
+        owner.RemoveAt(0);
+
+        owner.LastChangeKind.ShouldBe(OwnedControlMutationKind.Remove);
+        first.IsDisposed.ShouldBeFalse();
     }
 
     /// <summary>Verifies passthrough layout, ordinary rendering, and hit testing use the private host.</summary>

@@ -421,6 +421,7 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Thickness Padding { get; set; }
         public SharpVision.Controls.ControlBase? Parent { get; }
         protected virtual string PopupOpenPropertyName { get; }
+        protected virtual bool ReceivesInheritedSelectionState { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
         public virtual string SelectedText { get; }
         public SharpVision.Styling.Shadow Shadow { get; set; }
@@ -524,6 +525,7 @@ namespace SharpVision.Controls
         protected virtual void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
         protected virtual void OnCellMetricsChanged(SharpVision.Terminal.Geometry.CellMetrics? previous, SharpVision.Terminal.Geometry.CellMetrics? current) { }
         protected virtual void OnDetached() { }
+        protected virtual void OnDirectDisposalRequested() { }
         protected virtual void OnDisposed() { }
         protected virtual void OnDisposing() { }
         protected virtual void OnDropDownClosed() { }
@@ -564,12 +566,14 @@ namespace SharpVision.Controls
         protected virtual bool ScrollTextSelectionViewport(int horizontal, int vertical, out SharpVision.Terminal.Geometry.Point hitAdjustment) { }
         public virtual void SelectAllText() { }
         protected void SetAppearance(SharpVision.Styling.VisualState state, SharpVision.Styling.AppearanceOverlay? appearance) { }
+        protected void SetCurrentState(bool value) { }
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected void SetPressed(bool value) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetPropertyAndContinue<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Action continuation, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetPropertyAndSynchronize<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Action synchronize, System.Collections.Generic.IEqualityComparer<T>? comparer = null, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetPropertyWithComparer<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Collections.Generic.IEqualityComparer<T> comparer, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected void SetSelectedState(bool value) { }
         public virtual void SetTextSelection(SharpVision.Text.Selection selection) { }
         protected bool SetTransitionProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, SharpVision.Controls.CallbackTransitionStream stream, out SharpVision.Controls.CallbackTransitionTransaction transition, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
         protected bool SetVersionedProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, ref long version, out long commitVersion, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
@@ -670,18 +674,44 @@ namespace SharpVision.Controls
         protected ItemsControl() { }
         protected int ItemControlCount { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected void CancelSelectedItemPressActivation() { }
         protected void ClearItemControls() { }
+        protected void EnableSelectedItemPressActivation(System.Func<SharpVision.Controls.ControlBase?> getSelectedTarget, System.Func<SharpVision.Controls.ControlBase, bool> isTargetAvailable, System.Action<SharpVision.Controls.ControlBase, bool> setTargetPressed, System.Action<SharpVision.Controls.ControlBase> activateTarget, bool consumeWhenNoTarget) { }
         protected SharpVision.Controls.ControlBase GetItemControl(int index) { }
+        protected void HandleSelectedItemPressActivation(SharpVision.Input.KeyEventArgs eventArgs) { }
         protected int IndexOfItemControl(SharpVision.Controls.ControlBase control) { }
         protected void InitializeItemsHost(SharpVision.Controls.Container host) { }
         protected void InsertItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected void MoveItemControl(int oldIndex, int newIndex) { }
         protected override void OnDisposing() { }
         protected virtual void OnItemControlsChanged() { }
+        protected virtual void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
         protected bool RemoveItemControl(SharpVision.Controls.ControlBase control) { }
         protected void RemoveItemControlAt(int index) { }
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
+    }
+    public readonly struct OwnedControlChange
+    {
+        public System.ReadOnlyMemory<SharpVision.Controls.ControlBase> Added { get; }
+        public System.ReadOnlyMemory<SharpVision.Controls.ControlBase> Current { get; }
+        public int CurrentIndex { get; }
+        public SharpVision.Controls.OwnedControlMutationKind Kind { get; }
+        public System.ReadOnlyMemory<SharpVision.Controls.ControlBase> Previous { get; }
+        public int PreviousIndex { get; }
+        public SharpVision.Input.ReleaseReason Reason { get; }
+        public System.ReadOnlyMemory<SharpVision.Controls.ControlBase> Removed { get; }
+    }
+    public enum OwnedControlMutationKind
+    {
+        Insert = 0,
+        Remove = 1,
+        Replace = 2,
+        Move = 3,
+        Clear = 4,
+        Reset = 5,
+        DirectDisposal = 6,
     }
     public static class RangeValidation
     {
@@ -1113,6 +1143,7 @@ namespace SharpVision.Controls.Collections
         public TabItem() { }
         public string HeaderText { get; set; }
         public bool IsClosable { get; set; }
+        protected override void OnDirectDisposalRequested() { }
     }
     public sealed class TabItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TabItem>, System.Collections.IEnumerable
     {
@@ -1236,6 +1267,7 @@ namespace SharpVision.Controls.Collections
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
+        protected override void OnDirectDisposalRequested() { }
         protected override void OnDisposing() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -1782,6 +1814,7 @@ namespace SharpVision.Controls.Input
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class CommandBarEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
@@ -3602,6 +3635,7 @@ namespace SharpVision.Menus
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
     public sealed class MenuBuilder
@@ -3736,6 +3770,7 @@ namespace SharpVision.Navigation
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnDirectDisposalRequested() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
     }
@@ -3812,6 +3847,7 @@ namespace SharpVision.Navigation
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnDirectDisposalRequested() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
@@ -3837,6 +3873,7 @@ namespace SharpVision.Navigation
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
+        protected override void OnDirectDisposalRequested() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnFocusChanged(bool focused) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -4840,6 +4877,7 @@ namespace SharpVision.Surfaces
         public double FadeProgress { get; }
         protected bool HasActiveSurfaceModal { get; }
         protected bool IsSurfacePresented { get; }
+        protected override bool ReceivesInheritedSelectionState { get; }
         public SharpVision.Terminal.Geometry.Rect SurfaceBounds { get; protected set; }
         public event System.EventHandler<SharpVision.Surfaces.SurfaceCloseRequestedEventArgs>? CloseRequested;
         public event System.EventHandler? Closed;

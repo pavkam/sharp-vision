@@ -2593,10 +2593,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Allows a semantic control to reconcile caller-requested disposal before structural publication begins.</summary>
     /// <remarks>
-    /// The hook is skipped during owner-driven teardown. A reentrant request while this
-    /// reconciliation is active is idempotent; the outer request owns the terminal transition.
+    /// Invoked on the disposing control itself before its disposal publication, so a control whose
+    /// owner tracks it outside the ordinary retained-child registry - a semantic collection item
+    /// keeping its own parallel index, for example - may detach itself through that owner's own
+    /// removal path before the control's terminal state is observable. The hook is skipped during
+    /// owner-driven teardown, where the owner already initiated the removal itself. A reentrant
+    /// request while this reconciliation is active is idempotent; the outer request owns the
+    /// terminal transition. The default implementation does nothing. An override must not throw:
+    /// disposal continues unconditionally after this hook returns, so a thrown exception here
+    /// escapes <see cref="Dispose"/> and leaves the control's terminal state uncommitted.
     /// </remarks>
-    internal virtual void OnDirectDisposalRequested()
+    protected internal virtual void OnDirectDisposalRequested()
     {
     }
 
@@ -3338,8 +3345,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     // Deterministic structural counters, not wall-clock timing: SetSelectedState/SetCurrentState
-    // are internal and not virtual, and TableCellReference is a value type, so neither subclassing
-    // nor allocation-counting can distinguish an O(1) targeted state update from an O(rows *
+    // are not virtual, and TableCellReference is a value type, so neither subclassing nor
+    // allocation-counting can distinguish an O(1) targeted state update from an O(rows *
     // columns) blanket one. A bounded call count can. Safe from cross-test interference because
     // performance tests that read these run serialized under [Collection(PerformanceGroup.Name)].
 
@@ -3353,7 +3360,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Propagates semantic selected visual state through one realized item subtree.</summary>
     /// <param name="value">Whether the subtree is selected.</param>
-    internal void SetSelectedState(bool value)
+    /// <remarks>
+    /// An owning collection (a list, menu, tab strip, or other <see cref="ItemsControl"/> owner)
+    /// paints its realized item's semantic selected state through this seam after committing its own
+    /// selection model; the item reports the committed fact back through the
+    /// <see cref="IsSelectedState"/> read side, which a control with its own selection concept may
+    /// override. Changing the state only invalidates the affected visual-state render output - it
+    /// never changes layout on its own. The state also propagates to every child that reports
+    /// <see cref="ReceivesInheritedSelectionState"/>, so a selected row's owned content presents as
+    /// one coherent subtree.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected internal void SetSelectedState(bool value)
     {
         SetSelectedStateCallCount++;
         VerifyMutable();
@@ -3378,10 +3397,21 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// Floating presentation surfaces start an independent interaction plane and stop that inherited
     /// state before it can select their separately navigated content.
     /// </remarks>
-    internal virtual bool ReceivesInheritedSelectionState => true;
+    protected internal virtual bool ReceivesInheritedSelectionState => true;
 
     /// <summary>Propagates collection-current visual state through one realized item subtree.</summary>
-    internal void SetCurrentState(bool value)
+    /// <param name="value">Whether this control is the current member of an owning navigator.</param>
+    /// <remarks>
+    /// An owning navigator (for example a <c>Table</c> active cell or a <c>ListView</c> active item)
+    /// paints its realized item's collection-current state through this seam; the item reports the
+    /// committed fact back through the <see cref="IsCurrentState"/> read side. Unlike
+    /// <see cref="SetSelectedState"/>, this state does not propagate to children - "current" is a
+    /// single-item navigator concept, not a subtree presentation concept. Changing the state only
+    /// invalidates the affected visual-state render output.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected internal void SetCurrentState(bool value)
     {
         SetCurrentStateCallCount++;
         VerifyMutable();

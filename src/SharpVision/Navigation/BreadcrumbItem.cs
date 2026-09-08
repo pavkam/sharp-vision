@@ -129,7 +129,7 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
     }
 
     /// <inheritdoc/>
-    internal override void OnDirectDisposalRequested()
+    protected internal override void OnDirectDisposalRequested()
     {
         FindBreadcrumb()?.RemoveItemForDisposal(this);
         base.OnDirectDisposalRequested();

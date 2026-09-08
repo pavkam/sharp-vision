@@ -376,7 +376,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     }
 
     /// <inheritdoc/>
-    internal override void OnDirectDisposalRequested()
+    protected internal override void OnDirectDisposalRequested()
     {
         FindNavigationView()?.RemoveEntryForDisposal(this);
         _propertyOverrides.Dispose();

@@ -83,9 +83,15 @@ public abstract class ItemsControl: ControlBase
     /// <param name="setTargetPressed">Commits the captured face's pressed presentation.</param>
     /// <param name="activateTarget">Activates one still-current captured face.</param>
     /// <param name="consumeWhenNoTarget">Whether eligible Space input with no face is consumed.</param>
+    /// <remarks>
+    /// A derived item owner with exactly one navigable selected face - a menu, a command bar, or a
+    /// similar roving-selection collection - calls this once, typically from its constructor, to
+    /// wire the shared Space-activation gesture onto that face without re-implementing press
+    /// tracking, release-authority detection, or cancellation.
+    /// </remarks>
     /// <exception cref="ArgumentNullException">A delegate is null.</exception>
     /// <exception cref="InvalidOperationException">Selected-item press activation is already enabled.</exception>
-    private protected void EnableSelectedItemPressActivation(
+    protected void EnableSelectedItemPressActivation(
         Func<ControlBase?> getSelectedTarget,
         Func<ControlBase, bool> isTargetAvailable,
         Action<ControlBase, bool> setTargetPressed,
@@ -110,12 +116,18 @@ public abstract class ItemsControl: ControlBase
 
     /// <summary>Routes one key event through selected-face Space activation when enabled.</summary>
     /// <param name="eventArgs">The non-null routed key event.</param>
+    /// <remarks>
+    /// A no-op when <see cref="EnableSelectedItemPressActivation"/> was never called. A derived owner
+    /// calls this from its own preview or bubble key handling for the keys it wants to arm the
+    /// shared Space gesture for.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null and activation is enabled.</exception>
-    private protected void HandleSelectedItemPressActivation(KeyEventArgs eventArgs) =>
+    protected void HandleSelectedItemPressActivation(KeyEventArgs eventArgs) =>
         _selectedItemPress?.Handle(eventArgs);
 
     /// <summary>Cancels a held selected-face Space interaction without activation.</summary>
-    private protected void CancelSelectedItemPressActivation() => _selectedItemPress?.Cancel();
+    /// <remarks>A no-op when <see cref="EnableSelectedItemPressActivation"/> was never called.</remarks>
+    protected void CancelSelectedItemPressActivation() => _selectedItemPress?.Cancel();
 
     /// <summary>Gets one realized item control by zero-based position.</summary>
     /// <param name="index">The valid item-control position.</param>
@@ -226,9 +238,17 @@ public abstract class ItemsControl: ControlBase
     }
 
     /// <summary>Atomically reorders one realized control without detaching it.</summary>
-    /// <param name="oldIndex">The current zero-based position.</param>
-    /// <param name="newIndex">The destination zero-based position.</param>
-    internal void MoveItemControl(int oldIndex, int newIndex) =>
+    /// <param name="oldIndex">The current zero-based item-control position.</param>
+    /// <param name="newIndex">The destination zero-based item-control position.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="oldIndex"/> or <paramref name="newIndex"/> is outside the realized controls.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The presentation host is unavailable, the attached owner is accessed off-dispatcher, or an
+    /// ownership transaction is active.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
+    protected void MoveItemControl(int oldIndex, int newIndex) =>
         GetItemsHost().Children.Move(oldIndex, newIndex);
 
     /// <summary>Responds after one complete realized-control snapshot is structurally committed.</summary>
@@ -280,7 +300,17 @@ public abstract class ItemsControl: ControlBase
 
     /// <summary>Responds to the complete committed mutation of the private item host.</summary>
     /// <param name="change">The immutable structural change.</param>
-    private protected virtual void OnItemControlsChanged(OwnedControlChange change) => OnItemControlsChanged();
+    /// <remarks>
+    /// The default implementation forwards to the parameterless <see cref="OnItemControlsChanged()"/>
+    /// overload, so an owner that only needs to know a change occurred can keep overriding that
+    /// overload alone. A derived owner that overrides this typed overload and does not call
+    /// <c>base.OnItemControlsChanged(change)</c> suppresses the parameterless callback for that
+    /// change. <paramref name="change"/> is copied at commit time rather than aliasing live registry
+    /// storage, so it remains safe to inspect or retain after this callback returns; the
+    /// <see cref="ControlBase"/> instances it references stay live, mutable objects whose own state
+    /// may keep changing independently of this snapshot.
+    /// </remarks>
+    protected virtual void OnItemControlsChanged(OwnedControlChange change) => OnItemControlsChanged();
 
     private void OnHostItemsChanged(OwnedControlChange change)
     {

@@ -71,10 +71,6 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
         NotifyPropertyChanged(nameof(IsOverflowed), InvalidationImpact.None);
     }
 
-    /// <summary>Commits owner-driven selected appearance without changing focusability.</summary>
-    /// <param name="value">Whether this item is the bar's selected item.</param>
-    internal void CommitSelection(bool value) => SetSelectedState(value);
-
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {

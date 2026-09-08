@@ -75,8 +75,4 @@ internal sealed class CommandBarOverflowButton: InputBase
 
     /// <summary>Cancels any armed press when layout removes or repositions the trigger.</summary>
     internal void CancelPress() => SetPressed(false);
-
-    /// <summary>Commits owner-driven roving appearance without becoming independently focusable.</summary>
-    /// <param name="value">Whether the owner currently selects this trigger.</param>
-    internal void CommitSelection(bool value) => SetSelectedState(value);
 }

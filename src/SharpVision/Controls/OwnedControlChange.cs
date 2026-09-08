@@ -5,10 +5,15 @@ namespace SharpVision.Controls;
 
 /// <summary>Describes one immutable post-commit change to an owned-control slot.</summary>
 /// <remarks>
-/// Every sequence is a dedicated snapshot rather than the slot's mutable storage. The change may
-/// therefore be retained after its guarded publication callback without observing later mutations.
+/// Every array-backed member is a dedicated snapshot copied at commit time, not a view over the
+/// slot's live mutable storage, so this change may be retained after its guarded publication
+/// callback without ever observing a later mutation to the slot. The <see cref="ControlBase"/>
+/// instances referenced from <see cref="Previous"/>, <see cref="Current"/>, <see cref="Removed"/>,
+/// and <see cref="Added"/> remain live, mutable objects whose own state - parentage, disposal,
+/// properties - can keep changing after this snapshot was taken; only the order and membership this
+/// change captured stay fixed.
 /// </remarks>
-internal readonly struct OwnedControlChange
+public readonly struct OwnedControlChange
 {
     /// <summary>Initializes one complete committed structural change.</summary>
     /// <param name="previous">The copied order before the commit.</param>
@@ -48,26 +53,35 @@ internal readonly struct OwnedControlChange
     }
 
     /// <summary>Gets the immutable ordered snapshot before the commit.</summary>
-    internal ReadOnlyMemory<ControlBase> Previous { get; }
+    public ReadOnlyMemory<ControlBase> Previous { get; }
 
     /// <summary>Gets the immutable ordered snapshot after the commit.</summary>
-    internal ReadOnlyMemory<ControlBase> Current { get; }
+    public ReadOnlyMemory<ControlBase> Current { get; }
 
     /// <summary>Gets roots that left the slot in prior order.</summary>
-    internal ReadOnlyMemory<ControlBase> Removed { get; }
+    /// <remarks>
+    /// For <see cref="OwnedControlMutationKind.DirectDisposal"/>, this holds exactly the one control
+    /// that disposed itself and requested removal from its owner before disposal publication;
+    /// <see cref="Added"/> is empty for that kind.
+    /// </remarks>
+    public ReadOnlyMemory<ControlBase> Removed { get; }
 
     /// <summary>Gets roots that entered the slot in current order.</summary>
-    internal ReadOnlyMemory<ControlBase> Added { get; }
+    /// <remarks>
+    /// For <see cref="OwnedControlMutationKind.DirectDisposal"/>, this is always empty: a directly
+    /// disposing control leaves its slot without any replacement entering it.
+    /// </remarks>
+    public ReadOnlyMemory<ControlBase> Added { get; }
 
     /// <summary>Gets the normalized structural operation.</summary>
-    internal OwnedControlMutationKind Kind { get; }
+    public OwnedControlMutationKind Kind { get; }
 
     /// <summary>Gets the affected position in <see cref="Previous"/>, or -1.</summary>
-    internal int PreviousIndex { get; }
+    public int PreviousIndex { get; }
 
     /// <summary>Gets the affected position in <see cref="Current"/>, or -1.</summary>
-    internal int CurrentIndex { get; }
+    public int CurrentIndex { get; }
 
     /// <summary>Gets the reason removed roots became unavailable.</summary>
-    internal ReleaseReason Reason { get; }
+    public ReleaseReason Reason { get; }
 }

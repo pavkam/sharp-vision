@@ -27,11 +27,17 @@ disposed along with the private host.
 `OnItemControlsChanged` runs once after each committed snapshot, including a
 change caused by direct item disposal. It observes the complete new order while
 guarded ownership publication is still active. A callback failure does not roll
-back the committed snapshot, and reentrant ownership mutation is rejected. The
-framework-side host adapter also receives the immutable committed delta: copied
-old/new orders, entering and leaving identities, indices, mutation kind, and
-release reason. Concrete framework controls use those facts for selection and
-current-item repair instead of reconstructing the mutation from the final list.
+back the committed snapshot, and reentrant ownership mutation is rejected. A
+derived owner that needs more than "a change occurred" overrides the typed
+`OnItemControlsChanged(OwnedControlChange)` overload instead: it receives the
+immutable committed delta - copied old/new orders, entering and leaving
+identities, affected indices, normalized mutation kind (including
+`DirectDisposal` for a child that disposed itself), and release reason - and
+calls `base.OnItemControlsChanged(change)` to keep the parameterless overload
+running for that change. `ListView`, `Table`, `Menu`, and `CommandBar` use those
+facts for selection and current-item repair instead of reconstructing the
+mutation from the final list; a consumer-derived owner has the same seam
+available for the same purpose.
 
 A framework control whose one semantic item requires controls in several private
 hosts uses the internal compound ownership transaction rather than calling these
@@ -57,19 +63,24 @@ classDiagram
 
 ## API
 
-| Member                                                   | Type          | Default | Description                                                                                  |
-| -------------------------------------------------------- | ------------- | ------- | -------------------------------------------------------------------------------------------- |
-| `ItemControlCount`                                       | `int`         | —       | Protected, read-only; the number of currently realized item controls.                        |
-| `InitializeItemsHost(Container host)`                    | `void`        | —       | Protected; installs the one private presentation host for this item owner, exactly once.     |
-| `GetItemControl(int index)`                              | `ControlBase` | —       | Protected; gets one realized item control by zero-based position.                            |
-| `IndexOfItemControl(ControlBase control)`                | `int`         | —       | Protected; gets the identity position of one realized item control, or -1 when not realized. |
-| `InsertItemControl(int index, ControlBase control)`      | `void`        | —       | Protected; inserts one detached realized control at a validated position.                    |
-| `RemoveItemControl(ControlBase control)`                 | `bool`        | —       | Protected; removes one identical realized control without disposing it.                      |
-| `RemoveItemControlAt(int index)`                         | `void`        | —       | Protected; removes one realized control by position without disposing it.                    |
-| `ReplaceItemControl(int index, ControlBase control)`     | `void`        | —       | Protected; atomically replaces one realized control without disposing the previous control.  |
-| `ClearItemControls()`                                    | `void`        | —       | Protected; atomically clears all realized controls without disposing them.                   |
-| `ReplaceItemControls(IEnumerable<ControlBase> controls)` | `void`        | —       | Protected; atomically replaces the complete realized-control snapshot.                       |
-| `OnItemControlsChanged()`                                | `void`        | —       | Protected virtual; responds after one complete realized-control snapshot is committed.       |
+| Member                                                                                                                           | Type          | Default | Description                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ItemControlCount`                                                                                                               | `int`         | —       | Protected, read-only; the number of currently realized item controls.                                              |
+| `InitializeItemsHost(Container host)`                                                                                            | `void`        | —       | Protected; installs the one private presentation host for this item owner, exactly once.                           |
+| `GetItemControl(int index)`                                                                                                      | `ControlBase` | —       | Protected; gets one realized item control by zero-based position.                                                  |
+| `IndexOfItemControl(ControlBase control)`                                                                                        | `int`         | —       | Protected; gets the identity position of one realized item control, or -1 when not realized.                       |
+| `InsertItemControl(int index, ControlBase control)`                                                                              | `void`        | —       | Protected; inserts one detached realized control at a validated position.                                          |
+| `RemoveItemControl(ControlBase control)`                                                                                         | `bool`        | —       | Protected; removes one identical realized control without disposing it.                                            |
+| `RemoveItemControlAt(int index)`                                                                                                 | `void`        | —       | Protected; removes one realized control by position without disposing it.                                          |
+| `ReplaceItemControl(int index, ControlBase control)`                                                                             | `void`        | —       | Protected; atomically replaces one realized control without disposing the previous control.                        |
+| `ClearItemControls()`                                                                                                            | `void`        | —       | Protected; atomically clears all realized controls without disposing them.                                         |
+| `ReplaceItemControls(IEnumerable<ControlBase> controls)`                                                                         | `void`        | —       | Protected; atomically replaces the complete realized-control snapshot.                                             |
+| `MoveItemControl(int oldIndex, int newIndex)`                                                                                    | `void`        | —       | Protected; atomically reorders one realized control without detaching it.                                          |
+| `OnItemControlsChanged()`                                                                                                        | `void`        | —       | Protected virtual; responds after one complete realized-control snapshot is committed.                             |
+| `OnItemControlsChanged(OwnedControlChange change)`                                                                               | `void`        | —       | Protected virtual; responds with the immutable committed delta; forwards to the parameterless overload by default. |
+| `EnableSelectedItemPressActivation(getSelectedTarget, isTargetAvailable, setTargetPressed, activateTarget, consumeWhenNoTarget)` | `void`        | —       | Protected; opts a one-focus item owner into the shared selected-face Space activation gesture.                     |
+| `HandleSelectedItemPressActivation(KeyEventArgs eventArgs)`                                                                      | `void`        | —       | Protected; routes one key event through selected-face Space activation when enabled.                               |
+| `CancelSelectedItemPressActivation()`                                                                                            | `void`        | —       | Protected; cancels a held selected-face Space interaction without activation.                                      |
 
 `ItemsControl` deliberately exposes no public `Children` collection. Concrete
 types such as [`ListView`](collections/list-view.md#overview) and

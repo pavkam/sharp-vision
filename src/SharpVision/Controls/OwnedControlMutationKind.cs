@@ -4,7 +4,7 @@
 namespace SharpVision.Controls;
 
 /// <summary>Identifies the normalized structural operation represented by one committed owned-control change.</summary>
-internal enum OwnedControlMutationKind
+public enum OwnedControlMutationKind
 {
     /// <summary>One control entered an existing ordered snapshot.</summary>
     Insert,

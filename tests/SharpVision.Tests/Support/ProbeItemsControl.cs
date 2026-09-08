@@ -25,6 +25,10 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <summary>Gets or sets whether the next change callback fails.</summary>
     internal bool ThrowOnItemsChanged { get; set; }
 
+    /// <summary>Gets the <see cref="OwnedControlChange.Kind"/> observed by the latest protected typed
+    /// callback, or null before any change commits.</summary>
+    internal OwnedControlMutationKind? LastChangeKind { get; private set; }
+
     /// <summary>Gets the protected logical item-control count.</summary>
     internal int Count => ItemControlCount;
 
@@ -72,6 +76,11 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <param name="controls">The complete borrowed candidate sequence.</param>
     internal void ReplaceAll(IEnumerable<ControlBase> controls) => ReplaceItemControls(controls);
 
+    /// <summary>Atomically reorders one realized control without detaching it.</summary>
+    /// <param name="oldIndex">The current zero-based position.</param>
+    /// <param name="newIndex">The destination zero-based position.</param>
+    internal void Move(int oldIndex, int newIndex) => MoveItemControl(oldIndex, newIndex);
+
     /// <summary>Gets controls directly owned by the semantic owner.</summary>
     /// <returns>A new identity-preserving snapshot.</returns>
     internal IReadOnlyList<ControlBase> GetOwnedOrder()
@@ -97,5 +106,12 @@ internal sealed class ProbeItemsControl: ItemsControl
         {
             throw new InvalidOperationException("The item callback failed.");
         }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnItemControlsChanged(OwnedControlChange change)
+    {
+        LastChangeKind = change.Kind;
+        base.OnItemControlsChanged(change);
     }
 }

@@ -424,7 +424,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             if (!item.IsDisposing && !item.IsDisposed)
             {
                 item.SetOverflowed(false);
-                item.CommitSelection(false);
+                item.SetSelectedState(false);
             }
         }
     }
@@ -563,12 +563,12 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             return;
         }
 
-        _selectedItem?.CommitSelection(false);
+        _selectedItem?.SetSelectedState(false);
         _overflowTargetSelected = false;
-        _overflowButton.CommitSelection(false);
+        _overflowButton.SetSelectedState(false);
         _selectedItem = item;
         _selectedIndex = item is null ? -1 : IndexOfItemControl(item);
-        item?.CommitSelection(ContainsFocus && !item.IsOverflowed);
+        item?.SetSelectedState(ContainsFocus && !item.IsOverflowed);
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
     }
@@ -580,11 +580,11 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             return;
         }
 
-        _selectedItem?.CommitSelection(false);
+        _selectedItem?.SetSelectedState(false);
         _selectedItem = null;
         _selectedIndex = -1;
         _overflowTargetSelected = true;
-        _overflowButton.CommitSelection(ContainsFocus);
+        _overflowButton.SetSelectedState(ContainsFocus);
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
     }
@@ -1156,8 +1156,8 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
     private void CommitSelectionPresentation(bool focused)
     {
-        _selectedItem?.CommitSelection(focused && !_selectedItem.IsOverflowed);
-        _overflowButton.CommitSelection(focused && _overflowTargetSelected);
+        _selectedItem?.SetSelectedState(focused && !_selectedItem.IsOverflowed);
+        _overflowButton.SetSelectedState(focused && _overflowTargetSelected);
     }
 
     private void OnEntryPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -1185,7 +1185,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     }
 
     /// <inheritdoc/>
-    private protected override void OnItemControlsChanged(OwnedControlChange change)
+    protected override void OnItemControlsChanged(OwnedControlChange change)
     {
         base.OnItemControlsChanged(change);
 

@@ -620,7 +620,7 @@ public sealed class Menu: ItemsControl
                 {
                     if (item is MenuItem outgoing)
                     {
-                        outgoing.CommitSelection(false);
+                        outgoing.SetSelectedState(false);
                     }
 
                     _selectedEntry = current;
@@ -639,7 +639,7 @@ public sealed class Menu: ItemsControl
 
                 if (current is MenuItem incoming)
                 {
-                    incoming.CommitSelection(ContainsFocus);
+                    incoming.SetSelectedState(ContainsFocus);
                 }
             }
         }
@@ -800,7 +800,7 @@ public sealed class Menu: ItemsControl
     // position-aware repair after the commit; the delta distinguishes those paths without a
     // component-local mutation flag.
     /// <inheritdoc/>
-    private protected override void OnItemControlsChanged(OwnedControlChange change)
+    protected override void OnItemControlsChanged(OwnedControlChange change)
     {
         base.OnItemControlsChanged(change);
 
@@ -838,7 +838,7 @@ public sealed class Menu: ItemsControl
 
         if (current is MenuItem item)
         {
-            item.CommitSelection(ContainsFocus);
+            item.SetSelectedState(ContainsFocus);
         }
     }
 
@@ -1432,7 +1432,7 @@ public sealed class Menu: ItemsControl
 
         if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            outgoing.CommitSelection(false);
+            outgoing.SetSelectedState(false);
         }
 
         _selectedIndex = index;
@@ -1441,7 +1441,7 @@ public sealed class Menu: ItemsControl
         if (index >= 0)
         {
             var item = (MenuItem) ItemAt(index);
-            item.CommitSelection(ContainsFocus);
+            item.SetSelectedState(ContainsFocus);
 
             if (focus)
             {
@@ -1485,7 +1485,7 @@ public sealed class Menu: ItemsControl
     {
         if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            outgoing.CommitSelection(value);
+            outgoing.SetSelectedState(value);
         }
     }
 

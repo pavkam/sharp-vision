@@ -122,7 +122,7 @@ public abstract class FloatingSurfaceBase: ContentControl
     /// A floating surface owns an independent interaction plane, so its content derives selection
     /// only from the collection or navigator inside that surface.
     /// </remarks>
-    internal override bool ReceivesInheritedSelectionState => false;
+    protected internal override bool ReceivesInheritedSelectionState => false;
 
     #region Surface lifecycle
 

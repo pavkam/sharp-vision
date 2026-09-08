@@ -75,6 +75,10 @@ authoring-role diagram.
 | `TryFocusForInteraction()`                                                                                | `bool`                                        | —                 | Protected; requests focus and reports whether input may continue afterward, combining `Focus()` with `CanContinueAfterFocus` for the shared "request focus, then verify the interaction may proceed" shape pointer-driven interactions need.                                                                                                                    |
 | `CanContinueAfterFocus(Dispatcher?)`                                                                      | `bool`                                        | —                 | Protected; reports whether lifetime, attachment, visibility, and enabled state remain current relative to a dispatcher captured before a synchronous focus request.                                                                                                                                                                                             |
 | `SetPressed(bool)`                                                                                        | `void`                                        | —                 | Protected internal; commits `IsPressed` on the owning dispatcher. `EnablePressActivation` and `EnableDrag` call this internally; the protected internal accessibility exists only for a small number of core sibling owners that still commit pressed state for another control they own directly, cross-type within this assembly.                             |
+| `SetSelectedState(bool)`                                                                                  | `void`                                        | —                 | Protected internal; an owning collection paints its realized item's semantic selected state. Propagates to children that report `ReceivesInheritedSelectionState`; invalidates render only. Throws `InvalidOperationException` if accessed off-dispatcher, `ObjectDisposedException` if disposed.                                                               |
+| `SetCurrentState(bool)`                                                                                   | `void`                                        | —                 | Protected internal; an owning navigator paints its realized item's collection-current state. Does not propagate to children; invalidates render only. Throws `InvalidOperationException` if accessed off-dispatcher, `ObjectDisposedException` if disposed.                                                                                                     |
+| `ReceivesInheritedSelectionState`                                                                         | `bool`                                        | `true`            | Protected internal virtual; whether an ancestor's `SetSelectedState` selection crosses into this owned branch. `FloatingSurfaceBase` overrides it to `false` to stop inherited selection at an independent interaction plane.                                                                                                                                   |
+| `OnDirectDisposalRequested()`                                                                             | `void`                                        | —                 | Protected internal virtual, no-op by default; runs on the disposing control before disposal publication so a control tracked outside the ordinary retained-child registry may detach itself through its owner's own removal path first. Skipped during owner-driven teardown. An override must not throw.                                                       |
 | `ContextMenu`                                                                                             | `ContextMenu?`                                | `null`            | Optional context menu shown on a secondary pointer press. A menu's presentation control may belong to only one owner at a time; assigning an already-presented menu throws `ArgumentException`.                                                                                                                                                                 |
 | `EnablePopup(...)`                                                                                        | `Popup`                                       | —                 | Protected; opts into an owner-managed popup whose layout and attach/unavailable lifecycle the base class owns. See [Owned popups](#owned-popups).                                                                                                                                                                                                               |
 | `IsPopupOpen`                                                                                             | `bool`                                        | —                 | Public virtual; the owned popup's open state. Throws `InvalidOperationException` on get or set before `EnablePopup` runs. `InputBase` exposes it as `IsOpen`.                                                                                                                                                                                                   |
@@ -528,12 +532,21 @@ detached. Direct `Attach` and `Detach` calls accept only an unowned root; an
 owned control changes lifecycle context exclusively through its registry edge,
 so a child can never attach or detach independently of its parent.
 `OnDisposing()` runs at most once, before owned state is released; if the hook
-throws, base cleanup completes before the original exception is rethrown. These
-hooks and `OnParentChanged(Control?, Control?)` always observe committed
-ownership state. `OnUnavailable` is the guarded pre-commit exception described
-under [children and ownership](#children-and-ownership): manager state is
-already clear, while parent and inherited context still describe the coherent
-old tree. `OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` are
+throws, base cleanup completes before the original exception is rethrown.
+`OnDirectDisposalRequested()` runs earlier still, on the disposing control
+itself, before disposal publication begins and before `OnDisposing()`. It gives
+a control whose owner tracks it outside the ordinary retained-child registry - a
+semantic collection item keeping its own parallel index, for example - a chance
+to detach itself through that owner's own removal path first, so the owner never
+observes a stale reference once disposal completes. The hook is skipped during
+owner-driven teardown, where the owner already initiated the removal itself; a
+reentrant request while the hook is running is idempotent. The default
+implementation does nothing, and an override must not throw. These hooks and
+`OnParentChanged(Control?, Control?)` always observe committed ownership state.
+`OnUnavailable` is the guarded pre-commit exception described under
+[children and ownership](#children-and-ownership): manager state is already
+clear, while parent and inherited context still describe the coherent old tree.
+`OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` are
 component-policy hooks, not framework-cleanup extension points: their
 non-virtual callers settle mandatory selection and manager state first, and
 their base implementations are invariant assertions only.
@@ -733,6 +746,19 @@ retained item subtree so composite row content paints as one selected unit. That
 propagation stops at `FloatingSurfaceBase`: a Popup, Window, Toast, or other
 floating surface starts an independent interaction plane whose own collection or
 navigator controls selection inside the surface.
+
+`SetSelectedState(bool)` and `SetCurrentState(bool)` are the write side an
+owning collection or navigator calls to paint its realized item's semantic
+selected or collection-current state; the item's own `IsSelectedState` and
+`IsCurrentState` read side reports the committed fact back, and a control with
+its own selection or current concept overrides that read side directly instead
+of relying on the framework-tracked default. Calling either setter only
+invalidates the affected visual-state render output - neither changes layout on
+its own. `SetSelectedState` additionally propagates to every child that reports
+`ReceivesInheritedSelectionState`, the seam `FloatingSurfaceBase` overrides to
+`false` so its independent interaction plane never inherits an ancestor's
+selection; `SetCurrentState` never propagates, because "current" is a
+single-item navigator concept rather than a subtree presentation concept.
 
 Intrinsic body, border, and shadow rendering is framework-owned. A custom
 `OnRenderContent` implementation draws semantic content with `ResolvedStyle`; it
