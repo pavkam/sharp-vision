@@ -275,6 +275,42 @@ public sealed class TableDataControllerTests
 
     #region Fetch scheduling
 
+    /// <summary>Verifies a reveal issued in the same dispatch as an interactive scroll - after the
+    /// scroll re-windowed the progressive rows but before any layout pass ran - keeps the offset the
+    /// scroll committed. The re-window places cells against the new offset out of band, so the
+    /// presenter must treat them as arranged there rather than at the offset of its last real pass;
+    /// otherwise revealing the new top row maps its bounds back to the old offset and scrolls up.</summary>
+    [Fact]
+    public async Task BringIntoView_WhenRowsWereRewindowedByAnInteractiveScrollInTheSameDispatch_KeepsTheScrolledOffsetAsync()
+    {
+        // Arrange
+        var table = CreateHost();
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(12, 10),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => table.SetDataSource(CreateSource(200), BuildRow, Length.Cells(1)), "bind source");
+        var scrolled = -1;
+        var revealed = -1;
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                table.ScrollBy(0, 3, ScrollCause.Wheel).ShouldBeTrue();
+                scrolled = table.VerticalOffset;
+                var topCell = table.ProgressiveController!.RowAt(3)!.Cells[0];
+                table.BringIntoView(topCell).ShouldBeTrue();
+                revealed = table.VerticalOffset;
+            },
+            "wheel three rows, then reveal the new top row");
+
+        // Assert
+        scrolled.ShouldBe(3);
+        revealed.ShouldBe(3);
+        table.VerticalOffset.ShouldBe(3);
+    }
+
     /// <summary>Verifies a single visible range issues exactly one fetch instead of one per row.</summary>
     [Fact]
     public async Task Rewindow_WhenWindowIsEntirelyUncached_IssuesOneCoalescedFetchAsync()

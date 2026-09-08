@@ -206,7 +206,11 @@ Shift+Tab, and distinct Kitty character press and release actions. These helpers
 emit terminal bytes; they never call `Router.Route`, mutate hover directly, call
 `SetPressed`, or call `FocusManager.Focus` on the component. Each action waits
 until the transport has consumed its bytes and the application has reached idle
-after routed work, layout, rendering, and output.
+after routed work, layout, rendering, and output. An exception that escapes
+routed work force-stops the application, which then never reaches idle again;
+every settle wait therefore also watches the application's completion and fails
+the action at once with that failure as its cause, instead of letting the wait
+run into its timeout with nothing to point at.
 
 Keyboard-focus reveal fixtures reflow earlier siblings from `IsFocused`,
 `FocusEntered`, `GotFocus`, and manager `Gained` callbacks, then assert the

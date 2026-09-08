@@ -50,6 +50,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the first frame settled;
+    /// the inner exception is the failure that stopped it when there was one.</exception>
     public static async Task<ComponentSurface> MountAsync(
         ControlBase control,
         Size size,
@@ -138,6 +140,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the first frame settled;
+    /// the inner exception is the failure that stopped it when there was one.</exception>
     public static async Task<ComponentSurface> MountAsync(
         ControlBase control,
         Size size,
@@ -157,6 +161,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the first frame settled;
+    /// the inner exception is the failure that stopped it when there was one.</exception>
     public static async Task<ComponentSurface> MountAsync(
         ControlBase control,
         Size size,
@@ -177,6 +183,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentOutOfRangeException">A surface dimension is not positive.</exception>
     /// <exception cref="ArgumentException"><paramref name="control"/> is attached or already owned.</exception>
     /// <exception cref="ObjectDisposedException"><paramref name="control"/> is disposed.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the first frame settled;
+    /// the inner exception is the failure that stopped it when there was one.</exception>
     public static async Task<ComponentSurface> MountAsync(
         ControlBase control,
         Size size,
@@ -262,26 +270,11 @@ public sealed class ComponentSurface: IAsyncDisposable
 
                 // The Idle event fires the instant the dispatcher queue drains, with no debounce,
                 // so this timeout only ever backstops a genuine hang - it never bounds a passing run.
-                await idle.Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+                await SettleAsync(application, idle.Task, TimeSpan.FromSeconds(30), "mount", cancellationToken);
             }
             catch (TimeoutException exception)
             {
-                string state;
-
-                try
-                {
-                    // The diagnostic read must never outlive the failure it reports: if the mount
-                    // hung because the dispatcher itself is wedged, InvokeAsync would otherwise wait
-                    // forever and turn a bounded timeout into an unbounded one.
-                    state = await application.Dispatcher.InvokeAsync(
-                        () => $"root={host.Pending}, mounted={control.Pending}",
-                        cancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
-                }
-                catch (TimeoutException)
-                {
-                    state = "dispatcher unresponsive";
-                }
-
+                var state = await DescribePendingAsync(application, host, control, cancellationToken);
                 throw new TimeoutException(
                     $"Component mount did not settle ({state}). Latest surface:{Environment.NewLine}{terminal.Screen.CopyText()}",
                     exception);
@@ -313,6 +306,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentException"><paramref name="description"/> is empty.</exception>
     /// <exception cref="InvalidOperationException">The surface has no deterministic clock.</exception>
     /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the action settled; the
+    /// inner exception is the failure that stopped it when there was one.</exception>
     public async Task AdvanceAsync(TimeSpan value, string description)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(value, TimeSpan.Zero);
@@ -346,7 +341,7 @@ public sealed class ComponentSurface: IAsyncDisposable
                 () => timeProvider.Advance(value),
                 _cancellationToken);
             await Application.Dispatcher.InvokeAsync(static () => { }, _cancellationToken);
-            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), description, _cancellationToken);
         }
         catch (TimeoutException exception)
         {
@@ -383,6 +378,73 @@ public sealed class ComponentSurface: IAsyncDisposable
     {
         ShouldHaveCursor(position, visible);
         _terminal.Screen.CursorShape.ShouldBe(shape);
+    }
+
+    /// <summary>Waits for one settle signal while watching the hosting application for shutdown.</summary>
+    /// <remarks>
+    /// An exception that escapes routed work on the dispatcher force-stops the application, and a
+    /// stopped application never raises <see cref="Application.Idle"/> again - so without this watch a
+    /// dispatcher failure would surface only as a bare settle timeout that names no cause. The
+    /// application's completion is raced against the settle signal, and losing that race fails the
+    /// caller at once with the recorded <see cref="Application.Failure"/> as the inner exception.
+    /// </remarks>
+    /// <param name="application">The hosting application.</param>
+    /// <param name="settled">The task completed by the settle signal being waited for.</param>
+    /// <param name="timeout">The bound after which a still-unsettled wait times out.</param>
+    /// <param name="description">The diagnostic action description.</param>
+    /// <param name="cancellationToken">Requests cancellation of the wait.</param>
+    /// <exception cref="TimeoutException">Neither the settle signal nor shutdown arrived within the bound.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the action settled.</exception>
+    private static async Task SettleAsync(
+        Application application,
+        Task settled,
+        TimeSpan timeout,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        var completed = await Task.WhenAny(settled, application.Completion).WaitAsync(timeout, cancellationToken);
+
+        if (ReferenceEquals(completed, settled))
+        {
+            return;
+        }
+
+        // Completion faults with the run's failure; reading the fault here is what reports it, so
+        // observe it explicitly rather than leaving an unobserved task exception behind.
+        _ = completed.Exception;
+        var failure = application.Failure;
+        throw new InvalidOperationException(
+            failure is null
+                ? $"Component action '{description}' stopped the application instead of settling."
+                : $"Component action '{description}' failed the application instead of settling: {failure.Message}",
+            failure);
+    }
+
+    /// <summary>Reads the pending invalidation of the host and the mounted control for a timeout report.</summary>
+    /// <remarks>The diagnostic read must never outlive the failure it reports: if the wait hung because
+    /// the dispatcher itself is wedged, an unbounded InvokeAsync would turn a bounded timeout into an
+    /// unbounded one.</remarks>
+    /// <param name="application">The hosting application.</param>
+    /// <param name="root">The host control whose pending phases are reported.</param>
+    /// <param name="mounted">The mounted control whose pending phases are reported.</param>
+    /// <param name="cancellationToken">Requests cancellation of the read.</param>
+    /// <returns>The pending-phase summary, or a note that the dispatcher did not answer.</returns>
+    private static async Task<string> DescribePendingAsync(
+        Application application,
+        ControlBase root,
+        ControlBase mounted,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await application.Dispatcher.InvokeAsync(
+                () => $"root={root.Pending}, mounted={mounted.Pending}",
+                cancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return "dispatcher unresponsive";
+        }
     }
 
     /// <summary>Resolves a mounted control's deterministic interior point on the UI dispatcher.</summary>
@@ -449,6 +511,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <returns>A task completed after input, routed work, layout, and rendering settle.</returns>
     /// <exception cref="ArgumentException">An input or description is empty.</exception>
     /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the action settled; the
+    /// inner exception is the failure that stopped it when there was one.</exception>
     public async Task SendAsync(ReadOnlyMemory<byte> value, string description)
     {
         if (value.IsEmpty)
@@ -489,13 +553,11 @@ public sealed class ComponentSurface: IAsyncDisposable
             consumed = _terminal.QueueInput(value.Span);
             await consumed.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
             await Application.Dispatcher.InvokeAsync(static () => { }, _cancellationToken);
-            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), description, _cancellationToken);
         }
         catch (TimeoutException exception)
         {
-            var state = await Application.Dispatcher.InvokeAsync(
-                () => $"root={Application.Root.Pending}, mounted={_mounted.Pending}",
-                _cancellationToken);
+            var state = await DescribePendingAsync(Application, Application.Root, _mounted, _cancellationToken);
             throw new TimeoutException(
                 $"Component action '{description}' did not settle after {frames} frames and {idles} idle notifications " +
                 $"({state}). Latest surface:{Environment.NewLine}{_terminal.Screen.CopyText()}",
@@ -515,6 +577,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <exception cref="ArgumentNullException"><paramref name="update"/> is null.</exception>
     /// <exception cref="ArgumentException"><paramref name="description"/> is empty.</exception>
     /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the action settled; the
+    /// inner exception is the failure that stopped it when there was one.</exception>
     public async Task UpdateAsync(Action update, string description)
     {
         ArgumentNullException.ThrowIfNull(update);
@@ -533,7 +597,7 @@ public sealed class ComponentSurface: IAsyncDisposable
         try
         {
             await Application.Dispatcher.InvokeAsync(update, _cancellationToken);
-            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), description, _cancellationToken);
         }
         catch (TimeoutException exception)
         {
@@ -552,6 +616,8 @@ public sealed class ComponentSurface: IAsyncDisposable
     /// <returns>A task completed after the resized frame reaches the modeled terminal.</returns>
     /// <exception cref="ArgumentOutOfRangeException">A dimension is not positive.</exception>
     /// <exception cref="TimeoutException">The component application does not settle within two seconds.</exception>
+    /// <exception cref="InvalidOperationException">The application stopped before the action settled; the
+    /// inner exception is the failure that stopped it when there was one.</exception>
     public async Task ResizeAsync(Size size)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size.Width);
@@ -575,7 +641,7 @@ public sealed class ComponentSurface: IAsyncDisposable
         {
             var consumed = _terminal.QueueResize(new Dimensions(size));
             await consumed.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
-            await idle.Task.WaitAsync(TimeSpan.FromSeconds(2), _cancellationToken);
+            await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), $"resize to {size}", _cancellationToken);
         }
         catch (TimeoutException exception)
         {

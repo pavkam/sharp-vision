@@ -29,6 +29,31 @@ public sealed class ComponentSurfaceTests
         surface.ShouldRender("After");
     }
 
+    /// <summary>Verifies a routed handler that throws on the dispatcher fails the driving action with
+    /// that exception as its cause. The escaped exception force-stops the application, which then
+    /// never reaches idle again, so without this the caller would see only a bare settle timeout.</summary>
+    [Fact]
+    public async Task Keyboard_WhenRoutedHandlerThrows_FailsTheActionWithThatExceptionAsync()
+    {
+        // Arrange
+        var failure = new InvalidOperationException("routed handler failed");
+        var checkBox = new CheckBox { Text = "Choice" };
+        await using var surface = await ComponentSurface.MountAsync(
+            checkBox,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        checkBox.KeyDown += (_, _) => throw failure;
+
+        // Act
+        var reported = await Should.ThrowAsync<InvalidOperationException>(
+            () => surface.Keyboard.CompleteCharacterAsync(new Rune(' ')));
+
+        // Assert
+        reported.InnerException.ShouldBeSameAs(failure);
+        surface.Application.Failure.ShouldBeSameAs(failure);
+    }
+
     /// <summary>Verifies state assertions accept descendants owned by the mounted component.</summary>
     [Fact]
     public async Task ShouldHaveState_WhenOwnedDescendantIsPassed_ObservesItsStateAsync()

@@ -1237,6 +1237,13 @@ internal sealed class TableDataController: IDisposable
         var columnGap = _presenter.ColumnGap;
         var columnWidths = _presenter.ColumnWidths;
         var cellPadding = _owner.ActualStyle.CellPadding;
+
+        // Cells are placed against the presenter's live offsets here, and this runs both from the
+        // presenter's own arrange pass and out of band from an interactive scroll change - the
+        // latter with no container pass to record which offsets the cells now sit at, so record
+        // it explicitly or the presenter's next BringIntoView would translate the freshly placed
+        // cell bounds through the offsets of its last real pass.
+        _presenter.CommitCellsArrangedAtCurrentOffset();
         var baseY = origin.Y.Add(-_presenter.VerticalOffset).Add(headerHeight);
         var baseX = origin.X.Add(-_presenter.HorizontalOffset);
 

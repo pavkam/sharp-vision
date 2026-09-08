@@ -82,6 +82,12 @@ internal sealed class TablePresenter: Container, IOwnedChildDisposalObserver
                 .Add(_owner.ProgressiveController is { LogicalCount: > 0 } ? RowGap : 0)
             : 0;
 
+    /// <summary>Records that the progressive data controller has just re-arranged every realized
+    /// cell against the live offsets outside this presenter's own arrange pass, so a reveal that
+    /// follows in the same dispatcher turn reads cell bounds against those offsets rather than
+    /// the ones the last genuine pass committed.</summary>
+    internal void CommitCellsArrangedAtCurrentOffset() => CommitContentArrangedAtCurrentOffset();
+
     /// <summary>Resolves a screen point to one arranged data cell.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <param name="row">The resolved display row.</param>

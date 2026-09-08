@@ -803,8 +803,7 @@ public sealed class NavigationView: CompositeControlBase
             if (endpoints.Count > 0)
             {
                 var target = eventArgs.Stroke.Code == Code.Home ? endpoints[0] : endpoints[^1];
-                _ = SetCurrent(target);
-                CommitCurrent(target);
+                MoveCurrent(target);
                 eventArgs.IsHandled = true;
             }
 
@@ -821,8 +820,7 @@ public sealed class NavigationView: CompositeControlBase
             if (entries.Count > 0)
             {
                 var target = StepPage(entries, eventArgs.Stroke.Code == Code.PageDown ? 1 : -1);
-                _ = SetCurrent(target);
-                CommitCurrent(target);
+                MoveCurrent(target);
                 eventArgs.IsHandled = true;
             }
 
@@ -901,8 +899,7 @@ public sealed class NavigationView: CompositeControlBase
                 continue;
             }
 
-            _ = SetCurrent(item);
-            CommitCurrent(item);
+            MoveCurrent(item);
             return true;
         }
 
@@ -1020,6 +1017,16 @@ public sealed class NavigationView: CompositeControlBase
         }
 
         return false;
+    }
+
+    // A keyboard jump (Home, End, PageUp, PageDown, Right into a group) moves current and commits
+    // it in one step. Moving through SetCurrent and then committing would track - and so reveal -
+    // the same entry twice in one dispatch; the second reveal is pure redundancy, since nothing
+    // between the two can change where the entry sits.
+    private void MoveCurrent(ControlBase target)
+    {
+        _ = _navigator.SetCurrent(target);
+        CommitCurrent(target);
     }
 
     // Every caller reaches this from OnKeyRouted, so the committed selection always
