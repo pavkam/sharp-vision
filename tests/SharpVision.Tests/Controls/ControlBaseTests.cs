@@ -1241,6 +1241,36 @@ public sealed class ControlBaseTests
         notifications.ShouldBe(0);
     }
 
+    /// <summary>Verifies the protected <see cref="ControlBase.OnPropertyChanged"/> hook runs before
+    /// any external <see cref="ControlBase.PropertyChanged"/> subscriber, the same ordering a
+    /// constructor-time self-subscription always observed.</summary>
+    [Fact]
+    public void OnPropertyChanged_WhenPropertyRaised_RunsBeforeExternalSubscribers()
+    {
+        var control = new ProbeControl();
+        control.PropertyChanged += (_, _) => control.PropertyChangeOrder.Add("subscriber");
+
+        _ = control.SetKernelValue(1, InvalidationImpact.None);
+
+        control.PropertyChangeOrder.ShouldBe(["hook", "subscriber"]);
+    }
+
+    /// <summary>Verifies a throwing <see cref="ControlBase.OnPropertyChanged"/> override cannot
+    /// prevent external subscribers from running, mirroring the isolate-then-rethrow contract a
+    /// throwing external subscriber already receives.</summary>
+    [Fact]
+    public void OnPropertyChanged_WhenOverrideThrows_StillNotifiesSubscribersAndRethrows()
+    {
+        var control = new ProbeControl { ThrowOnPropertyChanged = true };
+        control.PropertyChanged += (_, _) => control.PropertyChangeOrder.Add("subscriber");
+
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            control.SetKernelValue(1, InvalidationImpact.None));
+
+        exception.Message.ShouldBe("The probe property-changed hook failed.");
+        control.PropertyChangeOrder.ShouldBe(["hook", "subscriber"]);
+    }
+
     /// <summary>Verifies notification and invalidation seams reject unknown impacts.</summary>
     [Fact]
     public void InvalidationKernel_WhenImpactIsUnknown_RejectsWithoutNotification()

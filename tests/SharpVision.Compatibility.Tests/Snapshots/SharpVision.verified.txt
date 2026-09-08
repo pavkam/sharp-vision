@@ -537,6 +537,7 @@ namespace SharpVision.Controls
         protected virtual void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected virtual void OnPopupArranged() { }
         protected virtual void OnPressedChanged(bool pressed) { }
+        protected virtual void OnPropertyChanged(string propertyName) { }
         protected virtual void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnTextSelectionClickCompleted(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point pressCells, SharpVision.Terminal.Geometry.Point releaseCells, int clickCount, SharpVision.Input.PointerEventArgs eventArgs) { }
@@ -1330,6 +1331,7 @@ namespace SharpVision.Controls.Display
         protected abstract void OnAnimationTick();
         protected virtual void OnIntervalChanged() { }
         protected virtual void OnPlaybackStarting() { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override sealed void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected abstract void OnRenderFrame(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect bounds);
         protected void ScheduleAnimation(System.TimeSpan interval) { }
@@ -1760,6 +1762,7 @@ namespace SharpVision.Controls.Input
         protected override void OnAttached() { }
         protected override void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
         protected override void OnDisposing() { }
+        protected override void OnPropertyChanged(string propertyName) { }
     }
     public sealed class ColorPickerStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Input.ColorPickerStyle>
     {
@@ -1845,6 +1848,7 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
@@ -4090,6 +4094,7 @@ namespace SharpVision.Popups
         protected override void OnDetached() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.ControlBase? initialFocus = null) { }
@@ -4120,6 +4125,7 @@ namespace SharpVision.Popups
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnDetached() { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public static void ClearTooltip(SharpVision.Controls.ControlBase anchor) { }
         public static SharpVision.Popups.Tooltip? GetTooltip(SharpVision.Controls.ControlBase anchor) { }
@@ -5108,6 +5114,7 @@ namespace SharpVision.Windows
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }

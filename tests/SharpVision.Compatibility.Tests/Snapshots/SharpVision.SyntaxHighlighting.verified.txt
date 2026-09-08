@@ -35,6 +35,7 @@
         protected override bool IsTextSelectionPointerTarget(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
         protected override void RemoveScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
         public bool RevealSelectableTextOffset(int offset) { }

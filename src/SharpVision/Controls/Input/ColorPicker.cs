@@ -3,8 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.ComponentModel;
-
 using Layout;
 
 using Terminal.Capabilities;
@@ -165,7 +163,6 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         GreenSlider.ValueChanged -= OnRgbChanged;
         BlueSlider.ValueChanged -= OnRgbChanged;
         ValueTextInput.TextChanged -= OnValueTextChanged;
-        PropertyChanged -= OnColorPickerPropertyChanged;
         ValueChanged = null;
         base.OnDisposing();
     }
@@ -261,7 +258,6 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         GreenSlider.ValueChanged += OnRgbChanged;
         BlueSlider.ValueChanged += OnRgbChanged;
         ValueTextInput.TextChanged += OnValueTextChanged;
-        PropertyChanged += OnColorPickerPropertyChanged;
     }
 
     // ApplyValueTextStyle bakes the invalid-text error face's contrast foreground into a concrete
@@ -270,14 +266,16 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
     // OnStyleChanged only fires when a field ColorPickerStyle.Definition itself resolves - e.g.
     // ControlText - differs between the previous and current Theme, so a swap that changes only
     // Theme.Error never reaches it and the baked foreground goes stale. Theme identity changes for
-    // every reason (tracked or not) still raise this PropertyChanged(nameof(Theme)) unconditionally,
-    // so reacting to it here guarantees the error contrast is recomputed whenever the active Theme
+    // every reason (tracked or not) still raise PropertyChanged(nameof(Theme)) unconditionally, so
+    // reacting to it here guarantees the error contrast is recomputed whenever the active Theme
     // actually changes.
-    private void OnColorPickerPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    /// <summary>Recomputes the baked invalid-text error contrast whenever <see cref="Theme"/> changes.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (string.Equals(eventArgs.PropertyName, nameof(Theme), StringComparison.Ordinal))
+        if (string.Equals(propertyName, nameof(Theme), StringComparison.Ordinal))
         {
             ApplyValueTextStyle();
         }

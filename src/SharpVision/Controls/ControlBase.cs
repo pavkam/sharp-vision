@@ -82,6 +82,67 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Raised after one public property has committed a changed value.</summary>
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>Runs after this control's own property commits, before <see cref="PropertyChanged"/>
+    /// reaches any external subscriber.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    /// <remarks>
+    /// Override this instead of subscribing this control to its own <see cref="PropertyChanged"/>
+    /// event in the constructor: every property-commit seam on this class - <c>SetProperty</c> and
+    /// its siblings, <c>NotifyPropertyChanged</c>, <c>NotifyRetainedPartPropertyChanged</c>, and
+    /// <c>PublishTransitionProperty</c> - calls this hook first and always runs on the dispatcher.
+    /// A constructor-time self-subscription was always first in <see cref="PropertyChanged"/>'s
+    /// invocation list, so this hook keeps that same ordering without the subscribe-in-constructor,
+    /// unsubscribe-on-teardown ceremony every self-observing control previously repeated. An
+    /// override must not mutate this control's own retained structure beyond what an ordinary
+    /// <see cref="PropertyChanged"/> subscriber may already do while a raise is in progress, and must
+    /// call <c>base.OnPropertyChanged(propertyName)</c> first so a further-derived override still
+    /// observes every ancestor's own reaction before its own. A throwing override is isolated the
+    /// same way a throwing subscriber already is: external subscribers still run, and the earliest
+    /// failure is rethrown once they have.
+    /// </remarks>
+    protected virtual void OnPropertyChanged(string propertyName)
+    {
+    }
+
+    /// <summary>Runs <see cref="OnPropertyChanged"/> and then raises <see cref="PropertyChanged"/>
+    /// for the given property, isolating a throwing hook so subscribers still run.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    /// <remarks>
+    /// The single raise path every direct <see cref="PropertyChanged"/> publication on this class
+    /// routes through. <see cref="OnPropertyChanged"/> runs first; if it throws, the failure is
+    /// captured rather than propagated immediately, external subscribers still run, and the earliest
+    /// of the two failures is rethrown afterward - the same isolate-then-rethrow contract a throwing
+    /// external subscriber already receives from every caller of this method.
+    /// </remarks>
+    private protected void RaisePropertyChanged(string propertyName)
+    {
+        // Written without ExceptionAggregation.Capture on purpose: this is the hottest publication
+        // path in the library (every SetProperty commit lands here), and a capturing lambda per
+        // stage would add two closure allocations to what used to be a single event-args
+        // allocation. The performance suite bounds managed allocation on exactly these paths.
+        ExceptionDispatchInfo? failure = null;
+
+        try
+        {
+            OnPropertyChanged(propertyName);
+        }
+        catch (Exception exception)
+        {
+            failure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        catch (Exception exception)
+        {
+            failure ??= ExceptionDispatchInfo.Capture(exception);
+        }
+
+        failure?.Throw();
+    }
+
     /// <summary>Gets the owning parent, or null for a detached/root control.</summary>
     public ControlBase? Parent { get; private set; }
 
@@ -570,9 +631,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (IsCurrentVisibilityTransition(version, value))
             {
                 ExceptionAggregation.Capture(
-                    () => PropertyChanged?.Invoke(
-                        this,
-                        new PropertyChangedEventArgs(nameof(Visibility))),
+                    () => RaisePropertyChanged(nameof(Visibility)),
                     ref failure);
             }
 
@@ -638,9 +697,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (IsCurrentEnabledTransition(version, value))
             {
                 ExceptionAggregation.Capture(
-                    () => PropertyChanged?.Invoke(
-                        this,
-                        new PropertyChangedEventArgs(nameof(IsEnabled))),
+                    () => RaisePropertyChanged(nameof(IsEnabled)),
                     ref failure);
             }
 
@@ -795,7 +852,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
             if (SetProperty(ref field, value, InvalidationImpact.None))
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanTabStop)));
+                RaisePropertyChanged(nameof(CanTabStop));
             }
         }
     } = true;
@@ -2941,6 +2998,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Publishes one current value forwarded from a retained presentation part.</summary>
     /// <param name="propertyName">The non-empty owner property name.</param>
+    /// <remarks>
+    /// Runs <see cref="OnPropertyChanged"/> before capturing subscribers, the same ordering
+    /// <see cref="RaisePropertyChanged"/> gives every direct raise; the per-property generation this
+    /// method already tracks then decides whether a reentrant commit from the hook itself supersedes
+    /// this publication before external subscribers are captured.
+    /// </remarks>
     internal void NotifyRetainedPartPropertyChanged(string propertyName)
     {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
@@ -2949,19 +3012,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         _ = _synchronizedPropertyVersions.TryGetValue(propertyName, out var version);
         version++;
         _synchronizedPropertyVersions[propertyName] = version;
-        var handlers = PropertyChanged;
+        ExceptionDispatchInfo? failure = null;
+        ExceptionAggregation.Capture(() => OnPropertyChanged(propertyName), ref failure);
 
-        if (handlers is null)
+        if (_synchronizedPropertyVersions[propertyName] == version && PropertyChanged is { } handlers)
         {
-            return;
+            var eventArgs = new PropertyChangedEventArgs(propertyName);
+
+            ExceptionAggregation.Capture(
+                () => EventPublication.Publish<PropertyChangedEventHandler>(
+                    handlers,
+                    () => _synchronizedPropertyVersions[propertyName] == version,
+                    handler => handler(this, eventArgs)),
+                ref failure);
         }
 
-        var eventArgs = new PropertyChangedEventArgs(propertyName);
-
-        EventPublication.Publish<PropertyChangedEventHandler>(
-            handlers,
-            () => _synchronizedPropertyVersions[propertyName] == version,
-            handler => handler(this, eventArgs));
+        failure?.Throw();
     }
 
     /// <summary>Commits an ownership edge without invoking user callbacks.</summary>
@@ -3164,7 +3230,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         InvalidateVisualStateCore();
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocused))),
+            () => RaisePropertyChanged(nameof(IsFocused)),
             ref failure);
         ExceptionAggregation.Capture(() => CancelTextSelectionForFocusChange(value), ref failure);
         ExceptionAggregation.Capture(() => NotifyLifecycleFocusChanged(value), ref failure);
@@ -3261,9 +3327,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     {
         Debug.Assert(FocusableNotificationPending, "Only a deferred eligibility change is published.");
         FocusableNotificationPending = false;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsFocusable)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanFocus)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanTabStop)));
+        RaisePropertyChanged(nameof(IsFocusable));
+        RaisePropertyChanged(nameof(CanFocus));
+        RaisePropertyChanged(nameof(CanTabStop));
     }
 
     /// <summary>Updates hover visual state on the owning dispatcher.</summary>
@@ -3280,13 +3346,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         InvalidateVisualStateCore();
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerOver))),
+            () => RaisePropertyChanged(nameof(IsPointerOver)),
             ref failure);
 
         if (IsCurrentPointerOverTransition(version, value, directlyOver))
         {
             ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPointerDirectlyOver))),
+                () => RaisePropertyChanged(nameof(IsPointerDirectlyOver)),
                 ref failure);
         }
 
@@ -3333,7 +3399,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         InvalidateVisualStateCore();
         ExceptionDispatchInfo? failure = null;
         ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPressed))),
+            () => RaisePropertyChanged(nameof(IsPressed)),
             ref failure);
 
         if (!IsDisposed)
@@ -4544,7 +4610,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         field = value;
         Invalidate(InvalidationFor(impact));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        RaisePropertyChanged(propertyName);
         return true;
     }
 
@@ -4595,7 +4661,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         field = value;
         commitVersion = ++version;
         Invalidate(InvalidationFor(impact));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        RaisePropertyChanged(propertyName);
         return true;
     }
 
@@ -4714,7 +4780,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// Call this once for every property beyond the first that the same logical transition commits,
     /// after assigning that property's own backing field directly. Publication for this property is
     /// skipped, without error, once a reentrant callback has committed a newer transition on
-    /// <paramref name="transition"/>'s stream.
+    /// <paramref name="transition"/>'s stream. <see cref="OnPropertyChanged"/> runs first, while the
+    /// transition is still current, the same "hook before external subscribers" ordering
+    /// <see cref="RaisePropertyChanged"/> gives every direct raise.
     /// </remarks>
     /// <param name="transition">The committed transaction.</param>
     /// <param name="propertyName">The non-empty committed property name.</param>
@@ -4730,6 +4798,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ValidateImpact(impact);
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         Invalidate(InvalidationFor(impact));
+        transition.CaptureIfCurrent(() => OnPropertyChanged(propertyName));
         transition.PublishCurrent(
             PropertyChanged,
             this,
@@ -4867,7 +4936,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             comparer.Equals(field, value))
         {
             ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)),
+                () => RaisePropertyChanged(propertyName),
                 ref failure);
         }
 
@@ -5204,7 +5273,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         var slot = commit.Slot;
         ExceptionAggregation.Capture(
-            () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.PropertyName)),
+            () => RaisePropertyChanged(slot.PropertyName),
             ref failure);
 
         if (!IsCurrentStyleCommit(commit))
@@ -5215,7 +5284,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         if (commit.ResolvedStyleChanged)
         {
             ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
+                () => RaisePropertyChanged(slot.ActualPropertyName),
                 ref failure);
 
             if (!IsCurrentStyleCommit(commit))
@@ -5307,7 +5376,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         field = value;
         InvalidateVisualStateCore();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        RaisePropertyChanged(propertyName);
         return true;
     }
 
@@ -5326,7 +5395,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ValidateImpact(impact);
         VerifyMutable();
         Invalidate(InvalidationFor(impact));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        RaisePropertyChanged(propertyName);
     }
 
     private void EnsureDirectOwnedChild(ControlBase child)
@@ -5440,32 +5509,28 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (effectiveIsVisible != control.EffectiveIsVisible)
             {
                 ExceptionAggregation.Capture(
-                    () => control.PropertyChanged?.Invoke(
-                        control,
-                        new PropertyChangedEventArgs(nameof(EffectiveIsVisible))),
+                    () => control.RaisePropertyChanged(nameof(EffectiveIsVisible)),
                     ref failure);
             }
 
             if (effectiveIsEnabled != control.EffectiveIsEnabled)
             {
                 ExceptionAggregation.Capture(
-                    () => control.PropertyChanged?.Invoke(
-                        control,
-                        new PropertyChangedEventArgs(nameof(EffectiveIsEnabled))),
+                    () => control.RaisePropertyChanged(nameof(EffectiveIsEnabled)),
                     ref failure);
             }
 
             if (canFocus != control.CanFocus)
             {
                 ExceptionAggregation.Capture(
-                    () => control.PropertyChanged?.Invoke(control, new PropertyChangedEventArgs(nameof(CanFocus))),
+                    () => control.RaisePropertyChanged(nameof(CanFocus)),
                     ref failure);
             }
 
             if (canTabStop != control.CanTabStop)
             {
                 ExceptionAggregation.Capture(
-                    () => control.PropertyChanged?.Invoke(control, new PropertyChangedEventArgs(nameof(CanTabStop))),
+                    () => control.RaisePropertyChanged(nameof(CanTabStop)),
                     ref failure);
             }
         }
@@ -5699,7 +5764,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         if (change.ThemeTransition is { } transition)
         {
             ExceptionAggregation.Capture(
-                () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Theme))),
+                () => RaisePropertyChanged(nameof(Theme)),
                 ref failure);
 
             if (publicationVersion == _stylePublicationVersion)
@@ -5707,7 +5772,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 foreach (var slot in transition.ChangedStyleSlots)
                 {
                     ExceptionAggregation.Capture(
-                        () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(slot.ActualPropertyName)),
+                        () => RaisePropertyChanged(slot.ActualPropertyName),
                         ref failure);
 
                     if (publicationVersion != _stylePublicationVersion)
@@ -6101,8 +6166,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         LocalFaceValue = null;
         InvalidateSubtreeAmbientAppearance();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Face)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
+        RaisePropertyChanged(nameof(Face));
+        RaisePropertyChanged(nameof(ActualFace));
     }
 
     /// <summary>Gets or sets derived-control border authoring, or the semantic normal border when
@@ -6148,8 +6213,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         LocalBorderValue = null;
         InvalidateResolvedStyleCache();
         Invalidate(previous == Border.Sides ? Invalidation.Render : Invalidation.Measure);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Border)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualBorder)));
+        RaisePropertyChanged(nameof(Border));
+        RaisePropertyChanged(nameof(ActualBorder));
     }
 
     /// <summary>Gets or sets derived-control shadow authoring, or the semantic normal shadow when
@@ -6195,8 +6260,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         LocalShadowValue = null;
         InvalidateResolvedStyleCache();
         Invalidate(HasSameShadowFootprint(previous, Shadow) ? Invalidation.Render : Invalidation.Measure);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Shadow)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualShadow)));
+        RaisePropertyChanged(nameof(Shadow));
+        RaisePropertyChanged(nameof(ActualShadow));
     }
 
     #endregion
@@ -6470,7 +6535,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         var geometryChanged = AppearanceStates.ChangesChromeGeometry(previous) ||
                               (appearance is { } added && AppearanceStates.ChangesChromeGeometry(added));
         Invalidate(geometryChanged ? Invalidation.Measure : Invalidation.Render);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AppearanceSets)));
+        RaisePropertyChanged(nameof(AppearanceSets));
     }
 
     internal Theme? InheritedTheme { get; private set; }
@@ -6814,17 +6879,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     {
         if (previous.Face != current.Face)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
+            RaisePropertyChanged(nameof(ActualFace));
         }
 
         if (previous.Border != current.Border || previous.BorderStyles != current.BorderStyles)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualBorder)));
+            RaisePropertyChanged(nameof(ActualBorder));
         }
 
         if (previous.Shadow != current.Shadow)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualShadow)));
+            RaisePropertyChanged(nameof(ActualShadow));
         }
     }
 
@@ -6838,8 +6903,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         LocalFaceValue = value;
         InvalidateSubtreeAmbientAppearance();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Face)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualFace)));
+        RaisePropertyChanged(nameof(Face));
+        RaisePropertyChanged(nameof(ActualFace));
     }
 
     private void SetBorder(Border value)
@@ -6860,8 +6925,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         LocalBorderValue = value;
         InvalidateResolvedStyleCache();
         Invalidate(previousSides == value.Sides ? Invalidation.Render : Invalidation.Measure);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Border)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualBorder)));
+        RaisePropertyChanged(nameof(Border));
+        RaisePropertyChanged(nameof(ActualBorder));
     }
 
     private void SetShadow(Shadow value)
@@ -6882,8 +6947,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         LocalShadowValue = value;
         InvalidateResolvedStyleCache();
         Invalidate(HasSameShadowFootprint(previous, value) ? Invalidation.Render : Invalidation.Measure);
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Shadow)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActualShadow)));
+        RaisePropertyChanged(nameof(Shadow));
+        RaisePropertyChanged(nameof(ActualShadow));
     }
 
     [Pure]

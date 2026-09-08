@@ -122,7 +122,6 @@ public sealed class CodeView:
     public CodeView()
     {
         _style = InitializeStyle(CodeViewStyle.Definition);
-        PropertyChanged += OnOwnPropertyChanged;
         _content = new CodeViewContent(this);
         _stack = new LayoutStack
         {
@@ -270,6 +269,7 @@ public sealed class CodeView:
     /// Repaints the render surface whenever <see cref="ActualStyle"/> actually changes - whether
     /// from a local <see cref="Style"/> assignment or purely from an inherited Theme swap.
     /// </summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
     /// <remarks>
     /// <see cref="_content"/> owns no style slot of its own (unlike, for example, <see cref="_stack"/>'s
     /// bound <see cref="ScrollBarStyle"/>), so nothing about a Theme swap alone would otherwise ever
@@ -278,15 +278,15 @@ public sealed class CodeView:
     /// generic control default, which does not reference any of <see cref="CodeViewStyle"/>'s
     /// syntax-color roles. <see cref="INotifyPropertyChanged.PropertyChanged"/>'s
     /// <see cref="ActualStyle"/> notification already fires for both the local-assignment and the
-    /// Theme-swap path, so subscribing once here - rather than only from the local-assignment
+    /// Theme-swap path, so overriding this hook once here - rather than only from the local-assignment
     /// callback a Theme swap never invokes - keeps the fold gutter glyph and every syntax color
     /// live across both paths identically.
     /// </remarks>
-    private void OnOwnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (e.PropertyName == nameof(ActualStyle))
+        if (propertyName == nameof(ActualStyle))
         {
             InvalidateRetainedDescendant(_content, InvalidationImpact.Render);
         }

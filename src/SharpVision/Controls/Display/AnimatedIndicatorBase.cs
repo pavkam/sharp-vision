@@ -22,7 +22,6 @@ public abstract class AnimatedIndicatorBase: ControlBase
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         IsHitTestVisible = false;
-        PropertyChanged += OnAnimatedIndicatorPropertyChanged;
     }
 
     /// <summary>Gets or sets the duration between semantic animation advances.</summary>
@@ -136,11 +135,12 @@ public abstract class AnimatedIndicatorBase: ControlBase
     /// sensitive subclass. A control that was never hidden while attached stays at the initial
     /// <see langword="true"/> baseline, so the very first render never double-fires alongside
     /// <see cref="ControlBase.OnAttached"/>.</summary>
-    private void OnAnimatedIndicatorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (eventArgs.PropertyName != nameof(EffectiveIsVisible))
+        if (propertyName != nameof(EffectiveIsVisible))
         {
             return;
         }

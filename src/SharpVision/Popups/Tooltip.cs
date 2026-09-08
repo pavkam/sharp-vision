@@ -47,14 +47,16 @@ public sealed class Tooltip: Popup
         // itself and let a fresh hover or focus start over. A disabled anchor is different: the
         // presentation stays and merely paints disabled, and the pointer path retiring from the
         // disabled anchor already runs the ordinary exit-then-hide-delay flow.
-        PropertyChanged += OnTooltipPropertyChanged;
     }
 
-    private void OnTooltipPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    /// <summary>Hides this tooltip on a visible-to-hidden <see cref="ControlBase.EffectiveIsVisible"/>
+    /// transition, for the reason recorded on the constructor comment above.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (eventArgs.PropertyName == nameof(EffectiveIsVisible) && !EffectiveIsVisible)
+        if (propertyName == nameof(EffectiveIsVisible) && !EffectiveIsVisible)
         {
             Hide();
         }
@@ -610,11 +612,6 @@ public sealed class Tooltip: Popup
     protected override void OnUnavailable(ReleaseReason reason)
     {
         ExceptionDispatchInfo? failure = null;
-
-        if (reason == ReleaseReason.Disposed)
-        {
-            PropertyChanged -= OnTooltipPropertyChanged;
-        }
 
         if (reason == ReleaseReason.Disposed && _attachedAnchor is { } anchor)
         {

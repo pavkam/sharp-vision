@@ -441,22 +441,23 @@ dependencies, ancestor propagation, dispatcher scheduling, retries, and frame
 coordination. `ControlBase` exposes the authoring seams that let derived
 controls participate without exposing pending phase flags.
 
-| Seam                                                               | Use                                                                                                                       |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `SetProperty(ref field, value, impact)`                            | Commit one ordinary CLR property and raise `PropertyChanged`.                                                             |
-| `SetPropertyWithComparer(ref field, value, impact, comparer)`      | Commit a property using an explicit equality policy instead of the default comparer.                                      |
-| `SetPropertyAndSynchronize(ref field, value, impact, action)`      | Synchronize retained state before publishing the still-current property generation.                                       |
-| `SetPropertyAndContinue(ref field, value, impact, action)`         | Preserve notification order, then complete dependent work before rethrowing an observer failure.                          |
-| `SetVersionedProperty(ref field, value, ref version, ...)`         | Commit a value whose typed event fires only while that commit is still the newest generation.                             |
-| `IsVersionedPropertyCurrent(field, value, version, observed)`      | Test whether a captured commit still owns its property generation before raising a typed event.                           |
-| `SetTransitionProperty(ref field, value, impact, stream, out ...)` | Begin a multi-property transition whose additional typed events publish only while it stays current.                      |
-| `BeginPropertyTransition(stream, impact, propertyName)`            | Begin a transition transaction directly when its first committed property is not itself gated by `SetTransitionProperty`. |
-| `PublishTransitionProperty(ref transition, propertyName, impact)`  | Publish another property belonging to an already-begun transition.                                                        |
-| `NotifyPropertyChanged(name, impact)`                              | Publish a coordinated mutation after all related fields commit.                                                           |
-| `Invalidate(InvalidationImpact)`                                   | Request phase work without a property notification.                                                                       |
-| `InvalidateRetainedDescendant(descendant, impact)`                 | Request phase work on a still-retained private projection through its owner.                                              |
-| `InvalidateVisualState()`                                          | Clear resolved appearance caches after semantic state changes.                                                            |
-| `SetVisualStateProperty(ref field, value)`                         | Commit a property that changes `GetAppearanceState()`.                                                                    |
+| Seam                                                               | Use                                                                                                                                                    |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `SetProperty(ref field, value, impact)`                            | Commit one ordinary CLR property and raise `PropertyChanged`.                                                                                          |
+| `SetPropertyWithComparer(ref field, value, impact, comparer)`      | Commit a property using an explicit equality policy instead of the default comparer.                                                                   |
+| `SetPropertyAndSynchronize(ref field, value, impact, action)`      | Synchronize retained state before publishing the still-current property generation.                                                                    |
+| `SetPropertyAndContinue(ref field, value, impact, action)`         | Preserve notification order, then complete dependent work before rethrowing an observer failure.                                                       |
+| `SetVersionedProperty(ref field, value, ref version, ...)`         | Commit a value whose typed event fires only while that commit is still the newest generation.                                                          |
+| `IsVersionedPropertyCurrent(field, value, version, observed)`      | Test whether a captured commit still owns its property generation before raising a typed event.                                                        |
+| `SetTransitionProperty(ref field, value, impact, stream, out ...)` | Begin a multi-property transition whose additional typed events publish only while it stays current.                                                   |
+| `BeginPropertyTransition(stream, impact, propertyName)`            | Begin a transition transaction directly when its first committed property is not itself gated by `SetTransitionProperty`.                              |
+| `PublishTransitionProperty(ref transition, propertyName, impact)`  | Publish another property belonging to an already-begun transition.                                                                                     |
+| `NotifyPropertyChanged(name, impact)`                              | Publish a coordinated mutation after all related fields commit.                                                                                        |
+| `OnPropertyChanged(propertyName)`                                  | Protected virtual hook a derived control overrides to observe its own committed properties instead of subscribing itself to its own `PropertyChanged`. |
+| `Invalidate(InvalidationImpact)`                                   | Request phase work without a property notification.                                                                                                    |
+| `InvalidateRetainedDescendant(descendant, impact)`                 | Request phase work on a still-retained private projection through its owner.                                                                           |
+| `InvalidateVisualState()`                                          | Clear resolved appearance caches after semantic state changes.                                                                                         |
+| `SetVisualStateProperty(ref field, value)`                         | Commit a property that changes `GetAppearanceState()`.                                                                                                 |
 
 Each seam validates dispatcher access, lifetime, arguments, and the selected
 impact before changing any observable state. Assigning an equivalent value is a
@@ -467,6 +468,19 @@ observer and only then rethrow the first callback failure, so the committed
 public value cannot outlive its invariant repair. Specialized visual-state
 changes compute their strongest impact from the active style rather than
 assuming that every state transition is render-only.
+
+A derived control that needs to react to its own committed properties overrides
+`OnPropertyChanged(string propertyName)` rather than subscribing itself to its
+own `PropertyChanged` event in the constructor. Every seam above that raises
+`PropertyChanged` - directly or through `NotifyRetainedPartPropertyChanged` and
+`PublishTransitionProperty` - calls this protected virtual hook first, so an
+override always observes a property change before any external subscriber does,
+the same ordering a constructor-time self-subscription always had as the first
+entry in the invocation list. An override must call `base.OnPropertyChanged`
+first, so a further-derived override still runs after every ancestor's own
+reaction. A throwing override is isolated the same way a throwing external
+subscriber already is: external subscribers still run, and the earliest failure
+is rethrown once they have.
 
 A property whose retained projection must already agree when observers run uses
 `SetPropertyAndSynchronize`. The dependent synchronization completes before

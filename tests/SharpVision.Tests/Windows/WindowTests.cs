@@ -1587,7 +1587,7 @@ public sealed class WindowTests
     }
 
     /// <summary>Verifies Visibility returning to Visible after a never-attached close makes IsOpen
-    /// true again, matching the substitute bit's own reset in OnWindowPropertyChanged.</summary>
+    /// true again, matching the substitute bit's own reset in OnPropertyChanged.</summary>
     [Fact]
     public void IsOpen_WhenNeverAttachedWindowIsShownAgainAfterClosing_IsTrueAgain()
     {

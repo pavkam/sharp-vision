@@ -3,7 +3,6 @@
 
 namespace SharpVision.Controls.Input;
 
-using System.ComponentModel;
 using System.Runtime.ExceptionServices;
 
 /// <summary>Defines one semantic command face retained by a <see cref="CommandBar"/>.</summary>
@@ -20,7 +19,6 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
         EnableCaption();
         EnableCommand();
         _style = InitializeStyle(CommandBarItemStyle.Definition);
-        PropertyChanged += OnOwnPropertyChanged;
         ParentChanged += OnOwnParentChanged;
     }
 
@@ -169,17 +167,19 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
 
         if (reason == ReleaseReason.Disposed)
         {
-            PropertyChanged -= OnOwnPropertyChanged;
             ParentChanged -= OnOwnParentChanged;
             Invoked = null;
         }
     }
 
-    private void OnOwnPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    /// <summary>Advances <see cref="AvailabilityGeneration"/> whenever local or effective enabled or
+    /// visible state changes.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (eventArgs.PropertyName is nameof(IsEnabled) or nameof(EffectiveIsEnabled) or
+        if (propertyName is nameof(IsEnabled) or nameof(EffectiveIsEnabled) or
             nameof(Visibility) or nameof(EffectiveIsVisible))
         {
             AvailabilityGeneration++;

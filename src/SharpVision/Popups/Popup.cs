@@ -82,7 +82,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         HorizontalAlignment = HorizontalAlignment.Stretch;
         IsFocusable = false;
-        PropertyChanged += OnPopupPropertyChanged;
         EnableChromeAuthoring();
 
         // A Popup (and every subclass - Flyout, Tooltip - plus every composed drop-down/menu
@@ -764,12 +763,6 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         var wasOpen = IsOpen;
         ulong? committedCloseVersion = null;
-
-        if (reason == ReleaseReason.Disposed)
-        {
-            PropertyChanged -= OnPopupPropertyChanged;
-        }
-
         ExceptionDispatchInfo? failure = null;
 
         if (reason is ReleaseReason.Hidden or ReleaseReason.Detached or ReleaseReason.Disposed)
@@ -813,15 +806,19 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
         failure?.Throw();
     }
 
-    private void OnPopupPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    /// <summary>Reconciles presentation availability on <see cref="Visibility"/> or
+    /// <see cref="ControlBase.IsEnabled"/>, and resubscribes anchor reflow and light-dismiss on a
+    /// still-open <see cref="Anchor"/> replacement.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (eventArgs.PropertyName is nameof(Visibility) or nameof(IsEnabled))
+        if (propertyName is nameof(Visibility) or nameof(IsEnabled))
         {
             ReconcilePresentationAvailability();
         }
-        else if (eventArgs.PropertyName == nameof(Anchor) && IsOpen)
+        else if (propertyName == nameof(Anchor) && IsOpen)
         {
             SubscribeAnchorReflow();
             ReconcileLightDismiss();

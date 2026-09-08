@@ -54,7 +54,6 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             SetClosePressed,
             _ => RequestClose());
         BeginSurfaceOpenLifetime();
-        PropertyChanged += OnWindowPropertyChanged;
         EnableChromeAuthoring();
 
         // A Window is a top-level floating surface: it must never blend an ambient parent's
@@ -773,7 +772,6 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
         if (reason == ReleaseReason.Disposed)
         {
-            PropertyChanged -= OnWindowPropertyChanged;
             Shown = null;
         }
 
@@ -1163,7 +1161,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             CaptureFailure(() => OpenSurface(() => SurfaceBounds = Bounds), ref failure);
             var presentationVersion = SurfacePresentationVersion;
 
-            // Mirrors the Shown notification OnWindowPropertyChanged raises for an explicit
+            // Mirrors the Shown notification OnPropertyChanged raises for an explicit
             // Visibility transition: the default-Visible field initializer never runs the
             // property's set block, so this attach path is otherwise the only one that opens
             // the surface without ever raising Shown. Initial focus assignment cannot run
@@ -1227,11 +1225,14 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         ApplyVisibleFocusFallback();
     }
 
-    private void OnWindowPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    /// <summary>Opens the presentation surface and raises <see cref="Shown"/> on an explicit
+    /// <see cref="Visibility"/> transition to <see cref="Visibility.Visible"/>.</summary>
+    /// <param name="propertyName">The non-empty committed property name.</param>
+    protected override void OnPropertyChanged(string propertyName)
     {
-        _ = sender;
+        base.OnPropertyChanged(propertyName);
 
-        if (eventArgs.PropertyName != nameof(Visibility) ||
+        if (propertyName != nameof(Visibility) ||
             Visibility != Visibility.Visible)
         {
             return;
@@ -1278,7 +1279,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
 
     /// <summary>Focuses the first eligible focusable descendant, or this Window itself when none
     /// is eligible.</summary>
-    /// <remarks>Shared by <see cref="OnWindowPropertyChanged"/>'s synchronous explicit-visibility
+    /// <remarks>Shared by <see cref="OnPropertyChanged"/>'s synchronous explicit-visibility
     /// fallback and <see cref="RunAttachFocusFallback"/>'s deferred post-attach fallback, which
     /// differ only in when they run and what state they re-validate first.</remarks>
     private void ApplyVisibleFocusFallback()

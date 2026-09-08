@@ -147,6 +147,26 @@ internal sealed class ProbeControl: ChromeProbe
     internal void NotifyKernelProperty(string propertyName, InvalidationImpact impact) =>
         NotifyPropertyChanged(propertyName, impact);
 
+    /// <summary>Gets the order tags appended by <see cref="OnPropertyChanged"/> and, when a test
+    /// wires its own external subscriber to append one too, by that subscriber - proving the hook
+    /// runs before any external <see cref="ControlBase.PropertyChanged"/> subscriber.</summary>
+    internal List<string> PropertyChangeOrder { get; } = [];
+
+    /// <summary>Gets or sets whether the property-changed hook throws a deterministic failure.</summary>
+    internal bool ThrowOnPropertyChanged { get; set; }
+
+    /// <inheritdoc/>
+    protected override void OnPropertyChanged(string propertyName)
+    {
+        base.OnPropertyChanged(propertyName);
+        PropertyChangeOrder.Add("hook");
+
+        if (ThrowOnPropertyChanged)
+        {
+            throw new InvalidOperationException("The probe property-changed hook failed.");
+        }
+    }
+
     /// <summary>Requests one UI phase through the protected invalidation kernel.</summary>
     /// <param name="impact">The earliest affected UI phase.</param>
     internal void InvalidateKernel(InvalidationImpact impact) => Invalidate(impact);
