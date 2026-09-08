@@ -18,27 +18,30 @@ Up/Down applies while the minute segment is active. The embedded calendar
 exposes the same basic date navigation options as `Calendar`. Selecting a date
 preserves the current time and `DateTimeKind`.
 
-`DateTimeInput` derives from [`InputBase`](../input-base.md#overview), enabling
-press activation, an owned Calendar popup, and segment editing. It shares its
-complete routed key and pointer editing engine - active-segment navigation,
-digit-entry buffering, popup precedence, AM/PM commands, active/null segment
-styling, and focus continuation - with [`DateInput`](date-input.md) and
+`DateTimeInput` derives from
+[`TemporalInputBase<DateTime>`](temporal-input-base.md#overview), enabling press
+activation, an owned Calendar popup, and segment editing. Through that base it
+shares its complete routed key and pointer editing engine - active-segment
+navigation, digit-entry buffering, popup precedence, AM/PM commands, active/null
+segment styling, and focus continuation - with [`DateInput`](date-input.md) and
 [`TimeInput`](time-input.md) through
-[`InputBase.EnableSegmentEditing`](../input-base.md#api). `InputBase.OnEvent`
+[`InputBase.EnableSegmentEditing`](../input-base.md#api), which
+`TemporalInputBase<TValue>`'s own constructor calls once. `InputBase.OnEvent`
 performs the routed dispatch itself: it seeds the value first, then swallows
 every key and pointer event outright while the Calendar popup is open, before
 segment routing, press activation, or base routing ever see it - the same
-contract `DateInput` follows. The three controls use one generic nullable value
-state for dispatcher-clock seeding, bounds, repair, and current-aware event
-publication. `DateInput` and `DateTimeInput` also use one Calendar drop-down
-coordinator for Calendar ownership, culture/bounds/value synchronization,
-open-session rollback, user acceptance, and cleanup. The date-time combiner
-preserves the current time, sub-second ticks, and `DateTimeKind` when a date is
-accepted. `Culture` drives both the popup calendar's month/day names _and_ the
-typed field's own date segment order, widths, and separators - the same way
-`DateInput.Culture` does, deriving the layout from
-`DateTimeFormatInfo.ShortDatePattern` - so a German culture, for example,
-renders day before month with a period separator. A distinct customized
+contract `DateInput` follows. The three controls derive from the same generic
+[`TemporalInputBase<TValue>`](temporal-input-base.md#overview) for their
+nullable value state, dispatcher-clock seeding, bounds, repair, and
+current-aware event publication. `DateInput` and `DateTimeInput` also use one
+Calendar drop-down coordinator for Calendar ownership, culture/bounds/value
+synchronization, open-session rollback, user acceptance, and cleanup. The
+date-time combiner preserves the current time, sub-second ticks, and
+`DateTimeKind` when a date is accepted. `Culture` drives both the popup
+calendar's month/day names _and_ the typed field's own date segment order,
+widths, and separators - the same way `DateInput.Culture` does, deriving the
+layout from `DateTimeFormatInfo.ShortDatePattern` - so a German culture, for
+example, renders day before month with a period separator. A distinct customized
 same-name `CultureInfo` clone is a real transition: it refreshes the segments
 and synchronizes the retained Calendar before publication; only the identical
 instance is silent. The time portion keeps the fixed
@@ -67,33 +70,34 @@ prevents obsolete clock-derived seeding and preserves the null value.
 ```mermaid
 classDiagram
     ControlBase <|-- InputBase
-    InputBase <|-- DateTimeInput
+    InputBase <|-- TemporalInputBase~TValue~
+    TemporalInputBase~TValue~ <|-- DateTimeInput
 ```
 
 ## API
 
-| Member                             | Type                                               | Default                          | Description                                                                                                                                 |
-| ---------------------------------- | -------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Value`                            | `DateTime?`                                        | current local date and time      | The nullable value, clamped to the inclusive bounds.                                                                                        |
-| `AllowNull`                        | `bool`                                             | `true`                           | Allows Delete to clear the value; Backspace clears only the active segment; disabling it repairs null.                                      |
-| `Culture`                          | `CultureInfo`                                      | `CultureInfo.InvariantCulture`   | Localizes both the popup calendar and the typed field's date order, separators, designator text, and digits; must use a Gregorian calendar. |
-| `Use24HourFormat`                  | `bool`                                             | `true`                           | Selects 24-hour or AM/PM segments.                                                                                                          |
-| `ShowSeconds`                      | `bool`                                             | `false`                          | Adds the seconds segment.                                                                                                                   |
-| `Format`                           | `string?`                                          | `null`                           | A custom combined pattern overriding segment order and count, including editable `f`/`F` fractions.                                         |
-| `TimeStep`                         | `TimeSpan`                                         | one minute                       | The positive whole-minute increment for the minute segment.                                                                                 |
-| `Minimum`                          | `DateTime`                                         | `DateTime.MinValue`              | The inclusive lower bound that repairs the current value.                                                                                   |
-| `Maximum`                          | `DateTime`                                         | `DateTime.MaxValue`              | The inclusive upper bound that repairs the current value.                                                                                   |
-| `DropDownHeight`                   | `Length`                                           | `Length.Cells(10)`               | The automatic, fixed-cell, or placement-relative maximum visible calendar height.                                                           |
-| `IsOpen`                           | `bool`                                             | `false`                          | Opens or closes the retained Calendar popup.                                                                                                |
-| `CalendarStyle`                    | `CalendarStyle?`                                   | `null`                           | Overrides the owned Calendar's complete local presentation.                                                                                 |
-| `ActualCalendarStyle`              | `CalendarStyle`                                    | Resolved                         | Read-only; the resolved presentation of the owned Calendar.                                                                                 |
-| `PopupChrome`                      | `PopupChrome`                                      | `default`                        | Overrides the owned Calendar popup's border and shadow together.                                                                            |
-| `ResetPopupChrome()`               | `void`                                             | —                                | Returns the Calendar popup's border and shadow to `PopupChrome` ownership.                                                                  |
-| `StartAffix`                       | `Affix?`                                           | `null`                           | Inherited optional leading edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                    |
-| `EndAffix`                         | `Affix?`                                           | `null`                           | Inherited optional trailing edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                   |
-| Themed disclosure glyph            | —                                                  | `InputStyle.DropDownGlyph` (`▼`) | Authored once for every drop-down input through a theme's `styles.input` section.                                                           |
-| `ValueChanged`                     | `EventHandler<DateTimeInputValueChangedEventArgs>` | no subscribers                   | Raised after a committed value transition.                                                                                                  |
-| `DropDownOpened`, `DropDownClosed` | `EventHandler`                                     | no subscribers                   | Raised after the Calendar popup opens or closes.                                                                                            |
+| Member                             | Type                                                    | Default                          | Description                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inherited `Value`                  | `DateTime?`                                             | current local date and time      | The nullable value, clamped to the inclusive bounds.                                                                                        |
+| Inherited `AllowNull`              | `bool`                                                  | `true`                           | Allows Delete to clear the value; Backspace clears only the active segment; disabling it repairs null.                                      |
+| Inherited `Culture`                | `CultureInfo`                                           | `CultureInfo.InvariantCulture`   | Localizes both the popup calendar and the typed field's date order, separators, designator text, and digits; must use a Gregorian calendar. |
+| `Use24HourFormat`                  | `bool`                                                  | `true`                           | Selects 24-hour or AM/PM segments.                                                                                                          |
+| `ShowSeconds`                      | `bool`                                                  | `false`                          | Adds the seconds segment.                                                                                                                   |
+| `Format`                           | `string?`                                               | `null`                           | A custom combined pattern overriding segment order and count, including editable `f`/`F` fractions.                                         |
+| `TimeStep`                         | `TimeSpan`                                              | one minute                       | The positive whole-minute increment for the minute segment.                                                                                 |
+| Inherited `Minimum`                | `DateTime`                                              | `DateTime.MinValue`              | The inclusive lower bound that repairs the current value.                                                                                   |
+| Inherited `Maximum`                | `DateTime`                                              | `DateTime.MaxValue`              | The inclusive upper bound that repairs the current value.                                                                                   |
+| `DropDownHeight`                   | `Length`                                                | `Length.Cells(10)`               | The automatic, fixed-cell, or placement-relative maximum visible calendar height.                                                           |
+| `IsOpen`                           | `bool`                                                  | `false`                          | Opens or closes the retained Calendar popup.                                                                                                |
+| `CalendarStyle`                    | `CalendarStyle?`                                        | `null`                           | Overrides the owned Calendar's complete local presentation.                                                                                 |
+| `ActualCalendarStyle`              | `CalendarStyle`                                         | Resolved                         | Read-only; the resolved presentation of the owned Calendar.                                                                                 |
+| `PopupChrome`                      | `PopupChrome`                                           | `default`                        | Overrides the owned Calendar popup's border and shadow together.                                                                            |
+| `ResetPopupChrome()`               | `void`                                                  | —                                | Returns the Calendar popup's border and shadow to `PopupChrome` ownership.                                                                  |
+| `StartAffix`                       | `Affix?`                                                | `null`                           | Inherited optional leading edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                    |
+| `EndAffix`                         | `Affix?`                                                | `null`                           | Inherited optional trailing edge-pinned decoration, reserved strictly inboard of the drop-down indicator.                                   |
+| Themed disclosure glyph            | —                                                       | `InputStyle.DropDownGlyph` (`▼`) | Authored once for every drop-down input through a theme's `styles.input` section.                                                           |
+| Inherited `ValueChanged`           | `EventHandler<TemporalValueChangedEventArgs<DateTime>>` | no subscribers                   | Raised after a committed value transition.                                                                                                  |
+| `DropDownOpened`, `DropDownClosed` | `EventHandler`                                          | no subscribers                   | Raised after the Calendar popup opens or closes.                                                                                            |
 
 `DropDownHeight` constrains only the Calendar interior and never stretches a
 shorter Calendar to the cap. `Length.Auto` uses its intrinsic height, positive

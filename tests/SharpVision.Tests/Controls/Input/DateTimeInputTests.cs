@@ -44,7 +44,7 @@ public sealed class DateTimeInputTests
                 input.Value = second;
             }
         };
-        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Current, input.Value));
 
         input.Value = first;
 
@@ -175,7 +175,7 @@ public sealed class DateTimeInputTests
     {
         // Arrange
         using var control = new DateTimeInput { Value = new DateTime(2026, 7, 10, 8, 0, 0) };
-        DateTimeInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<DateTime>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -184,8 +184,8 @@ public sealed class DateTimeInputTests
         // Assert
         control.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new DateTime(2026, 7, 10, 8, 0, 0));
-        raised.Value.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
+        raised.Previous.ShouldBe(new DateTime(2026, 7, 10, 8, 0, 0));
+        raised.Current.ShouldBe(new DateTime(2026, 7, 15, 10, 0, 0));
     }
 
     /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
@@ -195,7 +195,7 @@ public sealed class DateTimeInputTests
     {
         // Arrange
         using var control = new DateTimeInput { Value = new DateTime(2026, 7, 30, 8, 0, 0) };
-        DateTimeInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<DateTime>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -204,8 +204,8 @@ public sealed class DateTimeInputTests
         // Assert
         control.Value.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new DateTime(2026, 7, 30, 8, 0, 0));
-        raised.Value.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
+        raised.Previous.ShouldBe(new DateTime(2026, 7, 30, 8, 0, 0));
+        raised.Current.ShouldBe(new DateTime(2026, 7, 25, 14, 0, 0));
     }
 
     /// <summary>Verifies the configurable minute step is applied by the inline minute segment.</summary>
@@ -548,7 +548,7 @@ public sealed class DateTimeInputTests
         {
             Value = new DateTime(2026, 7, 10, 10, 0, 0)
         };
-        DateTimeInputValueChangedEventArgs? observed = null;
+        TemporalValueChangedEventArgs<DateTime>? observed = null;
         control.ValueChanged += (_, eventArgs) => observed = eventArgs;
 
         // Act
@@ -556,8 +556,8 @@ public sealed class DateTimeInputTests
 
         // Assert
         _ = observed.ShouldNotBeNull();
-        observed.PreviousValue.ShouldBe(new DateTime(2026, 7, 10, 10, 0, 0));
-        observed.Value.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 0));
+        observed.Previous.ShouldBe(new DateTime(2026, 7, 10, 10, 0, 0));
+        observed.Current.ShouldBe(new DateTime(2026, 7, 19, 14, 30, 0));
     }
 
     /// <summary>Verifies an incidental Control modifier on Enter forwarded to the open popup's
@@ -993,7 +993,7 @@ public sealed class DateTimeInputTests
     /// <summary>Verifies a German culture draws the typed field's date segments in
     /// day-month-year order with a period separator, instead of the fixed month-day-year slash
     /// order. This is the culture-order bug the segmented-field engine extraction fixes:
-    /// before the fix, <see cref="DateTimeInput.Culture"/> affected only the popup calendar, and
+    /// before the fix, <see cref="TemporalInputBase{TValue}.Culture"/> affected only the popup calendar, and
     /// the typed field's order/digits/separators were always fixed regardless of this value.</summary>
     [Fact]
     public void Render_WhenCultureIsGermanGregorian_DrawsDayMonthYearSegmentsWithLocalizedSeparators()

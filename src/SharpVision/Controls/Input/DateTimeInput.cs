@@ -11,13 +11,13 @@ using Popups;
 /// followed by time segments (hour, minute, optionally second, fractional second, and AM/PM).
 /// Every segment edits inline; the disclosure indicator opens the <see cref="Calendar"/> popup.
 /// Up/Down arrows increment or decrement the focused segment. Left/Right arrows navigate between segments.
-/// Typing digits replaces the segment value. Delete clears the value to null when <see cref="AllowNull"/> is set.
+/// Typing digits replaces the segment value. Delete clears the value to null when <see cref="TemporalInputBase{TValue}.AllowNull"/> is set.
 /// Custom <c>f</c> and <c>F</c> runs expose one to seven fractional digits; uppercase runs reserve
 /// blank editing cells when formatted trailing zeroes are omitted. Alt+Down or F4 opens the calendar
 /// popup from any segment.
 /// </remarks>
 [PublicAPI]
-public sealed class DateTimeInput: InputBase
+public sealed class DateTimeInput: TemporalInputBase<DateTime>
 {
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
         new Dictionary<char, TemporalSegmentKind>
@@ -39,15 +39,12 @@ public sealed class DateTimeInput: InputBase
     private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly Popup _popup;
     private readonly RetainedPartProperty<PopupChrome> _popupChrome;
-    private readonly SegmentFieldBehavior _segments;
-    private readonly TemporalValueState<DateTime> _state;
-
-    private CultureInfo _culture;
 
     #region Construction and properties
 
     /// <summary>Initializes a focusable date-time input at the current local date and time with a light field border and a connected calendar popup.</summary>
     public DateTimeInput()
+        : base(DateTime.MinValue, DateTime.MaxValue, CultureInfo.InvariantCulture)
     {
         // Value resolves the current local date and time lazily, on first read, rather than
         // here: a control constructed off-dispatcher and then mounted under a dispatcher with its
@@ -55,20 +52,8 @@ public sealed class DateTimeInput: InputBase
         // that happened to be current at construction. The owned Calendar starts with no
         // selection to match; EnsureSeeded pushes the resolved value into it once seeding
         // actually happens.
-        _culture = CultureInfo.InvariantCulture;
-        _state = new TemporalValueState<DateTime>(
-            DateTime.MinValue,
-            DateTime.MaxValue,
-            this,
-            VerifyMutable,
-            NotifyPropertyChanged,
-            () => TimeProvider.GetLocalNow().DateTime,
-            PublishValueChanged,
-            SynchronizeCalendarValue,
-            SyncCalendarBounds,
-            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateTime>(
-            _culture,
+            Culture,
             EnsureSeeded,
             () => _state.Value,
             value => _ = _state.SetValue(value),
@@ -121,113 +106,14 @@ public sealed class DateTimeInput: InputBase
             () => _calendarDropDown.Calendar.Style,
             value => _calendarDropDown.Calendar.Style = value);
         EnablePressActivation();
-
-        _segments = EnableSegmentEditing(
-            BuildSegments,
-            ApplyDigitValue,
-            IncrementSegmentValue,
-            ClearSegmentValue,
-            new SegmentFieldKeyOptions(
-                ResolveSegmentStepDelta,
-                ClearValue,
-                HandleCharacterCommand,
-                HandleDropDownOpeningCommand,
-                handleRecognizedWithoutChange: true),
-            reservesDropDownIndicator: true,
-            beforeInput: EnsureSeeded);
         TabNavigation = TabNavigation.None;
     }
-
-    /// <summary>Raised after a committed value transition.</summary>
-    public event EventHandler<DateTimeInputValueChangedEventArgs>? ValueChanged;
-
-    private void PublishValueChanged(
-        ref CallbackTransitionTransaction transition,
-        DateTime? previous,
-        DateTime? current) =>
-        transition.PublishCurrent(
-            ValueChanged,
-            this,
-            new DateTimeInputValueChangedEventArgs(previous, current));
 
     /// <summary>Raised after the Calendar popup opens.</summary>
     public event EventHandler? DropDownOpened;
 
     /// <summary>Raised after the Calendar popup closes.</summary>
     public event EventHandler? DropDownClosed;
-
-    /// <summary>Gets or sets the current date-time value, or null when cleared.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateTime? Value
-    {
-        get
-        {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
-            return _state.EnsureSeeded();
-        }
-        set => _ = _state.SetValue(value);
-    }
-
-    /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool AllowNull
-    {
-        get => _state.AllowNull;
-        set => _ = _state.SetAllowNull(value);
-    }
-
-    /// <summary>
-    /// Gets or sets the Gregorian culture applied to both the popup <see cref="Calendar"/>'s month
-    /// and day names and the typed field's own segment order, separators, and AM/PM designator
-    /// text. Default is <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering
-    /// never depends on the host operating system's locale; set this explicitly to localize the
-    /// field.
-    /// </summary>
-    /// <remarks>
-    /// The date portion of the typed field derives its segment order, widths, and separators from
-    /// <see cref="DateTimeFormatInfo.ShortDatePattern"/> the same way <see cref="DateInput.Culture"/>
-    /// does - for example a German culture renders day before month with a period separator. The
-    /// time portion keeps the fixed hour/minute/[second]/[AM-PM] structure <see cref="Use24HourFormat"/>
-    /// and <see cref="ShowSeconds"/> already select, localizing only its separator, AM/PM designator
-    /// text, and digit glyphs. Set <see cref="Format"/> to override the combined pattern entirely.
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, a non-null <see cref="Format"/> cannot be rendered by a <see cref="DateTime"/> under this culture, or that format declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="DateTime"/> itself would render it.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public CultureInfo Culture
-    {
-        get => _culture;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            if (value.DateTimeFormat.Calendar is not GregorianCalendar)
-            {
-                throw new ArgumentException(
-                    "DateTimeInput requires a Gregorian display culture.", nameof(value));
-            }
-
-            if (Format is { } format)
-            {
-                TemporalFormatValidation.Validate(
-                    format, value, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
-            }
-
-            _ = SetPropertyAndSynchronize(
-                ref _culture,
-                value,
-                InvalidationImpact.Measure,
-                () =>
-                {
-                    _calendarDropDown.SyncCulture(Culture);
-                    InvalidateSegmentLayout();
-                },
-                ReferenceEqualityComparer.Instance);
-        }
-    }
 
     /// <summary>Gets or sets whether a 24-hour clock is displayed. Default is true.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -260,16 +146,16 @@ public sealed class DateTimeInput: InputBase
     }
 
     /// <summary>Gets or sets a custom combined date-time format pattern, or null to derive the
-    /// pattern from <see cref="Culture"/>'s <see cref="DateTimeFormatInfo.ShortDatePattern"/> plus
+    /// pattern from <see cref="TemporalInputBase{TValue}.Culture"/>'s <see cref="DateTimeFormatInfo.ShortDatePattern"/> plus
     /// <see cref="Use24HourFormat"/> and <see cref="ShowSeconds"/>. Default is null.</summary>
     /// <remarks>
-    /// When set, the pattern's own token runs - not <see cref="Culture"/>'s date pattern or
+    /// When set, the pattern's own token runs - not <see cref="TemporalInputBase{TValue}.Culture"/>'s date pattern or
     /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> - determine the segment order and
     /// count; pair a 12-hour <c>h</c>/<c>hh</c> hour token with a <c>t</c>/<c>tt</c> AM/PM
     /// designator token for correct 12-hour clamping and rendering, since a lowercase hour token
     /// without a designator token is treated as a 24-hour segment for both editing and display.
     /// </remarks>
-    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="DateTime"/> under <see cref="Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="DateTime"/> itself would render it.</exception>
+    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="DateTime"/> under <see cref="TemporalInputBase{TValue}.Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="DateTime"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string? Format
@@ -281,7 +167,7 @@ public sealed class DateTimeInput: InputBase
             {
                 ArgumentException.ThrowIfNullOrEmpty(value);
                 TemporalFormatValidation.Validate(
-                    value, _culture, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
+                    value, Culture, nameof(value), "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
@@ -305,26 +191,6 @@ public sealed class DateTimeInput: InputBase
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
     } = TimeSpan.FromMinutes(1);
-
-    /// <summary>Gets or sets the inclusive lower bound for the value. Default is <see cref="DateTime.MinValue"/>.</summary>
-    /// <exception cref="ArgumentException">The minimum exceeds <see cref="Maximum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateTime Minimum
-    {
-        get => _state.Minimum;
-        set => _ = _state.SetMinimum(value);
-    }
-
-    /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="DateTime.MaxValue"/>.</summary>
-    /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateTime Maximum
-    {
-        get => _state.Maximum;
-        set => _ = _state.SetMaximum(value);
-    }
 
     /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible calendar height.</summary>
     /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
@@ -404,7 +270,6 @@ public sealed class DateTimeInput: InputBase
         if (reason == ReleaseReason.Disposed)
         {
             _calendarDropDown.Dispose();
-            ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
         }
@@ -433,79 +298,64 @@ public sealed class DateTimeInput: InputBase
     /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
     private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
 
-    private bool ApplyDigitValue(SegmentDescriptor segment, int value)
+    #endregion
+
+    #region Segment value callbacks
+
+    /// <inheritdoc/>
+    protected override DateTime? ApplyDigit(DateTime value, TemporalSegmentKind kind, int digitValue, int digitCapacity)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            _ = _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
-
-            if (!_state.Value.HasValue)
-            {
-                return false;
-            }
-        }
-
-        var dt = _state.Value.Value;
+        var dt = value;
         var hasAmPm = HasAmPmDesignator;
 
         try
         {
 #pragma warning disable IDE0072 // AmPmDesignator never reaches this callback: its digit capacity is zero.
-            var result = kind switch
+            return kind switch
             {
-                TemporalSegmentKind.Month => ReplaceMonth(dt, Math.Clamp(value, 1, 12)),
-                TemporalSegmentKind.Day => ReplaceDay(dt, Math.Clamp(value, 1,
+                TemporalSegmentKind.Month => ReplaceMonth(dt, Math.Clamp(digitValue, 1, 12)),
+                TemporalSegmentKind.Day => ReplaceDay(dt, Math.Clamp(digitValue, 1,
                     DateTime.DaysInMonth(dt.Year, dt.Month))),
-                TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(value, 1, 9999)),
+                TemporalSegmentKind.Year => ReplaceYear(dt, Math.Clamp(digitValue, 1, 9999)),
                 TemporalSegmentKind.Hour when hasAmPm =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
                         TemporalSegmentClassification.To24Hour(
-                            TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: true),
+                            TemporalClockArithmetic.ClampHour(digitValue, hasAmPmDesignator: true),
                             dt.Hour >= 12),
                         dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Hour =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
-                        TemporalClockArithmetic.ClampHour(value, hasAmPmDesignator: false), dt.Minute, dt.Second)), dt),
+                        TemporalClockArithmetic.ClampHour(digitValue, hasAmPmDesignator: false), dt.Minute, dt.Second)), dt),
                 TemporalSegmentKind.Minute =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
-                        dt.Hour, TemporalClockArithmetic.ClampMinuteOrSecond(value), dt.Second)), dt),
+                        dt.Hour, TemporalClockArithmetic.ClampMinuteOrSecond(digitValue), dt.Second)), dt),
                 TemporalSegmentKind.Second =>
                     WithSubSecondTicksOf(dt.Date.Add(new TimeSpan(
-                        dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(value))), dt),
+                        dt.Hour, dt.Minute, TemporalClockArithmetic.ClampMinuteOrSecond(digitValue))), dt),
                 TemporalSegmentKind.FractionalSecond => new DateTime(
                     dt.Ticks - (dt.Ticks % TimeSpan.TicksPerSecond) +
-                    TemporalClockArithmetic.FractionalSecondTicks(value, segment.DigitCapacity),
+                    TemporalClockArithmetic.FractionalSecondTicks(digitValue, digitCapacity),
                     dt.Kind),
                 _ => dt
             };
 #pragma warning restore IDE0072
-
-            return _state.SetValue(result);
         }
         catch (ArgumentOutOfRangeException)
         {
-            return false;
+            return null;
         }
     }
 
-    private bool IncrementSegmentValue(SegmentDescriptor segment, int delta)
+    /// <inheritdoc/>
+    protected override DateTime? Increment(DateTime value, TemporalSegmentKind kind, int delta, int digitCapacity)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            return _state.SetValue(_state.Clamp(TimeProvider.GetLocalNow().DateTime));
-        }
-
-        var dt = _state.Value.Value;
+        var dt = value;
 
         // Every case below is only reached for a kind the current layout actually contains
         // (the engine dispatches by the active segment's own kind), so no additional
         // Use24HourFormat/ShowSeconds guard is needed here.
 #pragma warning disable IDE0072 // Every calendar/clock kind is individually handled or intentionally falls through.
-        var result = kind switch
+        return kind switch
         {
             TemporalSegmentKind.Month => SafeAddMonths(dt, delta),
             TemporalSegmentKind.Day => SafeAddDays(dt, delta),
@@ -515,30 +365,22 @@ public sealed class DateTimeInput: InputBase
             TemporalSegmentKind.Second => SafeAddTicks(dt, TimeSpan.TicksPerSecond * delta),
             TemporalSegmentKind.FractionalSecond => SafeAddTicks(
                 dt,
-                TemporalClockArithmetic.FractionalSecondUnitTicks(segment.DigitCapacity) * delta),
+                TemporalClockArithmetic.FractionalSecondUnitTicks(digitCapacity) * delta),
             TemporalSegmentKind.AmPmDesignator => dt.AddHours(dt.Hour < 12 ? 12 : -12),
             _ => dt
         };
 #pragma warning restore IDE0072
-
-        return _state.SetValue(result);
     }
 
-    private bool ClearSegmentValue(SegmentDescriptor segment)
+    /// <inheritdoc/>
+    protected override DateTime? ClearSegment(DateTime value, TemporalSegmentKind kind)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            return false;
-        }
-
-        var dt = _state.Value.Value;
+        var dt = value;
 
         try
         {
 #pragma warning disable IDE0072 // AmPmDesignator is intentionally a no-op here.
-            var result = kind switch
+            return kind switch
             {
                 TemporalSegmentKind.Month => ReplaceMonth(dt, 1),
                 TemporalSegmentKind.Day => ReplaceDay(dt, 1),
@@ -552,33 +394,16 @@ public sealed class DateTimeInput: InputBase
                 _ => dt
             };
 #pragma warning restore IDE0072
-
-            return _state.SetValue(result);
         }
         catch (ArgumentOutOfRangeException)
         {
-            return false;
+            return null;
         }
     }
-
-    private bool ClearValue() =>
-        AllowNull && _state.Value.HasValue && _state.SetValue(null);
 
     #endregion
 
     #region Commit and validation
-
-    /// <summary>Latches Value to the current local date and time on first read, so a control
-    /// mounted under a dispatcher observes that dispatcher's clock instead of the clock current
-    /// at construction, and pushes the newly resolved value into the owned Calendar. A value
-    /// already committed - including an explicit null under <see cref="AllowNull"/> - is left
-    /// untouched.</summary>
-    private void EnsureSeeded() => _ = _state.EnsureSeeded();
-
-    private void SyncCalendarBounds() => _calendarDropDown.SyncBounds();
-
-    private void SynchronizeCalendarValue(DateTime? value) =>
-        _calendarDropDown.SyncValue(value);
 
     [Pure]
     private DateOnly ResolveCalendarMinimum() => Minimum > DateTime.MinValue
@@ -655,95 +480,23 @@ public sealed class DateTimeInput: InputBase
 
     #endregion
 
-    #region Rendering
+    #region Temporal seams
 
-    private string ResolveDateTimePattern() => Format ?? BuildDefaultDateTimePattern();
+    /// <inheritdoc/>
+    protected override DateTime ResolveClockSeed() => TimeProvider.GetLocalNow().DateTime;
 
-    private string BuildDefaultDateTimePattern()
-    {
-        var datePattern = _culture.DateTimeFormat.ShortDatePattern;
-        var timePattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
+    /// <inheritdoc/>
+    protected override IReadOnlyDictionary<char, TemporalSegmentKind> TokenKinds => _tokenKinds;
 
-        if (ShowSeconds)
-        {
-            _ = timePattern.Append(':').Append("ss");
-        }
+    /// <inheritdoc/>
+    protected override string ResolvePattern() => Format ?? BuildDefaultDateTimePattern();
 
-        if (!Use24HourFormat)
-        {
-            _ = timePattern.Append(' ').Append("tt");
-        }
+    private string BuildDefaultDateTimePattern() =>
+        $"{Culture.DateTimeFormat.ShortDatePattern} {TemporalClockSegments.BuildDefaultTimePattern(Use24HourFormat, ShowSeconds)}";
 
-        return $"{datePattern} {timePattern}";
-    }
-
-    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
-
-    private SegmentDescriptor[] BuildSegments(DateTime? value)
-    {
-        var pattern = ResolveDateTimePattern();
-        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
-        var hasAmPm = false;
-
-        foreach (var token in tokens)
-        {
-            if (token.Kind == TemporalSegmentKind.AmPmDesignator)
-            {
-                hasAmPm = true;
-                break;
-            }
-        }
-
-        IReadOnlyList<string> text;
-
-        if (value is { } dt)
-        {
-            var renderingPattern = hasAmPm ? pattern : NormalizeDesignatorlessHourPattern(pattern);
-            text = TemporalPatternSegmenter.FormatSegments(
-                renderingPattern,
-                tokens,
-                _tokenKinds,
-                format => dt.ToString(format, _culture));
-        }
-        else
-        {
-            var placeholder = new string[tokens.Count];
-
-            for (var index = 0; index < tokens.Count; index++)
-            {
-                placeholder[index] = TemporalSegmentClassification.Placeholder(tokens[index]);
-            }
-
-            text = placeholder;
-        }
-
-        var descriptors = new SegmentDescriptor[tokens.Count];
-
-        for (var index = 0; index < tokens.Count; index++)
-        {
-            var token = tokens[index];
-            var segmentText = TemporalSegmentClassification.ReserveOptionalFractionCells(token, text[index]);
-
-            // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
-            // zero-padded number: rendering it as an ordinary editable segment would let a typed
-            // digit be misinterpreted as a day-of-month or month-number and corrupt the date.
-            // Building it as a literal instead makes it inert for digit entry, tab/arrow
-            // traversal, and Increment alike, since SegmentFieldBehavior gates all three purely
-            // on SegmentDescriptor.IsEditable.
-            descriptors[index] = token.Kind is not { } kind ||
-                (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
-                ? new SegmentDescriptor(segmentText)
-                : new SegmentDescriptor(
-                    kind == TemporalSegmentKind.AmPmDesignator
-                        ? TemporalSegmentClassification.ResolveDesignatorText(segmentText, value is { Hour: >= 12 })
-                        : segmentText,
-                    kind,
-                    TemporalSegmentClassification.DigitCapacity(token),
-                    MaxValueFor(kind, hasAmPm, token.RunLength));
-        }
-
-        return descriptors;
-    }
+    /// <inheritdoc/>
+    protected override string AdjustRenderingPattern(string pattern, bool hasAmPmDesignator) =>
+        hasAmPmDesignator ? pattern : NormalizeDesignatorlessHourPattern(pattern);
 
     /// <summary>Rewrites unquoted lowercase hour tokens to their 24-hour equivalents when the
     /// pattern has no AM/PM designator, keeping rendering consistent with segment editing.</summary>
@@ -776,30 +529,58 @@ public sealed class DateTimeInput: InputBase
         return normalized.ToString();
     }
 
-    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
-    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
-    /// example incrementing a zero-padded minute segment) needs only
-    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
-    /// formatted text (a single-digit month or day widening to two digits under a non-padded
-    /// <see cref="Culture"/> pattern) needs <see cref="InvalidationImpact.Measure"/> so the field
-    /// box is remeasured instead of leaving stale geometry behind.</summary>
-    private InvalidationImpact ResolveValueWidthImpact(DateTime? previous, DateTime? candidate) =>
-        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
+    /// <inheritdoc/>
+    protected override string FormatValue(DateTime value, string format, CultureInfo culture) =>
+        value.ToString(format, culture);
 
+    /// <inheritdoc/>
+    protected override bool IsPm(DateTime value) => value.Hour >= 12;
+
+    /// <inheritdoc/>
 #pragma warning disable IDE0072 // Every segment kind is individually handled.
-    [Pure]
-    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm, int runLength) =>
+    protected override int MaxValueFor(TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength) =>
         kind switch
         {
             TemporalSegmentKind.Month => 12,
             TemporalSegmentKind.Day => 31,
             TemporalSegmentKind.Year => 9999,
-            TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
-            TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
-            TemporalSegmentKind.FractionalSecond => TemporalClockArithmetic.FractionalSecondMaxValue(runLength),
-            _ => 0
+            _ => TemporalClockSegments.MaxValueFor(kind, hasAmPmDesignator, runLength)
         };
 #pragma warning restore IDE0072
+
+    /// <inheritdoc/>
+    protected override void ValidateCulture(CultureInfo culture)
+    {
+        if (culture.DateTimeFormat.Calendar is not GregorianCalendar)
+        {
+            throw new ArgumentException(
+                "DateTimeInput requires a Gregorian display culture.", nameof(culture));
+        }
+
+        if (Format is { } format)
+        {
+            TemporalFormatValidation.Validate(
+                format, culture, "value", "DateTime", static (f, c) => DateTime.MinValue.ToString(f, c), _tokenKinds);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void SynchronizeValue(DateTime? value) => _calendarDropDown.SyncValue(value);
+
+    /// <inheritdoc/>
+    protected override void SynchronizeBounds() => _calendarDropDown.SyncBounds();
+
+    /// <inheritdoc/>
+    protected override void SynchronizeCulture(CultureInfo culture) => _calendarDropDown.SyncCulture(culture);
+
+    /// <inheritdoc/>
+    protected override Func<Rune, bool>? ResolveCharacterCommand() => HandleCharacterCommand;
+
+    /// <inheritdoc/>
+    protected override Func<KeyEventArgs, bool?>? ResolvePopupCommand() => HandleDropDownOpeningCommand;
+
+    /// <inheritdoc/>
+    protected override bool ReservesDropDownIndicator => true;
 
     #endregion
 
@@ -837,7 +618,7 @@ public sealed class DateTimeInput: InputBase
     /// <paramref name="original"/> already had.</summary>
     [Pure]
     private static DateTime WithSubSecondTicksOf(DateTime result, DateTime original) =>
-        result.AddTicks(original.Ticks % TimeSpan.TicksPerSecond);
+        result.AddTicks(TemporalClockSegments.SubSecondRemainderTicks(original.Ticks));
 
     [Pure]
     private static DateTime SafeAddMonths(DateTime dt, int delta)

@@ -23,7 +23,7 @@ public sealed class DateInputTests
                 input.Value = second;
             }
         };
-        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Current, input.Value));
 
         input.Value = first;
 
@@ -237,7 +237,7 @@ public sealed class DateInputTests
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 10) };
-        DateInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<DateOnly>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -246,8 +246,8 @@ public sealed class DateInputTests
         // Assert
         control.Value.ShouldBe(new DateOnly(2026, 7, 15));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new DateOnly(2026, 7, 10));
-        raised.Value.ShouldBe(new DateOnly(2026, 7, 15));
+        raised.Previous.ShouldBe(new DateOnly(2026, 7, 10));
+        raised.Current.ShouldBe(new DateOnly(2026, 7, 15));
     }
 
     /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
@@ -257,7 +257,7 @@ public sealed class DateInputTests
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 30) };
-        DateInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<DateOnly>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -266,8 +266,8 @@ public sealed class DateInputTests
         // Assert
         control.Value.ShouldBe(new DateOnly(2026, 7, 25));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new DateOnly(2026, 7, 30));
-        raised.Value.ShouldBe(new DateOnly(2026, 7, 25));
+        raised.Previous.ShouldBe(new DateOnly(2026, 7, 30));
+        raised.Current.ShouldBe(new DateOnly(2026, 7, 25));
     }
 
     /// <summary>Verifies DropDownHeight defaults to a positive value, round-trips, and rejects a
@@ -812,7 +812,7 @@ public sealed class DateInputTests
     {
         // Arrange
         using var control = new DateInput { Value = new DateOnly(2026, 7, 10) };
-        DateInputValueChangedEventArgs? observed = null;
+        TemporalValueChangedEventArgs<DateOnly>? observed = null;
         control.ValueChanged += (_, eventArgs) => observed = eventArgs;
 
         // Act
@@ -820,8 +820,8 @@ public sealed class DateInputTests
 
         // Assert
         _ = observed.ShouldNotBeNull();
-        observed.PreviousValue.ShouldBe(new DateOnly(2026, 7, 10));
-        observed.Value.ShouldBe(new DateOnly(2026, 7, 19));
+        observed.Previous.ShouldBe(new DateOnly(2026, 7, 10));
+        observed.Current.ShouldBe(new DateOnly(2026, 7, 19));
     }
 
     #endregion

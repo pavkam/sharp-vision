@@ -695,9 +695,9 @@ public sealed class TimeInputInteractionTests
         var observed = new List<(TimeOnly? Previous, TimeOnly? Current)>();
         control.ValueChanged += (_, eventArgs) =>
         {
-            observed.Add((eventArgs.PreviousValue, eventArgs.Value));
+            observed.Add((eventArgs.Previous, eventArgs.Current));
 
-            if (eventArgs.Value == first)
+            if (eventArgs.Current == first)
             {
                 control.Value = second;
             }

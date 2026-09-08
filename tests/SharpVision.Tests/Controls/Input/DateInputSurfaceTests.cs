@@ -93,7 +93,7 @@ public sealed class DateInputSurfaceTests
     }
 
     /// <summary>
-    /// Verifies a programmatic <see cref="DateInput.Value"/> change while the Calendar popup is
+    /// Verifies a programmatic <see cref="TemporalInputBase{TValue}.Value"/> change while the Calendar popup is
     /// already open re-syncs the popup's displayed month and selection to the new value, instead
     /// of leaving it showing the previous value's month with the previous date highlighted.
     /// <see cref="DateTimeInput"/>'s equivalent commit path already re-pushes the calendar's

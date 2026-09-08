@@ -8,10 +8,10 @@ namespace SharpVision.Controls.Input;
 /// Each time segment (hour, minute, second, fractional second, AM/PM) is independently editable.
 /// Up/Down arrows increment or decrement the focused segment. Left/Right arrows
 /// navigate between segments. Typing digits replaces the segment value.
-/// Delete clears the value to null when <see cref="AllowNull"/> is set; Backspace clears only
+/// Delete clears the value to null when <see cref="TemporalInputBase{TValue}.AllowNull"/> is set; Backspace clears only
 /// the active segment. Custom <c>f</c> and <c>F</c> runs expose one to seven fractional digits;
 /// uppercase runs reserve blank editing cells when formatted trailing zeroes are omitted.
-/// <see cref="Culture"/> localizes the rendered time separator, the AM/PM designator text, and
+/// <see cref="TemporalInputBase{TValue}.Culture"/> localizes the rendered time separator, the AM/PM designator text, and
 /// the digit glyphs used for each numeric segment. The segment order itself - hour, minute,
 /// optionally second, optionally an AM/PM designator - defaults to <see cref="Use24HourFormat"/>
 /// and <see cref="ShowSeconds"/> rather than <see cref="CultureInfo.DateTimeFormat"/>'s time
@@ -19,7 +19,7 @@ namespace SharpVision.Controls.Input;
 /// <see cref="Format"/> to override that structure with a custom pattern.
 /// </remarks>
 [PublicAPI]
-public sealed class TimeInput: InputBase
+public sealed class TimeInput: TemporalInputBase<TimeOnly>
 {
     private static readonly IReadOnlyDictionary<char, TemporalSegmentKind> _tokenKinds =
         new Dictionary<char, TemporalSegmentKind>
@@ -33,108 +33,16 @@ public sealed class TimeInput: InputBase
             ['t'] = TemporalSegmentKind.AmPmDesignator
         };
 
-    private readonly SegmentFieldBehavior _segments;
-    private readonly TemporalValueState<TimeOnly> _state;
-    private CultureInfo _culture;
-
     #region Construction and properties
 
     /// <summary>Initializes a focusable time input at the current local time with a light field border.</summary>
+    /// <remarks>Value resolves the current local time lazily, on first read, rather than here: a
+    /// control constructed off-dispatcher and then mounted under a dispatcher with its own
+    /// TimeProvider must observe that dispatcher's clock instead of latching the clock that
+    /// happened to be current at construction.</remarks>
     public TimeInput()
-    {
-        // Value resolves the current local time lazily, on first read, rather than here: a
-        // control constructed off-dispatcher and then mounted under a dispatcher with its own
-        // TimeProvider must observe that dispatcher's clock instead of latching the clock that
-        // happened to be current at construction.
-        _culture = CultureInfo.InvariantCulture;
-        _state = new TemporalValueState<TimeOnly>(
-            TimeOnly.MinValue,
-            TimeOnly.MaxValue,
-            this,
-            VerifyMutable,
-            NotifyPropertyChanged,
-            () => TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
-            PublishValueChanged,
-            resolveValueImpact: ResolveValueWidthImpact);
-        _segments = EnableSegmentEditing(
-            BuildSegments,
-            ApplyDigitValue,
-            IncrementSegmentValue,
-            ClearSegmentValue,
-            new SegmentFieldKeyOptions(
-                ResolveSegmentStepDelta,
-                ClearValue,
-                HandleCharacterCommand,
-                handleRecognizedWithoutChange: true),
-            beforeInput: EnsureSeeded);
+        : base(TimeOnly.MinValue, TimeOnly.MaxValue, CultureInfo.InvariantCulture) =>
         TabNavigation = TabNavigation.None;
-    }
-
-    /// <summary>Raised after a committed value transition.</summary>
-    public event EventHandler<TimeInputValueChangedEventArgs>? ValueChanged;
-
-    private void PublishValueChanged(
-        ref CallbackTransitionTransaction transition,
-        TimeOnly? previous,
-        TimeOnly? current) =>
-        transition.PublishCurrent(
-            ValueChanged,
-            this,
-            new TimeInputValueChangedEventArgs(previous, current));
-
-    /// <summary>Gets or sets the current time value, or null when cleared.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TimeOnly? Value
-    {
-        get
-        {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
-            return _state.EnsureSeeded();
-        }
-        set => _ = _state.SetValue(value);
-    }
-
-    /// <summary>Gets or sets whether the value may be cleared to null. Default is true.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool AllowNull
-    {
-        get => _state.AllowNull;
-        set => _ = _state.SetAllowNull(value);
-    }
-
-    /// <summary>Gets or sets the culture applied to the rendered time separator, the AM/PM
-    /// designator text, and each numeric segment's digit glyphs. Default is
-    /// <see cref="CultureInfo.InvariantCulture"/>, so out-of-the-box rendering never depends on
-    /// the host operating system's locale; set this explicitly to localize the field.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">A non-null <see cref="Format"/> cannot be rendered by a <see cref="TimeOnly"/> under this culture, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="TimeOnly"/> itself would render it.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public CultureInfo Culture
-    {
-        get => _culture;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            if (Format is { } format)
-            {
-                TemporalFormatValidation.Validate(
-                    format, value, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
-            }
-
-            if (SetPropertyWithComparer(
-                ref _culture,
-                value,
-                InvalidationImpact.Measure,
-                ReferenceEqualityComparer.Instance))
-            {
-                InvalidateSegmentLayout();
-            }
-        }
-    }
 
     /// <summary>Gets or sets whether a 24-hour clock is displayed. Default is true.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -175,7 +83,7 @@ public sealed class TimeInput: InputBase
     /// designator token for correct 12-hour clamping, since a 12-hour hour token without a
     /// designator token is treated as a 24-hour segment for editing purposes.
     /// </remarks>
-    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="TimeOnly"/> under <see cref="Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="TimeOnly"/> itself would render it.</exception>
+    /// <exception cref="ArgumentException">The value is empty, cannot be rendered by a <see cref="TimeOnly"/> under <see cref="TemporalInputBase{TValue}.Culture"/>, or declares an editable fractional-second run wider than seven digits (including via a percent-escaped <c>%f</c> run), which the segmented layout cannot represent even if <see cref="TimeOnly"/> itself would render it.</exception>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     public string? Format
@@ -187,7 +95,7 @@ public sealed class TimeInput: InputBase
             {
                 ArgumentException.ThrowIfNullOrEmpty(value);
                 TemporalFormatValidation.Validate(
-                    value, _culture, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
+                    value, Culture, nameof(value), "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
             }
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
@@ -211,26 +119,6 @@ public sealed class TimeInput: InputBase
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
     } = TimeSpan.FromMinutes(1);
-
-    /// <summary>Gets or sets the inclusive lower bound for the value. Default is <see cref="TimeOnly.MinValue"/>.</summary>
-    /// <exception cref="ArgumentException">The minimum exceeds <see cref="Maximum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TimeOnly Minimum
-    {
-        get => _state.Minimum;
-        set => _ = _state.SetMinimum(value);
-    }
-
-    /// <summary>Gets or sets the inclusive upper bound for the value. Default is <see cref="TimeOnly.MaxValue"/>.</summary>
-    /// <exception cref="ArgumentException">The maximum is below <see cref="Minimum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public TimeOnly Maximum
-    {
-        get => _state.Maximum;
-        set => _ = _state.SetMaximum(value);
-    }
 
     #endregion
 
@@ -267,37 +155,22 @@ public sealed class TimeInput: InputBase
     /// effective 12-versus-24-hour policy for editing the hour segment.</summary>
     private bool HasAmPmDesignator => TemporalSegmentClassification.HasAmPmDesignator(BuildSegments);
 
-    private bool ClearValue() =>
-        AllowNull && _state.Value.HasValue && _state.SetValue(null);
-
     #endregion
 
     #region Segment value callbacks
 
-    private bool ApplyDigitValue(SegmentDescriptor segment, int value)
+    /// <inheritdoc/>
+    protected override TimeOnly? ApplyDigit(TimeOnly value, TemporalSegmentKind kind, int digitValue, int digitCapacity)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            _ = _state.SetValue(_state.Clamp(TimeOnly.MinValue));
-
-            if (!_state.Value.HasValue)
-            {
-                return false;
-            }
-        }
-
-        var time = _state.Value.Value;
-
+        var time = value;
         var hasAmPm = HasAmPmDesignator;
 #pragma warning disable IDE0072 // AM/PM designator segments never reach this callback: their digit capacity is zero.
         var clamped = kind switch
         {
-            TemporalSegmentKind.Hour => TemporalClockArithmetic.ClampHour(value, hasAmPm),
-            TemporalSegmentKind.Minute => TemporalClockArithmetic.ClampMinuteOrSecond(value),
-            TemporalSegmentKind.Second => TemporalClockArithmetic.ClampMinuteOrSecond(value),
-            _ => value
+            TemporalSegmentKind.Hour => TemporalClockArithmetic.ClampHour(digitValue, hasAmPm),
+            TemporalSegmentKind.Minute => TemporalClockArithmetic.ClampMinuteOrSecond(digitValue),
+            TemporalSegmentKind.Second => TemporalClockArithmetic.ClampMinuteOrSecond(digitValue),
+            _ => digitValue
         };
 
         var result = kind switch
@@ -315,32 +188,26 @@ public sealed class TimeInput: InputBase
                 new TimeOnly(time.Hour, time.Minute, clamped),
             TemporalSegmentKind.FractionalSecond => new TimeOnly(
                 time.Ticks - (time.Ticks % TimeSpan.TicksPerSecond) +
-                TemporalClockArithmetic.FractionalSecondTicks(value, segment.DigitCapacity)),
+                TemporalClockArithmetic.FractionalSecondTicks(digitValue, digitCapacity)),
             _ => time
         };
 #pragma warning restore IDE0072
 
-        return _state.SetValue(kind == TemporalSegmentKind.FractionalSecond
+        return kind == TemporalSegmentKind.FractionalSecond
             ? result
-            : WithSubSecondTicksOf(result, time));
+            : WithSubSecondTicksOf(result, time);
     }
 
-    private bool IncrementSegmentValue(SegmentDescriptor segment, int delta)
+    /// <inheritdoc/>
+    protected override TimeOnly? Increment(TimeOnly value, TemporalSegmentKind kind, int delta, int digitCapacity)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            return _state.SetValue(_state.Clamp(TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
-        }
-
-        var time = _state.Value.Value;
+        var time = value;
 
         // Every case below is only reached for a kind the current layout actually contains
         // (the engine dispatches by the active segment's own kind), so no additional
         // Use24HourFormat/ShowSeconds guard is needed here.
 #pragma warning disable IDE0072 // Every calendar kind (Month, Day, Year) is unreachable from TimeInput's time-only layout.
-        var result = kind switch
+        return kind switch
         {
             TemporalSegmentKind.Hour => AddWithoutWrap(time, TimeSpan.TicksPerHour * delta),
             TemporalSegmentKind.Minute => AddWithoutWrap(time, TimeStep.Ticks * delta),
@@ -348,24 +215,16 @@ public sealed class TimeInput: InputBase
             TemporalSegmentKind.Second => AddWithoutWrap(time, TimeSpan.TicksPerSecond * delta),
             TemporalSegmentKind.FractionalSecond => AddWithoutWrap(
                 time,
-                TemporalClockArithmetic.FractionalSecondUnitTicks(segment.DigitCapacity) * delta),
+                TemporalClockArithmetic.FractionalSecondUnitTicks(digitCapacity) * delta),
             _ => time
         };
 #pragma warning restore IDE0072
-
-        return _state.SetValue(result);
     }
 
-    private bool ClearSegmentValue(SegmentDescriptor segment)
+    /// <inheritdoc/>
+    protected override TimeOnly? ClearSegment(TimeOnly value, TemporalSegmentKind kind)
     {
-        var kind = segment.Kind!.Value;
-
-        if (!_state.Value.HasValue)
-        {
-            return false;
-        }
-
-        var time = _state.Value.Value;
+        var time = value;
 #pragma warning disable IDE0072 // Every calendar kind (Month, Day, Year) and AmPmDesignator are unreachable or intentionally no-op here.
         var result = kind switch
         {
@@ -378,9 +237,9 @@ public sealed class TimeInput: InputBase
         };
 #pragma warning restore IDE0072
 
-        return _state.SetValue(kind == TemporalSegmentKind.FractionalSecond
+        return kind == TemporalSegmentKind.FractionalSecond
             ? result
-            : WithSubSecondTicksOf(result, time));
+            : WithSubSecondTicksOf(result, time);
     }
 
     private static TimeOnly AddWithoutWrap(TimeOnly value, long ticks)
@@ -397,17 +256,7 @@ public sealed class TimeInput: InputBase
     /// any fractional-second precision <paramref name="original"/> already had.</summary>
     [Pure]
     private static TimeOnly WithSubSecondTicksOf(TimeOnly result, TimeOnly original) =>
-        new(result.Ticks + (original.Ticks % TimeSpan.TicksPerSecond));
-
-    #endregion
-
-    #region Commit and validation
-
-    /// <summary>Latches Value to the current local time on first read, so a control mounted under
-    /// a dispatcher observes that dispatcher's clock instead of the clock current at
-    /// construction. A value already committed - including an explicit null under
-    /// <see cref="AllowNull"/> - is left untouched.</summary>
-    private void EnsureSeeded() => _ = _state.EnsureSeeded();
+        new(result.Ticks + TemporalClockSegments.SubSecondRemainderTicks(original.Ticks));
 
     #endregion
 
@@ -429,127 +278,44 @@ public sealed class TimeInput: InputBase
 
     #endregion
 
-    #region Segment layout
-
-    private string ResolveTimePattern() => Format ?? BuildDefaultTimePattern();
-
-    private string BuildDefaultTimePattern()
-    {
-        var pattern = new StringBuilder(Use24HourFormat ? "HH" : "hh").Append(':').Append("mm");
-
-        if (ShowSeconds)
-        {
-            _ = pattern.Append(':').Append("ss");
-        }
-
-        if (!Use24HourFormat)
-        {
-            _ = pattern.Append(' ').Append("tt");
-        }
-
-        return pattern.ToString();
-    }
-
-    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
-
-    private SegmentDescriptor[] BuildSegments(TimeOnly? value)
-    {
-        var pattern = ResolveTimePattern();
-        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
-        var hasAmPm = false;
-
-        foreach (var token in tokens)
-        {
-            if (token.Kind == TemporalSegmentKind.AmPmDesignator)
-            {
-                hasAmPm = true;
-                break;
-            }
-        }
-
-        IReadOnlyList<string> text;
-
-        if (value is { } time)
-        {
-            text = TemporalPatternSegmenter.FormatSegments(
-                pattern,
-                tokens,
-                _tokenKinds,
-                format => time.ToString(format, _culture));
-        }
-        else
-        {
-            var placeholder = new string[tokens.Count];
-
-            for (var index = 0; index < tokens.Count; index++)
-            {
-                placeholder[index] = TemporalSegmentClassification.Placeholder(tokens[index]);
-            }
-
-            text = placeholder;
-        }
-
-        var descriptors = new SegmentDescriptor[tokens.Count];
-
-        for (var index = 0; index < tokens.Count; index++)
-        {
-            var token = tokens[index];
-            var segmentText = TemporalSegmentClassification.ReserveOptionalFractionCells(token, text[index]);
-
-            descriptors[index] = token.Kind is not { } kind
-                ? new SegmentDescriptor(segmentText)
-                : new SegmentDescriptor(
-                    kind == TemporalSegmentKind.AmPmDesignator
-                        ? TemporalSegmentClassification.ResolveDesignatorText(segmentText, value is { Hour: >= 12 })
-                        : segmentText,
-                    kind,
-                    TemporalSegmentClassification.DigitCapacity(token),
-                    MaxValueFor(kind, hasAmPm, token.RunLength));
-        }
-
-        return descriptors;
-    }
-
-    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
-    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
-    /// example incrementing a zero-padded minute segment) needs only
-    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
-    /// formatted text (a single-digit hour widening to two digits under a non-padded
-    /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
-    /// remeasured instead of leaving stale geometry behind. The default zero-padded
-    /// <see cref="Use24HourFormat"/>/<see cref="ShowSeconds"/> layout is fixed-width, so this
-    /// predicate is latent until a non-padded custom <see cref="Format"/> is set - it is still
-    /// wired here so every <see cref="TemporalValueState{T}"/> consumer shares the same
-    /// mechanism.</summary>
-    private InvalidationImpact ResolveValueWidthImpact(TimeOnly? previous, TimeOnly? candidate) =>
-        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
-
-#pragma warning disable IDE0072 // Month, Day, Year, and AmPmDesignator are unreachable from TimeInput's time-only layout.
-    [Pure]
-    private static int MaxValueFor(TemporalSegmentKind kind, bool hasAmPm, int runLength) =>
-        kind switch
-        {
-            TemporalSegmentKind.Hour => hasAmPm ? 12 : 23,
-            TemporalSegmentKind.Minute or TemporalSegmentKind.Second => 59,
-            TemporalSegmentKind.FractionalSecond => TemporalClockArithmetic.FractionalSecondMaxValue(runLength),
-            _ => 0
-        };
-#pragma warning restore IDE0072
-
-    #endregion
-
-    #region Lifecycle
+    #region Temporal seams
 
     /// <inheritdoc/>
-    protected override void OnUnavailable(ReleaseReason reason)
-    {
-        base.OnUnavailable(reason);
+    protected override TimeOnly ResolveClockSeed() => TimeOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
 
-        if (reason == ReleaseReason.Disposed)
+    /// <inheritdoc/>
+    protected override TimeOnly ResolveDigitEntrySeed() => TimeOnly.MinValue;
+
+    /// <inheritdoc/>
+    protected override IReadOnlyDictionary<char, TemporalSegmentKind> TokenKinds => _tokenKinds;
+
+    /// <inheritdoc/>
+    protected override string ResolvePattern() =>
+        Format ?? TemporalClockSegments.BuildDefaultTimePattern(Use24HourFormat, ShowSeconds);
+
+    /// <inheritdoc/>
+    protected override string FormatValue(TimeOnly value, string format, CultureInfo culture) =>
+        value.ToString(format, culture);
+
+    /// <inheritdoc/>
+    protected override bool IsPm(TimeOnly value) => value.Hour >= 12;
+
+    /// <inheritdoc/>
+    protected override int MaxValueFor(TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength) =>
+        TemporalClockSegments.MaxValueFor(kind, hasAmPmDesignator, runLength);
+
+    /// <inheritdoc/>
+    protected override void ValidateCulture(CultureInfo culture)
+    {
+        if (Format is { } format)
         {
-            ValueChanged = null;
+            TemporalFormatValidation.Validate(
+                format, culture, "value", "TimeOnly", static (f, c) => TimeOnly.MinValue.ToString(f, c), _tokenKinds);
         }
     }
+
+    /// <inheritdoc/>
+    protected override Func<Rune, bool>? ResolveCharacterCommand() => HandleCharacterCommand;
 
     #endregion
 }

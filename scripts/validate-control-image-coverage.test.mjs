@@ -432,6 +432,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
       "numeric-input-base",
       "pressable",
       "scrollable-composite-control",
+      "temporal-input-base",
     ],
   );
 });

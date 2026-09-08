@@ -41,9 +41,10 @@ classDiagram
     InputBase <|-- NumericInputBase
     NumericInputBase <|-- CurrencyInput
     NumericInputBase <|-- NumberInput
-    InputBase <|-- DateInput
-    InputBase <|-- DateTimeInput
-    InputBase <|-- TimeInput
+    InputBase <|-- TemporalInputBase~TValue~
+    TemporalInputBase~TValue~ <|-- DateInput
+    TemporalInputBase~TValue~ <|-- DateTimeInput
+    TemporalInputBase~TValue~ <|-- TimeInput
     ItemsControl <|-- CommandBar
     HeaderedContentControl <|-- GroupBox
     HeaderedContentControl <|-- Expander
@@ -112,6 +113,10 @@ Complete modal tasks such as `MessageBox` live in
 - [NumericInputBase](input/numeric-input-base.md#overview) adds the shared
   buffer-then-commit transient numeric editing model - nullable value and range
   state, buffer refresh, measurement, and rendering - to `InputBase`.
+- [TemporalInputBase\<TValue\>](input/temporal-input-base.md#overview) adds the
+  shared segmented-editing model - nullable bounded value state, lazy
+  dispatcher-clock seeding, the segment-layout skeleton, and the typed
+  `ValueChanged` event - to `InputBase`, for any immutable temporal value.
 - [Pressable](pressable.md#overview) adds focus and completed activation to the
   single-text-caption role.
 

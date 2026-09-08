@@ -39,6 +39,7 @@ const documentedTypeOverrides = new Map([
     ["composite-control", "CompositeControlBase#0"],
     ["scrollable-composite-control", "ScrollableCompositeControlBase#0"],
     ["numeric-input-base", "NumericInputBase#0"],
+    ["temporal-input-base", "TemporalInputBase#1"],
     ["content-control", "ContentControl#0"],
     ["headered-content-control", "HeaderedContentControl#0"],
     ["items-control", "ItemsControl#0"],

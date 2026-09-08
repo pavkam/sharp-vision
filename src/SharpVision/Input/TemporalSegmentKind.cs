@@ -5,13 +5,18 @@ namespace SharpVision.Input;
 
 /// <summary>Identifies which calendar or clock component an editable segment of a segmented
 /// temporal field (<see cref="Controls.Input.DateInput"/>, <see cref="Controls.Input.TimeInput"/>,
-/// <see cref="Controls.Input.DateTimeInput"/>) edits.</summary>
+/// <see cref="Controls.Input.DateTimeInput"/>, or a third-party
+/// <see cref="Controls.Input.TemporalInputBase{TValue}"/> derivative) edits.</summary>
 /// <remarks>
 /// The engine (<see cref="SegmentFieldBehavior"/>) uses this value only to route a navigation,
 /// digit-entry, increment, or clear request back to the owning control's own value arithmetic; it
-/// carries no formatting or calendar semantics of its own.
+/// carries no formatting or calendar semantics of its own. Public so a derivative outside this
+/// assembly can implement <see cref="Controls.Input.TemporalInputBase{TValue}"/>'s abstract
+/// per-segment arithmetic seams, which classify and dispatch on this value, without needing
+/// friend access to the internal segmented-field engine itself.
 /// </remarks>
-internal enum TemporalSegmentKind
+[PublicAPI]
+public enum TemporalSegmentKind
 {
     /// <summary>The calendar month component of a date.</summary>
     Month,

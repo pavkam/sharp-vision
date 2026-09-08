@@ -21,7 +21,7 @@ public sealed class TimeInputTests
                 input.Value = second;
             }
         };
-        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Value, input.Value));
+        input.ValueChanged += (_, eventArgs) => observations.Add((eventArgs.Current, input.Value));
 
         input.Value = first;
 
@@ -190,7 +190,7 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(8, 0) };
-        TimeInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<TimeOnly>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -199,8 +199,8 @@ public sealed class TimeInputTests
         // Assert
         control.Value.ShouldBe(new TimeOnly(10, 0));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new TimeOnly(8, 0));
-        raised.Value.ShouldBe(new TimeOnly(10, 0));
+        raised.Previous.ShouldBe(new TimeOnly(8, 0));
+        raised.Current.ShouldBe(new TimeOnly(10, 0));
     }
 
     /// <summary>Verifies lowering Maximum below the committed value repairs it by clamping and
@@ -210,7 +210,7 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(18, 0) };
-        TimeInputValueChangedEventArgs? change = null;
+        TemporalValueChangedEventArgs<TimeOnly>? change = null;
         control.ValueChanged += (_, args) => change = args;
 
         // Act
@@ -219,8 +219,8 @@ public sealed class TimeInputTests
         // Assert
         control.Value.ShouldBe(new TimeOnly(14, 0));
         var raised = change.ShouldNotBeNull();
-        raised.PreviousValue.ShouldBe(new TimeOnly(18, 0));
-        raised.Value.ShouldBe(new TimeOnly(14, 0));
+        raised.Previous.ShouldBe(new TimeOnly(18, 0));
+        raised.Current.ShouldBe(new TimeOnly(14, 0));
     }
 
     /// <summary>Verifies toggling Use24HourFormat changes the rendered output.</summary>
@@ -385,7 +385,7 @@ public sealed class TimeInputTests
     {
         // Arrange
         using var control = new TimeInput { Value = new TimeOnly(10, 0) };
-        TimeInputValueChangedEventArgs? observed = null;
+        TemporalValueChangedEventArgs<TimeOnly>? observed = null;
         control.ValueChanged += (_, eventArgs) => observed = eventArgs;
 
         // Act
@@ -393,8 +393,8 @@ public sealed class TimeInputTests
 
         // Assert
         _ = observed.ShouldNotBeNull();
-        observed.PreviousValue.ShouldBe(new TimeOnly(10, 0));
-        observed.Value.ShouldBe(new TimeOnly(14, 30));
+        observed.Previous.ShouldBe(new TimeOnly(10, 0));
+        observed.Current.ShouldBe(new TimeOnly(14, 30));
     }
 
     #endregion

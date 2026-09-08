@@ -20,6 +20,7 @@ export const excludedAbstractDocSlugs = new Set([
   "numeric-input-base",
   "pressable",
   "scrollable-composite-control",
+  "temporal-input-base",
 ]);
 
 const galleryCatalogEntry =

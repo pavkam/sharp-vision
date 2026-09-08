@@ -7,7 +7,7 @@ using Popups;
 
 /// <summary>Displays a formatted date with inline segment editing and a Calendar popup for selection.</summary>
 [PublicAPI]
-public sealed class DateInput: InputBase
+public sealed class DateInput: TemporalInputBase<DateOnly>
 {
     // A stable, representative date used to validate candidate formatting patterns.
     private static readonly DateOnly _probeDate = DateOnly.FromDateTime(DateTime.UnixEpoch);
@@ -25,36 +25,25 @@ public sealed class DateInput: InputBase
     private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly Popup _popup;
     private readonly RetainedPartProperty<PopupChrome> _popupChrome;
-    private readonly TemporalValueState<DateOnly> _state;
-    private CultureInfo _culture;
 
     #region Construction and properties
 
     /// <summary>Initializes a bordered date field with a connected Calendar popup.</summary>
     public DateInput()
+        : base(
+            DateOnly.MinValue,
+            DateOnly.MaxValue,
+            CultureInfo.CurrentCulture.DateTimeFormat.Calendar is GregorianCalendar
+                ? CultureInfo.CurrentCulture
+                : CultureInfo.InvariantCulture)
     {
-        _culture = CultureInfo.CurrentCulture.DateTimeFormat.Calendar is GregorianCalendar
-            ? CultureInfo.CurrentCulture
-            : CultureInfo.InvariantCulture;
-
         // Value resolves the current local date lazily, on first read, rather than here: a
         // control constructed off-dispatcher and then mounted under a dispatcher with its own
         // TimeProvider must observe that dispatcher's clock instead of latching the clock that
         // happened to be current at construction. The owned Calendar starts with no selection to
         // match; EnsureSeeded pushes the resolved value into it once seeding actually happens.
-        _state = new TemporalValueState<DateOnly>(
-            DateOnly.MinValue,
-            DateOnly.MaxValue,
-            this,
-            VerifyMutable,
-            NotifyPropertyChanged,
-            () => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime),
-            RaiseValueChanged,
-            SynchronizeCalendarValue,
-            SyncCalendarBounds,
-            resolveValueImpact: ResolveValueWidthImpact);
         _calendarDropDown = new CalendarDropDownCoordinator<DateOnly>(
-            _culture,
+            Culture,
             EnsureSeeded,
             () => _state.Value,
             value => _ = _state.SetValue(value),
@@ -108,24 +97,8 @@ public sealed class DateInput: InputBase
             () => _calendarDropDown.Calendar.Style,
             value => _calendarDropDown.Calendar.Style = value);
         EnablePressActivation();
-        _ = EnableSegmentEditing(
-            BuildSegments,
-            ApplySegmentDigit,
-            ApplySegmentIncrement,
-            ClearSegmentValue,
-            new SegmentFieldKeyOptions(
-                ResolveSegmentStepDelta,
-                ClearValueCommand,
-                handlePopupCommand: HandleDropDownOpeningCommand,
-                handleRecognizedWithoutChange: true),
-            reservesDropDownIndicator: true,
-            activateFirstSegmentOnFocus: true,
-            beforeInput: EnsureSeeded);
         TabNavigation = TabNavigation.None;
     }
-
-    /// <summary>Raised after a committed value transition.</summary>
-    public event EventHandler<DateInputValueChangedEventArgs>? ValueChanged;
 
     /// <summary>Raised after the Calendar popup opens.</summary>
     public event EventHandler? DropDownOpened;
@@ -133,71 +106,8 @@ public sealed class DateInput: InputBase
     /// <summary>Raised after the Calendar popup closes.</summary>
     public event EventHandler? DropDownClosed;
 
-    /// <summary>Gets or sets the committed date, or null when cleared.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateOnly? Value
-    {
-        get
-        {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
-            return _state.EnsureSeeded();
-        }
-        set => _ = _state.SetValue(value);
-    }
-
-    /// <summary>Gets or sets whether a null value is permitted.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public bool AllowNull
-    {
-        get => _state.AllowNull;
-        set => _ = _state.SetAllowNull(value);
-    }
-
-    /// <summary>Gets or sets the Gregorian culture used for date formatting and segment order.</summary>
-    /// <exception cref="ArgumentNullException">The value is null.</exception>
-    /// <exception cref="ArgumentException">The culture's active calendar is not Gregorian, or the current <see cref="Format"/> cannot be rendered by a <see cref="DateOnly"/> under this culture.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public CultureInfo Culture
-    {
-        get => _culture;
-        set
-        {
-            ArgumentNullException.ThrowIfNull(value);
-
-            if (value.DateTimeFormat.Calendar is not GregorianCalendar)
-            {
-                throw new ArgumentException(
-                    "DateInput requires a Gregorian display culture.", nameof(value));
-            }
-
-            VerifyMutable();
-
-            if (ReferenceEquals(_culture, value))
-            {
-                return;
-            }
-
-            TemporalFormatValidation.Validate(
-                Format, value, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
-
-            _ = SetPropertyAndSynchronize(
-                ref _culture,
-                value,
-                InvalidationImpact.Measure,
-                () =>
-                {
-                    _calendarDropDown.SyncCulture(Culture);
-                    InvalidateSegmentLayout();
-                },
-                ReferenceEqualityComparer.Instance);
-        }
-    }
-
     /// <summary>Gets or sets the date format string used for display.</summary>
-    /// <remarks>The pattern must be renderable by <see cref="DateOnly"/> under <see cref="Culture"/>: a single
+    /// <remarks>The pattern must be renderable by <see cref="DateOnly"/> under <see cref="TemporalInputBase{TValue}.Culture"/>: a single
     /// standard specifier outside <see cref="DateOnly"/>'s own set, or any pattern containing a time specifier,
     /// is rejected.</remarks>
     /// <exception cref="ArgumentNullException">The value is null.</exception>
@@ -211,7 +121,7 @@ public sealed class DateInput: InputBase
         {
             ArgumentException.ThrowIfNullOrEmpty(value);
             TemporalFormatValidation.Validate(
-                value, _culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
+                value, Culture, nameof(value), "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
 
             if (SetProperty(ref field, value, InvalidationImpact.Measure))
             {
@@ -219,26 +129,6 @@ public sealed class DateInput: InputBase
             }
         }
     } = "d";
-
-    /// <summary>Gets or sets the earliest selectable date.</summary>
-    /// <exception cref="ArgumentException">The value exceeds <see cref="Maximum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateOnly Minimum
-    {
-        get => _state.Minimum;
-        set => _ = _state.SetMinimum(value);
-    }
-
-    /// <summary>Gets or sets the latest selectable date.</summary>
-    /// <exception cref="ArgumentException">The value precedes <see cref="Minimum"/>.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public DateOnly Maximum
-    {
-        get => _state.Maximum;
-        set => _ = _state.SetMaximum(value);
-    }
 
     /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible calendar height.</summary>
     /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
@@ -316,7 +206,6 @@ public sealed class DateInput: InputBase
         if (reason == ReleaseReason.Disposed)
         {
             _calendarDropDown.Dispose();
-            ValueChanged = null;
             DropDownOpened = null;
             DropDownClosed = null;
         }
@@ -345,30 +234,64 @@ public sealed class DateInput: InputBase
 
     #endregion
 
-    #region Segment editing
+    #region Temporal seams
 
-    // Reports whether the clear actually changed the value, like the sibling fields do: Delete on
-    // an already-empty field is then consumed only through the recognized-without-change policy
-    // (which needs an editable segment to recognize it), never by claiming a transition that did
-    // not happen.
-    private bool ClearValueCommand() => AllowNull && _state.SetValue(null);
+    /// <inheritdoc/>
+    protected override bool ClearValue() => AllowNull && _state.SetValue(null);
 
-    private bool ApplySegmentIncrement(SegmentDescriptor segment, int delta)
+    /// <inheritdoc/>
+    protected override DateOnly ResolveClockSeed() => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
+
+    /// <inheritdoc/>
+    protected override IReadOnlyDictionary<char, TemporalSegmentKind> TokenKinds => _tokenKinds;
+
+    /// <inheritdoc/>
+    protected override string ResolvePattern() =>
+        Format.Length > 1
+            ? Format
+            : Format[0] switch
+            {
+                'd' => Culture.DateTimeFormat.ShortDatePattern,
+                'D' => Culture.DateTimeFormat.LongDatePattern,
+                'm' or 'M' => Culture.DateTimeFormat.MonthDayPattern,
+                'y' or 'Y' => Culture.DateTimeFormat.YearMonthPattern,
+                'o' or 'O' => "yyyy'-'MM'-'dd",
+                'r' or 'R' => "ddd, dd MMM yyyy",
+                _ => Culture.DateTimeFormat.ShortDatePattern
+            };
+
+    /// <inheritdoc/>
+    protected override CultureInfo ResolveRenderingCulture() =>
+        Format.Length == 1 && Format[0] is 'r' or 'R' ? CultureInfo.InvariantCulture : Culture;
+
+    /// <inheritdoc/>
+    protected override string FormatValue(DateOnly value, string format, CultureInfo culture) =>
+        value.ToString(format, culture);
+
+    /// <inheritdoc/>
+    protected override int MaxValueFor(TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength)
     {
-        var kind = segment.Kind!.Value;
-
-        if (_state.Value is not { } date)
+        _ = hasAmPmDesignator;
+        _ = runLength;
+#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
+        return kind switch
         {
-            // AllowNull defaults to true, so a prior Delete (or an explicit Value = null) can
-            // leave the value unset. Rather than refusing the increment outright, seed today's
-            // date - the same seed DateInput resolves lazily at construction - so Up/Down starts
-            // producing a value instead of silently doing nothing forever.
-            return CommitSegmentValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
-        }
+            TemporalSegmentKind.Month => 12,
+            TemporalSegmentKind.Day => 31,
+            TemporalSegmentKind.Year => 9999,
+            _ => 0
+        };
+#pragma warning restore IDE0072
+    }
+
+    /// <inheritdoc/>
+    protected override DateOnly? Increment(DateOnly value, TemporalSegmentKind kind, int delta, int digitCapacity)
+    {
+        _ = digitCapacity;
 
         if (kind == TemporalSegmentKind.Year)
         {
-            var newYear = date.Year + delta;
+            var newYear = value.Year + delta;
 
             if (newYear is < 1 or > 9999)
             {
@@ -378,51 +301,36 @@ public sealed class DateInput: InputBase
                 // caught here, before calling it, instead of recovered from underneath via a
                 // caught ArgumentOutOfRangeException. Mirrors DateTimeInput.SafeAddYears's own
                 // pre-call guard.
-                return false;
+                return null;
             }
 
             var (replacedYear, replacedMonth, replacedDay) =
-                TemporalCalendarArithmetic.ReplaceYear(date.Month, date.Day, newYear);
-            return CommitSegmentValue(_state.Clamp(new DateOnly(replacedYear, replacedMonth, replacedDay)));
+                TemporalCalendarArithmetic.ReplaceYear(value.Month, value.Day, newYear);
+            return new DateOnly(replacedYear, replacedMonth, replacedDay);
         }
 
         try
         {
 #pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
-            var adjusted = kind switch
+            return kind switch
             {
-                TemporalSegmentKind.Month => date.AddMonths(delta),
-                TemporalSegmentKind.Day => date.AddDays(delta),
-                _ => date
+                TemporalSegmentKind.Month => value.AddMonths(delta),
+                TemporalSegmentKind.Day => value.AddDays(delta),
+                _ => value
             };
 #pragma warning restore IDE0072
-
-            return CommitSegmentValue(_state.Clamp(adjusted));
         }
         catch (ArgumentOutOfRangeException)
         {
             // Silently ignore increments that push beyond DateOnly bounds.
-            return false;
+            return null;
         }
     }
 
-    private bool ApplySegmentDigit(SegmentDescriptor segment, int value)
+    /// <inheritdoc/>
+    protected override DateOnly? ApplyDigit(DateOnly value, TemporalSegmentKind kind, int digitValue, int digitCapacity)
     {
-        var kind = segment.Kind!.Value;
-
-        if (_state.Value is not { } date)
-        {
-            // Same rationale as ApplySegmentIncrement: seed today's date instead of refusing,
-            // so a digit typed after Delete lands on a real value rather than being dropped.
-            _ = _state.SetValue(_state.Clamp(DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime)));
-
-            if (_state.Value is not { } seeded)
-            {
-                return false;
-            }
-
-            date = seeded;
-        }
+        _ = digitCapacity;
 
         try
         {
@@ -430,186 +338,76 @@ public sealed class DateInput: InputBase
             var (year, month, day) = kind switch
             {
                 TemporalSegmentKind.Month => TemporalCalendarArithmetic.ReplaceMonth(
-                    date.Year, date.Day, Math.Clamp(value, 1, 12)),
+                    value.Year, value.Day, Math.Clamp(digitValue, 1, 12)),
                 TemporalSegmentKind.Day => TemporalCalendarArithmetic.ClampDayOfMonth(
-                    date.Year, date.Month, Math.Clamp(value, 1, DateTime.DaysInMonth(date.Year, date.Month))),
+                    value.Year, value.Month, Math.Clamp(digitValue, 1, DateTime.DaysInMonth(value.Year, value.Month))),
                 TemporalSegmentKind.Year => TemporalCalendarArithmetic.ReplaceYear(
-                    date.Month, date.Day, Math.Clamp(value, 1, 9999)),
-                _ => (date.Year, date.Month, date.Day)
+                    value.Month, value.Day, Math.Clamp(digitValue, 1, 9999)),
+                _ => (value.Year, value.Month, value.Day)
             };
 #pragma warning restore IDE0072
 
-            return CommitSegmentValue(_state.Clamp(new DateOnly(year, month, day)));
+            return new DateOnly(year, month, day);
         }
         catch (ArgumentOutOfRangeException)
         {
-            return false;
+            return null;
         }
     }
 
-    private bool ClearSegmentValue(SegmentDescriptor segment)
+    /// <inheritdoc/>
+    protected override DateOnly? ClearSegment(DateOnly value, TemporalSegmentKind kind)
     {
-        var kind = segment.Kind!.Value;
-
-        if (_state.Value is not { } date)
-        {
-            return false;
-        }
-
         try
         {
 #pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
             var (year, month, day) = kind switch
             {
-                TemporalSegmentKind.Month => TemporalCalendarArithmetic.ReplaceMonth(date.Year, date.Day, 1),
-                TemporalSegmentKind.Day => TemporalCalendarArithmetic.ClampDayOfMonth(date.Year, date.Month, 1),
-                TemporalSegmentKind.Year => TemporalCalendarArithmetic.ReplaceYear(date.Month, date.Day, 1),
-                _ => (date.Year, date.Month, date.Day)
+                TemporalSegmentKind.Month => TemporalCalendarArithmetic.ReplaceMonth(value.Year, value.Day, 1),
+                TemporalSegmentKind.Day => TemporalCalendarArithmetic.ClampDayOfMonth(value.Year, value.Month, 1),
+                TemporalSegmentKind.Year => TemporalCalendarArithmetic.ReplaceYear(value.Month, value.Day, 1),
+                _ => (value.Year, value.Month, value.Day)
             };
 #pragma warning restore IDE0072
 
-            return CommitSegmentValue(_state.Clamp(new DateOnly(year, month, day)));
+            return new DateOnly(year, month, day);
         }
         catch (ArgumentOutOfRangeException)
         {
-            return false;
+            return null;
         }
     }
 
-    private bool CommitSegmentValue(DateOnly value)
+    /// <inheritdoc/>
+    protected override void ValidateCulture(CultureInfo culture)
     {
-        var previous = _state.Value;
-        Value = value;
-        return _state.Value != previous;
-    }
-
-    private string ResolveDatePattern() =>
-        Format.Length > 1
-            ? Format
-            : Format[0] switch
-            {
-                'd' => _culture.DateTimeFormat.ShortDatePattern,
-                'D' => _culture.DateTimeFormat.LongDatePattern,
-                'm' or 'M' => _culture.DateTimeFormat.MonthDayPattern,
-                'y' or 'Y' => _culture.DateTimeFormat.YearMonthPattern,
-                'o' or 'O' => "yyyy'-'MM'-'dd",
-                'r' or 'R' => "ddd, dd MMM yyyy",
-                _ => _culture.DateTimeFormat.ShortDatePattern
-            };
-
-    #endregion
-
-    #region Rendering helpers
-
-    private SegmentDescriptor[] BuildSegments() => BuildSegments(_state.Value);
-
-    private SegmentDescriptor[] BuildSegments(DateOnly? value)
-    {
-        var pattern = ResolveDatePattern();
-        var tokens = TemporalPatternSegmenter.ParseTokens(pattern, _tokenKinds, _culture);
-
-        IReadOnlyList<string> text;
-
-        if (value is { } date)
+        if (culture.DateTimeFormat.Calendar is not GregorianCalendar)
         {
-            var renderingCulture = Format.Length == 1 && Format[0] is 'r' or 'R'
-                ? CultureInfo.InvariantCulture
-                : _culture;
-            text = TemporalPatternSegmenter.FormatSegments(
-                pattern,
-                tokens,
-                _tokenKinds,
-                format => date.ToString(format, renderingCulture));
-        }
-        else
-        {
-            var placeholder = new string[tokens.Count];
-
-            for (var index = 0; index < tokens.Count; index++)
-            {
-                var token = tokens[index];
-#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
-                placeholder[index] = token.Kind switch
-                {
-                    null => token.LiteralText,
-                    TemporalSegmentKind.Year when token.RunLength >= 4 => "----",
-                    _ => "--"
-                };
-#pragma warning restore IDE0072
-            }
-
-            text = placeholder;
+            throw new ArgumentException(
+                "DateInput requires a Gregorian display culture.", nameof(culture));
         }
 
-        var descriptors = new SegmentDescriptor[tokens.Count];
-
-        for (var index = 0; index < tokens.Count; index++)
-        {
-            var token = tokens[index];
-
-            // A weekday (dddd) or month-name (MMMM) run of length >= 3 is a name, not a
-            // zero-padded number: rendering it as an ordinary editable segment would let a typed
-            // digit be misinterpreted as a day-of-month or month-number and corrupt the date.
-            // Building it as a literal instead makes it inert for digit entry, tab/arrow
-            // traversal, and Increment alike, since SegmentFieldBehavior gates all three purely
-            // on SegmentDescriptor.IsEditable.
-            descriptors[index] = token.Kind is not { } kind ||
-                (kind is TemporalSegmentKind.Month or TemporalSegmentKind.Day && token.RunLength >= 3)
-                ? new SegmentDescriptor(text[index])
-                : new SegmentDescriptor(
-                    text[index],
-                    kind,
-                    kind == TemporalSegmentKind.Year && token.RunLength >= 4 ? 4 : 2,
-#pragma warning disable IDE0072 // Only date-kind segments are reachable from DateInput's layout.
-                    kind switch
-                    {
-                        TemporalSegmentKind.Month => 12,
-                        TemporalSegmentKind.Day => 31,
-                        TemporalSegmentKind.Year => 9999,
-                        _ => 0
-                    });
-#pragma warning restore IDE0072
-        }
-
-        return descriptors;
+        TemporalFormatValidation.Validate(
+            Format, culture, "value", "DateOnly", static (f, c) => _probeDate.ToString(f, c), _tokenKinds);
     }
 
-    /// <summary>Grades a value transition by its resolved display-width delta, mirroring
-    /// <see cref="ControlBase.GetAffixChangeImpact"/> for affixes: a same-width transition (for
-    /// example incrementing a zero-padded day segment) needs only
-    /// <see cref="InvalidationImpact.Render"/>, while a transition that widens or narrows the
-    /// formatted text (a single-digit month or day widening to two digits under a non-padded
-    /// <see cref="Format"/>) needs <see cref="InvalidationImpact.Measure"/> so the field box is
-    /// remeasured instead of leaving stale geometry behind.</summary>
-    private InvalidationImpact ResolveValueWidthImpact(DateOnly? previous, DateOnly? candidate) =>
-        ResolveSegmentWidthImpact(BuildSegments(previous), BuildSegments(candidate));
+    /// <inheritdoc/>
+    protected override void SynchronizeValue(DateOnly? value) => _calendarDropDown.SyncValue(value);
 
-    #endregion
+    /// <inheritdoc/>
+    protected override void SynchronizeBounds() => _calendarDropDown.SyncBounds();
 
-    #region Value management
+    /// <inheritdoc/>
+    protected override void SynchronizeCulture(CultureInfo culture) => _calendarDropDown.SyncCulture(culture);
 
-    /// <summary>Latches Value to the current local date on first read, so a control mounted under
-    /// a dispatcher observes that dispatcher's clock instead of the clock current at
-    /// construction, and pushes the newly resolved value into the owned Calendar. A value already
-    /// committed - including an explicit null under <see cref="AllowNull"/> - is left
-    /// untouched.</summary>
-    private void EnsureSeeded() => _ = _state.EnsureSeeded();
+    /// <inheritdoc/>
+    protected override Func<KeyEventArgs, bool?>? ResolvePopupCommand() => HandleDropDownOpeningCommand;
 
-    private void SyncCalendarBounds() => _calendarDropDown.SyncBounds();
+    /// <inheritdoc/>
+    protected override bool ReservesDropDownIndicator => true;
 
-    private void SynchronizeCalendarValue(DateOnly? value) =>
-        _calendarDropDown.SyncValue(value);
-
-    private void RaiseValueChanged(
-        ref CallbackTransitionTransaction transition,
-        DateOnly? previous,
-        DateOnly? current)
-    {
-        transition.PublishCurrent(
-            ValueChanged,
-            this,
-            new DateInputValueChangedEventArgs(previous, current));
-    }
+    /// <inheritdoc/>
+    protected override bool ActivateFirstSegmentOnFocus => true;
 
     #endregion
 

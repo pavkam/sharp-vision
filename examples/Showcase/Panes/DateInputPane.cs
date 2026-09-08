@@ -37,7 +37,7 @@ internal sealed class DateInputPane: CompositeControlBase
             }
         };
         basic.ValueChanged += (_, eventArgs) =>
-            basicStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            basicStatus.Content = $"Value: {FormatDate(eventArgs.Current)}";
         basicStatus.Content = $"Value: {FormatDate(basic.Value)}";
 
         // Bounded range with Minimum and Maximum.
@@ -52,7 +52,7 @@ internal sealed class DateInputPane: CompositeControlBase
             Value = new DateOnly(2026, 6, 15)
         };
         bounded.ValueChanged += (_, eventArgs) =>
-            boundsStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            boundsStatus.Content = $"Value: {FormatDate(eventArgs.Current)}";
         boundsStatus.Content = $"Value: {FormatDate(bounded.Value)} (2026 only)";
 
         // Nullable with AllowNull=true.
@@ -64,7 +64,7 @@ internal sealed class DateInputPane: CompositeControlBase
             Value = null
         };
         nullable.ValueChanged += (_, eventArgs) =>
-            nullableStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            nullableStatus.Content = $"Value: {FormatDate(eventArgs.Current)}";
         nullableStatus.Content = $"Value: {FormatDate(nullable.Value)}";
 
         // Localized culture.
@@ -75,7 +75,7 @@ internal sealed class DateInputPane: CompositeControlBase
             Value = new DateOnly(2026, 9, 3)
         };
         inputCulture.ValueChanged += (_, eventArgs) =>
-            statusCulture.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            statusCulture.Content = $"Value: {FormatDate(eventArgs.Current)}";
         statusCulture.Content = $"Value: {FormatDate(inputCulture.Value)}";
 
         // Custom format.
@@ -86,7 +86,7 @@ internal sealed class DateInputPane: CompositeControlBase
             Value = new DateOnly(2026, 9, 3)
         };
         inputFormat.ValueChanged += (_, eventArgs) =>
-            statusFormat.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            statusFormat.Content = $"Value: {FormatDate(eventArgs.Current)}";
         statusFormat.Content = $"Value: {FormatDate(inputFormat.Value)}";
 
         // StartAffix reserves a fixed cell for an application-owned deadline marker.
@@ -98,7 +98,7 @@ internal sealed class DateInputPane: CompositeControlBase
             Value = new DateOnly(2026, 9, 3)
         };
         deadline.ValueChanged += (_, eventArgs) =>
-            deadlineStatus.Content = $"Value: {FormatDate(eventArgs.Value)}";
+            deadlineStatus.Content = $"Value: {FormatDate(eventArgs.Current)}";
         deadlineStatus.Content = $"Value: {FormatDate(deadline.Value)}";
 
         return new DocPage(

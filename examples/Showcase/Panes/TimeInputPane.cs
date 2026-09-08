@@ -26,7 +26,7 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(14, 30)
         };
         input24.ValueChanged += (_, eventArgs) =>
-            status24.Content = $"Value: {FormatTime(eventArgs.Value)}";
+            status24.Content = $"Value: {FormatTime(eventArgs.Current)}";
         status24.Content = $"Value: {FormatTime(input24.Value)}";
 
         // 12-hour format with AM/PM.
@@ -37,7 +37,7 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(9, 45)
         };
         input12.ValueChanged += (_, eventArgs) =>
-            status12.Content = $"Value: {FormatTime(eventArgs.Value)}";
+            status12.Content = $"Value: {FormatTime(eventArgs.Current)}";
         status12.Content = $"Value: {FormatTime(input12.Value)}";
 
         // With seconds visible.
@@ -48,14 +48,14 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(14, 30, 5)
         };
         inputSec.ValueChanged += (_, eventArgs) =>
-            statusSec.Content = $"Value: {FormatTime(eventArgs.Value, showSeconds: true)}";
+            statusSec.Content = $"Value: {FormatTime(eventArgs.Current, showSeconds: true)}";
         statusSec.Content = $"Value: {FormatTime(inputSec.Value, showSeconds: true)}";
 
         // Nullable.
         var statusNull = CreateStatus();
         var inputNull = new TimeInput { AllowNull = true, Value = null };
         inputNull.ValueChanged += (_, eventArgs) =>
-            statusNull.Content = $"Value: {FormatTime(eventArgs.Value)}";
+            statusNull.Content = $"Value: {FormatTime(eventArgs.Current)}";
         statusNull.Content = $"Value: {FormatTime(inputNull.Value)}";
 
         // Localized culture.
@@ -67,7 +67,7 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(14, 30)
         };
         inputCulture.ValueChanged += (_, eventArgs) =>
-            statusCulture.Content = $"Value: {FormatTime(eventArgs.Value)}";
+            statusCulture.Content = $"Value: {FormatTime(eventArgs.Current)}";
         statusCulture.Content = $"Value: {FormatTime(inputCulture.Value)}";
 
         // Custom format.
@@ -78,7 +78,7 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(14, 30, 5, 123)
         };
         inputFormat.ValueChanged += (_, eventArgs) =>
-            statusFormat.Content = $"Value: {FormatTime(eventArgs.Value, showFraction: true)}";
+            statusFormat.Content = $"Value: {FormatTime(eventArgs.Current, showFraction: true)}";
         statusFormat.Content = $"Value: {FormatTime(inputFormat.Value, showFraction: true)}";
 
         // StartAffix reserves a fixed cell for an application-owned pinned-reminder marker.
@@ -89,7 +89,7 @@ internal sealed class TimeInputPane: CompositeControlBase
             Value = new TimeOnly(18, 45)
         };
         inputPinned.ValueChanged += (_, eventArgs) =>
-            statusPinned.Content = $"Value: {FormatTime(eventArgs.Value)}";
+            statusPinned.Content = $"Value: {FormatTime(eventArgs.Current)}";
         statusPinned.Content = $"Value: {FormatTime(inputPinned.Value)}";
 
         return new DocPage(
@@ -103,7 +103,7 @@ internal sealed class TimeInputPane: CompositeControlBase
                     "Default time field",
                     "<reverse>Left</reverse>/<reverse>Right</reverse> navigate between hour and minute segments. <reverse>Up</reverse>/<reverse>Down</reverse> increment or decrement.",
                     new DocColumn(input24, status24),
-                    "var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };\ntimeInput.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var timeInput = new TimeInput { TimeStep = TimeSpan.FromMinutes(15) };\ntimeInput.ValueChanged += (_, e) =>\n    Console.Write(e.Current);")),
             new DocSection(
                 "🕑",
                 "12-hour format",

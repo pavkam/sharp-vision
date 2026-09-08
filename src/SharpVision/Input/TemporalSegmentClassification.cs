@@ -189,8 +189,8 @@ internal static class TemporalSegmentClassification
         character.Value is >= '0' and <= '9';
 
     /// <summary>Reports whether a typed character is the fixed "a"/"p" AM/PM toggle shortcut,
-    /// independent of <see cref="Controls.Input.TimeInput.Culture"/> or <see
-    /// cref="Controls.Input.DateTimeInput.Culture"/>'s own localized designator text.</summary>
+    /// independent of <see cref="Controls.Input.TemporalInputBase{TValue}.Culture"/>'s own
+    /// localized designator text.</summary>
     [Pure]
     public static bool IsAmPmToggle(Rune character) =>
         character.Value is 'a' or 'A' or 'p' or 'P';

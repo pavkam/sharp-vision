@@ -38,7 +38,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             }
         };
         combined.ValueChanged += (_, eventArgs) =>
-            combinedStatus.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
+            combinedStatus.Content = $"Value: {FormatDateTime(eventArgs.Current)}";
         combinedStatus.Content = $"Value: {FormatDateTime(combined.Value)}";
 
         // 12-hour format with AM/PM.
@@ -49,14 +49,14 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             Value = new DateTime(2026, 9, 3, 9, 45, 0, DateTimeKind.Utc)
         };
         input12.ValueChanged += (_, eventArgs) =>
-            status12.Content = $"Value: {FormatDateTime(eventArgs.Value, use12Hour: true)}";
+            status12.Content = $"Value: {FormatDateTime(eventArgs.Current, use12Hour: true)}";
         status12.Content = $"Value: {FormatDateTime(input12.Value, use12Hour: true)}";
 
         // Nullable.
         var statusNull = CreateStatus();
         var inputNull = new DateTimeInput { AllowNull = true, Value = null };
         inputNull.ValueChanged += (_, eventArgs) =>
-            statusNull.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
+            statusNull.Content = $"Value: {FormatDateTime(eventArgs.Current)}";
         statusNull.Content = $"Value: {FormatDateTime(inputNull.Value)}";
 
         // Localized culture.
@@ -67,7 +67,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             Value = new DateTime(2026, 9, 3, 14, 30, 0, DateTimeKind.Utc)
         };
         inputCulture.ValueChanged += (_, eventArgs) =>
-            statusCulture.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
+            statusCulture.Content = $"Value: {FormatDateTime(eventArgs.Current)}";
         statusCulture.Content = $"Value: {FormatDateTime(inputCulture.Value)}";
 
         // Custom format.
@@ -78,7 +78,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             Value = new DateTime(2026, 9, 3, 14, 30, 5, 123, DateTimeKind.Utc)
         };
         inputFormat.ValueChanged += (_, eventArgs) =>
-            statusFormat.Content = $"Value: {FormatDateTime(eventArgs.Value, showFraction: true)}";
+            statusFormat.Content = $"Value: {FormatDateTime(eventArgs.Current, showFraction: true)}";
         statusFormat.Content = $"Value: {FormatDateTime(inputFormat.Value, showFraction: true)}";
 
         // EndAffix reserves a fixed cell for an application-owned reminder marker.
@@ -89,7 +89,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
             Value = new DateTime(2026, 9, 3, 18, 45, 0, DateTimeKind.Utc)
         };
         inputReminder.ValueChanged += (_, eventArgs) =>
-            statusReminder.Content = $"Value: {FormatDateTime(eventArgs.Value)}";
+            statusReminder.Content = $"Value: {FormatDateTime(eventArgs.Current)}";
         statusReminder.Content = $"Value: {FormatDateTime(inputReminder.Value)}";
 
         return new DocPage(
@@ -103,7 +103,7 @@ internal sealed class DateTimeInputPane: CompositeControlBase
                     "Responsive date-time field",
                     "<reverse>Left</reverse>/<reverse>Right</reverse> navigate all segments. The styled Calendar popup uses half the usable placement-side height and preserves the current time portion.",
                     new DocColumn(combined, combinedStatus),
-                    "var dateTime = new DateTimeInput\n{\n    Value = new DateTime(2026, 9, 3, 14, 30, 5, DateTimeKind.Utc),\n    ShowSeconds = true,\n    TimeStep = TimeSpan.FromMinutes(15),\n    DropDownHeight = Length.Percent(50),\n    CalendarStyle = CalendarStyle.Default with\n    {\n        SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff)\n    },\n    PopupChrome = new PopupChrome\n    {\n        Border = new Border(BorderSide.All, BorderGlyphStyle.Heavy,\n            Color.Rgb(0x77, 0xaa, 0xff), Color.Transparent, TerminalAttributes.None)\n    }\n};\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Value);")),
+                    "var dateTime = new DateTimeInput\n{\n    Value = new DateTime(2026, 9, 3, 14, 30, 5, DateTimeKind.Utc),\n    ShowSeconds = true,\n    TimeStep = TimeSpan.FromMinutes(15),\n    DropDownHeight = Length.Percent(50),\n    CalendarStyle = CalendarStyle.Default with\n    {\n        SelectedDayColor = Color.Rgb(0x77, 0xaa, 0xff)\n    },\n    PopupChrome = new PopupChrome\n    {\n        Border = new Border(BorderSide.All, BorderGlyphStyle.Heavy,\n            Color.Rgb(0x77, 0xaa, 0xff), Color.Transparent, TerminalAttributes.None)\n    }\n};\ndateTime.ValueChanged += (_, e) =>\n    Console.Write(e.Current);")),
             new DocSection(
                 "🕐",
                 "12-hour format",

@@ -712,9 +712,9 @@ public sealed class DateInputInteractionTests
         var observed = new List<(DateOnly? Previous, DateOnly? Current)>();
         control.ValueChanged += (_, eventArgs) =>
         {
-            observed.Add((eventArgs.PreviousValue, eventArgs.Value));
+            observed.Add((eventArgs.Previous, eventArgs.Current));
 
-            if (eventArgs.Value == first)
+            if (eventArgs.Current == first)
             {
                 control.Value = second;
             }

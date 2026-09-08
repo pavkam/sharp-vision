@@ -2003,29 +2003,40 @@ namespace SharpVision.Controls.Input
         protected override decimal ResolveCommitRounding(decimal parsed) { }
         protected override void ValidateCulture(System.Globalization.CultureInfo culture) { }
     }
-    public sealed class DateInput : SharpVision.Controls.InputBase
+    public sealed class DateInput : SharpVision.Controls.Input.TemporalInputBase<System.DateOnly>
     {
         public DateInput() { }
+        protected override bool ActivateFirstSegmentOnFocus { get; }
         public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
-        public bool AllowNull { get; set; }
         public SharpVision.Controls.Input.CalendarStyle? CalendarStyle { get; set; }
-        public System.Globalization.CultureInfo Culture { get; set; }
         public SharpVision.Layout.Length DropDownHeight { get; set; }
         public string Format { get; set; }
-        public System.DateOnly Maximum { get; set; }
-        public System.DateOnly Minimum { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
-        public System.DateOnly? Value { get; set; }
+        protected override bool ReservesDropDownIndicator { get; }
+        protected override System.Collections.Generic.IReadOnlyDictionary<char, SharpVision.Input.TemporalSegmentKind> TokenKinds { get; }
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
-        public event System.EventHandler<SharpVision.Input.DateInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override System.DateOnly? ApplyDigit(System.DateOnly value, SharpVision.Input.TemporalSegmentKind kind, int digitValue, int digitCapacity) { }
+        protected override System.DateOnly? ClearSegment(System.DateOnly value, SharpVision.Input.TemporalSegmentKind kind) { }
+        protected override bool ClearValue() { }
+        protected override string FormatValue(System.DateOnly value, string format, System.Globalization.CultureInfo culture) { }
+        protected override System.DateOnly? Increment(System.DateOnly value, SharpVision.Input.TemporalSegmentKind kind, int delta, int digitCapacity) { }
+        protected override int MaxValueFor(SharpVision.Input.TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
+        protected override System.DateOnly ResolveClockSeed() { }
+        protected override string ResolvePattern() { }
+        protected override System.Func<SharpVision.Input.KeyEventArgs, bool?>? ResolvePopupCommand() { }
+        protected override System.Globalization.CultureInfo ResolveRenderingCulture() { }
+        protected override void SynchronizeBounds() { }
+        protected override void SynchronizeCulture(System.Globalization.CultureInfo culture) { }
+        protected override void SynchronizeValue(System.DateOnly? value) { }
+        protected override void ValidateCulture(System.Globalization.CultureInfo culture) { }
     }
     public readonly struct DateInterval : System.IEquatable<SharpVision.Controls.Input.DateInterval>
     {
@@ -2036,32 +2047,43 @@ namespace SharpVision.Controls.Input
         public bool Contains(System.DateOnly date) { }
         public bool Intersects(SharpVision.Controls.Input.DateInterval other) { }
     }
-    public sealed class DateTimeInput : SharpVision.Controls.InputBase
+    public sealed class DateTimeInput : SharpVision.Controls.Input.TemporalInputBase<System.DateTime>
     {
         public DateTimeInput() { }
         public SharpVision.Controls.Input.CalendarStyle ActualCalendarStyle { get; }
-        public bool AllowNull { get; set; }
         public SharpVision.Controls.Input.CalendarStyle? CalendarStyle { get; set; }
-        public System.Globalization.CultureInfo Culture { get; set; }
         public SharpVision.Layout.Length DropDownHeight { get; set; }
         public string? Format { get; set; }
-        public System.DateTime Maximum { get; set; }
-        public System.DateTime Minimum { get; set; }
         public SharpVision.Popups.PopupChrome PopupChrome { get; set; }
+        protected override bool ReservesDropDownIndicator { get; }
         public bool ShowSeconds { get; set; }
         public System.TimeSpan TimeStep { get; set; }
+        protected override System.Collections.Generic.IReadOnlyDictionary<char, SharpVision.Input.TemporalSegmentKind> TokenKinds { get; }
         public bool Use24HourFormat { get; set; }
-        public System.DateTime? Value { get; set; }
         public event System.EventHandler? DropDownClosed;
         public event System.EventHandler? DropDownOpened;
-        public event System.EventHandler<SharpVision.Input.DateTimeInputValueChangedEventArgs>? ValueChanged;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override string AdjustRenderingPattern(string pattern, bool hasAmPmDesignator) { }
+        protected override System.DateTime? ApplyDigit(System.DateTime value, SharpVision.Input.TemporalSegmentKind kind, int digitValue, int digitCapacity) { }
+        protected override System.DateTime? ClearSegment(System.DateTime value, SharpVision.Input.TemporalSegmentKind kind) { }
+        protected override string FormatValue(System.DateTime value, string format, System.Globalization.CultureInfo culture) { }
+        protected override System.DateTime? Increment(System.DateTime value, SharpVision.Input.TemporalSegmentKind kind, int delta, int digitCapacity) { }
+        protected override bool IsPm(System.DateTime value) { }
+        protected override int MaxValueFor(SharpVision.Input.TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnDropDownClosed() { }
         protected override void OnDropDownOpened() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void ResetPopupChrome() { }
+        protected override System.Func<System.Text.Rune, bool>? ResolveCharacterCommand() { }
+        protected override System.DateTime ResolveClockSeed() { }
+        protected override string ResolvePattern() { }
+        protected override System.Func<SharpVision.Input.KeyEventArgs, bool?>? ResolvePopupCommand() { }
+        protected override void SynchronizeBounds() { }
+        protected override void SynchronizeCulture(System.Globalization.CultureInfo culture) { }
+        protected override void SynchronizeValue(System.DateTime? value) { }
+        protected override void ValidateCulture(System.Globalization.CultureInfo culture) { }
     }
     public sealed class HyperlinkButton : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.HyperlinkButtonStyle>
     {
@@ -2271,6 +2293,40 @@ namespace SharpVision.Controls.Input
         public string SearchTerms { get; }
     }
     public delegate System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<object?>> SuggestionResolver(string searchTerms, System.Threading.CancellationToken cancellationToken);
+    public abstract class TemporalInputBase<TValue> : SharpVision.Controls.InputBase
+        where TValue :  struct, System.IComparable<TValue>
+    {
+        protected TemporalInputBase(TValue minimum, TValue maximum, System.Globalization.CultureInfo initialCulture) { }
+        protected virtual bool ActivateFirstSegmentOnFocus { get; }
+        public bool AllowNull { get; set; }
+        public System.Globalization.CultureInfo Culture { get; set; }
+        public TValue Maximum { get; set; }
+        public TValue Minimum { get; set; }
+        protected virtual bool ReservesDropDownIndicator { get; }
+        protected abstract System.Collections.Generic.IReadOnlyDictionary<char, SharpVision.Input.TemporalSegmentKind> TokenKinds { get; }
+        public TValue? Value { get; set; }
+        public event System.EventHandler<SharpVision.Input.TemporalValueChangedEventArgs<TValue>>? ValueChanged;
+        protected virtual string AdjustRenderingPattern(string pattern, bool hasAmPmDesignator) { }
+        protected abstract TValue? ApplyDigit(TValue value, SharpVision.Input.TemporalSegmentKind kind, int digitValue, int digitCapacity);
+        protected abstract TValue? ClearSegment(TValue value, SharpVision.Input.TemporalSegmentKind kind);
+        protected virtual bool ClearValue() { }
+        protected void EnsureSeeded() { }
+        protected abstract string FormatValue(TValue value, string format, System.Globalization.CultureInfo culture);
+        protected abstract TValue? Increment(TValue value, SharpVision.Input.TemporalSegmentKind kind, int delta, int digitCapacity);
+        protected virtual bool IsPm(TValue value) { }
+        protected abstract int MaxValueFor(SharpVision.Input.TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength);
+        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected virtual System.Func<System.Text.Rune, bool>? ResolveCharacterCommand() { }
+        protected abstract TValue ResolveClockSeed();
+        protected virtual TValue ResolveDigitEntrySeed() { }
+        protected abstract string ResolvePattern();
+        protected virtual System.Func<SharpVision.Input.KeyEventArgs, bool?>? ResolvePopupCommand() { }
+        protected virtual System.Globalization.CultureInfo ResolveRenderingCulture() { }
+        protected virtual void SynchronizeBounds() { }
+        protected virtual void SynchronizeCulture(System.Globalization.CultureInfo culture) { }
+        protected virtual void SynchronizeValue(TValue? value) { }
+        protected abstract void ValidateCulture(System.Globalization.CultureInfo culture);
+    }
     public sealed class TextInput : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.TextInputStyle>, SharpVision.Runtime.IClipboardCopySource
     {
         public TextInput() { }
@@ -2337,22 +2393,27 @@ namespace SharpVision.Controls.Input
         public TextInputStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
         public new static SharpVision.Controls.Input.TextInputStyle Default { get; }
     }
-    public sealed class TimeInput : SharpVision.Controls.InputBase
+    public sealed class TimeInput : SharpVision.Controls.Input.TemporalInputBase<System.TimeOnly>
     {
         public TimeInput() { }
-        public bool AllowNull { get; set; }
-        public System.Globalization.CultureInfo Culture { get; set; }
         public string? Format { get; set; }
-        public System.TimeOnly Maximum { get; set; }
-        public System.TimeOnly Minimum { get; set; }
         public bool ShowSeconds { get; set; }
         public System.TimeSpan TimeStep { get; set; }
+        protected override System.Collections.Generic.IReadOnlyDictionary<char, SharpVision.Input.TemporalSegmentKind> TokenKinds { get; }
         public bool Use24HourFormat { get; set; }
-        public System.TimeOnly? Value { get; set; }
-        public event System.EventHandler<SharpVision.Input.TimeInputValueChangedEventArgs>? ValueChanged;
+        protected override System.TimeOnly? ApplyDigit(System.TimeOnly value, SharpVision.Input.TemporalSegmentKind kind, int digitValue, int digitCapacity) { }
+        protected override System.TimeOnly? ClearSegment(System.TimeOnly value, SharpVision.Input.TemporalSegmentKind kind) { }
+        protected override string FormatValue(System.TimeOnly value, string format, System.Globalization.CultureInfo culture) { }
+        protected override System.TimeOnly? Increment(System.TimeOnly value, SharpVision.Input.TemporalSegmentKind kind, int delta, int digitCapacity) { }
+        protected override bool IsPm(System.TimeOnly value) { }
+        protected override int MaxValueFor(SharpVision.Input.TemporalSegmentKind kind, bool hasAmPmDesignator, int runLength) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
-        protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override System.Func<System.Text.Rune, bool>? ResolveCharacterCommand() { }
+        protected override System.TimeOnly ResolveClockSeed() { }
+        protected override System.TimeOnly ResolveDigitEntrySeed() { }
+        protected override string ResolvePattern() { }
+        protected override void ValidateCulture(System.Globalization.CultureInfo culture) { }
     }
 }
 namespace SharpVision.Controls.Layout
@@ -3245,18 +3306,6 @@ namespace SharpVision.Input
         public bool Move(int delta, bool wrap) { }
         public bool SetCurrent(SharpVision.Controls.ControlBase? value) { }
     }
-    public sealed class DateInputValueChangedEventArgs : System.EventArgs
-    {
-        public DateInputValueChangedEventArgs(System.DateOnly? previousValue, System.DateOnly? value) { }
-        public System.DateOnly? PreviousValue { get; }
-        public System.DateOnly? Value { get; }
-    }
-    public sealed class DateTimeInputValueChangedEventArgs : System.EventArgs
-    {
-        public DateTimeInputValueChangedEventArgs(System.DateTime? previousValue, System.DateTime? value) { }
-        public System.DateTime? PreviousValue { get; }
-        public System.DateTime? Value { get; }
-    }
     public sealed class Event<TArgs>
         where TArgs : SharpVision.Input.RoutedEventArgs
     {
@@ -3518,6 +3567,24 @@ namespace SharpVision.Input
         Cycle = 2,
         None = 3,
     }
+    public enum TemporalSegmentKind
+    {
+        Month = 0,
+        Day = 1,
+        Year = 2,
+        Hour = 3,
+        Minute = 4,
+        Second = 5,
+        FractionalSecond = 6,
+        AmPmDesignator = 7,
+    }
+    public sealed class TemporalValueChangedEventArgs<TValue> : System.EventArgs
+        where TValue :  struct
+    {
+        public TemporalValueChangedEventArgs(TValue? previous, TValue? current) { }
+        public TValue? Current { get; }
+        public TValue? Previous { get; }
+    }
     public sealed class TerminalFocusEventArgs : SharpVision.Input.RoutedEventArgs
     {
         public TerminalFocusEventArgs(SharpVision.Terminal.Input.TerminalFocus focus) { }
@@ -3544,12 +3611,6 @@ namespace SharpVision.Input
         public TextSelectionChangedEventArgs(SharpVision.Text.Selection previousSelection, SharpVision.Text.Selection selection) { }
         public SharpVision.Text.Selection PreviousSelection { get; }
         public SharpVision.Text.Selection Selection { get; }
-    }
-    public sealed class TimeInputValueChangedEventArgs : System.EventArgs
-    {
-        public TimeInputValueChangedEventArgs(System.TimeOnly? previousValue, System.TimeOnly? value) { }
-        public System.TimeOnly? PreviousValue { get; }
-        public System.TimeOnly? Value { get; }
     }
 }
 namespace SharpVision.Layout

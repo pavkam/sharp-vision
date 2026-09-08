@@ -30,22 +30,26 @@ trailing zeroes, while the field reserves the run's blank cells so focus and
 pointer targeting do not collapse. Pair a 12-hour `h`/`hh` hour token with a
 `t`/`tt` AM/PM designator token for correct 12-hour clamping, since a 12-hour
 hour token without a designator is treated as a 24-hour segment for editing
-purposes. `TimeInput` derives from [`InputBase`](../input-base.md#overview),
-enabling only segment editing - it has no press activation and no popup. It
+purposes. `TimeInput` derives from
+[`TemporalInputBase<TimeOnly>`](temporal-input-base.md#overview), enabling only
+segment editing - it has no press activation and no popup. Through that base it
 shares its active-segment navigation, digit-entry buffering, routed key
 classification, pointer hit testing, active/null segment styling, and
 focus-continuation engine with [`DateInput`](date-input.md) and
 [`DateTimeInput`](date-time-input.md) through
-[`InputBase.EnableSegmentEditing`](../input-base.md#api). Only the
+[`InputBase.EnableSegmentEditing`](../input-base.md#api), which
+`TemporalInputBase<TValue>`'s own constructor calls once. Only the
 calendar/clock arithmetic and pattern for each control's own value type differ.
 `InputBase.OnEvent` performs the routed key and pointer dispatch itself, after
 seeding the value; because `TimeInput` never enables the popup capability, it
 never reaches the popup-swallow check `DateInput` and `DateTimeInput` are
 subject to, so every event always routes straight through to the shared segment
-engine. The three controls also use the same generic nullable value state for
-one-shot dispatcher-clock seeding, inclusive clamping, endpoint repair, and
-reentrant-safe event publication. AM/PM discovery and conversion remain pure
-shared temporal classification helpers used by the two clock-capable fields.
+engine. The three controls also derive from the same generic
+[`TemporalInputBase<TValue>`](temporal-input-base.md#overview) for their
+nullable value state, one-shot dispatcher-clock seeding, inclusive clamping,
+endpoint repair, and reentrant-safe event publication. AM/PM discovery and
+conversion remain pure shared temporal classification helpers used by the two
+clock-capable fields.
 
 Disabling `AllowNull` repairs an existing null only if that policy remains live
 after `PropertyChanged`. A synchronous observer that restores `AllowNull`
@@ -56,25 +60,26 @@ prevents obsolete clock-derived seeding and preserves the null value.
 ```mermaid
 classDiagram
     ControlBase <|-- InputBase
-    InputBase <|-- TimeInput
+    InputBase <|-- TemporalInputBase~TValue~
+    TemporalInputBase~TValue~ <|-- TimeInput
 ```
 
 ## API
 
-| Member            | Type                                           | Default                        | Description                                                                                            |
-| ----------------- | ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `Value`           | `TimeOnly?`                                    | current local time             | The nullable committed time, clamped to the inclusive bounds.                                          |
-| `AllowNull`       | `bool`                                         | `true`                         | Allows clearing; disabling it repairs a null value.                                                    |
-| `Culture`         | `CultureInfo`                                  | `CultureInfo.InvariantCulture` | Localizes the time separator, AM/PM designator text, and digits.                                       |
-| `Use24HourFormat` | `bool`                                         | `true`                         | Selects 24-hour or AM/PM segments.                                                                     |
-| `ShowSeconds`     | `bool`                                         | `false`                        | Adds the seconds segment.                                                                              |
-| `Format`          | `string?`                                      | `null`                         | A custom pattern overriding the derived segment order and count, including editable `f`/`F` fractions. |
-| `TimeStep`        | `TimeSpan`                                     | one minute                     | The positive whole-minute increment for the minute segment.                                            |
-| `Minimum`         | `TimeOnly`                                     | `TimeOnly.MinValue`            | The inclusive lower bound that repairs the current value.                                              |
-| `Maximum`         | `TimeOnly`                                     | `TimeOnly.MaxValue`            | The inclusive upper bound that repairs the current value.                                              |
-| `StartAffix`      | `Affix?`                                       | `null`                         | Inherited optional leading edge-pinned decoration, reserved outside the segment layout.                |
-| `EndAffix`        | `Affix?`                                       | `null`                         | Inherited optional trailing edge-pinned decoration, reserved outside the segment layout.               |
-| `ValueChanged`    | `EventHandler<TimeInputValueChangedEventArgs>` | no subscribers                 | Raised after a committed value transition.                                                             |
+| Member                   | Type                                                    | Default                        | Description                                                                                            |
+| ------------------------ | ------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Inherited `Value`        | `TimeOnly?`                                             | current local time             | The nullable committed time, clamped to the inclusive bounds.                                          |
+| Inherited `AllowNull`    | `bool`                                                  | `true`                         | Allows clearing; disabling it repairs a null value.                                                    |
+| Inherited `Culture`      | `CultureInfo`                                           | `CultureInfo.InvariantCulture` | Localizes the time separator, AM/PM designator text, and digits.                                       |
+| `Use24HourFormat`        | `bool`                                                  | `true`                         | Selects 24-hour or AM/PM segments.                                                                     |
+| `ShowSeconds`            | `bool`                                                  | `false`                        | Adds the seconds segment.                                                                              |
+| `Format`                 | `string?`                                               | `null`                         | A custom pattern overriding the derived segment order and count, including editable `f`/`F` fractions. |
+| `TimeStep`               | `TimeSpan`                                              | one minute                     | The positive whole-minute increment for the minute segment.                                            |
+| Inherited `Minimum`      | `TimeOnly`                                              | `TimeOnly.MinValue`            | The inclusive lower bound that repairs the current value.                                              |
+| Inherited `Maximum`      | `TimeOnly`                                              | `TimeOnly.MaxValue`            | The inclusive upper bound that repairs the current value.                                              |
+| `StartAffix`             | `Affix?`                                                | `null`                         | Inherited optional leading edge-pinned decoration, reserved outside the segment layout.                |
+| `EndAffix`               | `Affix?`                                                | `null`                         | Inherited optional trailing edge-pinned decoration, reserved outside the segment layout.               |
+| Inherited `ValueChanged` | `EventHandler<TemporalValueChangedEventArgs<TimeOnly>>` | no subscribers                 | Raised after a committed value transition.                                                             |
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column inside the content
 box - the segment layout deflates around both. Unlike `ComboBox`, `DateInput`,
