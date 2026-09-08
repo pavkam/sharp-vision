@@ -111,15 +111,10 @@ public sealed class DocumentLink: DocumentInlineContainer
                     throw new ArgumentException("A link target cannot be empty.", nameof(value));
                 }
 
-                foreach (var codeUnit in value)
-                {
-                    if (char.IsControl(codeUnit))
-                    {
-                        throw new ArgumentException(
-                            "A link target cannot contain control code units.",
-                            nameof(value));
-                    }
-                }
+                ArgumentException.ThrowIfContainsControls(
+                    value,
+                    nameof(value),
+                    "A link target cannot contain control code units.");
             }
 
             VerifyMutable();

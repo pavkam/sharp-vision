@@ -1202,6 +1202,11 @@ public sealed class Document:
     /// <summary>Delivers <see cref="LinkClicked"/> to each subscriber only while this transition is still
     /// the newest one, so a subscriber that reentrantly triggers another link activation supersedes
     /// delivery to later subscribers rather than letting a stale transition reach them.</summary>
+    /// <remarks>
+    /// Every subscriber that is still current when its turn comes gets a chance to run: a subscriber
+    /// that throws does not stop delivery to the remaining current subscribers, and the earliest
+    /// captured failure is rethrown only after that delivery completes.
+    /// </remarks>
     /// <param name="eventArgs">The immutable transition being delivered.</param>
     /// <param name="transitionVersion">The version captured when this transition was raised.</param>
     private void RaiseLinkClicked(DocumentLinkEventArgs eventArgs, ulong transitionVersion)
@@ -1213,16 +1218,10 @@ public sealed class Document:
             return;
         }
 
-        foreach (var subscriber in handlers.GetInvocationList())
-        {
-            if (_linkTransitionVersion != transitionVersion)
-            {
-                break;
-            }
-
-            var handler = (EventHandler<DocumentLinkEventArgs>) subscriber;
-            handler(this, eventArgs);
-        }
+        EventPublication.Publish<EventHandler<DocumentLinkEventArgs>>(
+            handlers,
+            () => _linkTransitionVersion == transitionVersion,
+            handler => handler(this, eventArgs));
     }
 
     private void RestoreActiveLink(DocumentLink? activeLink)

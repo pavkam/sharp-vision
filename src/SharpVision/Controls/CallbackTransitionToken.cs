@@ -4,7 +4,13 @@
 namespace SharpVision.Controls;
 
 /// <summary>Identifies one immutable commit in a synchronous logical callback stream.</summary>
-internal readonly struct CallbackTransitionToken
+/// <remarks>
+/// A control obtains a token only from <see cref="CallbackTransitionStream.Commit(ControlBase)"/>,
+/// typically wrapped in a <see cref="CallbackTransitionTransaction"/>; it never constructs one
+/// directly. <see cref="IsCurrent"/> reports whether the owning stream has since advanced to a
+/// newer commit, or the owning control has been disposed.
+/// </remarks>
+public readonly struct CallbackTransitionToken
 {
     private readonly CallbackTransitionStream _stream;
     private readonly ControlBase _owner;

@@ -4,7 +4,8 @@
 namespace SharpVision.Controls;
 
 /// <summary>Validates single-line text accepted by control label contracts.</summary>
-internal static class TextValidation
+[PublicAPI]
+public static class TextValidation
 {
     extension(ArgumentException)
     {

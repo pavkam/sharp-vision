@@ -6,9 +6,9 @@ namespace SharpVision.Controls;
 /// <summary>Validates enum values accepted by control contracts.</summary>
 /// <remarks>
 /// SharpVision.Terminal keeps a mirrored copy of this class at
-/// <c>src/SharpVision.Terminal/EnumValidation.cs</c>, because that assembly cannot reference
-/// this internal type: the project dependency points the other way, from SharpVision to
-/// SharpVision.Terminal, not back. Apply any behavioral change to both copies.
+/// <c>src/SharpVision.Terminal/EnumValidation.cs</c>, because that assembly cannot reference this
+/// type regardless of its accessibility: the project dependency points the other way, from
+/// SharpVision to SharpVision.Terminal, not back. Apply any behavioral change to both copies.
 /// </remarks>
 [PublicAPI]
 public static class EnumValidation

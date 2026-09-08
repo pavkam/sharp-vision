@@ -5,7 +5,12 @@ namespace SharpVision.Controls;
 
 /// <summary>Validates mutually consistent Minimum/Maximum endpoints, and related numeric step
 /// contracts, accepted by control range contracts.</summary>
-internal static class RangeValidation
+[PublicAPI]
+[SuppressMessage(
+    "Naming",
+    "CA1708:IdentifiersShouldDifferByMoreThanCase",
+    Justification = "C# extension-block metadata names are compiler-generated.")]
+public static class RangeValidation
 {
     extension(ArgumentOutOfRangeException)
     {

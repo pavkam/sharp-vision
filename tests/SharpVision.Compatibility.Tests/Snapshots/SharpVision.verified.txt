@@ -174,6 +174,11 @@
         public DiagnosticEventArgs(SharpVision.Terminal.Protocols.Diagnostic diagnostic) { }
         public SharpVision.Terminal.Protocols.Diagnostic Diagnostic { get; }
     }
+    public static class EventPublication
+    {
+        public static void Publish<TSubscriber>(System.Delegate? handlers, System.Func<bool> isStillValid, System.Action<TSubscriber> invoke)
+            where TSubscriber : System.Delegate { }
+    }
     public sealed class FrameRenderedEventArgs : System.EventArgs
     {
         public FrameRenderedEventArgs(SharpVision.Terminal.Rendering.RenderMetrics metrics) { }
@@ -282,6 +287,26 @@ namespace SharpVision.Controls
         public AffixMetrics(int startCells, int endCells) { }
         public int EndCells { get; }
         public int StartCells { get; }
+    }
+    public sealed class CallbackTransitionStream
+    {
+        public CallbackTransitionStream() { }
+        public SharpVision.Controls.CallbackTransitionToken Commit(SharpVision.Controls.ControlBase owner) { }
+    }
+    public readonly struct CallbackTransitionToken
+    {
+        public bool IsCurrent { get; }
+    }
+    public struct CallbackTransitionTransaction
+    {
+        public bool IsCurrent { get; }
+        public void CaptureIfCurrent(System.Action action) { }
+        public void CaptureRequired(System.Action action) { }
+        public void PublishCurrent(System.ComponentModel.PropertyChangedEventHandler? handlers, object sender, System.ComponentModel.PropertyChangedEventArgs eventArgs) { }
+        public void PublishCurrent(System.EventHandler? handlers, object sender, System.EventArgs eventArgs) { }
+        public void PublishCurrent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object sender, TEventArgs eventArgs)
+            where TEventArgs : System.EventArgs { }
+        public void ThrowIfFailed() { }
     }
     public abstract class CompositeControlBase : SharpVision.Controls.ControlBase
     {
@@ -437,6 +462,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
         protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes = 0) { }
         protected virtual void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected SharpVision.Controls.CallbackTransitionTransaction BeginPropertyTransition(SharpVision.Controls.CallbackTransitionStream stream, SharpVision.Controls.InvalidationImpact impact, string propertyName) { }
         protected void BindStyle<TStyle>(SharpVision.Controls.StyleSlot<TStyle> source, SharpVision.Controls.ControlBase target, string targetPropertyName = "Style")
             where TStyle : SharpVision.Styling.ControlStyle { }
         protected bool CanContinueAfterFocus(SharpVision.Threading.Dispatcher? dispatcher) { }
@@ -516,6 +542,7 @@ namespace SharpVision.Controls
         protected virtual void OnTextSelectionEnabledChanged(bool enabled) { }
         protected virtual void OnTextSelectionStateChanged(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void PublishTransitionProperty(ref SharpVision.Controls.CallbackTransitionTransaction transition, string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected void RaiseTextSelectionCompatibilityEvent(System.EventHandler? handlers, object? sender, ulong transitionVersion) { }
         protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object? sender, TEventArgs eventArgs, ulong transitionVersion) { }
         protected SharpVision.Controls.RetainedPartProperty<T> RegisterRetainedPartProperty<T>(SharpVision.Controls.ControlBase source, string sourcePropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
@@ -540,8 +567,12 @@ namespace SharpVision.Controls
         protected void SetOptionalGlyph(ref System.Text.Rune? storage, System.Text.Rune value, string propertyName) { }
         protected void SetPressed(bool value) { }
         protected bool SetProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected bool SetPropertyAndContinue<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Action continuation, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetPropertyAndSynchronize<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Action synchronize, System.Collections.Generic.IEqualityComparer<T>? comparer = null, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
+        protected bool SetPropertyWithComparer<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Collections.Generic.IEqualityComparer<T> comparer, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         public virtual void SetTextSelection(SharpVision.Text.Selection selection) { }
+        protected bool SetTransitionProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, SharpVision.Controls.CallbackTransitionStream stream, out SharpVision.Controls.CallbackTransitionTransaction transition, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
+        protected bool SetVersionedProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, ref long version, out long commitVersion, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected virtual int TextSelectionPageDistance() { }
         protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
@@ -551,6 +582,7 @@ namespace SharpVision.Controls
         protected void VerifyTextSelectionEnabled() { }
         protected static void CaptureFailure(System.Action action, ref System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure) { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
+        protected static bool IsVersionedPropertyCurrent<T>(T field, T value, long version, long commitVersion) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
     }
@@ -651,6 +683,34 @@ namespace SharpVision.Controls
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
     }
+    public static class RangeValidation
+    {
+        extension(System.ArgumentOutOfRangeException)
+        {
+            public static void ThrowIfNotAPositiveWholeMinuteStep(System.TimeSpan value, string paramName) { }
+            public static void ThrowIfNotAPositiveStep(decimal value, string paramName) { }
+            public static void ThrowIfOutsideInclusiveRange<T>(T value, T minimum, T maximum, string paramName, string message)
+                where T : System.IComparable<T> { }
+            public static void ThrowIfNotFinite(double value, string paramName, string message) { }
+            public static void ThrowIfNotFinite(double? value, string paramName, string message) { }
+        }
+        extension(System.ArgumentException)
+        {
+            public static void ThrowIfAboveMaximum<T>(T minimum, T maximum, string paramName, string message)
+                where T : System.IComparable<T> { }
+            public static void ThrowIfAtOrAboveMaximum<T>(T minimum, T maximum, string paramName, string message)
+                where T : System.IComparable<T> { }
+            public static void ThrowIfBelowMinimum<T>(T maximum, T minimum, string paramName, string message)
+                where T : System.IComparable<T> { }
+            public static void ThrowIfAtOrBelowMinimum<T>(T maximum, T minimum, string paramName, string message)
+                where T : System.IComparable<T> { }
+        }
+        extension<T>(T value)
+            where T :  notnull, System.IComparable<T>
+        {
+            public T Clamp(T minimum, T maximum) { }
+        }
+    }
     public sealed class RetainedPartProperty<T> : System.IDisposable
     {
         public T Value { get; set; }
@@ -737,6 +797,13 @@ namespace SharpVision.Controls
     {
         public TStyle Actual { get; }
         public TStyle Local { get; set; }
+    }
+    public static class TextValidation
+    {
+        extension(System.ArgumentException)
+        {
+            public static void ThrowIfContainsControls(string value, string paramName, string message) { }
+        }
     }
 }
 namespace SharpVision.Controls.Charts

@@ -437,18 +437,22 @@ dependencies, ancestor propagation, dispatcher scheduling, retries, and frame
 coordination. `ControlBase` exposes the authoring seams that let derived
 controls participate without exposing pending phase flags.
 
-| Seam                                                                            | Use                                                                                              |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `SetProperty(ref field, value, impact)`                                         | Commit one ordinary CLR property and raise `PropertyChanged`.                                    |
-| Private-protected `SetPropertyAndSynchronize(ref field, value, impact, action)` | Synchronize retained state before publishing the still-current property generation.              |
-| Private-protected `SetPropertyAndContinue(ref field, value, impact, action)`    | Preserve notification order, then complete dependent work before rethrowing an observer failure. |
-| Private-protected `SetVersionedProperty(ref field, value, ref version, ...)`    | Commit a value whose typed event fires only while that commit is still the newest generation.    |
-| Private-protected `IsVersionedPropertyCurrent(field, value, version, observed)` | Test whether a captured commit still owns its property generation before raising a typed event.  |
-| `NotifyPropertyChanged(name, impact)`                                           | Publish a coordinated mutation after all related fields commit.                                  |
-| `Invalidate(InvalidationImpact)`                                                | Request phase work without a property notification.                                              |
-| `InvalidateRetainedDescendant(descendant, impact)`                              | Request phase work on a still-retained private projection through its owner.                     |
-| `InvalidateVisualState()`                                                       | Clear resolved appearance caches after semantic state changes.                                   |
-| `SetVisualStateProperty(ref field, value)`                                      | Commit a property that changes `GetAppearanceState()`.                                           |
+| Seam                                                               | Use                                                                                                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `SetProperty(ref field, value, impact)`                            | Commit one ordinary CLR property and raise `PropertyChanged`.                                                             |
+| `SetPropertyWithComparer(ref field, value, impact, comparer)`      | Commit a property using an explicit equality policy instead of the default comparer.                                      |
+| `SetPropertyAndSynchronize(ref field, value, impact, action)`      | Synchronize retained state before publishing the still-current property generation.                                       |
+| `SetPropertyAndContinue(ref field, value, impact, action)`         | Preserve notification order, then complete dependent work before rethrowing an observer failure.                          |
+| `SetVersionedProperty(ref field, value, ref version, ...)`         | Commit a value whose typed event fires only while that commit is still the newest generation.                             |
+| `IsVersionedPropertyCurrent(field, value, version, observed)`      | Test whether a captured commit still owns its property generation before raising a typed event.                           |
+| `SetTransitionProperty(ref field, value, impact, stream, out ...)` | Begin a multi-property transition whose additional typed events publish only while it stays current.                      |
+| `BeginPropertyTransition(stream, impact, propertyName)`            | Begin a transition transaction directly when its first committed property is not itself gated by `SetTransitionProperty`. |
+| `PublishTransitionProperty(ref transition, propertyName, impact)`  | Publish another property belonging to an already-begun transition.                                                        |
+| `NotifyPropertyChanged(name, impact)`                              | Publish a coordinated mutation after all related fields commit.                                                           |
+| `Invalidate(InvalidationImpact)`                                   | Request phase work without a property notification.                                                                       |
+| `InvalidateRetainedDescendant(descendant, impact)`                 | Request phase work on a still-retained private projection through its owner.                                              |
+| `InvalidateVisualState()`                                          | Clear resolved appearance caches after semantic state changes.                                                            |
+| `SetVisualStateProperty(ref field, value)`                         | Commit a property that changes `GetAppearanceState()`.                                                                    |
 
 Each seam validates dispatcher access, lifetime, arguments, and the selected
 impact before changing any observable state. Assigning an equivalent value is a
@@ -468,6 +472,32 @@ older generation does not resume with a captured value, including an
 away-and-back change that restores an equal value. Synchronization and
 publication are both attempted when either callback throws, and the earliest
 failure is rethrown after the public value and retained projection agree.
+
+A logical transition that commits several related properties together uses
+`SetTransitionProperty` for the first property and `PublishTransitionProperty`
+for each additional one, sharing one `CallbackTransitionStream` field declared
+by the owning control. Both seams return or accept a
+`CallbackTransitionTransaction`, whose `PublishCurrent` overloads deliver a
+typed event only while that specific transition remains the newest commit on its
+stream; a reentrant callback that commits a newer transition on the same stream
+stops delivery to the outer transition's remaining subscribers without unwinding
+the outer commit. Calling `ThrowIfFailed` once every event for the transition
+has run rethrows the earliest observer failure. `SetPropertyAndSynchronize`,
+`SetVersionedProperty`, and `SetTransitionProperty` all solve the same
+reentrancy problem - a callback that changes the property again before the outer
+call returns - at different granularities: synchronization for one property's
+dependent retained state, versioning for later asynchronous or
+dispatcher-scheduled dependent work, and transitions for several properties that
+must publish or stop publishing together.
+
+`EventPublication.Publish` in the `SharpVision` namespace gives the same
+"deliver to every still-current subscriber, aggregate failures, rethrow the
+first one after the loop" contract to a non-control collaborator that has no
+`ControlBase` to inherit `CallbackTransitionTransaction` from, such as
+`Application`, a dispatcher, or `FocusManager`. A control derived from
+`ControlBase` uses its own property-commit and transition seams instead of
+calling `EventPublication` directly, so publication and invalidation stay
+coordinated through one owner.
 
 ## Access-key extension points
 

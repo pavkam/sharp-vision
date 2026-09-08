@@ -5,10 +5,19 @@ namespace SharpVision.Controls;
 
 /// <summary>Produces opaque identities for one synchronous logical callback stream.</summary>
 /// <remarks>
-/// A stream is retained by its owner, so ordinary commits allocate no identity object. The epoch
-/// changes only when the numeric generation wraps, keeping every earlier token permanently stale.
+/// A derived control declares one field of this type per logical multi-property transition - such
+/// as a compound state change that raises several <see cref="ControlBase.PropertyChanged"/>
+/// notifications that must all stop publishing together once a reentrant callback supersedes the
+/// transition - and passes it to <c>SetTransitionProperty</c>/<c>BeginPropertyTransition</c> and
+/// <c>PublishTransitionProperty</c> on <see cref="ControlBase"/>. A stream is retained by its owner,
+/// so ordinary commits allocate no identity object. The epoch changes only when the numeric
+/// generation wraps, keeping every earlier token permanently stale.
 /// </remarks>
-internal sealed class CallbackTransitionStream
+[SuppressMessage(
+    "Naming",
+    "CA1711:Identifiers should not have incorrect suffix",
+    Justification = "This type identifies a logical callback sequence, not the System.IO.Stream contract CA1711 guards against.")]
+public sealed class CallbackTransitionStream
 {
     private object _epoch = new();
     private ulong _generation;
@@ -25,6 +34,7 @@ internal sealed class CallbackTransitionStream
     /// <summary>Advances the stream and returns the new immutable commit identity.</summary>
     /// <param name="owner">The non-null control whose disposal invalidates the identity.</param>
     /// <returns>The new current token.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
     public CallbackTransitionToken Commit(ControlBase owner)
     {
         ArgumentNullException.ThrowIfNull(owner);

@@ -4471,8 +4471,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             EqualityComparer<T>.Default,
             propertyName);
 
-    /// <summary>Commits one assembly-owned property using its explicit equality policy and requests
+    /// <summary>Commits one derived or base property using an explicit equality policy and requests
     /// the earliest affected phase.</summary>
+    /// <remarks>
+    /// A derived control uses this overload instead of <c>SetProperty</c> when the default
+    /// <see cref="EqualityComparer{T}"/> is not the right change gate, such as reference-identity
+    /// comparison, ordinal string comparison, or a domain value whose default equality is looser
+    /// than the property's intended semantics. Both overloads share the same commit-then-notify
+    /// ordering: the field is assigned and the requested phase is invalidated before
+    /// <see cref="PropertyChanged"/> raises, so an observer of that event always sees the fully
+    /// committed value.
+    /// </remarks>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
     /// <param name="value">The validated replacement value.</param>
@@ -4486,7 +4495,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NotifyPropertyChangedInvocator]
-    private protected bool SetPropertyWithComparer<T>(
+    protected bool SetPropertyWithComparer<T>(
         ref T field,
         T value,
         InvalidationImpact impact,
@@ -4511,6 +4520,16 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Commits and publishes one property while advancing a caller-owned transition
     /// version that later dependent work can use to reject a superseded callback continuation.</summary>
+    /// <remarks>
+    /// Use this seam when a control raises an ordinary <see cref="PropertyChanged"/> notification
+    /// for a property, but also runs later asynchronous or reentrant work that must not act on a
+    /// value the property has since moved away from. The caller declares one <c>long</c> field per
+    /// versioned property, passes it by reference here, and later compares its own captured
+    /// <paramref name="commitVersion"/> against the live field with <c>IsVersionedPropertyCurrent</c>
+    /// before applying dependent effects. Unlike <c>SetTransitionProperty</c>, this seam publishes
+    /// <see cref="PropertyChanged"/> immediately and unconditionally on a real change; only the
+    /// caller's own later check is version-gated.
+    /// </remarks>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
     /// <param name="value">The validated replacement value.</param>
@@ -4525,7 +4544,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NotifyPropertyChangedInvocator]
-    private protected bool SetVersionedProperty<T>(
+    protected bool SetVersionedProperty<T>(
         ref T field,
         T value,
         InvalidationImpact impact,
@@ -4564,6 +4583,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ExceptionAggregation.Capture(action, ref failure);
 
     /// <summary>Commits one property and begins a current-aware callback transaction.</summary>
+    /// <remarks>
+    /// Use this seam, together with <see cref="CallbackTransitionStream"/> and
+    /// <see cref="CallbackTransitionTransaction"/>, when one logical transition commits several
+    /// related properties and must publish every one of their notifications while - and only while -
+    /// that specific transition remains the newest one for its stream. A derived control declares one
+    /// <see cref="CallbackTransitionStream"/> field per logical transition, calls this method for the
+    /// first property the transition commits, and calls <c>PublishTransitionProperty</c> for each
+    /// additional property that belongs to the same transaction. A reentrant callback that commits a
+    /// newer transition on the same stream makes the outer transaction stop publishing to its
+    /// remaining subscribers, without unwinding the outer commit itself.
+    /// </remarks>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
     /// <param name="value">The validated replacement value.</param>
@@ -4580,7 +4610,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NotifyPropertyChangedInvocator]
-    private protected bool SetTransitionProperty<T>(
+    protected bool SetTransitionProperty<T>(
         ref T field,
         T value,
         InvalidationImpact impact,
@@ -4608,11 +4638,23 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Begins one callback transition and publishes its first committed property.</summary>
+    /// <remarks>
+    /// <see cref="SetTransitionProperty{T}"/> already calls this for its own first property; call
+    /// this directly only when the first committed property of a multi-property transition is not
+    /// itself gated by <see cref="SetTransitionProperty{T}"/>, such as when the field is assigned
+    /// through other means before the transition begins.
+    /// </remarks>
     /// <param name="stream">The non-null logical callback stream.</param>
     /// <param name="impact">The validated earliest affected phase.</param>
     /// <param name="propertyName">The non-empty committed property name.</param>
     /// <returns>The current-aware transaction retaining any observer failure.</returns>
-    private protected CallbackTransitionTransaction BeginPropertyTransition(
+    /// <exception cref="ArgumentNullException"><paramref name="stream"/> or
+    /// <paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected CallbackTransitionTransaction BeginPropertyTransition(
         CallbackTransitionStream stream,
         InvalidationImpact impact,
         string propertyName)
@@ -4638,10 +4680,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         BeginPropertyTransition(stream, impact, propertyName);
 
     /// <summary>Publishes another property belonging to an existing current-aware transaction.</summary>
+    /// <remarks>
+    /// Call this once for every property beyond the first that the same logical transition commits,
+    /// after assigning that property's own backing field directly. Publication for this property is
+    /// skipped, without error, once a reentrant callback has committed a newer transition on
+    /// <paramref name="transition"/>'s stream.
+    /// </remarks>
     /// <param name="transition">The committed transaction.</param>
     /// <param name="propertyName">The non-empty committed property name.</param>
     /// <param name="impact">The validated earliest affected phase.</param>
-    private protected void PublishTransitionProperty(
+    /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="propertyName"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="impact"/> is unknown.</exception>
+    protected void PublishTransitionProperty(
         ref CallbackTransitionTransaction transition,
         string propertyName,
         InvalidationImpact impact)
@@ -4656,7 +4707,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets whether a versioned property transition still owns dependent work.</summary>
-    private protected static bool IsVersionedPropertyCurrent<T>(
+    /// <remarks>
+    /// Call this from dependent work captured at the time of a <c>SetVersionedProperty</c> commit -
+    /// typically inside a continuation scheduled on the dispatcher or awaited after asynchronous
+    /// work - to reject that continuation once a newer commit on the same versioned property has
+    /// superseded it. The check compares both the live version and the live field value against
+    /// what was captured, so an away-and-back change that restores an equal value, but under a newer
+    /// version, is correctly reported as no longer current.
+    /// </remarks>
+    /// <typeparam name="T">The property value type.</typeparam>
+    /// <param name="field">The live backing field.</param>
+    /// <param name="value">The value captured at commit time.</param>
+    /// <param name="version">The live caller-owned version.</param>
+    /// <param name="commitVersion">The version captured at commit time.</param>
+    /// <returns>True only while the captured commit is still the newest one and the field still
+    /// holds the captured value.</returns>
+    protected static bool IsVersionedPropertyCurrent<T>(
         T field,
         T value,
         long version,
@@ -4665,6 +4731,17 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Commits and publishes one property, then runs required dependent work even when a
     /// property observer throws, rethrowing the first failure after the continuation completes.</summary>
+    /// <remarks>
+    /// Use this seam, rather than committing with <c>SetProperty</c> and calling
+    /// <paramref name="continuation"/> separately afterward, whenever the continuation must run even
+    /// when a <see cref="PropertyChanged"/> observer throws - for example, releasing a resource or
+    /// repairing a dependent collection that the property's contract guarantees stays consistent
+    /// regardless of observer behavior. Unlike <see cref="SetPropertyAndSynchronize{T}"/>, the
+    /// continuation here always runs after publication and is not itself version-gated against
+    /// reentrant supersession; use <see cref="SetPropertyAndSynchronize{T}"/> instead when the
+    /// dependent work must complete before observers run and must be revalidated against a newer
+    /// commit.
+    /// </remarks>
     /// <typeparam name="T">The property value type.</typeparam>
     /// <param name="field">The current backing field.</param>
     /// <param name="value">The validated replacement value.</param>
@@ -4679,7 +4756,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     [NotifyPropertyChangedInvocator]
-    private protected bool SetPropertyAndContinue<T>(
+    protected bool SetPropertyAndContinue<T>(
         ref T field,
         T value,
         InvalidationImpact impact,
