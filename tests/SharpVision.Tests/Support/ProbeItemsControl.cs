@@ -81,6 +81,9 @@ internal sealed class ProbeItemsControl: ItemsControl
     /// <param name="newIndex">The destination zero-based position.</param>
     internal void Move(int oldIndex, int newIndex) => MoveItemControl(oldIndex, newIndex);
 
+    /// <summary>Calls through to the protected shared owner-focus item model.</summary>
+    internal void EnableFocusModel() => EnableOwnerFocusModel();
+
     /// <summary>Gets controls directly owned by the semantic owner.</summary>
     /// <returns>A new identity-preserving snapshot.</returns>
     internal IReadOnlyList<ControlBase> GetOwnedOrder()

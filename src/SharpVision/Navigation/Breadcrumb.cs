@@ -16,7 +16,6 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     private readonly BreadcrumbHost _host;
     private readonly CurrentItemNavigator _navigator;
     private readonly BreadcrumbOverflowButton _overflowButton;
-    private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly StyleSlot<BreadcrumbStyle> _style;
     private BreadcrumbItem? _currentItem;
     private BreadcrumbItem? _pressedItem;
@@ -35,7 +34,6 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         _style = InitializeStyle(BreadcrumbStyle.Definition);
         _host = new BreadcrumbHost(this);
         InitializeItemsHost(_host);
-        _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         _overflowButton = new BreadcrumbOverflowButton(this);
         var overflowSlot = RegisterOwnedSlot(
             new OwnedControlOptions(
@@ -49,9 +47,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         overflowSlot.Add(_overflowButton);
         _navigator = new CurrentItemNavigator(CollectNavigableItems);
         Items = new BreadcrumbItemCollection(this);
-        IsFocusable = true;
-        IsTabStop = true;
-        TabNavigation = TabNavigation.None;
+        EnableOwnerFocusModel();
         _ = AddHandler(Events.Key, OnKeyRouted);
         _ = AddHandler(Events.Pointer, OnPointerRouted);
     }
@@ -145,12 +141,11 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             throw new ArgumentOutOfRangeException(nameof(index), index, "The insertion index is outside the breadcrumb path.");
         }
 
+        // The enabled owner focus model already suppressed IsFocusable/IsTabStop for this item
+        // as part of the commit above; ConfigureItem only decides whether the item is still the
+        // committed occupant worth subscribing to.
         InsertItemControl(index, item);
-        var lease = _propertyOverrides.Acquire(
-            item,
-            RetainedPropertyOverrides.IsFocusable,
-            RetainedPropertyOverrides.IsTabStop);
-        ConfigureItem(item, lease);
+        ConfigureItem(item);
         RepairActive(selectFinal: true);
         CollectionMutated(selectFinal: true);
     }
@@ -178,17 +173,13 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             CancelPointerPress();
         }
 
-        var previousLease = _propertyOverrides.Get(previous);
+        // The enabled owner focus model restores the outgoing item's IsFocusable/IsTabStop and
+        // suppresses them on the incoming item as part of this one committed replacement.
         ReplaceItemControl(index, item);
         Unsubscribe(previous);
-        var lease = _propertyOverrides.Acquire(
-            item,
-            RetainedPropertyOverrides.IsFocusable,
-            RetainedPropertyOverrides.IsTabStop);
-        ConfigureItem(item, lease);
+        ConfigureItem(item);
         RepairActive(selectFinal: false);
         CollectionMutated(selectFinal: false);
-        _propertyOverrides.Restore(previousLease);
     }
 
     /// <summary>Removes an owned item.</summary>
@@ -214,21 +205,21 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             CancelPointerPress();
         }
 
-        var lease = _propertyOverrides.Get(item);
+        if (!restorePresentation)
+        {
+            // A direct-disposal path never restores caller-authored values onto the dying
+            // control: retire the focus/tab-stop generation the owner focus model installed
+            // before the structural removal below, so its own restore-on-remove reaction becomes
+            // a no-op for this item instead of writing onto a control mid-disposal.
+            ItemPropertyOverrides.Retire(ItemPropertyOverrides.Get(item));
+        }
+
+        // The remaining, ordinary case leaves the owner focus model's own reaction to restore
+        // this item's IsFocusable/IsTabStop as part of the commit below.
         RemoveItemControlAt(index);
         Unsubscribe(item);
         RepairActive(selectFinal: false);
         CollectionMutated(selectFinal: false);
-
-        if (restorePresentation)
-        {
-            _propertyOverrides.Restore(lease);
-        }
-        else
-        {
-            _propertyOverrides.Retire(lease);
-        }
-
         return true;
     }
 
@@ -283,7 +274,6 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         }
 
         var items = Items.ToArray();
-        var leases = items.Select(_propertyOverrides.Get).ToArray();
 
         if (disposing)
         {
@@ -296,6 +286,13 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
                     foreach (var item in items)
                     {
                         Unsubscribe(item);
+
+                        // A direct-disposal path never restores caller-authored values onto a
+                        // dying control; retire each item's focus/tab-stop generation before this
+                        // structural commit publishes, so the owner focus model's own
+                        // restore-on-remove reaction becomes a no-op for these items instead of
+                        // writing onto a control this owner is discarding.
+                        ItemPropertyOverrides.Retire(ItemPropertyOverrides.Get(item));
                     }
                 },
                 (ItemControlsSlot, Array.Empty<ControlBase>()));
@@ -310,6 +307,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
+        // An ordinary clear leaves the owner focus model's own reaction to restore every
+        // detached item's focus/tab-stop generation as part of the commit below.
         ClearItemControls();
 
         foreach (var item in items)
@@ -320,11 +319,6 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         CollectionGeneration++;
         _ = _navigator.SetCurrent(null);
         _ = SetCurrent(null);
-
-        foreach (var lease in leases)
-        {
-            _propertyOverrides.Restore(lease);
-        }
     }
 
     #endregion
@@ -398,26 +392,17 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
                TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommand());
     }
 
-    private void ConfigureItem(BreadcrumbItem item, RetainedPropertyOverrideLease lease)
+    private void ConfigureItem(BreadcrumbItem item)
     {
-        lease.SetLive(RetainedControlProperty.IsFocusable, false);
-
-        if (!IsCommitted(item, lease))
-        {
-            return;
-        }
-
-        lease.SetLive(RetainedControlProperty.IsTabStop, false);
-
-        if (IsCommitted(item, lease))
+        if (IsCommitted(item))
         {
             item.PropertyChanged += OnItemPropertyChanged;
         }
     }
 
     [Pure]
-    private bool IsCommitted(BreadcrumbItem item, RetainedPropertyOverrideLease lease) =>
-        IndexOfItem(item) >= 0 && lease.IsCurrent;
+    private bool IsCommitted(BreadcrumbItem item) =>
+        IndexOfItem(item) >= 0 && ItemPropertyOverrides.Get(item).IsCurrent;
 
     private void Unsubscribe(BreadcrumbItem item) => item.PropertyChanged -= OnItemPropertyChanged;
 
@@ -960,7 +945,6 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         }
 
         _ = _navigator.SetCurrent(null);
-        _propertyOverrides.Dispose();
         CurrentChanged = null;
     }
 

@@ -6,7 +6,28 @@ namespace SharpVision.Controls;
 using System.Runtime.ExceptionServices;
 
 /// <summary>Owns one generation of temporary property overrides for a retained child.</summary>
-internal sealed class RetainedPropertyOverrideLease
+/// <remarks>
+/// <para>
+/// A lease is one generation: it captures the caller-authored value for each property it controls
+/// the moment it is acquired through <see cref="RetainedPropertyOverrideService.Acquire"/>, and it
+/// stays the exclusive writer for those properties on its exact <see cref="Child"/> until it is
+/// restored or retired. This is the generation rule every public member below depends on: once a
+/// lease stops being <see cref="IsCurrent"/> - because a later <see cref="RetainedPropertyOverrideService.Acquire"/>
+/// call superseded it, or because it already restored or retired - every write it attempts through
+/// <see cref="SetLive{T}"/> is silently ignored rather than landing on a control a different
+/// generation, or no generation at all, now owns.
+/// </para>
+/// <para>
+/// A caller request against a controlled property while the lease is current updates only the
+/// captured authored value, never the live one; the live value changes only through
+/// <see cref="SetLive{T}"/>. <see cref="Restore"/> writes every captured authored value back to
+/// the child before retiring, but skips the write entirely - retiring only - once the child itself
+/// is disposed or disposing, because a disposing control's storage is no longer a safe write
+/// target. <see cref="Retire"/> never writes anything back.
+/// </para>
+/// </remarks>
+[PublicAPI]
+public sealed class RetainedPropertyOverrideLease
 {
     private readonly Action<ControlBase, RetainedControlProperty>? _authoredValueChanged;
     private readonly Dictionary<RetainedControlProperty, RetainedPropertyOverrideEntry> _entries;
@@ -45,23 +66,34 @@ internal sealed class RetainedPropertyOverrideLease
     }
 
     /// <summary>Gets whether this generation still controls its child.</summary>
-    internal bool IsCurrent => !IsRetired && ReferenceEquals(Child.RetainedPropertyOverride, this);
+    /// <remarks>
+    /// This is the exact currency rule the generation model depends on: true only while this
+    /// instance is neither restored nor retired and is still the one generation
+    /// <see cref="Child"/> currently records. A later <see cref="RetainedPropertyOverrideService.Acquire"/>
+    /// call for the same child installs a new generation and immediately makes every earlier one
+    /// report false here, without racing or requiring the earlier holder to notice on its own.
+    /// </remarks>
+    public bool IsCurrent => !IsRetired && ReferenceEquals(Child.RetainedPropertyOverride, this);
 
     /// <summary>Gets the exact child generation bound by this lease.</summary>
-    internal ControlBase Child { get; }
+    public ControlBase Child { get; }
 
     private bool IsRetired { get; set; }
 
     /// <summary>Gets whether an owner-attributed live write is active for one property.</summary>
     /// <param name="property">The queried property.</param>
     /// <returns>True only during the matching owner write.</returns>
-    internal bool IsWriting(RetainedControlProperty property) => _writingProperty == property;
+    public bool IsWriting(RetainedControlProperty property) => _writingProperty == property;
 
     /// <summary>Gets the latest caller-authored value for one controlled property.</summary>
     /// <typeparam name="T">The exact property value type.</typeparam>
     /// <param name="property">The controlled property.</param>
     /// <returns>The latest authored value.</returns>
-    internal T GetAuthored<T>(RetainedControlProperty property)
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="property"/> is not controlled by this lease, or <typeparamref name="T"/>
+    /// does not match its registered value type.
+    /// </exception>
+    public T GetAuthored<T>(RetainedControlProperty property)
         where T : notnull
     {
         var entry = RequireEntry<T>(property);
@@ -72,7 +104,16 @@ internal sealed class RetainedPropertyOverrideLease
     /// <typeparam name="T">The exact property value type.</typeparam>
     /// <param name="property">The controlled property.</param>
     /// <param name="value">The imposed live value.</param>
-    internal void SetLive<T>(RetainedControlProperty property, T value)
+    /// <remarks>
+    /// A no-op once this generation is no longer <see cref="IsCurrent"/>, so a caller may issue
+    /// several writes in sequence and rely on each one independently re-checking currency rather
+    /// than assuming an earlier write in the same sequence still holds the generation.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// <paramref name="property"/> is not controlled by this lease, or <typeparamref name="T"/>
+    /// does not match its registered value type.
+    /// </exception>
+    public void SetLive<T>(RetainedControlProperty property, T value)
         where T : notnull
     {
         if (!IsCurrent)
@@ -126,7 +167,13 @@ internal sealed class RetainedPropertyOverrideLease
     }
 
     /// <summary>Restores authored values while this generation remains current, then retires it.</summary>
-    internal void Restore()
+    /// <remarks>
+    /// Writing stops the moment this generation is no longer <see cref="IsCurrent"/> or
+    /// <see cref="Child"/> is disposed or disposing, leaving any remaining controlled properties at
+    /// their last live value rather than attempting an unsafe write; the generation is retired
+    /// either way. Idempotent: retiring an already-retired generation is a no-op.
+    /// </remarks>
+    public void Restore()
     {
         ExceptionDispatchInfo? failure = null;
 
@@ -151,7 +198,8 @@ internal sealed class RetainedPropertyOverrideLease
     }
 
     /// <summary>Retires metadata without restoring values.</summary>
-    internal void Retire()
+    /// <remarks>Idempotent: retiring an already-retired generation is a no-op.</remarks>
+    public void Retire()
     {
         if (IsRetired)
         {

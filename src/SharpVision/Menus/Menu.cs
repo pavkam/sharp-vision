@@ -21,7 +21,8 @@ public sealed class Menu: ItemsControl
     /// <see cref="SelectedItem"/>'s identity silently changed - this retained reference can.</summary>
     private ControlBase? _selectedEntry;
 
-    private readonly RetainedPropertyOverrideService _propertyOverrides;
+    private static readonly RetainedPropertyOverrideDescriptor[] _heightDescriptor = [RetainedPropertyOverrides.Height];
+
     private readonly ModalSession _modalSession;
     private readonly LayoutStack _stack;
     private bool _closeChainAfterInvocation;
@@ -48,12 +49,9 @@ public sealed class Menu: ItemsControl
             Spacing = 0
         };
         InitializeItemsHost(_stack);
-        _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         _modalSession = new ModalSession(OnModalDismissRequested, OnModalScopeExited);
         Items = new MenuEntryCollection(this);
-        IsFocusable = true;
-        IsTabStop = true;
-        TabNavigation = TabNavigation.None;
+        EnableOwnerFocusModel();
         EnableSelectedItemPressActivation(
             SelectedPressTarget,
             IsPressTargetAvailable,
@@ -497,24 +495,11 @@ public sealed class Menu: ItemsControl
         // Ownership is secured before any authored property is captured or
         // overwritten. InsertItemControl can throw for a duplicate, already
         // attached, or disposed candidate; a rejected insertion must leave the
-        // caller's object exactly as it found it.
+        // caller's object exactly as it found it. The enabled owner focus model already
+        // suppressed IsFocusable/IsTabStop and applied the 1-cell height for both entry kinds as
+        // part of the commit above, through GetOwnerFocusModelExtraDescriptors and
+        // ConfigureOwnerFocusModelItem.
         InsertItemControl(index, item);
-        if (item is MenuItem)
-        {
-            var lease = _propertyOverrides.Acquire(
-                item,
-                RetainedPropertyOverrides.IsFocusable,
-                RetainedPropertyOverrides.IsTabStop,
-                RetainedPropertyOverrides.Height);
-            lease.SetLive(RetainedControlProperty.IsFocusable, false);
-            lease.SetLive(RetainedControlProperty.IsTabStop, false);
-        }
-        else
-        {
-            _ = _propertyOverrides.Acquire(item, RetainedPropertyOverrides.Height);
-        }
-
-        ApplyItemSizing(item);
 
         // An already-selected entry never changes identity because of an
         // insertion; only its numeric position shifts.
@@ -586,9 +571,9 @@ public sealed class Menu: ItemsControl
             return false;
         }
 
-        var propertyLease = _propertyOverrides.Get(item);
+        // The enabled owner focus model restores this item's IsFocusable, IsTabStop, and height
+        // to their caller-authored values as part of the commit below.
         _ = RemoveItemControl(item);
-        _propertyOverrides.Restore(propertyLease);
 
         // Mirrors InsertItem's symmetric case: a removal that does not touch the selected
         // entry must never change its identity. Only an actual removal of the selected entry
@@ -672,28 +657,11 @@ public sealed class Menu: ItemsControl
         }
 
         var wasSelected = index == _selectedIndex;
-        var oldPropertyLease = _propertyOverrides.Get(old);
 
+        // Replace is one committed structural change: the enabled owner focus model restores
+        // IsFocusable, IsTabStop, and height on the outgoing entry and suppresses focus and
+        // applies the 1-cell height on the incoming one, all as part of the commit itself.
         ReplaceItemControl(index, item);
-
-        _propertyOverrides.Restore(oldPropertyLease);
-
-        if (item is MenuItem)
-        {
-            var lease = _propertyOverrides.Acquire(
-                item,
-                RetainedPropertyOverrides.IsFocusable,
-                RetainedPropertyOverrides.IsTabStop,
-                RetainedPropertyOverrides.Height);
-            lease.SetLive(RetainedControlProperty.IsFocusable, false);
-            lease.SetLive(RetainedControlProperty.IsTabStop, false);
-        }
-        else
-        {
-            _ = _propertyOverrides.Acquire(item, RetainedPropertyOverrides.Height);
-        }
-
-        ApplyItemSizing(item);
 
         if (wasSelected)
         {
@@ -777,22 +745,9 @@ public sealed class Menu: ItemsControl
     {
         VerifyMutable();
 
-        var items = new ControlBase[ItemControlCount];
-        var propertyLeases = new RetainedPropertyOverrideLease[ItemControlCount];
-
-        for (var index = 0; index < items.Length; index++)
-        {
-            items[index] = ItemAt(index);
-            propertyLeases[index] = _propertyOverrides.Get(items[index]);
-        }
-
+        // The enabled owner focus model restores every detached item's IsFocusable, IsTabStop,
+        // and height to its caller-authored values as part of the commit below.
         ClearItemControls();
-
-        foreach (var propertyLease in propertyLeases)
-        {
-            _propertyOverrides.Restore(propertyLease);
-        }
-
         Select(-1, focus: false);
     }
 
@@ -840,13 +795,6 @@ public sealed class Menu: ItemsControl
         {
             item.SetSelectedState(ContainsFocus);
         }
-    }
-
-    /// <inheritdoc/>
-    private protected override void OnItemsControlDisposing()
-    {
-        _propertyOverrides.Dispose();
-        base.OnItemsControlDisposing();
     }
 
     /// <inheritdoc/>
@@ -1651,7 +1599,15 @@ public sealed class Menu: ItemsControl
     }
 
     private void ApplyItemSizing(ControlBase item) =>
-        _propertyOverrides.Get(item).SetLive(RetainedControlProperty.Height, Length.Cells(1));
+        ItemPropertyOverrides.Get(item).SetLive(RetainedControlProperty.Height, Length.Cells(1));
+
+    /// <inheritdoc/>
+    protected override IReadOnlyList<RetainedPropertyOverrideDescriptor> GetOwnerFocusModelExtraDescriptors(
+        ControlBase item) => _heightDescriptor;
+
+    /// <inheritdoc/>
+    protected override void ConfigureOwnerFocusModelItem(ControlBase item, RetainedPropertyOverrideLease lease) =>
+        lease.SetLive(RetainedControlProperty.Height, Length.Cells(1));
 
     [Pure]
     private static ControlBase RequireEntry(ControlBase child)

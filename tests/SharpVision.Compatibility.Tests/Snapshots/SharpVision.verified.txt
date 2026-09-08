@@ -736,11 +736,15 @@ namespace SharpVision.Controls
     {
         protected ItemsControl() { }
         protected int ItemControlCount { get; }
+        protected SharpVision.Controls.RetainedPropertyOverrideService ItemPropertyOverrides { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void CancelSelectedItemPressActivation() { }
         protected void ClearItemControls() { }
+        protected virtual void ConfigureOwnerFocusModelItem(SharpVision.Controls.ControlBase item, SharpVision.Controls.RetainedPropertyOverrideLease lease) { }
+        protected void EnableOwnerFocusModel() { }
         protected void EnableSelectedItemPressActivation(System.Func<SharpVision.Controls.ControlBase?> getSelectedTarget, System.Func<SharpVision.Controls.ControlBase, bool> isTargetAvailable, System.Action<SharpVision.Controls.ControlBase, bool> setTargetPressed, System.Action<SharpVision.Controls.ControlBase> activateTarget, bool consumeWhenNoTarget) { }
         protected SharpVision.Controls.ControlBase GetItemControl(int index) { }
+        protected virtual System.Collections.Generic.IReadOnlyList<SharpVision.Controls.RetainedPropertyOverrideDescriptor> GetOwnerFocusModelExtraDescriptors(SharpVision.Controls.ControlBase item) { }
         protected void HandleSelectedItemPressActivation(SharpVision.Input.KeyEventArgs eventArgs) { }
         protected int IndexOfItemControl(SharpVision.Controls.ControlBase control) { }
         protected void InitializeItemsHost(SharpVision.Controls.Container host) { }
@@ -804,11 +808,53 @@ namespace SharpVision.Controls
             public T Clamp(T minimum, T maximum) { }
         }
     }
+    public enum RetainedControlProperty
+    {
+        Width = 0,
+        Height = 1,
+        Visibility = 2,
+        IsFocusable = 3,
+        IsTabStop = 4,
+    }
     public sealed class RetainedPartProperty<T> : System.IDisposable
     {
         public T Value { get; set; }
         public void Dispose() { }
         public void Refresh() { }
+    }
+    public readonly struct RetainedPropertyOverrideDescriptor
+    {
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor Create<T>(SharpVision.Controls.RetainedControlProperty property, System.Func<SharpVision.Controls.ControlBase, T> read, System.Action<SharpVision.Controls.ControlBase, T> write)
+            where T :  notnull { }
+    }
+    public sealed class RetainedPropertyOverrideLease
+    {
+        public SharpVision.Controls.ControlBase Child { get; }
+        public bool IsCurrent { get; }
+        public T GetAuthored<T>(SharpVision.Controls.RetainedControlProperty property)
+            where T :  notnull { }
+        public bool IsWriting(SharpVision.Controls.RetainedControlProperty property) { }
+        public void Restore() { }
+        public void Retire() { }
+        public void SetLive<T>(SharpVision.Controls.RetainedControlProperty property, T value)
+            where T :  notnull { }
+    }
+    public sealed class RetainedPropertyOverrideService : System.IDisposable
+    {
+        public SharpVision.Controls.RetainedPropertyOverrideLease Acquire(SharpVision.Controls.ControlBase child, params SharpVision.Controls.RetainedPropertyOverrideDescriptor[] descriptors) { }
+        public void Dispose() { }
+        public SharpVision.Controls.RetainedPropertyOverrideLease Get(SharpVision.Controls.ControlBase child) { }
+        public void Restore(SharpVision.Controls.ControlBase child) { }
+        public void Restore(SharpVision.Controls.RetainedPropertyOverrideLease lease) { }
+        public void Retire(SharpVision.Controls.RetainedPropertyOverrideLease lease) { }
+    }
+    public static class RetainedPropertyOverrides
+    {
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor Height { get; }
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor IsFocusable { get; }
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor IsTabStop { get; }
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor Visibility { get; }
+        public static SharpVision.Controls.RetainedPropertyOverrideDescriptor Width { get; }
     }
     public sealed class RetainedScrollPart : System.IDisposable
     {
@@ -1881,6 +1927,8 @@ namespace SharpVision.Controls.Input
         public SharpVision.Controls.Input.CommandBarStyle? Style { get; set; }
         public event System.EventHandler<SharpVision.Controls.Input.CommandBarItemInvokedEventArgs>? ItemInvoked;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override void ConfigureOwnerFocusModelItem(SharpVision.Controls.ControlBase item, SharpVision.Controls.RetainedPropertyOverrideLease lease) { }
+        protected override System.Collections.Generic.IReadOnlyList<SharpVision.Controls.RetainedPropertyOverrideDescriptor> GetOwnerFocusModelExtraDescriptors(SharpVision.Controls.ControlBase item) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
@@ -3814,7 +3862,9 @@ namespace SharpVision.Menus
         public SharpVision.Menus.MenuItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
         public event System.EventHandler<SharpVision.Menus.MenuItemInvokedEventArgs>? ItemInvoked;
+        protected override void ConfigureOwnerFocusModelItem(SharpVision.Controls.ControlBase item, SharpVision.Controls.RetainedPropertyOverrideLease lease) { }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
+        protected override System.Collections.Generic.IReadOnlyList<SharpVision.Controls.RetainedPropertyOverrideDescriptor> GetOwnerFocusModelExtraDescriptors(SharpVision.Controls.ControlBase item) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }

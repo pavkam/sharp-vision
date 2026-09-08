@@ -241,17 +241,29 @@ sequenceDiagram
 Framework item owners receive an immutable committed delta for each retained
 slot rather than inferring an insert, removal, replacement, move, clear, or
 direct disposal from the final list. When such an owner must temporarily impose
-a live child property, it uses the shared ownership-generation lease: caller
-requests remain authored state, attributed owner writes remain live state, and
-only the still-current generation may restore after detachment. The multi-slot
-compound transaction itself is framework infrastructure; a consumer-derived
-`ItemsControl` continues to author behavior through the protected single-host
-helpers - including `MoveItemControl`, the typed
+a live child property, it uses the shared ownership-generation lease
+(`RetainedPropertyOverrideService`, `RetainedPropertyOverrideLease`,
+`RetainedPropertyOverrideDescriptor`, `RetainedPropertyOverrides`, and
+`RetainedControlProperty`): caller requests remain authored state, attributed
+owner writes remain live state, and only the still-current generation may
+restore after detachment - a lease superseded by a later acquisition for the
+same child, or one whose child left through its own disposal, silently stops
+writing rather than racing or corrupting a generation it no longer owns. This
+lease is consumer-available, not framework-only: `ItemsControl` exposes one
+service per item owner through `ItemPropertyOverrides`, and
+`EnableOwnerFocusModel()` builds the complete recipe - impose, suppress, and
+restore or retire - on top of it for the common case of one collective tab stop
+over independently focusable items, with `GetOwnerFocusModelExtraDescriptors`
+and `ConfigureOwnerFocusModelItem` as the seam for an additional leased
+property, because one control supports only one active generation at a time. The
+multi-slot **compound transaction** remains framework infrastructure; a
+consumer-derived `ItemsControl` continues to author behavior through the
+protected single-host helpers - including `MoveItemControl`, the typed
 `OnItemControlsChanged(OwnedControlChange)` overload for the same immutable
-committed delta framework owners use, and the selected-item Space-activation
-trio (`EnableSelectedItemPressActivation`, `HandleSelectedItemPressActivation`,
-`CancelSelectedItemPressActivation`) for a one-focus collection - never through
-the compound transaction.
+committed delta framework owners use, the selected-item Space-activation trio
+(`EnableSelectedItemPressActivation`, `HandleSelectedItemPressActivation`,
+`CancelSelectedItemPressActivation`) for a one-focus collection, and the owner
+focus model above - never through the compound transaction itself.
 
 ## Chrome and custom rendering
 

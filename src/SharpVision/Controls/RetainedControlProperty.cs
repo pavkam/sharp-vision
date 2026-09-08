@@ -4,7 +4,14 @@
 namespace SharpVision.Controls;
 
 /// <summary>Identifies a mutable control property that a retained owner may temporarily impose.</summary>
-internal enum RetainedControlProperty
+/// <remarks>
+/// Each value names one property a <see cref="RetainedPropertyOverrideLease"/> can control through
+/// a matching <see cref="RetainedPropertyOverrideDescriptor"/> from <see cref="RetainedPropertyOverrides"/>.
+/// A lease write for a property never registered on that lease throws rather than silently
+/// targeting the wrong storage.
+/// </remarks>
+[PublicAPI]
+public enum RetainedControlProperty
 {
     /// <summary>The requested layout width.</summary>
     Width,

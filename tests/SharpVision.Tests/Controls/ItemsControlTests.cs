@@ -352,6 +352,46 @@ public sealed class ItemsControlTests
         first.IsDisposed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies the shared owner-focus item model suppresses a realized item's own
+    /// IsFocusable and IsTabStop while it stays realized, and restores its caller-authored values
+    /// once it leaves through an ordinary owner API.</summary>
+    [Fact]
+    public void EnableOwnerFocusModel_WhenItemAdded_MakesItemNonFocusableAndRestoresOnRemove()
+    {
+        var owner = new ProbeItemsControl();
+        owner.EnableFocusModel();
+        var item = new ProbeControl { IsFocusable = true };
+
+        owner.Insert(0, item);
+
+        owner.IsFocusable.ShouldBeTrue();
+        owner.IsTabStop.ShouldBeTrue();
+        owner.TabNavigation.ShouldBe(TabNavigation.None);
+        item.IsFocusable.ShouldBeFalse();
+        item.IsTabStop.ShouldBeFalse();
+
+        owner.RemoveAt(0);
+
+        item.IsFocusable.ShouldBeTrue();
+        item.IsTabStop.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies the shared owner-focus item model retires, rather than restores, an item
+    /// that leaves through its own direct disposal, so it never writes onto a dying control.</summary>
+    [Fact]
+    public void EnableOwnerFocusModel_WhenItemDisposedDirectly_RetiresWithoutWritingBack()
+    {
+        var owner = new ProbeItemsControl();
+        owner.EnableFocusModel();
+        var item = new ProbeControl { IsFocusable = true };
+        owner.Insert(0, item);
+
+        item.Dispose();
+
+        item.IsDisposed.ShouldBeTrue();
+        item.IsFocusable.ShouldBeFalse();
+    }
+
     /// <summary>Verifies passthrough layout, ordinary rendering, and hit testing use the private host.</summary>
     [Fact]
     public void LayoutAndRender_WhenItemsExist_UsePrivateHostTraversal()

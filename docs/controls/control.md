@@ -383,6 +383,16 @@ and the earliest invalidation impact. These policies are independent: excluding
 an edge from hit testing or navigation never excludes it from parentage,
 inherited context, lifecycle, or disposal.
 
+A retained owner that must temporarily impose one of its own child's properties
+
+- `Width`, `Height`, `Visibility`, `IsFocusable`, or `IsTabStop` - without
+  discarding that child's own authored value does so through the
+  generation-checked lease types in `SharpVision.Controls`
+  (`RetainedPropertyOverrideService`, `RetainedPropertyOverrideLease`, and
+  related types); see [`ItemsControl`](items-control.md#overview)'s
+  `ItemPropertyOverrides` and `EnableOwnerFocusModel` for the primary way a
+  consumer-derived item owner reaches this mechanism.
+
 Cross-cutting traversal reads this registry directly rather than testing whether
 the owner is a `Container`. Stable tree order is slot registration order, then
 item order within each slot. Focus navigation visits only

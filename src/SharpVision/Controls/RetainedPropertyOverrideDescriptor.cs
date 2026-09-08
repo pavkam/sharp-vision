@@ -4,7 +4,15 @@
 namespace SharpVision.Controls;
 
 /// <summary>Captures typed accessors for one property controlled by a retained-owner lease.</summary>
-internal readonly struct RetainedPropertyOverrideDescriptor
+/// <remarks>
+/// A descriptor pairs one <see cref="RetainedControlProperty"/> identity with the exact typed
+/// reader and writer a <see cref="RetainedPropertyOverrideLease"/> uses to capture and later
+/// restore that property's authored value on a leased control. <see cref="RetainedPropertyOverrides"/>
+/// exposes the shared descriptors for the properties the framework already leases; a derived owner
+/// leasing a different property creates its own descriptor with <see cref="Create{T}"/>.
+/// </remarks>
+[PublicAPI]
+public readonly struct RetainedPropertyOverrideDescriptor
 {
     private readonly Func<ControlBase, object> _read;
     private readonly Action<ControlBase, object> _write;
@@ -33,7 +41,13 @@ internal readonly struct RetainedPropertyOverrideDescriptor
     /// <param name="read">The non-null typed reader.</param>
     /// <param name="write">The non-null typed writer.</param>
     /// <returns>The boxed storage descriptor used by heterogeneous leases.</returns>
-    internal static RetainedPropertyOverrideDescriptor Create<T>(
+    /// <remarks>
+    /// A derived owner leasing a property outside <see cref="RetainedPropertyOverrides"/> calls this
+    /// once to build its own descriptor, then passes it to <see cref="RetainedPropertyOverrideService.Acquire"/>
+    /// exactly like a shared one.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="read"/> or <paramref name="write"/> is null.</exception>
+    public static RetainedPropertyOverrideDescriptor Create<T>(
         RetainedControlProperty property,
         Func<ControlBase, T> read,
         Action<ControlBase, T> write)

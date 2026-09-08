@@ -4,7 +4,38 @@
 namespace SharpVision.Controls;
 
 /// <summary>Coordinates property-override lease generations for one owner and owned-control slot.</summary>
-internal sealed class RetainedPropertyOverrideService: IDisposable
+/// <remarks>
+/// <para>
+/// A service tracks at most one current <see cref="RetainedPropertyOverrideLease"/> generation per
+/// realized child. <see cref="Acquire"/> installs a new generation for a child, retiring without
+/// restoring whatever generation that child previously held; this is the generation rule the rest
+/// of this type enforces: a lease obtained from an earlier <see cref="Acquire"/> call for the same
+/// child stops being <see cref="RetainedPropertyOverrideLease.IsCurrent"/> the instant a later call
+/// supersedes it, so any of its writes silently stop taking effect rather than racing the new
+/// generation for the same storage. This rule holds across every service, not only within one: a
+/// leased control has exactly one active generation of its own regardless of which service issued
+/// it, so acquiring a second, independent lease for a child that already has a current one retires
+/// the first without restoring it. A property an owner wants leased alongside properties another
+/// service already controls for the same child must be part of that one <see cref="Acquire"/> call,
+/// never a separate one.
+/// </para>
+/// <para>
+/// The service also retires - without ever attempting to write a captured value back - any
+/// generation whose child leaves through its own disposal, independently of whether the caller
+/// remembers to call <see cref="Retire(RetainedPropertyOverrideLease)"/> itself: it watches the same
+/// owned-control slot its leases are scoped to for exactly that condition.
+/// </para>
+/// <para>
+/// The constructor is not public. <see cref="ItemsControl"/> exposes one instance per item owner
+/// through <see cref="ItemsControl.ItemPropertyOverrides"/>; a third-party owner reaches this type
+/// only that way, and an owner whose items already carry a generation from the shared owner focus
+/// model - see <see cref="ItemsControl.EnableOwnerFocusModel"/> - extends that same generation
+/// through <see cref="ItemsControl.GetOwnerFocusModelExtraDescriptors"/> rather than acquiring one
+/// of its own for the same child.
+/// </para>
+/// </remarks>
+[PublicAPI]
+public sealed class RetainedPropertyOverrideService: IDisposable
 {
     private readonly Dictionary<ControlBase, RetainedPropertyOverrideLease> _leases = [];
     private readonly ControlBase _owner;
@@ -37,7 +68,19 @@ internal sealed class RetainedPropertyOverrideService: IDisposable
     /// <param name="child">The child currently committed to this service's slot.</param>
     /// <param name="descriptors">The non-empty distinct property descriptors.</param>
     /// <returns>The new current lease.</returns>
-    internal RetainedPropertyOverrideLease Acquire(
+    /// <remarks>
+    /// A prior generation this service already tracked for <paramref name="child"/> is retired -
+    /// without restoring its captured authored values - before the new one installs, because that
+    /// prior lease's own <see cref="RetainedPropertyOverrideLease.IsCurrent"/> becomes false the
+    /// instant this call installs its replacement.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> or <paramref name="descriptors"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="child"/> does not belong to this service's slot, <paramref name="descriptors"/>
+    /// is empty, or it repeats a property.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">This service is disposed.</exception>
+    public RetainedPropertyOverrideLease Acquire(
         ControlBase child,
         params RetainedPropertyOverrideDescriptor[] descriptors)
     {
@@ -72,11 +115,19 @@ internal sealed class RetainedPropertyOverrideService: IDisposable
     /// <summary>Gets the current lease for one child.</summary>
     /// <param name="child">The non-null child.</param>
     /// <returns>The current lease.</returns>
-    internal RetainedPropertyOverrideLease Get(ControlBase child) => _leases[child];
+    /// <exception cref="KeyNotFoundException">
+    /// This service holds no current generation for <paramref name="child"/>.
+    /// </exception>
+    public RetainedPropertyOverrideLease Get(ControlBase child) => _leases[child];
 
     /// <summary>Restores one detached child's latest authored values if its generation is current.</summary>
     /// <param name="child">The detached child.</param>
-    internal void Restore(ControlBase child)
+    /// <remarks>
+    /// A no-op when this service holds no current generation for <paramref name="child"/> - already
+    /// restored, already retired through its own disposal, or never leased in the first place.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    public void Restore(ControlBase child)
     {
         ArgumentNullException.ThrowIfNull(child);
 
@@ -88,7 +139,13 @@ internal sealed class RetainedPropertyOverrideService: IDisposable
 
     /// <summary>Restores one captured generation only if it was not superseded by reownership.</summary>
     /// <param name="lease">The exact detached generation.</param>
-    internal void Restore(RetainedPropertyOverrideLease lease)
+    /// <remarks>
+    /// A no-op when <paramref name="lease"/> is no longer the generation this service tracks for its
+    /// <see cref="RetainedPropertyOverrideLease.Child"/> - a later <see cref="Acquire"/> call for the
+    /// same child already superseded it, or it was already restored or retired.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="lease"/> is null.</exception>
+    public void Restore(RetainedPropertyOverrideLease lease)
     {
         ArgumentNullException.ThrowIfNull(lease);
 
@@ -101,7 +158,11 @@ internal sealed class RetainedPropertyOverrideService: IDisposable
 
     /// <summary>Retires one captured generation without restoring authored values.</summary>
     /// <param name="lease">The exact generation ending through disposal.</param>
-    internal void Retire(RetainedPropertyOverrideLease lease)
+    /// <remarks>
+    /// A no-op under the same supersession rule as <see cref="Restore(RetainedPropertyOverrideLease)"/>.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="lease"/> is null.</exception>
+    public void Retire(RetainedPropertyOverrideLease lease)
     {
         ArgumentNullException.ThrowIfNull(lease);
 

@@ -21,11 +21,12 @@ using SharpVision.Terminal.Input;
 [PublicAPI]
 public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 {
+    private static readonly RetainedPropertyOverrideDescriptor[] _heightDescriptor = [RetainedPropertyOverrides.Height];
+
     private readonly CommandBarHost _host;
     private readonly CommandBarOverflowButton _overflowButton;
     private readonly Menu _overflowMenu;
     private readonly Popup _overflowPopup;
-    private readonly RetainedPropertyOverrideService _propertyOverrides;
     private readonly StyleSlot<CommandBarStyle> _style;
     private readonly HashSet<ControlBase> _primaryEntries = [];
     private readonly List<ControlBase> _overflowEntries = [];
@@ -48,7 +49,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     {
         _host = new CommandBarHost(this);
         InitializeItemsHost(_host);
-        _propertyOverrides = new RetainedPropertyOverrideService(this, ItemControlsSlot);
         _style = InitializeStyle(CommandBarStyle.Definition, OnStyleChanged);
         Items = new CommandBarEntryCollection(this);
 
@@ -79,9 +79,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             connectsToAnchor: false,
             partKey: "overflow");
 
-        IsFocusable = true;
-        IsTabStop = true;
-        TabNavigation = TabNavigation.None;
+        EnableOwnerFocusModel();
         HorizontalAlignment = HorizontalAlignment.Stretch;
         EnableSelectedItemPressActivation(
             SelectedTarget,
@@ -238,8 +236,11 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
             throw new ArgumentOutOfRangeException(nameof(index), index, "The insertion index is outside the command bar.");
         }
 
+        // The enabled owner focus model suppresses IsFocusable/IsTabStop, applies the 1-cell
+        // height, and (for a CommandBarItem) subscribes PropertyChanged for this entry as part of
+        // the commit above, through GetOwnerFocusModelExtraDescriptors and
+        // ConfigureOwnerFocusModelItem.
         InsertItemControl(index, entry);
-        AcquireEntry(entry);
 
         if (_selectedItem is not null)
         {
@@ -264,10 +265,11 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         }
 
         var selectedWasRemoved = ReferenceEquals(entry, _selectedItem);
-        var propertyLease = _propertyOverrides.Get(entry);
         ReleaseEntry(entry);
+
+        // The enabled owner focus model restores this entry's IsFocusable, IsTabStop, and height
+        // to their caller-authored values as part of the commit below.
         _ = RemoveItemControl(entry);
-        _propertyOverrides.Restore(propertyLease);
 
         if (selectedWasRemoved)
         {
@@ -318,11 +320,13 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         }
 
         var selectedWasReplaced = ReferenceEquals(previous, _selectedItem);
-        var propertyLease = _propertyOverrides.Get(previous);
         ReleaseEntry(previous);
+
+        // The enabled owner focus model restores the outgoing entry's IsFocusable, IsTabStop,
+        // and height, and suppresses focus, applies the 1-cell height, and (for a
+        // CommandBarItem) subscribes PropertyChanged on the incoming one, all as part of the
+        // commit below.
         ReplaceItemControl(index, entry);
-        _propertyOverrides.Restore(propertyLease);
-        AcquireEntry(entry);
 
         if (selectedWasReplaced)
         {
@@ -375,44 +379,32 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     {
         VerifyMutable();
         var entries = Items.ToArray();
-        var leases = entries.Select(_propertyOverrides.Get).ToArray();
 
         foreach (var entry in entries)
         {
             ReleaseEntry(entry);
         }
 
+        // The enabled owner focus model restores every detached entry's IsFocusable, IsTabStop,
+        // and height to its caller-authored values as part of the commit below.
         ClearItemControls();
-
-        foreach (var lease in leases)
-        {
-            _propertyOverrides.Restore(lease);
-        }
-
         Select(null);
         PublishEntriesChanged();
     }
 
-    private void AcquireEntry(ControlBase entry)
+    /// <inheritdoc/>
+    protected override IReadOnlyList<RetainedPropertyOverrideDescriptor> GetOwnerFocusModelExtraDescriptors(
+        ControlBase item) => _heightDescriptor;
+
+    /// <inheritdoc/>
+    protected override void ConfigureOwnerFocusModelItem(ControlBase item, RetainedPropertyOverrideLease lease)
     {
-        var descriptors = entry is CommandBarItem
-            ? new[]
-            {
-                RetainedPropertyOverrides.IsFocusable,
-                RetainedPropertyOverrides.IsTabStop,
-                RetainedPropertyOverrides.Height
-            }
-            : [RetainedPropertyOverrides.Height];
-        var lease = _propertyOverrides.Acquire(entry, descriptors);
-
-        if (entry is CommandBarItem item)
-        {
-            lease.SetLive(RetainedControlProperty.IsFocusable, false);
-            lease.SetLive(RetainedControlProperty.IsTabStop, false);
-            item.PropertyChanged += OnEntryPropertyChanged;
-        }
-
         lease.SetLive(RetainedControlProperty.Height, Length.Cells(1));
+
+        if (item is CommandBarItem commandBarItem)
+        {
+            commandBarItem.PropertyChanged += OnEntryPropertyChanged;
+        }
     }
 
     private void ReleaseEntry(ControlBase entry)
@@ -1213,13 +1205,6 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         }
 
         PublishEntriesChanged();
-    }
-
-    /// <inheritdoc/>
-    private protected override void OnItemsControlDisposing()
-    {
-        _propertyOverrides.Dispose();
-        base.OnItemsControlDisposing();
     }
 
     /// <inheritdoc/>
