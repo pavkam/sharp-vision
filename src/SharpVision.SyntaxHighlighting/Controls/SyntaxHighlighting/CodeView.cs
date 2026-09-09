@@ -3,9 +3,6 @@
 
 namespace SharpVision.Controls.SyntaxHighlighting;
 
-using System.ComponentModel;
-
-using SharpVision.Controls.Scrolling;
 using SharpVision.Runtime;
 using SharpVision.Scrolling;
 using SharpVision.SyntaxHighlighting;
@@ -56,10 +53,9 @@ public sealed class CodeView:
     private const int _foldGutterWidth = 2;
     private const string _foldIndicator = " (...)";
 
-    private readonly CodeViewContent _content;
+    private readonly ProjectionSurface _content;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<CodeViewStyle> _style;
-    private readonly WidthDependentViewportCoordinator _projectionCoordinator;
 
     private string[] _lines = [string.Empty];
     private int[] _lineStartOffsets = [0, 0];
@@ -128,7 +124,7 @@ public sealed class CodeView:
     public CodeView()
     {
         _style = InitializeStyle(CodeViewStyle.Definition);
-        _content = new CodeViewContent(this);
+        _content = new ProjectionSurface(this, MeasureAndWrap, RenderProjectedContent);
         _stack = new LayoutStack
         {
             AutoScroll = true,
@@ -138,20 +134,15 @@ public sealed class CodeView:
         };
         InitializeContent(_stack);
 
-        // Installed before the coordinator below, not after: both subscribe to _stack.ScrollChanged,
-        // and a consumer's ScrollChanged handler (reached through the coordinator, since
-        // forwardsScrollEvent is false) is free to dispose this view synchronously. Subscribing the
-        // scrollable-content bridge first keeps its own refresh of the cached Extent/Viewport/offset
-        // properties strictly earlier in the invocation list than that handler, so the refresh always
-        // runs against a still-available owner regardless of what the handler does.
-        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
-        _projectionCoordinator = new WidthDependentViewportCoordinator(
-            this,
-            _stack,
-            _content,
-            () => Overflow != Overflow.Visible,
-            () => _rowsWidth,
-            Reproject);
+        // Installed before the width-dependent projection below, not after: both subscribe to
+        // _stack.ScrollChanged, and a consumer's ScrollChanged handler (reached through the
+        // coordinator, since forwardsScrollEvent is false) is free to dispose this view
+        // synchronously. Installing the scrollable-content bridge first keeps its own refresh of the
+        // cached Extent/Viewport/offset properties strictly earlier in the invocation list than that
+        // handler, so the refresh always runs against a still-available owner regardless of what the
+        // handler does.
+        InitializeScrollableContent(_stack, _content, forwardsScrollEvent: false);
+        InitializeWidthDependentProjection(() => Overflow != Overflow.Visible, () => _rowsWidth, Reproject);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -270,49 +261,6 @@ public sealed class CodeView:
 
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public CodeViewStyle ActualStyle => _style.Actual;
-
-    /// <summary>
-    /// Repaints the render surface whenever <see cref="ActualStyle"/> actually changes - whether
-    /// from a local <see cref="Style"/> assignment or purely from an inherited Theme swap.
-    /// </summary>
-    /// <param name="propertyName">The non-empty committed property name.</param>
-    /// <remarks>
-    /// <see cref="_content"/> owns no style slot of its own (unlike, for example, <see cref="_stack"/>'s
-    /// bound <see cref="ScrollBarStyle"/>), so nothing about a Theme swap alone would otherwise ever
-    /// invalidate it: the framework's own per-control Theme-transition invalidation is computed
-    /// against each control's <em>own</em> style, and <see cref="_content"/>'s own style is the
-    /// generic control default, which does not reference any of <see cref="CodeViewStyle"/>'s
-    /// syntax-color roles. <see cref="INotifyPropertyChanged.PropertyChanged"/>'s
-    /// <see cref="ActualStyle"/> notification already fires for both the local-assignment and the
-    /// Theme-swap path, so overriding this hook once here - rather than only from the local-assignment
-    /// callback a Theme swap never invokes - keeps the fold gutter glyph and every syntax color
-    /// live across both paths identically.
-    /// </remarks>
-    protected override void OnPropertyChanged(string propertyName)
-    {
-        base.OnPropertyChanged(propertyName);
-
-        if (propertyName == nameof(ActualStyle))
-        {
-            InvalidateRetainedDescendant(_content, InvalidationImpact.Render);
-        }
-    }
-
-    #endregion
-
-    #region Scrolling
-
-    /// <summary>Adds one <see cref="ScrollableCompositeControlBase.ScrollChanged"/> subscriber,
-    /// routed to the shared width-dependent viewport coordinator rather than the private scrolling
-    /// host's own bridge, so a subscriber observes one settled transition per reconciled layout pass
-    /// instead of every intermediate reconciliation attempt.</summary>
-    /// <param name="handler">The subscriber to add, or null (a no-op).</param>
-    protected override void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
-        _projectionCoordinator.ScrollChanged += handler;
-
-    /// <inheritdoc/>
-    protected override void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
-        _projectionCoordinator.ScrollChanged -= handler;
 
     #endregion
 
@@ -850,19 +798,9 @@ public sealed class CodeView:
     }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        // Stashed for the coordinator, which needs to remeasure the composed viewport
-        // with the exact same constraint this control itself received - see JsonView's identical
-        // field for the full rationale.
-        _projectionCoordinator.CaptureMeasureConstraint(constraint);
-        return base.MeasureOverride(constraint);
-    }
-
-    /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        _projectionCoordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
+        base.ArrangeOverride(bounds);
 
         if (!_pendingRevealOffset.HasValue || _pendingRevealPosted)
         {

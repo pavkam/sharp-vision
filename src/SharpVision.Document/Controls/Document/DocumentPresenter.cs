@@ -13,7 +13,7 @@ internal sealed class DocumentPresenter: Container
 
     private readonly Document _owner;
     private readonly string _radioScope;
-    private readonly DocumentSurface _surface;
+    private readonly ProjectionSurface _surface;
 
     /// <summary>Gets how many complete retained-control reconciliations have run.</summary>
     internal int ReconciliationCount { get; private set; }
@@ -21,7 +21,7 @@ internal sealed class DocumentPresenter: Container
     /// <summary>Initializes a presenter with its painted surface as the backmost child.</summary>
     /// <param name="owner">The owning document.</param>
     /// <param name="surface">The painted surface.</param>
-    internal DocumentPresenter(Document owner, DocumentSurface surface)
+    internal DocumentPresenter(Document owner, ProjectionSurface surface)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(surface);

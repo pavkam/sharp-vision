@@ -30,28 +30,30 @@ classDiagram
 
 ## API
 
-| Member                                              | Type                                   | Default          | Description                                                                          |
-| --------------------------------------------------- | -------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| `ScrollBars`                                        | `ScrollBars`                           | Host-defined     | Virtual; axes enabled by the private scrolling host.                                 |
-| `ShowScrollBars`                                    | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.                                         |
-| `ScrollBarStyle`                                    | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                                            |
-| `ActualScrollBarStyle`                              | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                                                  |
-| `Extent`                                            | `Size`                                 | Layout-dependent | Virtual; committed content extent.                                                   |
-| `Viewport`                                          | `Size`                                 | Layout-dependent | Virtual; committed visible extent.                                                   |
-| `HorizontalOffset`                                  | `int`                                  | `0`              | Virtual; valid horizontal content offset.                                            |
-| `VerticalOffset`                                    | `int`                                  | `0`              | Valid vertical content offset.                                                       |
-| `LineSize`                                          | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.                                  |
-| `PageOverlap`                                       | `int`                                  | `0`              | Non-negative context retained between page commands.                                 |
-| `ScrollBy(int x, int y, ScrollCause cause)`         | `bool`                                 | —                | Virtual; adds signed deltas with saturation and endpoint clamping.                   |
-| `ScrollChanged`                                     | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the component as sender.                                        |
-| `InitializeScrollableContent(Container, bool)`      | `void`                                 | —                | Protected; installs the scrolling contract over an already-owned host, exactly once. |
-| `AddScrollChangedHandler(EventHandler<...>?)`       | `void`                                 | —                | Protected virtual; adds one `ScrollChanged` subscriber.                              |
-| `RemoveScrollChangedHandler(EventHandler<...>?)`    | `void`                                 | —                | Protected virtual; removes one `ScrollChanged` subscriber.                           |
-| `RaiseScrollChanged(ScrollChangedEventArgs)`        | `void`                                 | —                | Protected; publishes one transition directly, independent of host forwarding.        |
-| `HandleScrollKey(KeyEventArgs, bool)`               | `bool`                                 | —                | Protected; maps and applies one keyboard navigation stroke through the host.         |
-| `HandleScrollWheel(PointerEventArgs)`               | `bool`                                 | —                | Protected; maps and applies one wheel record through the host.                       |
-| `OnScrollHostScrollChanged(ScrollChangedEventArgs)` | `void`                                 | No-op            | Protected virtual; runs after the bridge refreshes cached properties.                |
-| `TextSelectionPageDistance()`                       | `int`                                  | Host-derived     | Protected override; the host's `Viewport.Height - PageOverlap` once installed.       |
+| Member                                                                    | Type                                   | Default          | Description                                                                                                    |
+| ------------------------------------------------------------------------- | -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| `ScrollBars`                                                              | `ScrollBars`                           | Host-defined     | Virtual; axes enabled by the private scrolling host.                                                           |
+| `ShowScrollBars`                                                          | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.                                                                   |
+| `ScrollBarStyle`                                                          | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                                                                      |
+| `ActualScrollBarStyle`                                                    | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                                                                            |
+| `Extent`                                                                  | `Size`                                 | Layout-dependent | Virtual; committed content extent.                                                                             |
+| `Viewport`                                                                | `Size`                                 | Layout-dependent | Virtual; committed visible extent.                                                                             |
+| `HorizontalOffset`                                                        | `int`                                  | `0`              | Virtual; valid horizontal content offset.                                                                      |
+| `VerticalOffset`                                                          | `int`                                  | `0`              | Valid vertical content offset.                                                                                 |
+| `LineSize`                                                                | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.                                                            |
+| `PageOverlap`                                                             | `int`                                  | `0`              | Non-negative context retained between page commands.                                                           |
+| `ScrollBy(int x, int y, ScrollCause cause)`                               | `bool`                                 | —                | Virtual; adds signed deltas with saturation and endpoint clamping.                                             |
+| `ScrollChanged`                                                           | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the component as sender.                                                                  |
+| `InitializeScrollableContent(Container, bool)`                            | `void`                                 | —                | Protected; installs the scrolling contract over an already-owned host, exactly once.                           |
+| `InitializeScrollableContent(Container, ProjectionSurface, bool)`         | `void`                                 | —                | Protected; installs the scrolling contract together with the shared projection surface, exactly once.          |
+| `InitializeWidthDependentProjection(Func<bool>, Func<int?>, Action<int>)` | `void`                                 | —                | Protected; installs reconciliation between a width-dependent projection and the host's settled viewport width. |
+| `AddScrollChangedHandler(EventHandler<...>?)`                             | `void`                                 | —                | Protected virtual; adds one `ScrollChanged` subscriber.                                                        |
+| `RemoveScrollChangedHandler(EventHandler<...>?)`                          | `void`                                 | —                | Protected virtual; removes one `ScrollChanged` subscriber.                                                     |
+| `RaiseScrollChanged(ScrollChangedEventArgs)`                              | `void`                                 | —                | Protected; publishes one transition directly, independent of host forwarding.                                  |
+| `HandleScrollKey(KeyEventArgs, bool)`                                     | `bool`                                 | —                | Protected; maps and applies one keyboard navigation stroke through the host.                                   |
+| `HandleScrollWheel(PointerEventArgs)`                                     | `bool`                                 | —                | Protected; maps and applies one wheel record through the host.                                                 |
+| `OnScrollHostScrollChanged(ScrollChangedEventArgs)`                       | `void`                                 | No-op            | Protected virtual; runs after the bridge refreshes cached properties.                                          |
+| `TextSelectionPageDistance()`                                             | `int`                                  | Host-derived     | Protected override; the host's `Viewport.Height - PageOverlap` once installed.                                 |
 
 `Extent`, `Viewport`, `HorizontalOffset`, `ScrollBars`, and `ScrollBy` are
 `virtual` so a derived component can widen, restrict, or fully replace one axis
@@ -62,12 +64,47 @@ overload entirely because its horizontal position is derived from its
 selectable-text viewport rather than a generated horizontal scrollbar.
 
 `AddScrollChangedHandler`/`RemoveScrollChangedHandler` back the public
-`ScrollChanged` event by default. A component that republishes a transformed or
-settled transition through a different mechanism - such as a width-dependent
-projection coordinator reconciling a wrapped layout against the viewport -
-overrides both together with `forwardsScrollEvent: false` at
-`InitializeScrollableContent`, so the default host-forwarding path never
-double-publishes. `JsonView` and `CodeView` do this.
+`ScrollChanged` event by default, routing to the coordinator installed by
+`InitializeWidthDependentProjection` instead once one is installed, so a
+subscriber observes one settled transition per reconciled layout pass rather
+than every intermediate reconciliation attempt while it settles a wrapped layout
+against the viewport. `JsonView` and `CodeView` both call
+`InitializeWidthDependentProjection`, paired with `forwardsScrollEvent: false`
+at `InitializeScrollableContent`, so the default host-forwarding path never
+double-publishes alongside the coordinator's own settled republication. A
+component that republishes a transformed or settled transition through some
+other mechanism of its own still overrides both methods directly instead.
+
+### Projection surface
+
+`ProjectionSurface : ControlBase` is the shared private measured and clipped
+render surface a projection-style component installs into its private scrolling
+host: a component that lays its own content out and paints it through one child
+surface, rather than hosting arbitrary caller content. `JsonView`, `CodeView`,
+and `Document` each install one through
+`InitializeScrollableContent(Container, ProjectionSurface, bool)`.
+
+A consumer constructs `new ProjectionSurface(owner, measure, render)` with the
+owning component and two callbacks: `measure` receives the measure-time width
+constraint (or null when unconstrained) and returns the projection's visual
+extent; `render` receives the clipped canvas and the surface's own content
+bounds. The surface owns no projection state and makes no layout or painting
+decisions of its own - both callbacks delegate straight back to the owner.
+
+| Member                                               | Type                 | Default  | Description                                                                   |
+| ---------------------------------------------------- | -------------------- | -------- | ----------------------------------------------------------------------------- |
+| `GetThemeChangeImpact(Theme?, Theme?, Face?, Face?)` | `InvalidationImpact` | Composed | Protected override; the maximum of this surface's own impact and the owner's. |
+| `MeasureOverride(Constraint)`                        | `Size`               | —        | Protected override; returns `measure(constraint.Width)`.                      |
+| `OnRenderContent(TerminalCanvas)`                    | `void`               | —        | Protected override; calls `render(canvas, ContentBounds)`.                    |
+
+The surface owns no style slot of its own, so nothing about a Theme swap alone
+would otherwise ever invalidate it: `GetThemeChangeImpact` composes its own
+generic-default impact with the owner's real impact through the internal
+`ScrollableCompositeControlBase.ResolveProjectionThemeChangeImpact` seam, which
+simply forwards to the owner's own `GetThemeChangeImpact`. The base additionally
+invalidates the installed surface for Render from its own `OnPropertyChanged`
+override whenever a property change named `"ActualStyle"` commits, covering a
+local style assignment and a Theme swap identically.
 
 ## Keyboard
 
@@ -109,6 +146,18 @@ descendant of the component by the time `InitializeScrollableContent` runs.
 - a disposed component with `ObjectDisposedException`; and
 - a repeated call with `InvalidOperationException` - exactly one scrolling host
   may ever be installed.
+
+A projection-style component - one whose private scrolling host paints through
+one [projection surface](#projection-surface) rather than caller content - calls
+`InitializeScrollableContent(host, surface, forwardsScrollEvent: false)`
+instead, then `InitializeWidthDependentProjection` when its projection also
+depends on the settled viewport width. `InitializeWidthDependentProjection`
+rejects a host installed with `forwardsScrollEvent: true` and a call before the
+projection-surface overload ran, both with `InvalidOperationException`; its
+installed coordinator subscribes to the host's own `ScrollChanged` after the
+retained scrolling bridge already did, so the bridge's own refresh of this
+component's cached `Extent`, `Viewport`, and offsets always runs before a
+subscriber reached through the coordinator observes the transition.
 
 Internally, `InitializeScrollableContent` obtains a `RetainedScrollPart` through
 the protected `ControlBase.RegisterRetainedScrollPart` seam - the same seam

@@ -53,7 +53,7 @@ public sealed class Document:
     private readonly DocumentPresenter _presenter;
     private readonly LayoutStack _stack;
     private readonly StyleSlot<DocumentStyle> _style;
-    private readonly DocumentSurface _surface;
+    private readonly ProjectionSurface _surface;
 
     private Ambiguous _layoutAmbiguousWidth;
     private DocumentLink? _activeLink;
@@ -71,7 +71,7 @@ public sealed class Document:
 
         // The surface exists before the style slot because the slot's change callback invalidates it,
         // and a slot can publish its first resolved value while it is still being initialized.
-        _surface = new DocumentSurface(this);
+        _surface = new ProjectionSurface(this, width => MeasureContent(width), RenderProjectedContent);
         _presenter = new DocumentPresenter(this, _surface);
         _style = InitializeStyle(DocumentStyle.Definition, OnStyleChanged);
         _stack = new LayoutStack
@@ -86,7 +86,7 @@ public sealed class Document:
         FocusLeft += OnDocumentFocusBoundaryChanged;
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
         InitializeContent(_stack);
-        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
+        InitializeScrollableContent(_stack, _surface, forwardsScrollEvent: false);
 
         IsFocusable = true;
         IsTabStop = true;
@@ -802,18 +802,6 @@ public sealed class Document:
         InvalidateRetainedDescendant(_surface, InvalidationImpact.Render);
     }
 
-    /// <summary>Calculates the document owner's theme impact for its projected render surface.</summary>
-    internal InvalidationImpact GetProjectedThemeChangeImpact(
-        Theme? previous,
-        Theme? current,
-        Face? previousParentAmbientFace,
-        Face? currentParentAmbientFace) =>
-        GetThemeChangeImpact(
-            previous,
-            current,
-            previousParentAmbientFace,
-            currentParentAmbientFace);
-
     #endregion
 
     #region Scrolling
@@ -971,8 +959,8 @@ public sealed class Document:
     /// this document's own <c>_horizontalOffset</c>. Rebuilding both endpoints here keeps every
     /// subscriber's observed <see cref="ScrollChangedEventArgs.Offset"/>.X consistent with <see
     /// cref="ScrollableCompositeControlBase.HorizontalOffset"/> regardless of which axis actually
-    /// moved. <see cref="ScrollableCompositeControlBase.InitializeScrollableContent"/> is called
-    /// with <c>forwardsScrollEvent: false</c> specifically so the base bridge never republishes the
+    /// moved. <see cref="ScrollableCompositeControlBase.InitializeScrollableContent(Container, ProjectionSurface, bool)"/>
+    /// is called with <c>forwardsScrollEvent: false</c> specifically so the base bridge never republishes the
     /// host's own stale-horizontal transition ahead of this rebuilt one.
     /// </remarks>
     /// <param name="eventArgs">The non-null committed host transition.</param>

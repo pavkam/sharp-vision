@@ -172,4 +172,89 @@ public sealed class ScrollableCompositeControlBaseTests
         // Assert
         probe.ScrollEventOrder.ShouldBe(["hook:3", "forwarded:3"]);
     }
+
+    /// <summary>Verifies the installed projection surface owns no style slot that would otherwise
+    /// ever invalidate it, yet still repaints whenever the owner's own resolved style commits -
+    /// whether that commit came from a local <c>Style</c> assignment or an inherited Theme swap.</summary>
+    [Fact]
+    public void ProjectionSurface_WhenOwnerStyleChanges_IsInvalidatedForRender()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProjectionProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        probe.Surface.Clear(Invalidation.All);
+
+        // Act
+        probe.Style = new SemanticColorStyle(SemanticColor.ControlText);
+
+        // Assert
+        probe.Surface.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a Theme swap that changes only the owner's own resolved semantic color -
+    /// something the projection surface's own generic default style never references - still
+    /// invalidates the surface for Render, proving the surface composes the owner's real theme
+    /// impact into its own rather than reporting only what its own style would produce alone.</summary>
+    [Fact]
+    public void ProjectionSurface_WhenThemeSwapped_ReceivesOwnerThemeImpact()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProjectionProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#112233")));
+        probe.Surface.Clear(Invalidation.All);
+
+        // Act
+        probe.ApplyTheme(ThemeCatalog.Parse(ThemeJson.Create(accent: "#aabbcc")));
+
+        // Assert
+        probe.Surface.Pending.ShouldBe(Invalidation.Render);
+    }
+
+    /// <summary>Verifies a live resize that settles the composed projection at a new viewport width
+    /// reprojects and republishes exactly one settled ScrollChanged carrying the final reconciled
+    /// geometry, exercising the base's own MeasureOverride/ArrangeOverride and ScrollChanged
+    /// routing once a width-dependent projection is installed.</summary>
+    [Fact]
+    public void InitializeWidthDependentProjection_WhenViewportWidthChanges_ReprojectsAndRaisesOneSettledScrollChanged()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProjectionProbe
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(probe, new Size(20, 5));
+        _ = probe.ScrollBy(0, int.MaxValue);
+        var reprojectionsBeforeResize = probe.ReprojectCount;
+        List<ScrollChangedEventArgs> observed = [];
+        probe.ScrollChanged += (_, eventArgs) => observed.Add(eventArgs);
+
+        // Act - widening changes the settled viewport width, which reflows the probe's own
+        // width-dependent row count and can strand a bottom-scrolled offset past the new extent.
+        engine.Layout(probe, new Size(40, 5));
+
+        // Assert
+        probe.ReprojectCount.ShouldBeGreaterThan(reprojectionsBeforeResize);
+        observed.Count.ShouldBe(1);
+        observed[0].Extent.ShouldBe(probe.Extent);
+        observed[0].Viewport.ShouldBe(probe.Viewport);
+        observed[0].Offset.ShouldBe(new Point(probe.HorizontalOffset, probe.VerticalOffset));
+    }
+
+    /// <summary>Verifies installing width-dependent projection over a host that already forwards
+    /// its own ScrollChanged directly is rejected, since the coordinator's own settled republication
+    /// would otherwise double-publish alongside the host's direct forwarding.</summary>
+    [Fact]
+    public void InitializeWidthDependentProjection_WhenHostForwardsScrollEvent_Throws()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProjectionProbe(
+            forwardsScrollEvent: true,
+            installWidthDependentProjection: false);
+
+        // Act and assert
+        var exception = Should.Throw<InvalidOperationException>(probe.InstallWidthDependentProjection);
+        exception.Message.ShouldContain("forwardsScrollEvent");
+    }
 }

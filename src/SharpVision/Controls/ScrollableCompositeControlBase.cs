@@ -15,7 +15,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 /// A derived constructor creates its retained implementation tree, commits it through
 /// <see cref="CompositeControlBase.InitializeContent"/>, then installs one detached scrolling host -
 /// either that same content root or a retained descendant of it - through
-/// <see cref="InitializeScrollableContent"/>. The shared contract deliberately exposes semantic
+/// <see cref="InitializeScrollableContent(Container, bool)"/>. The shared contract deliberately exposes semantic
 /// offsets, extent, policy, styling, and events on the component while keeping the mutable host and
 /// its realized presentation private.
 /// </remarks>
@@ -25,6 +25,9 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
     private RetainedScrollPart? _scrollPart;
     private StyleSlot<ScrollBarStyle>? _scrollBarStyle;
     private Container? _scrollHost;
+    private bool _forwardsScrollEvent;
+    private ProjectionSurface? _projectionSurface;
+    private WidthDependentViewportCoordinator? _projectionCoordinator;
 
     /// <summary>Initializes a scrollable component awaiting constructor-time host initialization.</summary>
     protected ScrollableCompositeControlBase()
@@ -164,6 +167,7 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
         }
 
         _scrollHost = host;
+        _forwardsScrollEvent = forwardsScrollEvent;
         _scrollPart = RegisterRetainedScrollPart(host, forwardsScrollEvent, OnScrollHostScrollChanged);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
@@ -171,22 +175,135 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
         BindStyle(_scrollBarStyle, host, nameof(ScrollBarStyle));
     }
 
+    /// <summary>Installs the one private scrolling host together with its shared projection
+    /// surface.</summary>
+    /// <remarks>
+    /// Identical to <see cref="InitializeScrollableContent(Container, bool)"/> except that it also
+    /// records <paramref name="surface"/> as the retained descendant a theme swap invalidates
+    /// through <see cref="ResolveProjectionThemeChangeImpact"/> and a style change invalidates for
+    /// Render (see <see cref="OnPropertyChanged"/>), and as the projection
+    /// <see cref="InitializeWidthDependentProjection"/> later reconciles against the host's settled
+    /// viewport width.
+    /// </remarks>
+    /// <param name="host">The non-null retained scrolling container, already owned by this component.</param>
+    /// <param name="surface">
+    /// The non-null projection surface, already an owned retained descendant of this component -
+    /// typically the sole child of <paramref name="host"/>.
+    /// </param>
+    /// <param name="forwardsScrollEvent">Forwarded to <see cref="InitializeScrollableContent(Container, bool)"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="host"/> or <paramref name="surface"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// A host was already installed, <paramref name="host"/> or <paramref name="surface"/> is not
+    /// an owned retained descendant of this component, or this component is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The component is disposed.</exception>
+    protected void InitializeScrollableContent(Container host, ProjectionSurface surface, bool forwardsScrollEvent = true)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+        InitializeScrollableContent(host, forwardsScrollEvent);
+
+        if (!IsOwnedRetainedDescendant(surface))
+        {
+            throw new InvalidOperationException(
+                "A projection surface must be an owned retained descendant of this component.");
+        }
+
+        _projectionSurface = surface;
+    }
+
+    /// <summary>Installs shared reconciliation between a width-dependent retained projection and the
+    /// private scrolling host's settled viewport width.</summary>
+    /// <remarks>
+    /// The coordinator subscribes to the host's own <see cref="Container.ScrollChanged"/> after the
+    /// retained scrolling bridge installed by <see cref="InitializeScrollableContent(Container, ProjectionSurface, bool)"/>
+    /// already did, so that bridge's refresh of this component's cached <see cref="Extent"/>,
+    /// <see cref="Viewport"/>, and offsets always runs before a subscriber reached through the
+    /// coordinator can observe the transition. Once installed, this base's own overridden
+    /// <c>MeasureOverride</c> and <c>ArrangeOverride</c> capture the measure constraint and run
+    /// reconciliation through the coordinator, and <see cref="AddScrollChangedHandler"/> and
+    /// <see cref="RemoveScrollChangedHandler"/> route subscribers to it - a derived override of
+    /// either still wins over this default routing, exactly as it did before this method existed.
+    /// </remarks>
+    /// <param name="isActive">Returns whether the current projection depends on viewport width.</param>
+    /// <param name="projectionWidth">Returns the width used by the current projection, or null.</param>
+    /// <param name="reproject">Rebuilds projection state for one positive viewport width.</param>
+    /// <exception cref="ArgumentNullException">A required argument is null.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// <see cref="InitializeScrollableContent(Container, ProjectionSurface, bool)"/> has not run,
+    /// that call passed <c>forwardsScrollEvent: true</c>, a coordinator was already installed, or
+    /// this component is mutated off-dispatcher.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The component is disposed.</exception>
+    protected void InitializeWidthDependentProjection(
+        Func<bool> isActive,
+        Func<int?> projectionWidth,
+        Action<int> reproject)
+    {
+        ArgumentNullException.ThrowIfNull(isActive);
+        ArgumentNullException.ThrowIfNull(projectionWidth);
+        ArgumentNullException.ThrowIfNull(reproject);
+        VerifyMutable();
+
+        if (_projectionSurface is null || _scrollHost is null)
+        {
+            throw new InvalidOperationException(
+                "Width-dependent projection requires InitializeScrollableContent(Container, ProjectionSurface, bool) to run first.");
+        }
+
+        if (_forwardsScrollEvent)
+        {
+            throw new InvalidOperationException(
+                "Width-dependent projection requires forwardsScrollEvent: false at InitializeScrollableContent.");
+        }
+
+        if (_projectionCoordinator is not null)
+        {
+            throw new InvalidOperationException("A width-dependent projection was already installed.");
+        }
+
+        _projectionCoordinator = new WidthDependentViewportCoordinator(
+            this,
+            _scrollHost,
+            _projectionSurface,
+            isActive,
+            projectionWidth,
+            reproject);
+    }
+
     /// <summary>Adds one <see cref="ScrollChanged"/> subscriber.</summary>
     /// <remarks>
-    /// The default implementation forwards to the private scrolling host's bridge. A derived
-    /// component that republishes a transformed or settled transition through a different mechanism
-    /// - such as a width-dependent projection coordinator - overrides this together with
-    /// <see cref="RemoveScrollChangedHandler"/> to route subscribers there instead, typically paired
-    /// with <c>forwardsScrollEvent: false</c> at <see cref="InitializeScrollableContent"/>.
+    /// Routes to the installed <see cref="InitializeWidthDependentProjection"/> coordinator when one
+    /// is installed, so a subscriber observes one settled transition per reconciled layout pass
+    /// instead of every intermediate reconciliation attempt; otherwise forwards to the private
+    /// scrolling host's bridge directly. A derived component that republishes a transformed or
+    /// settled transition through a different mechanism of its own overrides this together with
+    /// <see cref="RemoveScrollChangedHandler"/> instead, typically paired with
+    /// <c>forwardsScrollEvent: false</c> at <see cref="InitializeScrollableContent(Container, bool)"/>.
     /// </remarks>
     /// <param name="handler">The subscriber to add, or null (a no-op).</param>
-    protected virtual void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+    protected virtual void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler)
+    {
+        if (_projectionCoordinator is { } coordinator)
+        {
+            coordinator.ScrollChanged += handler;
+            return;
+        }
+
         GetScrollPart().AddScrollChanged(handler);
+    }
 
     /// <summary>Removes one <see cref="ScrollChanged"/> subscriber.</summary>
     /// <param name="handler">The subscriber to remove, or null (a no-op).</param>
-    protected virtual void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
+    protected virtual void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler)
+    {
+        if (_projectionCoordinator is { } coordinator)
+        {
+            coordinator.ScrollChanged -= handler;
+            return;
+        }
+
         GetScrollPart().RemoveScrollChanged(handler);
+    }
 
     /// <summary>Publishes one <see cref="ScrollChanged"/> transition directly through the installed
     /// host bridge, independent of <c>forwardsScrollEvent</c>.</summary>
@@ -290,7 +407,7 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
     /// cref="HorizontalOffset"/>, and <see cref="VerticalOffset"/> against the host's newly committed
     /// values, and before the bridge forwards the transition through this component's public
     /// <see cref="ScrollChanged"/> when <c>forwardsScrollEvent</c> was true at <see
-    /// cref="InitializeScrollableContent"/>. That ordering is what lets an override synchronously
+    /// cref="InitializeScrollableContent(Container, bool)"/>. That ordering is what lets an override synchronously
     /// dispose or hide this component without racing the bridge's own refresh above it.
     /// </remarks>
     /// <param name="eventArgs">The non-null committed transition.</param>
@@ -303,6 +420,74 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
         ? Math.Max(1, Viewport.Height - PageOverlap)
         : base.TextSelectionPageDistance();
 
+    /// <summary>Calculates this component's own theme-change impact for its installed
+    /// <see cref="ProjectionSurface"/> to compose alongside the surface's own.</summary>
+    /// <remarks>
+    /// A projection surface owns no style slot of its own, so nothing about a Theme swap alone
+    /// would otherwise ever invalidate it: the framework's own per-control Theme-transition
+    /// invalidation is computed against each control's own style, and the surface's own style is
+    /// the generic control default. This lets <see cref="ProjectionSurface"/> compose this
+    /// component's real impact - computed against whatever style slot this concrete component
+    /// actually owns - into its own, purely internal, since only the surface it belongs to ever
+    /// calls it.
+    /// </remarks>
+    /// <param name="previous">The currently inherited Theme, or null.</param>
+    /// <param name="current">The prospective inherited Theme, or null.</param>
+    /// <param name="previousParentAmbientFace">The explicit parent ambient face before replacement.</param>
+    /// <param name="currentParentAmbientFace">The explicit parent ambient face after replacement.</param>
+    /// <returns>The strongest affected UI phase.</returns>
+    internal InvalidationImpact ResolveProjectionThemeChangeImpact(
+        Theme? previous,
+        Theme? current,
+        Face? previousParentAmbientFace,
+        Face? currentParentAmbientFace) =>
+        GetThemeChangeImpact(previous, current, previousParentAmbientFace, currentParentAmbientFace);
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Invalidates the installed <see cref="ProjectionSurface"/> for Render whenever a property
+    /// change named <c>"ActualStyle"</c> commits - whether from a local style assignment or purely
+    /// from an inherited Theme swap - since the surface owns no style slot of its own and so is
+    /// never otherwise invalidated by either path. Every concrete <c>IStyled&lt;TStyle&gt;</c>
+    /// primary style slot publishes its resolved-value notification under the literal property name
+    /// <c>"ActualStyle"</c> regardless of the concrete <c>TStyle</c> a derived sealed component
+    /// declares, so this single check - written against that literal name rather than
+    /// <c>nameof(ActualStyle)</c>, which this base itself has no such member to name - covers every
+    /// derived component's own style.
+    /// </remarks>
+    protected override void OnPropertyChanged(string propertyName)
+    {
+        base.OnPropertyChanged(propertyName);
+
+        if (propertyName == "ActualStyle" && _projectionSurface is { } surface)
+        {
+            InvalidateRetainedDescendant(surface, InvalidationImpact.Render);
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override Size MeasureOverride(Constraint constraint)
+    {
+        // Stashed for the coordinator, which needs to remeasure the composed viewport with the
+        // exact same constraint this component itself received - not a constraint it could
+        // reconstruct from Bounds, since reconciliation runs inside ArrangeOverride, before any
+        // later Measure call would refresh it.
+        _projectionCoordinator?.CaptureMeasureConstraint(constraint);
+        return base.MeasureOverride(constraint);
+    }
+
+    /// <inheritdoc/>
+    protected override void ArrangeOverride(Rect bounds)
+    {
+        if (_projectionCoordinator is { } coordinator)
+        {
+            coordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
+            return;
+        }
+
+        base.ArrangeOverride(bounds);
+    }
+
     [Pure]
     private RetainedScrollPart GetScrollPart() => _scrollPart ??
         throw new InvalidOperationException("The scrolling presentation host is not initialized.");
@@ -314,4 +499,18 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
     [Pure]
     private Container GetScrollHost() => _scrollHost ??
         throw new InvalidOperationException("The scrolling presentation host is not initialized.");
+
+    [Pure]
+    private bool IsOwnedRetainedDescendant(ControlBase target)
+    {
+        for (var current = target.Parent; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, this))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

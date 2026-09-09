@@ -893,6 +893,13 @@ namespace SharpVision.Controls
         Reset = 5,
         DirectDisposal = 6,
     }
+    public sealed class ProjectionSurface : SharpVision.Controls.ControlBase
+    {
+        public ProjectionSurface(SharpVision.Controls.ScrollableCompositeControlBase owner, System.Func<int?, SharpVision.Terminal.Geometry.Size> measure, System.Action<SharpVision.Terminal.Rendering.TerminalCanvas, SharpVision.Terminal.Geometry.Rect> render) { }
+        protected override SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+    }
     public static class RangeValidation
     {
         extension(System.ArgumentOutOfRangeException)
@@ -1010,9 +1017,14 @@ namespace SharpVision.Controls
         public virtual SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected virtual void AddScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
+        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected bool HandleScrollKey(SharpVision.Input.KeyEventArgs eventArgs, bool consumeAtBoundary = true) { }
         protected bool HandleScrollWheel(SharpVision.Input.PointerEventArgs eventArgs) { }
         protected void InitializeScrollableContent(SharpVision.Controls.Container host, bool forwardsScrollEvent = true) { }
+        protected void InitializeScrollableContent(SharpVision.Controls.Container host, SharpVision.Controls.ProjectionSurface surface, bool forwardsScrollEvent = true) { }
+        protected void InitializeWidthDependentProjection(System.Func<bool> isActive, System.Func<int?> projectionWidth, System.Action<int> reproject) { }
+        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnPropertyChanged(string propertyName) { }
         protected virtual void OnScrollHostScrollChanged(SharpVision.Scrolling.ScrollChangedEventArgs eventArgs) { }
         protected void RaiseScrollChanged(SharpVision.Scrolling.ScrollChangedEventArgs eventArgs) { }
         protected virtual void RemoveScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
@@ -1287,15 +1299,11 @@ namespace SharpVision.Controls.Collections
         public string? SelectedPath { get; }
         public SharpVision.Controls.Collections.JsonViewStyle? Style { get; set; }
         public event System.EventHandler<SharpVision.Controls.Collections.JsonViewSelectionChangedEventArgs>? SelectionChanged;
-        protected override void AddScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
-        protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public void CollapseAll() { }
         public void ExpandAll() { }
-        protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
-        protected override void RemoveScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
         public bool SetExpanded(string path, bool expanded) { }
     }
     public sealed class JsonViewSelectionChangedEventArgs : System.EventArgs

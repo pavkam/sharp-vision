@@ -6,8 +6,6 @@ namespace SharpVision.Controls.Collections;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-using Scrolling;
-
 using SharpVision.Terminal.Input;
 
 using LayoutStack = Layout.Stack;
@@ -43,9 +41,8 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
     private List<JsonViewNode> _visibleNodes = [];
     private List<JsonViewLine> _sourceLines = [];
     private List<JsonViewLine> _lines = [];
-    private readonly JsonViewContent _content;
+    private readonly ProjectionSurface _content;
     private readonly LayoutStack _stack;
-    private readonly WidthDependentViewportCoordinator _projectionCoordinator;
     private readonly StyleSlot<JsonViewStyle> _style;
     private JsonViewNode? _selectedNode;
     private int? _projectionWidth;
@@ -55,11 +52,11 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
     /// <summary>Initializes an empty JSON view whose document is the JSON null value.</summary>
     public JsonView()
     {
-        _style = InitializeStyle(JsonViewStyle.Definition, OnStyleChanged);
+        _style = InitializeStyle(JsonViewStyle.Definition);
         _root = Parse("null");
         _sourceLines = BuildLines(_root, Indent);
         _lines = _sourceLines;
-        _content = new JsonViewContent(this);
+        _content = new ProjectionSurface(this, MeasureAndWrap, RenderProjectedContent);
         _stack = new LayoutStack
         {
             AutoScroll = true,
@@ -69,20 +66,15 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
         };
         InitializeContent(_stack);
 
-        // Installed before the coordinator below, not after: both subscribe to _stack.ScrollChanged,
-        // and a consumer's ScrollChanged handler (reached through the coordinator, since
-        // forwardsScrollEvent is false) is free to dispose this view synchronously. Subscribing the
-        // scrollable-content bridge first keeps its own refresh of the cached Extent/Viewport/offset
-        // properties strictly earlier in the invocation list than that handler, so the refresh always
-        // runs against a still-available owner regardless of what the handler does.
-        InitializeScrollableContent(_stack, forwardsScrollEvent: false);
-        _projectionCoordinator = new WidthDependentViewportCoordinator(
-            this,
-            _stack,
-            _content,
-            static () => true,
-            () => _projectionWidth,
-            Reproject);
+        // Installed before the width-dependent projection below, not after: both subscribe to
+        // _stack.ScrollChanged, and a consumer's ScrollChanged handler (reached through the
+        // coordinator, since forwardsScrollEvent is false) is free to dispose this view
+        // synchronously. Installing the scrollable-content bridge first keeps its own refresh of the
+        // cached Extent/Viewport/offset properties strictly earlier in the invocation list than that
+        // handler, so the refresh always runs against a still-available owner regardless of what the
+        // handler does.
+        InitializeScrollableContent(_stack, _content, forwardsScrollEvent: false);
+        InitializeWidthDependentProjection(static () => true, () => _projectionWidth, Reproject);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -174,27 +166,6 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
 
     /// <summary>Raised after the selected property or array-entry pointer changes.</summary>
     public event EventHandler<JsonViewSelectionChangedEventArgs>? SelectionChanged;
-
-    /// <summary>Adds one <see cref="ScrollableCompositeControlBase.ScrollChanged"/> subscriber,
-    /// routed to the shared width-dependent viewport coordinator rather than the private scrolling
-    /// host's own bridge.</summary>
-    /// <remarks>
-    /// This is not a direct forward of the composed viewport's own event: for a layout pass that
-    /// needs more than one internal arrange to settle the wrapped projection's width, the shared
-    /// coordinator coalesces every intermediate change that occurs while it settles into the single
-    /// event actually raised, so a subscriber only ever observes the final settled offset, extent,
-    /// and viewport for one layout pass, never a transient value clamped against a
-    /// since-superseded wrap. An offset change from any other cause - scrolling, programmatic
-    /// <see cref="ScrollableCompositeControlBase.ScrollBy"/>, a resize that does not need
-    /// reconciling - is forwarded exactly as it occurs, individually.
-    /// </remarks>
-    /// <param name="handler">The subscriber to add, or null (a no-op).</param>
-    protected override void AddScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
-        _projectionCoordinator.ScrollChanged += handler;
-
-    /// <inheritdoc/>
-    protected override void RemoveScrollChangedHandler(EventHandler<ScrollChangedEventArgs>? handler) =>
-        _projectionCoordinator.ScrollChanged -= handler;
 
     /// <summary>Sets the disclosure state of one container entry.</summary>
     /// <param name="path">The non-null RFC 6901 pointer of a non-root object or array entry.</param>
@@ -332,21 +303,6 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
         }
     }
 
-    /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint)
-    {
-        // Stashed for the coordinator, which needs to remeasure the composed viewport
-        // with the exact same constraint this control itself received - not a constraint it could
-        // reconstruct from Bounds, since reconciliation runs inside this control's own
-        // ArrangeOverride, before any later Measure call would refresh it.
-        _projectionCoordinator.CaptureMeasureConstraint(constraint);
-        return base.MeasureOverride(constraint);
-    }
-
-    /// <inheritdoc/>
-    protected override void ArrangeOverride(Rect bounds) =>
-        _projectionCoordinator.Arrange(bounds, () => base.ArrangeOverride(bounds));
-
     /// <summary>Rebuilds the JSON projection for the coordinator's positive settled width.</summary>
     /// <param name="width">The positive scrollbar-aware viewport width in cells.</param>
     private void Reproject(int width)
@@ -356,20 +312,13 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
         _lines = BuildDisplayLines(_sourceLines, width);
     }
 
-    private void OnStyleChanged(JsonViewStyle previous, JsonViewStyle current)
-    {
-        _ = previous;
-        _ = current;
-        _content?.Invalidate(Invalidation.Render);
-    }
-
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
         // The disclosure arrow is part of the measured line text, so a style that changes it has to
-        // rebuild the lines rather than just repaint them. Checked here rather than in
-        // OnStyleChanged because a theme swap reaches the resolved style without routing through
-        // it, and this is already the place the projection is revalidated against current state.
+        // rebuild the lines rather than just repaint them. Checked here rather than in a style
+        // change callback because a theme swap reaches the resolved style without routing through
+        // one, and this is already the place the projection is revalidated against current state.
         var glyphs = (ActualStyle.CollapsedGlyph, ActualStyle.ExpandedGlyph);
 
         if (_builtWithGlyphs != glyphs)
