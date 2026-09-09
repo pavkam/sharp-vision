@@ -344,7 +344,7 @@ internal sealed class OwnedControlRegistry
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
     [Pure]
     public ControlBase NavigationAt([NonNegativeValue] int index) =>
-        NavigationAt(index, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+        NavigationAt(index, permutedSlot: null, permutation: []);
 
     /// <summary>Gets one navigation-eligible control in slot-registration order, visiting exactly
     /// one designated slot through a caller-supplied item permutation instead of its own item
@@ -421,7 +421,7 @@ internal sealed class OwnedControlRegistry
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <returns>The deepest eligible elevated target, or null.</returns>
     public ControlBase? HitTestPopup(Point point) =>
-        HitTestPopup(point, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+        HitTestPopup(point, permutedSlot: null, permutation: []);
 
     /// <summary>Finds the topmost elevated target before every ordinary-layer target, visiting
     /// exactly one designated slot through a caller-supplied item permutation instead of its own
@@ -490,7 +490,7 @@ internal sealed class OwnedControlRegistry
     /// <summary>Renders elevated controls after every ordinary sibling in global ownership order.</summary>
     /// <param name="canvas">The root-relative frame canvas.</param>
     public void RenderPopup(TerminalCanvas canvas) =>
-        RenderPopup(canvas, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+        RenderPopup(canvas, permutedSlot: null, permutation: []);
 
     /// <summary>Renders elevated controls after every ordinary sibling in global ownership order,
     /// visiting exactly one designated slot through a caller-supplied item permutation instead of

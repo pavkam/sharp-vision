@@ -1655,7 +1655,7 @@ public sealed class ContainerTests
         surface.Cell(new Point(bounds.X, bounds.Y)).Text.ShouldNotBeNullOrEmpty();
 
         // Assert - the open popup subtree is reachable from a root-driven popup hit test
-        container.HitTestPopup(new Point(bounds.X, bounds.Y)).ShouldNotBeNull();
+        _ = container.HitTestPopup(new Point(bounds.X, bounds.Y)).ShouldNotBeNull();
     }
 
     /// <summary>Verifies Tab traversal reaches an owned popup's content once it is open, when the

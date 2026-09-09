@@ -17,7 +17,6 @@ namespace SharpVision.Tests.Support;
 /// </remarks>
 internal sealed class WidthDependentHeightProjectionProbe: ControlBase
 {
-    private int? _projectedWidth;
 
     /// <summary>Initializes a probe reporting <paramref name="initialWidth"/> until the first
     /// <see cref="SetProjectedWidth"/> call.</summary>
@@ -41,17 +40,17 @@ internal sealed class WidthDependentHeightProjectionProbe: ControlBase
 
     /// <summary>Gets the width most recently committed through <see cref="SetProjectedWidth"/>, or
     /// null before the first reprojection.</summary>
-    internal int? ProjectedWidth => _projectedWidth;
+    internal int? ProjectedWidth { get; private set; }
 
     /// <summary>Commits the width this probe measures against, exercising a coordinator's
     /// <c>reproject</c> callback.</summary>
     /// <param name="width">The newly assigned width.</param>
-    internal void SetProjectedWidth(int width) => _projectedWidth = width;
+    internal void SetProjectedWidth(int width) => ProjectedWidth = width;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
-        var width = _projectedWidth ?? InitialWidth;
+        var width = ProjectedWidth ?? InitialWidth;
         return new Size(width, HeightForWidth(width));
     }
 }

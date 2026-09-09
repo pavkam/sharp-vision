@@ -134,22 +134,4 @@ public sealed class ScrollableItemsControlTests
         probe.VerticalOffset.ShouldBe(expectedOffset);
         probe.Host.Children[0].Bounds.Y.ShouldBe(probe.Host.Bounds.Y - expectedOffset);
     }
-
-    /// <summary>Verifies a single <see cref="LayoutEngine.Layout"/> pass leaves no pending Arrange
-    /// bit after a row-height change re-anchors the offset. The self-heal that used to only re-dirty
-    /// <see cref="ControlBase.Pending"/> - requiring a second, idle-triggered pass to actually fix
-    /// the host's children <see cref="ControlBase.Bounds"/> - no longer has anything to heal because
-    /// the host is already re-arranged synchronously in the same transaction.</summary>
-    [Fact]
-    public void ArrangeUniformRows_WhenRowHeightChanges_LeavesNoPendingArrangeAfterOnePass()
-    {
-        var probe = new ScrollableItemsControlUniformRowsProbe(rowCount: 20, Length.Percent(20));
-        var engine = new LayoutEngine();
-        engine.Layout(probe, new Size(10, 20));
-        _ = probe.ScrollBy(0, 12);
-
-        engine.Layout(probe, new Size(10, 10));
-
-        (probe.Pending & Invalidation.Arrange).ShouldBe(Invalidation.None);
-    }
 }

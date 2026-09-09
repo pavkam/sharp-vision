@@ -21,6 +21,9 @@ internal sealed class ProbeContainer: Container
 
         if (enablePopup)
         {
+            // A popup owner is the modal plane's initial focus when it opens without focusing its
+            // content, so the owner itself must be focus-eligible.
+            IsFocusable = true;
             PopupContent = new ProbeControl(new Size(4, 1)) { Content = "P".AsMemory(), IsFocusable = true };
             Popup = EnablePopup(PopupContent, focusOnOpen: false, popupTabNavigation: TabNavigation.Continue);
         }

@@ -13,7 +13,6 @@ namespace SharpVision.Tests.Support;
 /// </remarks>
 internal sealed class ScrollableItemsControlUniformRowsProbe: ScrollableItemsControl
 {
-    private readonly Stack _host;
     private int? _rowHeight;
 
     /// <summary>Initializes a probe with a fixed row count and a uniform row height request.</summary>
@@ -22,13 +21,13 @@ internal sealed class ScrollableItemsControlUniformRowsProbe: ScrollableItemsCon
     internal ScrollableItemsControlUniformRowsProbe(int rowCount, Length rowHeightRequest)
     {
         RowHeightRequest = rowHeightRequest;
-        _host = new Stack
+        Host = new Stack
         {
             AutoScroll = true,
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded
         };
-        InitializeScrollableItemsHost(_host);
+        InitializeScrollableItemsHost(Host);
 
         for (var index = 0; index < rowCount; index++)
         {
@@ -43,15 +42,15 @@ internal sealed class ScrollableItemsControlUniformRowsProbe: ScrollableItemsCon
     internal int LeadingBandHeight { get; set; }
 
     /// <inheritdoc/>
-    protected override Size MeasureOverride(Constraint constraint) => MeasureChild(_host, constraint);
+    protected override Size MeasureOverride(Constraint constraint) => MeasureChild(Host, constraint);
 
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
         var previousHeight = _rowHeight;
         var previousOffset = VerticalOffset;
-        ArrangeChild(_host, bounds, ResolvedAxes.Both);
-        ArrangeUniformRows(_host, bounds, previousHeight, previousOffset, LeadingBandHeight, _host.Spacing);
+        ArrangeChild(Host, bounds, ResolvedAxes.Both);
+        ArrangeUniformRows(Host, bounds, previousHeight, previousOffset, LeadingBandHeight, Host.Spacing);
     }
 
     /// <inheritdoc/>
@@ -82,5 +81,5 @@ internal sealed class ScrollableItemsControlUniformRowsProbe: ScrollableItemsCon
     /// realized children's <see cref="ControlBase.Bounds"/> directly - proving <c>ArrangeUniformRows</c>
     /// re-arranged them in the same pass - instead of only the semantic
     /// <see cref="ScrollableItemsControl.VerticalOffset"/> the owner exposes.</summary>
-    internal Stack Host => _host;
+    internal Stack Host { get; }
 }

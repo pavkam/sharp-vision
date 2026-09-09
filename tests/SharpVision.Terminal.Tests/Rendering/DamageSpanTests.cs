@@ -8,9 +8,7 @@ public sealed class DamageSpanTests
 {
     /// <summary>Verifies the formatted run uses invariant digits.</summary>
     [Fact]
-    public void ToString_WhenDamageSpanIsValid_UsesInvariantDigits()
-    {
+    public void ToString_WhenDamageSpanIsValid_UsesInvariantDigits() =>
         // Act and assert
         new DamageSpan(1, 2, 3).ToString().ShouldBe("DamageSpan { Row=1, Start=2, Length=3 }");
-    }
 }

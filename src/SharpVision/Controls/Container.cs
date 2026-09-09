@@ -150,7 +150,7 @@ public abstract class Container: ControlBase
     /// <inheritdoc/>
     /// <remarks>
     /// Navigation walks every registered owned slot in ordinary registration order - the
-    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// container's own <see cref="ControlBase.ContextMenu"/> slot and any framework popup slot opted into
     /// through the protected <c>EnablePopup</c> seam included - and permutes only <see
     /// cref="Children"/> through <see cref="GetChildOrder"/>. Count is unaffected by the
     /// permutation, so it is not overridden here; the inherited base already sums every
@@ -237,7 +237,7 @@ public abstract class Container: ControlBase
     /// <remarks>
     /// Popup hit testing walks every registered owned slot in ordinary registration order and
     /// permutes only <see cref="Children"/> through <see cref="GetChildOrder"/>, so the
-    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// container's own <see cref="ControlBase.ContextMenu"/> slot and any framework popup slot opted into
     /// through the protected <c>EnablePopup</c> seam stay reachable.
     /// </remarks>
     internal override ControlBase? HitTestPopupCore(Point point)
@@ -296,7 +296,7 @@ public abstract class Container: ControlBase
     /// <remarks>
     /// Popup-layer rendering walks every registered owned slot in ordinary registration order and
     /// permutes only <see cref="Children"/> through <see cref="GetChildOrder"/>, so the
-    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// container's own <see cref="ControlBase.ContextMenu"/> slot and any framework popup slot opted into
     /// through the protected <c>EnablePopup</c> seam still paint.
     /// </remarks>
     internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
@@ -622,7 +622,7 @@ public abstract class Container: ControlBase
     /// never dropped - across every <see cref="ResolveContentSlot"/> call until
     /// <see cref="EndScrollReservationTransaction"/> runs.</summary>
     /// <remarks>
-    /// <see cref="Scrolling.WidthDependentViewportCoordinator"/> re-arranges this container several
+    /// <see cref="WidthDependentViewportCoordinator"/> re-arranges this container several
     /// times while it settles one width-dependent projection against the resulting viewport width.
     /// Each re-arrange re-enters <see cref="ResolveContentSlot"/>, and an automatic rail decided
     /// there ordinarily restarts its probe from "no bar" on every call; for a projection whose

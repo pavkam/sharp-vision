@@ -1041,7 +1041,7 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <summary>Gets the private progressive controller for internal presenter and test cooperation.</summary>
     internal TableDataController? ProgressiveController => Progressive;
 
-    /// <summary>Gets the header band height <see cref="ArrangeUniformRows"/> excludes from both the
+    /// <summary>Gets the header band height <see cref="ScrollableItemsControl.ArrangeUniformRows"/> excludes from both the
     /// progressive row viewport and the remapped scroll stride.</summary>
     /// <remarks>
     /// Exists so a test can independently compute the expected post-resize offset for the

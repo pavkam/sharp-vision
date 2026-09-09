@@ -101,11 +101,14 @@ public sealed class WidthDependentViewportCoordinator
         // bounds the viewport width to at most two changes and guarantees Reconcile converges
         // within its attempt budget instead of oscillating forever. See
         // Container.BeginScrollReservationTransaction for the full argument.
-        _viewport.BeginScrollReservationTransaction();
-
         try
         {
             arrange();
+
+            // Only the attempts below run against a projection that is current for the width they
+            // settle; the initial arrange above may still reflect the projection from a previous
+            // pass, so a rail it reserves must not become sticky.
+            _viewport.BeginScrollReservationTransaction();
             Reconcile(bounds);
             settled = _pendingScrollChanged;
             completed = true;

@@ -9,9 +9,7 @@ public sealed class SizeTests
     /// <summary>Verifies the formatted extents use invariant digits and the multiplication sign
     /// separator.</summary>
     [Fact]
-    public void ToString_WhenSizeIsValid_UsesInvariantDigits()
-    {
+    public void ToString_WhenSizeIsValid_UsesInvariantDigits() =>
         // Act and assert
         new Size(12, 34).ToString().ShouldBe("12×34");
-    }
 }

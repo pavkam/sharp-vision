@@ -127,8 +127,8 @@ public sealed class TableDataControllerSurfaceTests
         }
 
         controller.RowHeight.ShouldBe(2);
-        firstFrameOffset.ShouldNotBeNull();
-        firstFrameRowBounds.ShouldNotBeNull();
+        _ = firstFrameOffset.ShouldNotBeNull();
+        _ = firstFrameRowBounds.ShouldNotBeNull();
         firstFrameOffset.ShouldBe(table.VerticalOffset);
         firstFrameRowBounds!.Value.ShouldBe(controller.RowAt(controller.WindowStart)!.Cells[0].Bounds);
     }
