@@ -42,8 +42,11 @@ public readonly record struct Grapheme
     /// <summary>Gets whether the segment contains invalid data represented as U+FFFD.</summary>
     public bool HasInvalidData { get; }
 
-    /// <inheritdoc/>
-    public override string ToString() => $"Grapheme {{ Offset={Offset}, Length={Length}{(HasInvalidData ? ", Invalid" : "")} }}";
+    /// <summary>Formats the segment with invariant digits.</summary>
+    /// <returns>The offset, length, and whether invalid data was replaced.</returns>
+    public override string ToString() => string.Create(
+        CultureInfo.InvariantCulture,
+        $"Grapheme {{ Offset={Offset}, Length={Length}{(HasInvalidData ? ", Invalid" : "")} }}");
 
     /// <summary>Deconstructs the borrowed-span segment.</summary>
     /// <param name="offset">Receives the UTF-16 offset.</param>

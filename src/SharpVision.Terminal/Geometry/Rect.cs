@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Geometry;
 /// <summary>
 /// Represents a signed origin with non-negative extents.
 /// </summary>
-[DebuggerDisplay("({X}, {Y}, {Width}×{Height})")]
+[DebuggerDisplay("{ToString(),nq}")]
 [PublicAPI]
 public readonly record struct Rect
 {
@@ -101,8 +101,10 @@ public readonly record struct Rect
             ClampedExtent(bottom, top));
     }
 
-    /// <inheritdoc />
-    public override string ToString() => $"({X}, {Y}, {Width}×{Height})";
+    /// <summary>Formats the origin and extents with invariant digits and sign.</summary>
+    /// <returns>The rectangle as <c>(x, y, width×height)</c>.</returns>
+    public override string ToString() =>
+        string.Create(CultureInfo.InvariantCulture, $"({X}, {Y}, {Width}×{Height})");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int SaturatingAdd(int value, int extent)

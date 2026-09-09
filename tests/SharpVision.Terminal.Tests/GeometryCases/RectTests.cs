@@ -112,4 +112,31 @@ public sealed class RectTests
 
         outer.Contains(candidate).ShouldBeTrue();
     }
+
+    /// <summary>
+    /// Verifies a negative origin renders the ASCII hyphen-minus rather than the Unicode minus
+    /// sign (U+2212) that <see cref="NumberFormatInfo.NegativeSign"/> uses under these ICU
+    /// cultures.
+    /// </summary>
+    [Theory]
+    [InlineData("sv-SE")]
+    [InlineData("nb-NO")]
+    [InlineData("fa-IR")]
+    public void ToString_WhenCultureUsesUnicodeMinusSign_UsesAsciiHyphen(string culture)
+    {
+        // Arrange
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+
+            // Act and assert
+            new Rect(-1, 2, 3, 4).ToString().ShouldBe("(-1, 2, 3×4)");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

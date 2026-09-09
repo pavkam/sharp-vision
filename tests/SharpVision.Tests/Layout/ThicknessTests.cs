@@ -38,4 +38,29 @@ public sealed class ThicknessTests
         value.Deflate(new Size(2, 3)).ShouldBe(default);
         value.Deflate(new Rect(10, 20, 2, 3)).ShouldBe(new Rect(11, 22, 0, 0));
     }
+
+    /// <summary>Verifies both the uniform single-number branch and the four-edge branch retain
+    /// invariant digits under both dot-decimal and comma-decimal cultures.</summary>
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("pt-PT")]
+    [InlineData("fr-FR")]
+    public void ToString_WhenCultureVaries_UsesInvariantDigits(string culture)
+    {
+        // Arrange
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+
+            // Act and assert
+            new Thickness(2).ToString().ShouldBe("2");
+            new Thickness(1, 2, 3, 4).ToString().ShouldBe("(1, 2, 3, 4)");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

@@ -93,11 +93,12 @@ public readonly record struct Thickness
             Math.Max(0, value.Height - Vertical));
     }
 
-    /// <inheritdoc />
+    /// <summary>Formats the physical edges with invariant digits.</summary>
+    /// <returns>The uniform edge alone, or all four edges as <c>(left, top, right, bottom)</c>.</returns>
     public override string ToString() =>
         Left == Top && Top == Right && Right == Bottom
             ? Left.ToString(CultureInfo.InvariantCulture)
-            : $"({Left}, {Top}, {Right}, {Bottom})";
+            : string.Create(CultureInfo.InvariantCulture, $"({Left}, {Top}, {Right}, {Bottom})");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int SaturatingAdd(int value, int extent)

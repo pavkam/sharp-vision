@@ -6,7 +6,7 @@ namespace SharpVision.Terminal.Geometry;
 /// <summary>
 /// Represents non-negative width and height in documented caller units.
 /// </summary>
-[DebuggerDisplay("{Width}×{Height}")]
+[DebuggerDisplay("{ToString(),nq}")]
 [PublicAPI]
 public readonly record struct Size
 {
@@ -28,6 +28,7 @@ public readonly record struct Size
     /// <summary>Gets the vertical extent.</summary>
     public int Height { get; }
 
-    /// <inheritdoc />
-    public override string ToString() => $"{Width}×{Height}";
+    /// <summary>Formats the extents with invariant digits.</summary>
+    /// <returns>The size as <c>width×height</c>.</returns>
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{Width}×{Height}");
 }

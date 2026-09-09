@@ -34,6 +34,8 @@ public readonly record struct DamageSpan
     /// <summary>Gets the positive cell length.</summary>
     public int Length { get; }
 
-    /// <inheritdoc/>
-    public override string ToString() => $"DamageSpan {{ Row={Row}, Start={Start}, Length={Length} }}";
+    /// <summary>Formats the changed run with invariant digits.</summary>
+    /// <returns>The row, starting column, and length.</returns>
+    public override string ToString() =>
+        string.Create(CultureInfo.InvariantCulture, $"DamageSpan {{ Row={Row}, Start={Start}, Length={Length} }}");
 }

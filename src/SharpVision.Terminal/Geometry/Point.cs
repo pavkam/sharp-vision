@@ -4,7 +4,7 @@
 namespace SharpVision.Terminal.Geometry;
 
 /// <summary>Represents a signed zero-based cell or pixel coordinate.</summary>
-[DebuggerDisplay("({X}, {Y})")]
+[DebuggerDisplay("{ToString(),nq}")]
 [PublicAPI]
 public readonly record struct Point
 {
@@ -32,6 +32,7 @@ public readonly record struct Point
         y = Y;
     }
 
-    /// <inheritdoc />
-    public override string ToString() => $"({X}, {Y})";
+    /// <summary>Formats the coordinate with invariant digits and sign.</summary>
+    /// <returns>The coordinate as <c>(x, y)</c>.</returns>
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X}, {Y})");
 }
