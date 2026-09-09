@@ -48,7 +48,7 @@ public abstract class CartesianChartControlBase: ChartControlBase
     public bool ShowZeroAxis
     {
         get;
-        set => SetChartProperty(ref field, value, InvalidationImpact.Render, nameof(ShowZeroAxis));
+        set => _ = SetProperty(ref field, value, InvalidationImpact.Render, nameof(ShowZeroAxis));
     } = true;
 
     /// <summary>Gets or sets the invariant numeric format used by visible value labels.</summary>
@@ -72,7 +72,7 @@ public abstract class CartesianChartControlBase: ChartControlBase
                 throw new ArgumentException("The value-label format is invalid.", nameof(value), exception);
             }
 
-            SetChartProperty(ref field, value, InvalidationImpact.Render, nameof(ValueLabelFormat));
+            _ = SetProperty(ref field, value, InvalidationImpact.Render, nameof(ValueLabelFormat));
         }
     } = "G";
 

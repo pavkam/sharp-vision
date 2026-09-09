@@ -40,6 +40,41 @@ repair, scaling, and binding.
 The intrinsic desired size is 30 by 10 cells. Parent layout may arrange any
 other size.
 
+### Authoring seam
+
+`ChartControlBase` declares the following protected members for a chart authored
+directly against either base role, rather than through one of the five shipped
+chart types:
+
+| Member                                                              | Type                   | Default    | Description                                                                                                            |
+| ------------------------------------------------------------------- | ---------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `CreateRenderContext(TerminalCanvas canvas)`                        | `ChartRenderContext`   | —          | Resolves the plot layout, numeric range, and inherited style for one render pass, drawing the legend as a side effect. |
+| `LegendPlacementCore`                                               | `ChartLegendPlacement` | Family set | The authored value `LegendPlacement` forwards on this role; see below.                                                 |
+| `ShowCategoryLabelsCore`                                            | `bool`                 | Family set | The authored value `ShowCategoryLabels` forwards on this role; see below.                                              |
+| `ShowValueLabelsCore`                                               | `bool`                 | Family set | The authored value `ShowValueLabels` forwards on this role; see below.                                                 |
+| `CategoriesAreVertical`                                             | `bool`                 | `false`    | Protected virtual; whether keyboard category navigation advances vertically instead of horizontally.                   |
+| `TryHitTestSelection(Point position, out ChartSelection selection)` | `bool`                 | —          | Protected virtual; maps a pointer cell to the nearest selectable visible point.                                        |
+
+`LegendPlacementCore`, `ShowCategoryLabelsCore`, and `ShowValueLabelsCore` stay
+protected seams distinct from the public properties above them because the two
+authoring patterns this base class supports diverge here: this role forwards
+each one-to-one as a public settable property, while a fixed-policy family such
+as [`Sparkline`](sparkline.md) instead overrides the corresponding `Resolve*`
+method (`ResolveLegendPlacement`, `ResolveShowCategoryLabels`,
+`ResolveShowValueLabels`) and exposes no public surface for it at all. A
+third-party chart picks whichever pattern its own policy needs.
+
+`ChartRenderContext` is a public readonly struct exposing `Layout`
+(`ChartPlotLayout`, with `Plot` and `Legend` rectangles), `Range`
+(`ChartScaleRange`, with `Minimum` and `Maximum`), `InheritedStyle`, and the
+mapping methods `MapX`, `MapY`, `Ratio`, and `ResolveSeriesStyle`.
+`MapX(int index, int count)` and `MapY(double value)` map one data point into
+`Layout`'s plot rectangle; `Ratio(double value)` normalizes a value into `Range`
+alone. `ResolveSeriesStyle` takes a `ChartSeries`, a `ChartDataPoint`, the
+series index, and an optional point index, and resolves the point's terminal
+style, including selection decoration. Only `CreateRenderContext` constructs a
+context; a third-party chart never builds its own.
+
 ## Keyboard
 
 | Key          | Behavior                                                          |
@@ -57,7 +92,8 @@ selection.
 ## Example
 
 An author-defined Cartesian chart derives from this role and implements only its
-geometry and content rendering:
+geometry and content rendering, resolving one `ChartRenderContext` through
+`CreateRenderContext` and mapping every point through it:
 
 ```csharp
 public sealed class RangeChart : CartesianChartControlBase
@@ -68,7 +104,22 @@ public sealed class RangeChart : CartesianChartControlBase
 
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        // Render retained Series through the chart canvas contract.
+        var context = CreateRenderContext(canvas);
+
+        for (var seriesIndex = 0; seriesIndex < Series.Count; seriesIndex++)
+        {
+            var series = Series[seriesIndex];
+
+            for (var pointIndex = 0; pointIndex < series.Points.Count; pointIndex++)
+            {
+                var point = series.Points[pointIndex];
+                var position = new Point(
+                    context.MapX(pointIndex, series.Points.Count),
+                    context.MapY(point.Value));
+                var style = context.ResolveSeriesStyle(series, point, seriesIndex, pointIndex);
+                canvas.DrawRune(new Rune('*'), position, style);
+            }
+        }
     }
 }
 ```

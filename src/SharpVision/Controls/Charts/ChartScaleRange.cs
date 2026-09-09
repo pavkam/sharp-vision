@@ -4,7 +4,8 @@
 namespace SharpVision.Controls.Charts;
 
 /// <summary>Contains one resolved non-empty finite chart range.</summary>
-internal readonly struct ChartScaleRange
+[PublicAPI]
+public readonly struct ChartScaleRange
 {
     /// <summary>Initializes a resolved chart range.</summary>
     /// <param name="minimum">The finite lower bound.</param>
@@ -34,8 +35,8 @@ internal readonly struct ChartScaleRange
     }
 
     /// <summary>Gets the resolved lower bound.</summary>
-    internal double Minimum { get; }
+    public double Minimum { get; }
 
     /// <summary>Gets the resolved upper bound.</summary>
-    internal double Maximum { get; }
+    public double Maximum { get; }
 }

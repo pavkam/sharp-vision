@@ -999,12 +999,17 @@ namespace SharpVision.Controls.Charts
     {
         protected ChartControlBase(SharpVision.Controls.Charts.ChartScale scale, SharpVision.Controls.Charts.ChartLegendPlacement legendPlacement, bool showCategoryLabels, bool showValueLabels) { }
         public SharpVision.Controls.Charts.ChartStyle ActualStyle { get; }
+        protected virtual bool CategoriesAreVertical { get; }
         protected abstract SharpVision.Terminal.Geometry.Size DefaultSize { get; }
+        protected SharpVision.Controls.Charts.ChartLegendPlacement LegendPlacementCore { get; set; }
         public SharpVision.Controls.Charts.ChartScale Scale { get; set; }
         public SharpVision.Controls.Charts.ChartSelection? Selection { get; set; }
         public System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Charts.ChartSeries> Series { get; set; }
+        protected bool ShowCategoryLabelsCore { get; set; }
+        protected bool ShowValueLabelsCore { get; set; }
         public SharpVision.Controls.Charts.ChartStyle? Style { get; set; }
         public event System.EventHandler<SharpVision.Controls.Charts.ChartSelectionChangedEventArgs>? SelectionChanged;
+        protected SharpVision.Controls.Charts.ChartRenderContext CreateRenderContext(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override sealed SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -1013,6 +1018,7 @@ namespace SharpVision.Controls.Charts
         protected virtual bool ResolveShowValueLabels() { }
         protected virtual bool ResolveShowZeroAxis() { }
         protected virtual string ResolveValueLabelFormat() { }
+        protected virtual bool TryHitTestSelection(SharpVision.Terminal.Geometry.Point position, out SharpVision.Controls.Charts.ChartSelection selection) { }
         protected virtual void ValidateSeriesCore(System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Charts.ChartSeries> series) { }
     }
     public sealed class ChartDataPoint : System.ComponentModel.INotifyPropertyChanged
@@ -1061,6 +1067,21 @@ namespace SharpVision.Controls.Charts
         Quadrant = 0,
         Glyph = 1,
     }
+    public readonly struct ChartPlotLayout
+    {
+        public SharpVision.Terminal.Geometry.Rect Legend { get; }
+        public SharpVision.Terminal.Geometry.Rect Plot { get; }
+    }
+    public readonly struct ChartRenderContext
+    {
+        public SharpVision.Terminal.Rendering.CellStyle InheritedStyle { get; }
+        public SharpVision.Controls.Charts.ChartPlotLayout Layout { get; }
+        public SharpVision.Controls.Charts.ChartScaleRange Range { get; }
+        public int MapX(int index, int count) { }
+        public int MapY(double value) { }
+        public double Ratio(double value) { }
+        public SharpVision.Terminal.Rendering.CellStyle ResolveSeriesStyle(SharpVision.Controls.Charts.ChartSeries series, SharpVision.Controls.Charts.ChartDataPoint point, int seriesIndex, int pointIndex = -1) { }
+    }
     public readonly struct ChartScale : System.IEquatable<SharpVision.Controls.Charts.ChartScale>
     {
         public ChartScale(double? minimum, double? maximum, bool includeZero) { }
@@ -1073,6 +1094,11 @@ namespace SharpVision.Controls.Charts
         public override int GetHashCode() { }
         public static bool operator !=(SharpVision.Controls.Charts.ChartScale left, SharpVision.Controls.Charts.ChartScale right) { }
         public static bool operator ==(SharpVision.Controls.Charts.ChartScale left, SharpVision.Controls.Charts.ChartScale right) { }
+    }
+    public readonly struct ChartScaleRange
+    {
+        public double Maximum { get; }
+        public double Minimum { get; }
     }
     public readonly struct ChartSelection : System.IEquatable<SharpVision.Controls.Charts.ChartSelection>
     {
@@ -1117,7 +1143,9 @@ namespace SharpVision.Controls.Charts
     public sealed class HorizontalBarChart : SharpVision.Controls.Charts.CartesianChartControlBase
     {
         public HorizontalBarChart() { }
+        protected override bool CategoriesAreVertical { get; }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override bool TryHitTestSelection(SharpVision.Terminal.Geometry.Point position, out SharpVision.Controls.Charts.ChartSelection selection) { }
     }
     public sealed class LineChart : SharpVision.Controls.Charts.CartesianChartControlBase
     {
@@ -1132,12 +1160,14 @@ namespace SharpVision.Controls.Charts
         protected override SharpVision.Controls.Charts.ChartLegendPlacement ResolveLegendPlacement() { }
         protected override bool ResolveShowCategoryLabels() { }
         protected override bool ResolveShowValueLabels() { }
+        protected override bool TryHitTestSelection(SharpVision.Terminal.Geometry.Point position, out SharpVision.Controls.Charts.ChartSelection selection) { }
         protected override void ValidateSeriesCore(System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Charts.ChartSeries> series) { }
     }
     public sealed class VerticalBarChart : SharpVision.Controls.Charts.CartesianChartControlBase
     {
         public VerticalBarChart() { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override bool TryHitTestSelection(SharpVision.Terminal.Geometry.Point position, out SharpVision.Controls.Charts.ChartSelection selection) { }
     }
 }
 namespace SharpVision.Controls.Collections

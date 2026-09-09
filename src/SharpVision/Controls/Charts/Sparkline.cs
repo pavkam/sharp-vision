@@ -36,7 +36,7 @@ public sealed class Sparkline: ChartControlBase
     protected override Size DefaultSize => new(20, 1);
 
     /// <inheritdoc/>
-    private protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
+    protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
         SparklineRenderer.TryHitTestSelection(this, position, out selection);
 
     /// <inheritdoc/>

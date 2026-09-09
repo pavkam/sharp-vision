@@ -654,6 +654,31 @@ public sealed class ChartControlTests
         chart.EffectiveIsEnabled.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a chart authored directly against <see cref="ChartControlBase"/> - not
+    /// through any shipped renderer - can resolve its own plot layout and numeric range through
+    /// <see cref="ChartControlBase.CreateRenderContext(TerminalCanvas)"/> and map data points into
+    /// plot cells with <see cref="ChartRenderContext.MapX(int, int)"/> and
+    /// <see cref="ChartRenderContext.MapY(double)"/>.</summary>
+    [Fact]
+    public async Task CreateRenderContext_WhenMounted_MapsValueRangeToPlotCellsAsync()
+    {
+        // Arrange
+        var chart = new ChartRenderContextProbe
+        {
+            Series = [new ChartSeries("Values", [new ChartDataPoint("A", 0), new ChartDataPoint("B", 10)])]
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            chart,
+            new Size(5, 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(new Point(0, 2)).Text.ShouldBe("*");
+        surface.Cell(new Point(4, 0)).Text.ShouldBe("*");
+    }
+
     /// <summary>Supplies every full chart as its concrete control type.</summary>
     public static TheoryData<ControlBase> FullCharts =>
     [

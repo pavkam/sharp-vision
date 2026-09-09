@@ -13,10 +13,10 @@ public sealed class HorizontalBarChart: CartesianChartControlBase
     }
 
     /// <inheritdoc/>
-    private protected override bool CategoriesAreVertical => true;
+    protected override bool CategoriesAreVertical => true;
 
     /// <inheritdoc/>
-    private protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
+    protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
         BarChartRenderer.TryHitTestSelection(this, position, Orientation.Horizontal, out selection);
 
     /// <inheritdoc/>

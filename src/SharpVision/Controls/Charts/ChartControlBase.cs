@@ -97,7 +97,7 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     public ChartScale Scale
     {
         get => _scale;
-        set => SetChartProperty(ref _scale, value, InvalidationImpact.Render, nameof(Scale));
+        set => _ = SetProperty(ref _scale, value, InvalidationImpact.Render, nameof(Scale));
     }
 
     /// <summary>Gets or sets the selected data point, or null to clear selection.</summary>
@@ -117,37 +117,50 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     }
 
     /// <summary>Gets or sets the legend policy exposed by full chart families.</summary>
+    /// <remarks>
+    /// This backing seam is protected, not just the public <c>LegendPlacement</c> that
+    /// <see cref="CartesianChartControlBase"/> forwards to it, because the two authoring patterns
+    /// this base class supports diverge here: a settable full chart family (bar, line, area) simply
+    /// forwards this property one-to-one as its own public surface, while a fixed-policy family such
+    /// as <see cref="Sparkline"/> instead overrides <see cref="ResolveLegendPlacement"/> and exposes
+    /// no public legend surface at all. Keeping the authored value itself protected lets a
+    /// third-party author derive either shape directly from <see cref="ChartControlBase"/>.
+    /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The assigned placement is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
-    private protected ChartLegendPlacement LegendPlacementCore
+    protected ChartLegendPlacement LegendPlacementCore
     {
         get => _legendPlacement;
         set
         {
             ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The chart legend placement is unknown.");
 
-            SetChartProperty(ref _legendPlacement, value, InvalidationImpact.Measure, nameof(IChartControl.LegendPlacement));
+            _ = SetProperty(ref _legendPlacement, value, InvalidationImpact.Measure, nameof(IChartControl.LegendPlacement));
         }
     }
 
     /// <summary>Gets or sets whether category labels may consume cells in full chart families.</summary>
+    /// <remarks>See <see cref="LegendPlacementCore"/> for why this authored value stays a protected
+    /// seam beside the public property a settable chart family forwards it through.</remarks>
     /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
-    private protected bool ShowCategoryLabelsCore
+    protected bool ShowCategoryLabelsCore
     {
         get => _showCategoryLabels;
-        set => SetChartProperty(
+        set => _ = SetProperty(
             ref _showCategoryLabels, value, InvalidationImpact.Measure, nameof(IChartControl.ShowCategoryLabels));
     }
 
     /// <summary>Gets or sets whether value labels may consume cells in full chart families.</summary>
+    /// <remarks>See <see cref="LegendPlacementCore"/> for why this authored value stays a protected
+    /// seam beside the public property a settable chart family forwards it through.</remarks>
     /// <exception cref="InvalidOperationException">The attached chart is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The chart is disposed.</exception>
-    private protected bool ShowValueLabelsCore
+    protected bool ShowValueLabelsCore
     {
         get => _showValueLabels;
-        set => SetChartProperty(ref _showValueLabels, value, InvalidationImpact.Measure, nameof(IChartControl.ShowValueLabels));
+        set => _ = SetProperty(ref _showValueLabels, value, InvalidationImpact.Measure, nameof(IChartControl.ShowValueLabels));
     }
 
     ControlBase IChartControl.Control => this;
@@ -283,27 +296,22 @@ public abstract class ChartControlBase: ControlBase, IStyled<ChartStyle>, IChart
     protected abstract Size DefaultSize { get; }
 
     /// <summary>Gets whether point categories advance vertically for keyboard input.</summary>
-    private protected virtual bool CategoriesAreVertical => false;
+    protected virtual bool CategoriesAreVertical => false;
 
     /// <summary>Maps a chart-space pointer cell to the nearest selectable visible data point.</summary>
     /// <param name="position">The absolute terminal cell position.</param>
     /// <param name="selection">Receives the visible data-point selection.</param>
     /// <returns>True when a selectable point owns or is nearest to the supplied plot cell.</returns>
-    private protected virtual bool TryHitTestSelection(Point position, out ChartSelection selection) =>
+    protected virtual bool TryHitTestSelection(Point position, out ChartSelection selection) =>
         ChartRenderer.TryHitTestSelection(this, position, out selection);
 
-    private protected void SetChartProperty<T>(ref T field, T value, InvalidationImpact impact, string propertyName)
-    {
-        VerifyMutable();
-
-        if (EqualityComparer<T>.Default.Equals(field, value))
-        {
-            return;
-        }
-
-        field = value;
-        NotifyPropertyChanged(propertyName, impact);
-    }
+    /// <summary>Creates the resolved plot layout, numeric range, and inherited style a concrete
+    /// chart's <c>OnRenderContent</c> override renders through, drawing the legend for the resolved
+    /// layout as a side effect.</summary>
+    /// <param name="canvas">The canvas this chart is currently rendering onto.</param>
+    /// <returns>The immutable resolved context for one render pass.</returns>
+    protected ChartRenderContext CreateRenderContext(TerminalCanvas canvas) =>
+        ChartRenderer.CreateContext(this, canvas, ResolvedStyle);
 
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)

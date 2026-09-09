@@ -13,7 +13,7 @@ public sealed class VerticalBarChart: CartesianChartControlBase
     }
 
     /// <inheritdoc/>
-    private protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
+    protected override bool TryHitTestSelection(Point position, out ChartSelection selection) =>
         BarChartRenderer.TryHitTestSelection(this, position, Orientation.Vertical, out selection);
 
     /// <inheritdoc/>

@@ -42,9 +42,14 @@ chart presentation.
 `ChartControlBase` owns data observation, dispatcher validation, selection,
 focus, input routing, and the common style slot. `CartesianChartControlBase`
 owns the presentation options shared by bar, line, and area charts. Concrete
-controls supply only family geometry and rendering. See
-[CartesianChartControlBase](cartesian-chart-control-base.md) for its authoring
-contract.
+controls supply only family geometry and rendering. A third-party chart authored
+directly against either base role renders its own content by calling the
+protected `CreateRenderContext(TerminalCanvas)` once per frame and mapping data
+through the returned `ChartRenderContext` - it never reaches the shipped
+renderer types, which stay internal implementation detail of the five chart
+types this library ships. See
+[CartesianChartControlBase](cartesian-chart-control-base.md#authoring-seam) for
+the complete authoring seam and an example.
 
 `ChartScale` accepts optional finite `Minimum` and `Maximum` bounds and an
 `IncludeZero` policy. `ChartScale.Automatic` includes zero. Bar charts use that
