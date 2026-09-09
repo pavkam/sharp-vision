@@ -53,6 +53,68 @@ public sealed class ScrollableItemsControlTests
         probe.VerticalOffset.ShouldBe(expected);
     }
 
+    /// <summary>Verifies an offset that already sits inside the leading band passes through a
+    /// row-height change unchanged, because the band's own height did not change - the header-band
+    /// branch of <see cref="ScrollableItemsControl.ArrangeUniformRows"/> that a caller with no band
+    /// never exercises.</summary>
+    [Fact]
+    public void ArrangeUniformRows_WhenOffsetIsInsideTheLeadingBand_LeavesItUnchanged()
+    {
+        var probe = new ScrollableItemsControlUniformRowsProbe(rowCount: 20, Length.Percent(20))
+        {
+            LeadingBandHeight = 5
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(probe, new Size(10, 25));
+        _ = probe.ScrollBy(0, 3);
+        probe.VerticalOffset.ShouldBe(3);
+
+        engine.Layout(probe, new Size(10, 15));
+
+        probe.VerticalOffset.ShouldBe(3);
+    }
+
+    /// <summary>Verifies an offset past the leading band remaps relative to the band: the band
+    /// height is excluded from the content offset before <see cref="UniformRowHeight.RemapOffset"/>
+    /// runs, and added back onto its result.</summary>
+    [Fact]
+    public void ArrangeUniformRows_WhenOffsetIsPastTheLeadingBand_RemapsRelativeToTheBand()
+    {
+        var probe = new ScrollableItemsControlUniformRowsProbe(rowCount: 20, Length.Percent(20))
+        {
+            LeadingBandHeight = 5
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(probe, new Size(10, 25));
+        _ = probe.ScrollBy(0, 20);
+        probe.VerticalOffset.ShouldBe(20);
+
+        engine.Layout(probe, new Size(10, 15));
+
+        var expectedMapped = UniformRowHeight.RemapOffset(offset: 15, previousHeight: 4, currentHeight: 2, gap: 0);
+        probe.VerticalOffset.ShouldBe(5 + expectedMapped);
+    }
+
+    /// <summary>Verifies an offset that lands exactly at the leading band boundary maps to the band
+    /// itself, proving the boundary belongs to the "past the band" branch of the ternary rather than
+    /// falling off-by-one to either side.</summary>
+    [Fact]
+    public void ArrangeUniformRows_WhenOffsetIsExactlyAtTheLeadingBandBoundary_MapsToTheBand()
+    {
+        var probe = new ScrollableItemsControlUniformRowsProbe(rowCount: 20, Length.Percent(20))
+        {
+            LeadingBandHeight = 5
+        };
+        var engine = new LayoutEngine();
+        engine.Layout(probe, new Size(10, 25));
+        _ = probe.ScrollBy(0, 5);
+        probe.VerticalOffset.ShouldBe(5);
+
+        engine.Layout(probe, new Size(10, 15));
+
+        probe.VerticalOffset.ShouldBe(5);
+    }
+
     /// <summary>Verifies the host's realized children already sit at the remapped offset after
     /// exactly one <see cref="LayoutEngine.Layout"/> pass following a row-height change, proving
     /// <see cref="ScrollableItemsControl.ArrangeUniformRows"/> re-arranges the host synchronously in

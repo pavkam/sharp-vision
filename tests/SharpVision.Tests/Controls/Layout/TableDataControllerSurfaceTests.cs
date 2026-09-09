@@ -133,6 +133,39 @@ public sealed class TableDataControllerSurfaceTests
         firstFrameRowBounds!.Value.ShouldBe(controller.RowAt(controller.WindowStart)!.Cells[0].Bounds);
     }
 
+    /// <summary>Verifies the documented header-band remap contract end-to-end: a progressive table
+    /// with a shown header and a relative row height keeps the same logical top data row visible
+    /// under the header after a resize changes the resolved row height, excluding the header band
+    /// from both the row viewport and the remapped stride.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenHeaderIsShownAndProgressiveRowHeightIsRelative_KeepsSameLogicalRowVisibleUnderTheHeaderAsync()
+    {
+        var table = CreateHost(showHeader: true);
+        table.RowSpacing = 1;
+        var source = CreateSource(10_000);
+        source.Gate();
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => table.SetDataSource(source, BuildRow, Length.Percent(50)),
+            "bind relative-row source under a shown header");
+        var controller = table.ProgressiveController!;
+        var headerHeight = table.ProgressiveHeaderHeight;
+
+        controller.RowHeight.ShouldBe(3);
+        await surface.UpdateAsync(() => table.ScrollBy(0, 42), "scroll relative-row table under header");
+        var previousStride = controller.RowHeight + table.RowSpacing;
+        var anchoredIndex = (table.VerticalOffset - headerHeight) / previousStride;
+
+        await surface.ResizeAsync(new Size(20, 4));
+
+        controller.RowHeight.ShouldBe(1);
+        var newStride = controller.RowHeight + table.RowSpacing;
+        ((table.VerticalOffset - headerHeight) / newStride).ShouldBe(anchoredIndex);
+    }
+
     /// <summary>Releases whatever is currently held and settles the dispatcher, repeatedly, until a
     /// predicate is satisfied or a generous iteration bound is exhausted. A gated fetch's completion
     /// still has to cross the controller's own dispatcher-marshaled commit and any resulting

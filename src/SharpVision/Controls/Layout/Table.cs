@@ -1041,6 +1041,15 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <summary>Gets the private progressive controller for internal presenter and test cooperation.</summary>
     internal TableDataController? ProgressiveController => Progressive;
 
+    /// <summary>Gets the header band height <see cref="ArrangeUniformRows"/> excludes from both the
+    /// progressive row viewport and the remapped scroll stride.</summary>
+    /// <remarks>
+    /// Exists so a test can independently compute the expected post-resize offset for the
+    /// documented header-band remap contract without duplicating the presenter's own padding,
+    /// header-text-height, and row-gap arithmetic inline.
+    /// </remarks>
+    internal int ProgressiveHeaderHeight => _presenter.ProgressiveHeaderHeight;
+
     /// <summary>Validates a template-built row using the same checks applied to an eager row.</summary>
     /// <param name="row">The candidate row.</param>
     internal void ValidateProgressiveRow(TableRow row) => ValidateRow(row);
