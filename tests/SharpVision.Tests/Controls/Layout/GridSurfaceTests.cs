@@ -451,4 +451,46 @@ public sealed class GridSurfaceTests
         surface.ShouldHaveState(grid, VisualState.Normal);
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
+
+    /// <summary>Verifies a ContextMenu set on the Grid panel itself - not on one of its children -
+    /// paints once opened and dispatches from a real pointer hit on its item. Container's popup
+    /// traversal used to walk only the Children slot, so a panel's own ContextMenu slot (registered
+    /// on the panel, alongside Children rather than inside it) was assigned and reported open but
+    /// never actually rendered, hit-tested, or reachable by a click.</summary>
+    [Fact]
+    public async Task ContextMenu_WhenSetOnGridItself_PaintsAndDispatchesFromPointerHitAsync()
+    {
+        // Arrange
+        var invoked = false;
+        var menu = new ContextMenu(
+            MenuBuilder.Vertical()
+                .Item("Inspect", onInvoke: () => invoked = true)
+                .Build());
+        var grid = new Grid
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            ContextMenu = menu
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            grid,
+            new Size(30, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act - open the panel's own context menu, not a child's
+        await surface.Pointer.RightClickAsync(grid);
+
+        // Assert - the menu actually painted, not merely reported open
+        menu.IsOpen.ShouldBeTrue();
+        var popup = (Popup) menu.Presentation;
+        surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Text.ShouldNotBeNullOrEmpty();
+
+        // Act - a real pointer hit on the rendered menu item must resolve and dispatch
+        var item = (MenuItem) menu.Items[0];
+        await surface.Pointer.ClickAsync(item);
+
+        // Assert
+        invoked.ShouldBeTrue();
+        menu.IsOpen.ShouldBeFalse();
+    }
 }

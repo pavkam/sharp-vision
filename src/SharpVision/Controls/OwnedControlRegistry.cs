@@ -343,7 +343,25 @@ internal sealed class OwnedControlRegistry
     /// <returns>The control at the requested position.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
     [Pure]
-    public ControlBase NavigationAt([NonNegativeValue] int index)
+    public ControlBase NavigationAt([NonNegativeValue] int index) =>
+        NavigationAt(index, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+
+    /// <summary>Gets one navigation-eligible control in slot-registration order, visiting exactly
+    /// one designated slot through a caller-supplied item permutation instead of its own item
+    /// order.</summary>
+    /// <param name="index">The valid zero-based navigation position.</param>
+    /// <param name="permutedSlot">The registered slot whose items <paramref name="permutation"/>
+    /// reorders, or null to use every slot's own item order.</param>
+    /// <param name="permutation">The zero-based item-index permutation applied only while
+    /// visiting <paramref name="permutedSlot"/>; ignored for every other slot and when <paramref
+    /// name="permutedSlot"/> is null.</param>
+    /// <returns>The control at the requested position.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the eligible controls.</exception>
+    [Pure]
+    public ControlBase NavigationAt(
+        [NonNegativeValue] int index,
+        OwnedControlSlot? permutedSlot,
+        ReadOnlySpan<int> permutation)
     {
         var requested = index;
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -357,7 +375,7 @@ internal sealed class OwnedControlRegistry
 
             if (index < slot.Count)
             {
-                return slot[index];
+                return ReferenceEquals(slot, permutedSlot) ? slot[permutation[index]] : slot[index];
             }
 
             index -= slot.Count;
@@ -402,7 +420,23 @@ internal sealed class OwnedControlRegistry
     /// <summary>Finds the topmost elevated target before every ordinary-layer target.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <returns>The deepest eligible elevated target, or null.</returns>
-    public ControlBase? HitTestPopup(Point point)
+    public ControlBase? HitTestPopup(Point point) =>
+        HitTestPopup(point, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+
+    /// <summary>Finds the topmost elevated target before every ordinary-layer target, visiting
+    /// exactly one designated slot through a caller-supplied item permutation instead of its own
+    /// item order.</summary>
+    /// <param name="point">The absolute terminal-cell point.</param>
+    /// <param name="permutedSlot">The registered slot whose items <paramref name="permutation"/>
+    /// reorders, or null to use every slot's own item order.</param>
+    /// <param name="permutation">The zero-based item-index permutation applied only while
+    /// visiting <paramref name="permutedSlot"/>; ignored for every other slot and when <paramref
+    /// name="permutedSlot"/> is null.</param>
+    /// <returns>The deepest eligible elevated target, or null.</returns>
+    public ControlBase? HitTestPopup(
+        Point point,
+        OwnedControlSlot? permutedSlot,
+        ReadOnlySpan<int> permutation)
     {
         for (var slotIndex = _slots.Count - 1; slotIndex >= 0; slotIndex--)
         {
@@ -413,9 +447,11 @@ internal sealed class OwnedControlRegistry
                 continue;
             }
 
+            var permuted = ReferenceEquals(slot, permutedSlot);
+
             for (var itemIndex = slot.Count - 1; itemIndex >= 0; itemIndex--)
             {
-                var child = slot[itemIndex];
+                var child = permuted ? slot[permutation[itemIndex]] : slot[itemIndex];
 
                 if (child.HitTestPopupBranch(point, slot.Options.Layer) is { } popup)
                 {
@@ -453,14 +489,32 @@ internal sealed class OwnedControlRegistry
 
     /// <summary>Renders elevated controls after every ordinary sibling in global ownership order.</summary>
     /// <param name="canvas">The root-relative frame canvas.</param>
-    public void RenderPopup(TerminalCanvas canvas)
+    public void RenderPopup(TerminalCanvas canvas) =>
+        RenderPopup(canvas, permutedSlot: null, permutation: ReadOnlySpan<int>.Empty);
+
+    /// <summary>Renders elevated controls after every ordinary sibling in global ownership order,
+    /// visiting exactly one designated slot through a caller-supplied item permutation instead of
+    /// its own item order.</summary>
+    /// <param name="canvas">The root-relative frame canvas.</param>
+    /// <param name="permutedSlot">The registered slot whose items <paramref name="permutation"/>
+    /// reorders, or null to use every slot's own item order.</param>
+    /// <param name="permutation">The zero-based item-index permutation applied only while
+    /// visiting <paramref name="permutedSlot"/>; ignored for every other slot and when <paramref
+    /// name="permutedSlot"/> is null.</param>
+    public void RenderPopup(
+        TerminalCanvas canvas,
+        OwnedControlSlot? permutedSlot,
+        ReadOnlySpan<int> permutation)
     {
         _ = canvas.Bounds;
 
         foreach (var slot in _slots)
         {
-            foreach (var child in slot.Items)
+            var permuted = ReferenceEquals(slot, permutedSlot);
+
+            for (var itemIndex = 0; itemIndex < slot.Count; itemIndex++)
             {
+                var child = permuted ? slot[permutation[itemIndex]] : slot[itemIndex];
                 child.RenderPopupBranch(canvas, slot.Options.Layer);
             }
         }

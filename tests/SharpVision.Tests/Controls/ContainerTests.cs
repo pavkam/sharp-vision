@@ -1626,6 +1626,73 @@ public sealed class ContainerTests
         container.HitTest(default).ShouldBeSameAs(first);
     }
 
+    /// <summary>Verifies an owned popup enabled through the protected <see
+    /// cref="ControlBase.EnablePopup"/> seam - the way a third-party panel deriving from <see
+    /// cref="Container"/> reaches for it - keeps painting and hit testing once open. Container's
+    /// popup traversal overrides used to walk only <see cref="Container.Children"/>, so a
+    /// container's own framework popup slot was silently unreachable by both passes.</summary>
+    [Fact]
+    public async Task EnablePopup_WhenOpenedOnDerivedContainer_PaintsAndHitTestsTheOwnedPopupAsync()
+    {
+        // Arrange
+        var container = new ProbeContainer(enablePopup: true)
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3)
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            container,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => container.IsPopupOpen = true, "open the owned popup");
+
+        // Assert - the popup actually laid out and painted
+        var bounds = container.Popup.ShouldNotBeNull().Bounds;
+        bounds.Width.ShouldBeGreaterThan(0);
+        bounds.Height.ShouldBeGreaterThan(0);
+        surface.Cell(new Point(bounds.X, bounds.Y)).Text.ShouldNotBeNullOrEmpty();
+
+        // Assert - the open popup subtree is reachable from a root-driven popup hit test
+        container.HitTestPopup(new Point(bounds.X, bounds.Y)).ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies Tab traversal reaches an owned popup's content once it is open, when the
+    /// popup itself keeps <see cref="TabNavigation.Continue"/> - proving <see
+    /// cref="Container.NavigationAt"/> visits the container's own framework popup slot in ordinary
+    /// registration order alongside the permuted <see cref="Container.Children"/> slot, rather than
+    /// stopping at Children the way the broken override used to.</summary>
+    [Fact]
+    public async Task Keyboard_WhenOwnedPopupParticipatesInNavigation_TabReachesPopupContentAsync()
+    {
+        // Arrange
+        var before = new ProbeControl(new Size(1, 1)) { IsFocusable = true, Content = "B".AsMemory() };
+        var container = new ProbeContainer(enablePopup: true)
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3)
+        };
+        var host = new Stack
+        {
+            Orientation = Orientation.Vertical,
+            Children = { before, container }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(before);
+        before.IsFocused.ShouldBeTrue();
+        await surface.UpdateAsync(() => container.IsPopupOpen = true, "open the owned popup");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        container.PopupContent.ShouldNotBeNull().IsFocused.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a hidden horizontal bar gives word-wrapping content the committed viewport width during measurement.</summary>
     [Fact]
     public void Layout_WhenHorizontalBarIsHidden_ReflowsWordWrappedContentToViewportWidth()

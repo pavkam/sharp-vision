@@ -337,7 +337,6 @@ namespace SharpVision.Controls
         public int LineSize { get; set; }
         public int MaximumHorizontalOffset { get; }
         public int MaximumVerticalOffset { get; }
-        protected override int NavigationCount { get; }
         public int PageOverlap { get; set; }
         protected virtual bool RemeasureInitialScrollContent { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }

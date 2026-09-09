@@ -135,9 +135,14 @@ alignment, margins, sizing, and rounding.
 `GetChildOrder` is the one seam that reorders a container's children without
 reimplementing any traversal. Default focus navigation, selectable-text
 aggregation, popup hit testing, ordinary hit testing, content rendering, and
-popup-layer rendering all call it and honor the permutation it returns instead
-of `Children`'s own insertion order. An override fills `indices` - already sized
-to `Children.Count` - with a permutation of `0` through `Count - 1`; index `0`
+popup-layer rendering all call it, but the permutation it returns applies only
+to `Children`. Every one of those traversals still visits the container's other
+owned slots - the `ContextMenu` slot, any framework popup slot opted into
+through the protected `EnablePopup` seam, and the generated scroll rails - in
+their own ordinary registration order alongside the permuted `Children` slot,
+exactly as `ControlBase`'s owned-control defaults do for a control with no
+`GetChildOrder` override at all. An override fills `indices` - already sized to
+`Children.Count` - with a permutation of `0` through `Count - 1`; index `0`
 names the back-most child and the last index names the front-most child.
 Rendering walks the permutation front-to-back (index `0` first), so the
 front-most child paints last and ends up on top; hit testing walks it

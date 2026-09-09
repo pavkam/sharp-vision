@@ -148,26 +148,23 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
-    protected internal override int NavigationCount => Children.Count;
-
-    /// <inheritdoc/>
+    /// <remarks>
+    /// Navigation walks every registered owned slot in ordinary registration order - the
+    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// through the protected <c>EnablePopup</c> seam included - and permutes only <see
+    /// cref="Children"/> through <see cref="GetChildOrder"/>. Count is unaffected by the
+    /// permutation, so it is not overridden here; the inherited base already sums every
+    /// navigation-eligible slot.
+    /// </remarks>
     protected internal override ControlBase NavigationAt(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
-
-        if (index >= Children.Count)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(index),
-                index,
-                "The navigation position is outside the eligible controls.");
-        }
 
         var order = RentChildOrder();
 
         try
         {
-            return Children[order[index]];
+            return OwnedControls.NavigationAt(index, Children.OwnedSlot, order.AsSpan(0, Children.Count));
         }
         finally
         {
@@ -237,26 +234,24 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Popup hit testing walks every registered owned slot in ordinary registration order and
+    /// permutes only <see cref="Children"/> through <see cref="GetChildOrder"/>, so the
+    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// through the protected <c>EnablePopup</c> seam stay reachable.
+    /// </remarks>
     internal override ControlBase? HitTestPopupCore(Point point)
     {
         var order = RentChildOrder();
 
         try
         {
-            for (var index = Children.Count - 1; index >= 0; index--)
-            {
-                if (Children[order[index]].HitTestPopupBranch(point, OwnedControlLayer.Normal) is { } popup)
-                {
-                    return popup;
-                }
-            }
+            return OwnedControls.HitTestPopup(point, Children.OwnedSlot, order.AsSpan(0, Children.Count));
         }
         finally
         {
             ArrayPool<int>.Shared.Return(order);
         }
-
-        return null;
     }
 
     /// <inheritdoc/>
@@ -298,16 +293,19 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Popup-layer rendering walks every registered owned slot in ordinary registration order and
+    /// permutes only <see cref="Children"/> through <see cref="GetChildOrder"/>, so the
+    /// container's own <see cref="ContextMenu"/> slot and any framework popup slot opted into
+    /// through the protected <c>EnablePopup</c> seam still paint.
+    /// </remarks>
     internal override void RenderOwnedPopupDescendants(TerminalCanvas canvas)
     {
         var order = RentChildOrder();
 
         try
         {
-            for (var index = 0; index < Children.Count; index++)
-            {
-                Children[order[index]].RenderPopupBranch(canvas, OwnedControlLayer.Normal);
-            }
+            OwnedControls.RenderPopup(canvas, Children.OwnedSlot, order.AsSpan(0, Children.Count));
         }
         finally
         {

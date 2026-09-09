@@ -9,10 +9,28 @@ namespace SharpVision.Tests.Support;
 /// <summary>Provides a concrete parent for shared control infrastructure tests.</summary>
 internal sealed class ProbeContainer: Container
 {
-    /// <summary>Initializes a probe with an optional child capacity.</summary>
+    /// <summary>Initializes a probe with an optional child capacity and an optional owned popup.</summary>
     /// <param name="capacity">The non-negative maximum child count.</param>
-    internal ProbeContainer(int capacity = int.MaxValue) : base(capacity) =>
+    /// <param name="enablePopup">Whether the constructor also enables an owned popup through the
+    /// protected <see cref="ControlBase.EnablePopup"/> seam, the way a third-party panel deriving
+    /// from <see cref="Container"/> would - proving that popup slot keeps painting, hit testing,
+    /// and tab-navigating alongside <see cref="Container.Children"/> instead of only the latter.</param>
+    internal ProbeContainer(int capacity = int.MaxValue, bool enablePopup = false) : base(capacity)
+    {
         EnableChromeAuthoring();
+
+        if (enablePopup)
+        {
+            PopupContent = new ProbeControl(new Size(4, 1)) { Content = "P".AsMemory(), IsFocusable = true };
+            Popup = EnablePopup(PopupContent, focusOnOpen: false, popupTabNavigation: TabNavigation.Continue);
+        }
+    }
+
+    /// <summary>Gets the owned popup content when constructed with <c>enablePopup: true</c>, or null.</summary>
+    internal ControlBase? PopupContent { get; }
+
+    /// <summary>Gets the constructed, owned popup when constructed with <c>enablePopup: true</c>, or null.</summary>
+    internal Popup? Popup { get; }
 
     /// <summary>Gets or sets whether rendering clips owned descendants.</summary>
     internal bool ClipChildren { get; set; } = true;
