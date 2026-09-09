@@ -396,6 +396,21 @@ public static class FrameEncoder
         ref GraphicsCellOverlayValue placeholderStyle,
         GraphicsCellOverlay? overlay)
     {
+        // This guard runs before the caller computes eagerBottomRow/writeEnd, and this method is
+        // deliberately exempt from the eager-wrap bottom-right-cell skip those apply to the plain
+        // glyph-write loop below. That is safe for reasons specific to EL, not a gap in the
+        // eager-wrap handling: ECMA-48 §8.3.41 (ERASE IN LINE, "CSI Ps K") defines EL as a
+        // non-printing editor function - it prints no glyph, does not move the cursor, and does
+        // not trigger auto-wrap, on either the deferred-wrap (xenl) or eager-wrap (am without
+        // xenl) shape. So the hazard the eager-wrap skip exists to avoid - printing a glyph into
+        // the bottom-right cell, which wraps and scrolls the whole screen as part of the write
+        // itself - simply cannot occur here. The call site also always issues an absolute "cup"
+        // immediately before reaching this method, so the cursor is known to sit at span.Start
+        // and no delayed-wrap state can be pending on entry. And because EL genuinely blanks the
+        // addressed cells on the real terminal when back-color-erase is in effect, the retained
+        // front model stays truthful after Frame.CopyFrom, unlike the eager-wrap skip, which
+        // deliberately leaves the front model believing a cell holds content the real screen was
+        // never sent.
         if (!profile.Description.BackColorErase ||
             end != back.Size.Width ||
             !profile.Programs.Has("el"))

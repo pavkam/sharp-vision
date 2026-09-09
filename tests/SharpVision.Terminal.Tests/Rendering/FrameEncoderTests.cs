@@ -848,6 +848,41 @@ public sealed class FrameEncoderTests
         destination.WrittenSpan.IndexOf("555"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
 
+    /// <summary>Verifies Erase In Line (ECMA-48 §8.3.41, "CSI Ps K") blanks a bottom row through
+    /// the right margin on an eager-wrap (am without xenl) description exactly like it would on
+    /// any other row, because EL prints no glyph and cannot trigger the auto-wrap the eager-wrap
+    /// bottom-right-cell skip exists to avoid - see the comment on the trailing-blanks-erase
+    /// guard in <c>FrameEncoder.TryEraseTrailingBlanks</c>.
+    /// <see cref="Encode_WhenTrailingCellsAreBlank_UsesEraseOnlyWithBce"/> proves the erase-only
+    /// path itself; this proves the path stays unaffected by eager-wrap truncation on the one
+    /// row where that truncation would otherwise apply, reaching all the way through the
+    /// bottom-right cell instead of stopping one column short of it.</summary>
+    [Fact]
+    public void Encode_WhenEagerWrapDescriptionHasBlankBottomRow_UsesEraseThroughRightMargin()
+    {
+        using Frame frame = new(new Size(4, 2));
+        _ = frame.Canvas.Draw("head", new Point(0, 0));
+        var programs = CorePrograms();
+        programs["el"] = new DescriptionProgram("\u001b[0K"u8);
+        var profile = CreateProfile(
+            ColorDepth.Monochrome,
+            programs,
+            automaticMargins: true,
+            backColorErase: true,
+            eatNewlineGlitch: false);
+        var destination = new ArrayBufferWriter<byte>();
+
+        _ = FrameEncoder.Encode(null, frame, destination, profile);
+
+        destination.WrittenSpan.IndexOf("\u001b[0K"u8).ShouldBeGreaterThanOrEqualTo(0);
+        destination.WrittenSpan.IndexOf((byte) ' ').ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("\u001b[1S"u8).ShouldBeLessThan(0);
+        destination.WrittenSpan.IndexOf("\u001b[1T"u8).ShouldBeLessThan(0);
+        var screen = new VirtualScreen(frame.Size, automaticMargins: true, eatNewlineGlitch: false);
+        screen.Apply(destination.WrittenSpan);
+        screen.ShouldMatch(frame);
+    }
+
     /// <summary>Verifies the continuation-cell check runs before the overlay branch, so a cell
     /// overlay that (incorrectly) lands on a wide glyph's continuation cell is skipped instead of
     /// emitting a spurious placeholder column. A placeholder is always exactly one protocol
