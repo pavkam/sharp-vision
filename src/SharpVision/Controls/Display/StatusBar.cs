@@ -25,7 +25,7 @@ public sealed class StatusBar: ItemsControl
         BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
 
     /// <inheritdoc/>
-    internal override bool ProvidesContinuousBackground => true;
+    protected internal override bool ProvidesContinuousBackground => true;
 
     /// <summary>Gets the typed managed status-item collection.</summary>
     public StatusBarItemCollection Items { get; }

@@ -76,9 +76,8 @@ public sealed class HyperlinkButton: InputBase, IStyled<HyperlinkButtonStyle>
     protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
-        var command = Command;
 
-        return command is null || command.CanExecute(CommandParameter)
+        return IsCommandExecutable
             ? state
             : (state & ~(VisualState.IsPointerOver | VisualState.Pressed)) | VisualState.Disabled;
     }

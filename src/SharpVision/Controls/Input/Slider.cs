@@ -224,7 +224,7 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
         var trackStyle = inherited.WithForeground(ResolveColor(actualStyle.TrackColor));
         var thumbStyle = inherited.WithForeground(ResolveColor(actualStyle.ThumbColor));
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(bounds, inherited);
         }

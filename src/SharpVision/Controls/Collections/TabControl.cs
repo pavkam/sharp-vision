@@ -279,7 +279,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     }
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
 

@@ -80,6 +80,16 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
     internal void InvokeAfterOwnerCommit(ActivationCause cause) =>
         Invoked?.Invoke(this, new ActivationEventArgs(cause));
 
+    /// <summary>Captures this item's command binding on behalf of its owning <see cref="Breadcrumb"/>.</summary>
+    /// <remarks>
+    /// The inherited <see cref="InputBase.CaptureCommand"/> is protected so a third-party
+    /// <see cref="InputBase"/> control can capture its own binding; the owning
+    /// <see cref="Breadcrumb"/> is a sibling type, not a subtype, so it reaches this item's binding
+    /// through this internal bridge instead.
+    /// </remarks>
+    /// <returns>The command and parameter currently bound to this item.</returns>
+    internal CommandBinding CaptureCommandForOwner() => CaptureCommand();
+
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {

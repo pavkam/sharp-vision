@@ -154,8 +154,6 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
             : (state & ~(VisualState.IsPointerOver | VisualState.Pressed)) | VisualState.Disabled;
     }
 
-    private bool IsCommandExecutable => Command is not { } command || command.CanExecute(CommandParameter);
-
     // The shadowed face shifts while pressed; a press that cannot activate shows no shift either.
     private bool IsFacePressed => IsPressed && IsCommandExecutable;
 
@@ -205,7 +203,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     }
 
     /// <inheritdoc/>
-    internal override Rect DescendantRenderBounds => FaceBounds;
+    protected internal override Rect DescendantRenderBounds => FaceBounds;
 
     /// <inheritdoc/>
     /// <remarks>

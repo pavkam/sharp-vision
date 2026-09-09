@@ -177,6 +177,15 @@ internal sealed class ProbeControl: ChromeProbe
     protected internal override VisualState GetAppearanceState() =>
         ForcedAppearanceState ?? base.GetAppearanceState();
 
+    /// <summary>Gets or sets whether the resolved desired size is forced to zero after content
+    /// measurement, exercising the protected <see cref="ControlBase.OnMeasuredDesired"/> seam the
+    /// way a collapsed <c>InfoBar</c> reports zero desired size regardless of its own content.</summary>
+    internal bool ForceZeroDesiredSize { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override Size OnMeasuredDesired(Constraint constraint, Size desired) =>
+        ForceZeroDesiredSize ? default : base.OnMeasuredDesired(constraint, desired);
+
     /// <summary>Releases pointer capture only when this probe owns it.</summary>
     internal void ReleaseProbePointer() => ReleasePointerCapture();
 

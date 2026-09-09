@@ -95,10 +95,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
 
     /// <inheritdoc/>
     protected internal override ControlBase? HitTest(Point point) =>
-        !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
-        Bounds.Contains(point)
-            ? this
-            : null;
+        CanHitTestSelf(point) ? this : null;
 
     /// <inheritdoc/>
     protected internal override VisualState AmbientAppearanceState => GetAppearanceState();
@@ -190,7 +187,7 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !this.HasOpaqueFill(GetAppearanceState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !HasOpaqueFill(GetAppearanceState()))
         {
             return;
         }

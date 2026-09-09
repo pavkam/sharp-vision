@@ -172,7 +172,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
         var inherited = ResolvedStyle;
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(bounds, inherited);
         }

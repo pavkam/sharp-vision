@@ -250,7 +250,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         var thumbStyle = inherited.WithForeground(ResolveColor(style.ThumbColor));
         var buttonStyle = inherited.WithForeground(ResolveColor(style.ButtonColor));
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(bounds, inherited);
         }

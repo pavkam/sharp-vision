@@ -595,7 +595,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     {
         var style = ResolvedStyle;
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

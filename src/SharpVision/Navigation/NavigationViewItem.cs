@@ -103,7 +103,7 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     protected override bool IsSelectedState => _isSelected;
 
     /// <inheritdoc/>
-    internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
+    protected internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
     {
         var prefix = 3 + (Glyph is null ? 0 : MeasureCells(Glyph) + 1);
         var textRegion = new Rect(
@@ -122,7 +122,7 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     }
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
         return false;
@@ -156,7 +156,7 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     {
         var style = ResolvedStyle;
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

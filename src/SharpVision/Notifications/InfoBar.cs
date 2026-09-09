@@ -197,7 +197,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         IsOpen ? MeasureOpen(constraint) : default;
 
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Constraint constraint, Size desired)
+    protected internal override Size OnMeasuredDesired(Constraint constraint, Size desired)
     {
         _ = constraint;
         return IsOpen ? desired : default;
@@ -287,7 +287,7 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         if (IsOpen)
         {

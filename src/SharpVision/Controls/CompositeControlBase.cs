@@ -49,7 +49,7 @@ public abstract class CompositeControlBase: ControlBase
     }
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
         children.Add(GetContent());

@@ -130,7 +130,7 @@ public abstract class HeaderedContentControl: ContentControl, IAccessKeyCaptionO
         ReferenceEquals(Header, candidate);
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
 

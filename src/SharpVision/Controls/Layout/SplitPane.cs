@@ -481,11 +481,11 @@ public sealed class SplitPane: Container
     {
         if (Orientation == Orientation.Horizontal)
         {
-            child.ResolveWidthLimits(containing, out minimum, out maximum);
+            ResolveChildWidthLimits(child, containing, out minimum, out maximum);
         }
         else
         {
-            child.ResolveHeightLimits(containing, out minimum, out maximum);
+            ResolveChildHeightLimits(child, containing, out minimum, out maximum);
         }
     }
 

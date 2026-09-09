@@ -183,7 +183,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     }
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
 
@@ -388,7 +388,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
 
         var style = ResolvedStyle;
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }
@@ -510,15 +510,15 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     /// binding afterward. Reentrant rebinding or disposal therefore cannot redirect work already
     /// accepted by the activation entry point.
     /// </remarks>
-    /// <returns>The borrowed command and parameter currently bound to this control.</returns>
-    internal (ICommand? Command, object? Parameter) CaptureCommand() => (Command, CommandParameter);
+    /// <returns>The command and parameter currently bound to this control.</returns>
+    protected CommandBinding CaptureCommand() => new(Command, CommandParameter);
 
     /// <summary>Invokes the current command binding when it allows execution.</summary>
     /// <remarks>
     /// This extension seam retains its dynamic lookup contract for derived controls. First-party
     /// activation implementations capture their binding before public callbacks instead.
     /// </remarks>
-    protected void ExecuteCommandIfAny() => ExecuteCommandIfAny((Command, CommandParameter));
+    protected void ExecuteCommandIfAny() => ExecuteCommandIfAny(new CommandBinding(Command, CommandParameter));
 
     /// <summary>Invokes one previously captured command binding when it allows execution.</summary>
     /// <param name="binding">The command and parameter captured at activation entry.</param>
@@ -526,15 +526,18 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     /// Execution follows the control's own committed state and events, so a command that cannot
     /// execute never suppresses the control's activation semantics.
     /// </remarks>
-    internal static void ExecuteCommandIfAny((ICommand? Command, object? Parameter) binding)
-    {
-        var (command, parameter) = binding;
+    protected static void ExecuteCommandIfAny(CommandBinding binding) => binding.ExecuteIfAny();
 
-        if (command is not null && command.CanExecute(parameter))
-        {
-            command.Execute(parameter);
-        }
-    }
+    /// <summary>Gets whether the currently bound <see cref="Command"/> allows execution, or no
+    /// command is bound.</summary>
+    /// <remarks>
+    /// A control that presents its disabled appearance while a bound command cannot execute reads
+    /// this from its <see cref="ControlBase.GetAppearanceState"/> override, the way
+    /// <see cref="Button"/> and <see cref="HyperlinkButton"/> do. Not every
+    /// <see cref="InputBase"/> ties its appearance to command executability, so this reports the
+    /// raw fact only - a derived control decides on its own whether and how to react to it.
+    /// </remarks>
+    protected bool IsCommandExecutable => Command is not { } command || command.CanExecute(CommandParameter);
 
     private void OnCanExecuteChanged(ICommand source, object? sender, EventArgs eventArgs)
     {

@@ -4,7 +4,7 @@
 namespace SharpVision.Controls;
 
 /// <summary>Compares one registered non-appearance Theme value across a prospective transition.</summary>
-internal interface IThemeValueDependency
+public interface IThemeValueDependency
 {
     /// <summary>Gets the earliest phase affected when the registered value changes.</summary>
     /// <param name="previous">The previous Theme, or null for the library fallback.</param>

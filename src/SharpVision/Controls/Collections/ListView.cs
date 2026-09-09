@@ -464,7 +464,7 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        if (Bounds.Width == 0 || Bounds.Height == 0 || !this.HasOpaqueFill(GetAppearanceState()))
+        if (Bounds.Width == 0 || Bounds.Height == 0 || !HasOpaqueFill(GetAppearanceState()))
         {
             return;
         }

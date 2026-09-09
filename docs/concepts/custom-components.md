@@ -310,14 +310,21 @@ loop.
 
 Rendering runs `OnRenderContent` beneath a control's own children, in a fixed
 order: content, then descendants, then `OnRenderAdornment`, then the framework
-border, then `RenderOverlay`. A component that needs to paint over its own
-subtree — gridlines above cells, a focus ring around an active cell, a splitter
-grip, a drag adorner — overrides `OnRenderAdornment` instead of appending a
-synthetic last child to the public `Children` collection just to paint above
-earlier siblings. `RenderOverlay` is the last step of all, reserved for chrome
-that must sit visually above the border itself, the way `GroupBox` paints its
-caption over the border it interrupts and `TabControl` paints its tab strip over
-the border edge it sits on; most components never need it.
+border, then `RenderOverlay`. The default `RenderChildren` renders every owned
+child through the shared retained traversal; a component that instead paints a
+subset or a reordered projection of its own children - `GroupBox` skipping its
+header, or `Expander` skipping a `DisplayText` header it paints from
+`OnRenderContent` - overrides `RenderChildren` and calls the protected
+`RenderChild(child, canvas, contentClip)` once per child it paints, rather than
+invoking a child's own render transaction directly. A component that needs to
+paint over its own subtree — gridlines above cells, a focus ring around an
+active cell, a splitter grip, a drag adorner — overrides `OnRenderAdornment`
+instead of appending a synthetic last child to the public `Children` collection
+just to paint above earlier siblings. `RenderOverlay` is the last step of all,
+reserved for chrome that must sit visually above the border itself, the way
+`GroupBox` paints its caption over the border it interrupts and `TabControl`
+paints its tab strip over the border edge it sits on; most components never need
+it.
 
 A derived control with one immutable intrinsic appearance overlay calls
 `InitializeAppearanceOverlay` once in its constructor. The base pipeline then

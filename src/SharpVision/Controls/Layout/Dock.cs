@@ -581,11 +581,11 @@ public sealed class Dock: Container
     {
         if (horizontal)
         {
-            child.ResolveWidthLimits(containingExtent, out minimum, out maximum);
+            ResolveChildWidthLimits(child, containingExtent, out minimum, out maximum);
         }
         else
         {
-            child.ResolveHeightLimits(containingExtent, out minimum, out maximum);
+            ResolveChildHeightLimits(child, containingExtent, out minimum, out maximum);
         }
     }
 

@@ -147,7 +147,7 @@ public sealed class NavigationView: ScrollableCompositeControlBase
     protected override string? AccessKeyText => Header;
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
         children.Add(_headerText);

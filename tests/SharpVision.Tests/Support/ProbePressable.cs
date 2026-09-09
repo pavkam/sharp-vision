@@ -33,6 +33,19 @@ internal sealed class ProbePressable: InputBase
     /// <summary>Attempts to enable the command capability a second time.</summary>
     internal void EnableCommandAgain() => EnableCommand();
 
+    /// <summary>Captures the current command binding, runs <paramref name="publish"/> (which may
+    /// reentrantly rebind <see cref="InputBase.Command"/>), then executes the binding captured
+    /// before that callback ran - exercising the protected capture-then-execute pattern the same
+    /// way <c>CheckBox</c>, <c>RadioButton</c>, and <c>MenuItem</c> use it around their own
+    /// activation callback.</summary>
+    /// <param name="publish">Work simulating an activation callback published between capture and execution.</param>
+    internal void CaptureThenPublishThenExecute(Action publish)
+    {
+        var binding = CaptureCommand();
+        publish();
+        ExecuteCommandIfAny(binding);
+    }
+
     /// <inheritdoc/>
     protected override void Activate(ActivationCause cause)
     {

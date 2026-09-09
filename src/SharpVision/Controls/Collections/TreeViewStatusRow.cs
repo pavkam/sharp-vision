@@ -100,7 +100,7 @@ internal sealed class TreeViewStatusRow: ControlBase
     {
         var style = ResolvedStyle;
 
-        if (this.HasOpaqueFill(GetAppearanceState()))
+        if (HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, style);
         }

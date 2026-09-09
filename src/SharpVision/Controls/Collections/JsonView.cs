@@ -384,7 +384,7 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
             InvalidateRetainedDescendant(_content, InvalidationImpact.Measure);
         }
 
-        if (Bounds.Width > 0 && Bounds.Height > 0 && this.HasOpaqueFill(GetAppearanceState()))
+        if (Bounds.Width > 0 && Bounds.Height > 0 && HasOpaqueFill(GetAppearanceState()))
         {
             canvas.Clear(Bounds, ResolvedStyle);
         }

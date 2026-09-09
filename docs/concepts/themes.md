@@ -107,6 +107,31 @@ shortcuts onto `ResolveColor`, reading the same `colors` entries as every other
 under a parallel `status` object; that section is gone, so `colors` is the one
 place any of them is written.
 
+## Non-appearance theme values
+
+A control occasionally reads a themed value that is not part of the ordinary
+face/border/shadow appearance model - a themed glyph, a shared gap, or another
+value a style resolves from `Theme` directly. `ThemeValueDependency<T>` is the
+public, immutable descriptor for one such value: a pure resolver function from
+`Theme?` to the resolved `T`, the earliest `InvalidationImpact` a changed
+resolved value requires, and an optional equality comparer. A control passes one
+to the protected `ControlBase.ResolveThemeValue<T>(ThemeValueDependency<T>)`
+(see [Control base APIs](../controls/control.md#appearance-extension-point)) to
+resolve the current value and register for invalidation across a later Theme
+swap that changes it.
+
+A dependency instance must stay stable across its owner's lifetime, because
+registration tracks it by reference. A resolver that only reads the `Theme`
+argument, with no captured instance state, belongs in a `static readonly` field
+shared by every instance of the owning type - `TabHeader`, `Expander`, `Text`,
+`TreeViewItem`, `Popup`, and `Window` all do this. A resolver that also reads
+captured instance state instead needs its own dependency per owning instance,
+held in a per-instance field, the way `ChartControlBase` resolves its authored
+series colors.
+`ControlBase.SetThemeValueDependency(IThemeValueDependency, bool)` activates or
+removes a registration for a dependency a control consumes only while some other
+condition holds, rather than for its entire lifetime.
+
 ## Style types
 
 Every themeable style value derives from `ControlStyle` - a required `Face`,

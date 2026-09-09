@@ -490,7 +490,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// <inheritdoc/>
     protected internal override ControlBase? HitTest(Point point)
     {
-        return !IsOpen || IsDisposed || !IsHitTestVisible || !EffectiveIsVisible || !EffectiveIsEnabled
+        return !IsOpen || !CanHitTestSelf(point, requireContainment: false)
             ? null
             : Content?.HitTest(point) ?? (SurfaceBounds.Contains(point) ? this : null);
     }
@@ -691,12 +691,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     {
         if (IsOpen && SurfaceBounds.Width > 0 && SurfaceBounds.Height > 0)
         {
-            DrawFrame(canvas, this.ResolveBorderStyles(VisualState.Normal));
+            DrawFrame(canvas, ResolveBorderStyles(VisualState.Normal));
         }
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         if (IsOpen)
         {

@@ -603,6 +603,25 @@ public sealed class InputBaseTests
         command.Executions.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies the command binding captured before an activation callback runs stays the
+    /// one that executes, even when that callback reentrantly rebinds Command - proving the
+    /// capture-then-execute pattern protects against exactly the redirection its documentation
+    /// describes.</summary>
+    [Fact]
+    public void CaptureCommand_WhenCommandRebindsDuringActivation_ExecutesCapturedBinding()
+    {
+        var parameter = new object();
+        var original = new ProbeCommand();
+        var replacement = new ProbeCommand();
+        var control = new ProbePressable { Command = original, CommandParameter = parameter };
+
+        control.CaptureThenPublishThenExecute(() => control.Command = replacement);
+
+        original.Executions.ShouldBe([parameter]);
+        replacement.Executions.ShouldBeEmpty();
+        control.Command.ShouldBeSameAs(replacement);
+    }
+
     /// <summary>Verifies replacing Command unsubscribes the previous instance's CanExecuteChanged
     /// and subscribes the new one, so only the currently assigned command can invalidate render.</summary>
     [Fact]

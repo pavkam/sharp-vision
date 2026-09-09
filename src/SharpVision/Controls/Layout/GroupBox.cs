@@ -84,7 +84,7 @@ public sealed class GroupBox: HeaderedContentControl
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
     {
-        var opaque = this.HasOpaqueFill(GetAppearanceState());
+        var opaque = HasOpaqueFill(GetAppearanceState());
         if (opaque)
         {
             canvas.Clear(Bounds, ResolvedStyle);
@@ -93,8 +93,13 @@ public sealed class GroupBox: HeaderedContentControl
 
     /// <summary>Renders only <see cref="ContentControl.Content"/> through the ordinary descendant
     /// pass; the header renders from <see cref="RenderOverlay"/> instead, after the border.</summary>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip) =>
-        Content?.Render(canvas, contentClip);
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    {
+        if (Content is { } content)
+        {
+            RenderChild(content, canvas, contentClip);
+        }
+    }
 
     /// <inheritdoc/>
     protected internal override void RenderOverlay(TerminalCanvas canvas)
@@ -104,8 +109,8 @@ public sealed class GroupBox: HeaderedContentControl
             return;
         }
 
-        var opaque = this.HasOpaqueFill(GetAppearanceState());
-        var borderStyles = this.ResolveBorderStyles(GetAppearanceState());
+        var opaque = HasOpaqueFill(GetAppearanceState());
+        var borderStyles = ResolveBorderStyles(GetAppearanceState());
         var border = borderStyles.Top;
         var bg = opaque ? BackgroundMode.Opaque : BackgroundMode.Transparent;
         var actualBorder = ActualBorder;

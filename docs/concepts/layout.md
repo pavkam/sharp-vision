@@ -147,8 +147,11 @@ unbounded measure with no explicit base elsewhere in this document.
 and `ResolveChildHeightLimits` let an externally derived owner resolve a child's
 authored `MinWidth`/`MaxWidth` or `MinHeight`/`MaxHeight` against a containing
 extent it computed itself, using the same resolution the framework applies
-internally. Raw measure, arrange, render, and pending-phase operations stay
-internal.
+internally; `Dock`, `Stack`, `SplitPane`, and `Overlay` all call these instead
+of resolving limits by hand, and the instance pair
+`ResolveWidthLimits`/`ResolveHeightLimits` does the same for a control's own
+limits, as `Window` does during a resize drag. Raw measure, arrange, render, and
+pending-phase operations stay internal.
 
 Fixed and percentage dimensions override alignment. Controls default to
 `HorizontalAlignment.Left`, so an automatic width uses the measured desired

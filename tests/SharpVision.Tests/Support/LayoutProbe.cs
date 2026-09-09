@@ -88,4 +88,43 @@ internal sealed class LayoutProbe: Container
             child.Arrange(bounds);
         }
     }
+
+    /// <summary>Gets or sets whether <see cref="RenderChildren"/> skips the shared retained
+    /// traversal entirely, exercising a third-party override that paints no owned child through
+    /// the protected <see cref="ControlBase.RenderChildren"/> seam.</summary>
+    internal bool SkipRenderChildren { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    {
+        if (SkipRenderChildren)
+        {
+            return;
+        }
+
+        base.RenderChildren(canvas, contentClip);
+    }
+
+    /// <summary>Gets the owned children exposed through <see cref="AddSelectableTextChildren"/>
+    /// while <see cref="AggregatesNamedChildren"/> is armed, exercising a third-party aggregate
+    /// override that excludes generated chrome from semantic-text collection.</summary>
+    internal List<ControlBase> NamedSelectableTextChildren { get; } = [];
+
+    /// <summary>Gets or sets whether <see cref="AddSelectableTextChildren"/> aggregates only
+    /// <see cref="NamedSelectableTextChildren"/> instead of the inherited leaf default.</summary>
+    internal bool AggregatesNamedChildren { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+
+        if (!AggregatesNamedChildren)
+        {
+            return base.AddSelectableTextChildren(children);
+        }
+
+        children.AddRange(NamedSelectableTextChildren);
+        return true;
+    }
 }

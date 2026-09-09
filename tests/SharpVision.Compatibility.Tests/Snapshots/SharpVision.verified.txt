@@ -312,6 +312,7 @@ namespace SharpVision.Controls
     {
         protected CompositeControlBase() { }
         protected SharpVision.Controls.ControlBase Content { get; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected void InitializeContent(SharpVision.Controls.ControlBase content) { }
@@ -328,6 +329,7 @@ namespace SharpVision.Controls
         public SharpVision.Controls.ControlCollection Children { get; }
         protected override bool ClipsDescendantVisualOverflow { get; }
         public SharpVision.Terminal.Geometry.Size Extent { get; }
+        protected virtual bool HitTestsSelf { get; }
         public SharpVision.Scrolling.ScrollBarVisibility HorizontalBarVisibility { get; set; }
         public int HorizontalOffset { get; set; }
         public bool IsKeyboardScrollingEnabled { get; set; }
@@ -335,6 +337,7 @@ namespace SharpVision.Controls
         public int LineSize { get; set; }
         public int MaximumHorizontalOffset { get; }
         public int MaximumVerticalOffset { get; }
+        protected override int NavigationCount { get; }
         public int PageOverlap { get; set; }
         protected virtual bool RemeasureInitialScrollContent { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
@@ -346,6 +349,7 @@ namespace SharpVision.Controls
         public SharpVision.Terminal.Geometry.Size Viewport { get; }
         protected SharpVision.Terminal.Geometry.Rect ViewportBounds { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
         public bool BringIntoView(SharpVision.Terminal.Geometry.Rect logicalBounds, SharpVision.Scrolling.ScrollCause cause = 4) { }
@@ -358,9 +362,12 @@ namespace SharpVision.Controls
         protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
         protected void InitializePanelPresentation() { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override SharpVision.Controls.ControlBase NavigationAt(int index) { }
         protected virtual void OnChildrenChanged() { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override SharpVision.Terminal.Geometry.Size OnMeasuredDesired(SharpVision.Layout.Constraint constraint, SharpVision.Terminal.Geometry.Size desired) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
         public bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
         protected bool ScrollByKnownMaximum(int y, int maximumY, SharpVision.Scrolling.ScrollCause cause) { }
         protected bool ScrollsHorizontally() { }
@@ -370,6 +377,7 @@ namespace SharpVision.Controls
     {
         protected ContentControl() { }
         public SharpVision.Controls.ControlBase? Content { get; set; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
@@ -406,6 +414,7 @@ namespace SharpVision.Controls
         public bool ContainsFocus { get; }
         public SharpVision.Terminal.Geometry.Rect ContentBounds { get; }
         public SharpVision.Menus.ContextMenu? ContextMenu { get; set; }
+        protected virtual SharpVision.Terminal.Geometry.Rect DescendantRenderBounds { get; }
         public SharpVision.Terminal.Geometry.Size DesiredSize { get; }
         public SharpVision.Threading.Dispatcher? Dispatcher { get; }
         public SharpVision.Layout.Length DropDownHeight { get; set; }
@@ -445,6 +454,7 @@ namespace SharpVision.Controls
         public SharpVision.Layout.Length MinHeight { get; set; }
         public SharpVision.Layout.Length MinWidth { get; set; }
         public string? Name { get; set; }
+        protected virtual int NavigationCount { get; }
         protected SharpVision.Terminal.Rendering.CellStyle NormalStyle { get; }
         public SharpVision.Terminal.Geometry.Size OuterDesiredSize { get; }
         public SharpVision.Layout.Thickness Padding { get; set; }
@@ -453,6 +463,7 @@ namespace SharpVision.Controls
         protected virtual string PopupOpenPropertyName { get; }
         protected ulong PopupSessionGeneration { get; }
         protected ulong PopupTransitionVersion { get; }
+        protected virtual bool ProvidesContinuousBackground { get; }
         protected virtual bool ReceivesInheritedSelectionState { get; }
         protected virtual bool RequiresCompleteRender { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
@@ -498,6 +509,7 @@ namespace SharpVision.Controls
         protected virtual void Activate(SharpVision.Input.ActivationCause cause) { }
         public System.IDisposable AddHandler<TArgs>(SharpVision.Input.Event<TArgs> routedEvent, System.EventHandler<TArgs> handler, bool handledEventsToo = false)
             where TArgs : SharpVision.Input.RoutedEventArgs { }
+        protected virtual bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected bool AllowsModalAncestor(SharpVision.Controls.ControlBase ancestor) { }
         protected virtual SharpVision.Terminal.Rendering.CellStyle ApplyTextSelectionStyle(SharpVision.Terminal.Rendering.CellStyle current) { }
         protected void ArrangeChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Geometry.Rect slot, SharpVision.Layout.ResolvedAxes resolvedAxes = 0) { }
@@ -508,6 +520,7 @@ namespace SharpVision.Controls
         protected void BindStyle<TStyle>(SharpVision.Controls.StyleSlot<TStyle> source, SharpVision.Controls.ControlBase target, string targetPropertyName = "Style")
             where TStyle : SharpVision.Styling.ControlStyle { }
         protected bool CanContinueAfterFocus(SharpVision.Threading.Dispatcher? dispatcher) { }
+        protected bool CanHitTestSelf(SharpVision.Terminal.Geometry.Point point, bool requireContainment = true) { }
         protected void CancelDrag(bool releaseCapture) { }
         protected void CancelPressActivation(bool releaseCapture) { }
         protected void CancelTextSelectionGesture(bool releaseCapture) { }
@@ -518,6 +531,7 @@ namespace SharpVision.Controls
         protected bool CommitTextSelectionForAuthoritativeText(SharpVision.Text.Selection selection, string text, System.Action? beforeNotifications = null) { }
         protected virtual void CommitTextSelectionNavigation(SharpVision.Text.Selection selection) { }
         public virtual string CopySelectedText() { }
+        protected virtual SharpVision.Text.SelectableTextSnapshot CreateSelectableTextSnapshot() { }
         public void Dispose() { }
         protected void EnableChromeAuthoring() { }
         protected void EnableDrag(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Func<bool>? tryCapture = null, System.Func<bool>? isAvailable = null) { }
@@ -568,6 +582,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Text.TextSelectionSource? GetTextSelectionSource(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
         protected void HandlePressActivation(SharpVision.Input.RoutedEventArgs e) { }
+        protected bool HasOpaqueFill(SharpVision.Styling.VisualState state) { }
         protected virtual SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
         protected virtual int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         protected virtual int HitTestTextSelectionGlyphCore(SharpVision.Terminal.Geometry.Point cells) { }
@@ -589,6 +604,7 @@ namespace SharpVision.Controls
         protected SharpVision.Terminal.Geometry.Size MeasureChild(SharpVision.Controls.ControlBase child, SharpVision.Layout.Constraint constraint, int? widthRequestBase, int? heightRequestBase, int? widthLimitBase, int? heightLimitBase) { }
         protected virtual SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual int MoveTextSelectionCaret(SharpVision.Terminal.Input.Code code, bool extend, bool word) { }
+        protected virtual SharpVision.Controls.ControlBase NavigationAt(int index) { }
         protected virtual int NormalizeTextSelectionClickCount(SharpVision.Controls.ControlBase? originalSource, int clickCount) { }
         protected bool NotifyPropertiesChanged(SharpVision.Controls.InvalidationImpact impact, [System.Runtime.CompilerServices.ParamCollection] [System.Runtime.CompilerServices.ScopedRef] System.ReadOnlySpan<string> propertyNames) { }
         protected void NotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
@@ -605,6 +621,7 @@ namespace SharpVision.Controls
         protected virtual void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected virtual void OnFocusChanged(bool focused) { }
         protected virtual void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
+        protected virtual SharpVision.Terminal.Geometry.Size OnMeasuredDesired(SharpVision.Layout.Constraint constraint, SharpVision.Terminal.Geometry.Size desired) { }
         protected virtual void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected virtual void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected virtual void OnPopupArranged() { }
@@ -627,6 +644,8 @@ namespace SharpVision.Controls
         protected SharpVision.Controls.RetainedScrollPart RegisterRetainedScrollPart(SharpVision.Controls.Container source, bool forwardsScrollEvent = true, System.Action<SharpVision.Scrolling.ScrollChangedEventArgs>? sourceScrollChanged = null) { }
         protected void ReleasePointerCapture() { }
         protected void RenderAffixes(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics, SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, SharpVision.Terminal.Rendering.CellStyle style) { }
+        protected void RenderChild(SharpVision.Controls.ControlBase child, SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
+        protected virtual void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
         protected virtual void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected bool RequestFocus() { }
         public virtual void ResetBorder() { }
@@ -637,9 +656,13 @@ namespace SharpVision.Controls
         protected int ResolveAffixGap() { }
         public SharpVision.Styling.ControlAppearance ResolveAppearance(SharpVision.Styling.Theme? theme, SharpVision.Styling.VisualState visualState = 0) { }
         protected SharpVision.Styling.BorderGlyphStyle ResolveBorderGlyphs(SharpVision.Styling.BorderGlyphStyle glyphs) { }
+        protected SharpVision.Styling.ResolvedBorderStyles ResolveBorderStyles(SharpVision.Styling.VisualState state) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected System.Text.Rune ResolveControlGlyph(SharpVision.Styling.ControlGlyph glyph) { }
+        protected void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) { }
         protected SharpVision.Terminal.Rendering.CellStyle ResolveSpanStyle(SharpVision.Text.StyleSpan span) { }
+        protected T ResolveThemeValue<T>(SharpVision.Controls.ThemeValueDependency<T> dependency) { }
+        protected void ResolveWidthLimits(int? containingWidth, out int minimum, out int maximum) { }
         protected void RestartPopupNavigationSession() { }
         protected virtual void RevealTextSelectionCaret(int caret) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
@@ -655,6 +678,7 @@ namespace SharpVision.Controls
         protected bool SetPropertyWithComparer<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, System.Collections.Generic.IEqualityComparer<T> comparer, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected void SetSelectedState(bool value) { }
         public virtual void SetTextSelection(SharpVision.Text.Selection selection) { }
+        protected void SetThemeValueDependency(SharpVision.Controls.IThemeValueDependency dependency, bool active) { }
         protected bool SetTransitionProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, SharpVision.Controls.CallbackTransitionStream stream, out SharpVision.Controls.CallbackTransitionTransaction transition, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
         protected bool SetVersionedProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, ref long version, out long commitVersion, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
@@ -667,6 +691,7 @@ namespace SharpVision.Controls
         protected bool TryNotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected bool TryPublishForCurrentDetachedAttachment(SharpVision.Controls.ControlDetachedAttachmentToken token, System.Action action, System.Func<bool>? isOperationCurrent = null) { }
         protected bool TryStartDrag(SharpVision.Terminal.Geometry.Point cells) { }
+        protected virtual void ValidateAttachment() { }
         protected void VerifyMutable() { }
         protected void VerifyTextSelectionEnabled() { }
         protected System.IDisposable WatchAncestorAvailability(System.Action onChanged) { }
@@ -724,6 +749,7 @@ namespace SharpVision.Controls
         protected override string? AccessKeyText { get; }
         public SharpVision.Controls.ControlBase? Header { get; set; }
         public string HeaderText { get; set; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected abstract override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnHeaderChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
@@ -739,6 +765,10 @@ namespace SharpVision.Controls
         TStyle ActualStyle { get; }
         TStyle Style { get; set; }
     }
+    public interface IThemeValueDependency
+    {
+        SharpVision.Controls.InvalidationImpact GetImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current);
+    }
     public abstract class InputBase : SharpVision.Controls.ControlBase
     {
         protected const int DropDownIndicatorReservedWidth = 2;
@@ -749,6 +779,7 @@ namespace SharpVision.Controls
         public System.Windows.Input.ICommand? Command { get; set; }
         public object? CommandParameter { get; set; }
         public SharpVision.Styling.Affix? EndAffix { get; set; }
+        protected bool IsCommandExecutable { get; }
         public bool IsOpen { get; set; }
         protected override string PopupOpenPropertyName { get; }
         public SharpVision.Styling.Affix? StartAffix { get; set; }
@@ -756,8 +787,10 @@ namespace SharpVision.Controls
         protected virtual bool SwallowsInputWhilePopupOpen { get; }
         public virtual string Text { get; set; }
         protected SharpVision.Controls.Display.Text? TextControl { get; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected void ArrangeCaption(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void ArrangeSelectionMarkCaption(SharpVision.Terminal.Geometry.Rect bounds, int markWidth, int markGap, SharpVision.Controls.Input.SelectionMarkPlacement placement, int affixGap) { }
+        protected SharpVision.Input.CommandBinding CaptureCommand() { }
         protected void DrawDropDownIndicator(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect content, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected void EnableCaption() { }
         protected void EnableCommand() { }
@@ -779,6 +812,7 @@ namespace SharpVision.Controls
         protected void RenderSelectionMark(SharpVision.Terminal.Rendering.TerminalCanvas canvas, System.ReadOnlySpan<char> mark, int markWidth, SharpVision.Controls.Input.SelectionMarkPlacement placement, int affixGap) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
         protected SharpVision.Terminal.Geometry.Rect ResolveSegmentBox() { }
+        protected static void ExecuteCommandIfAny(SharpVision.Input.CommandBinding binding) { }
         protected static bool TryGetStepDelta(SharpVision.Input.KeyEventArgs eventArgs, out int delta) { }
     }
     public enum InvalidationImpact
@@ -1031,6 +1065,11 @@ namespace SharpVision.Controls
         {
             public static void ThrowIfContainsControls(string value, string paramName, string message) { }
         }
+    }
+    public sealed class ThemeValueDependency<T> : SharpVision.Controls.IThemeValueDependency
+    {
+        public ThemeValueDependency(System.Func<SharpVision.Styling.Theme, T> resolver, SharpVision.Controls.InvalidationImpact impact, System.Collections.Generic.IEqualityComparer<T>? comparer = null) { }
+        public SharpVision.Controls.InvalidationImpact GetImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current) { }
     }
 }
 namespace SharpVision.Controls.Charts
@@ -1348,6 +1387,7 @@ namespace SharpVision.Controls.Collections
         public SharpVision.Controls.Collections.TabControlStyle? Style { get; set; }
         public event System.EventHandler<SharpVision.Controls.Collections.TabCloseRequestedEventArgs>? CloseRequested;
         public event System.EventHandler<SharpVision.Controls.Collections.TabSelectionChangedEventArgs>? SelectionChanged;
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -1643,6 +1683,7 @@ namespace SharpVision.Controls.Display
         public int CycleLength { get; set; }
         public SharpVision.Controls.Display.PrismDirection Direction { get; set; }
         public double Phase { get; set; }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
     }
     public enum PrismDirection
     {
@@ -1731,6 +1772,7 @@ namespace SharpVision.Controls.Display
     {
         public StatusBar() { }
         public SharpVision.Controls.Display.StatusBarItemCollection Items { get; }
+        protected override bool ProvidesContinuousBackground { get; }
         public int Spacing { get; set; }
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
     }
@@ -1809,6 +1851,7 @@ namespace SharpVision.Controls.Input
         public Button() { }
         public Button(string text) { }
         public SharpVision.Controls.Input.ButtonStyle ActualStyle { get; }
+        protected override SharpVision.Terminal.Geometry.Rect DescendantRenderBounds { get; }
         protected override SharpVision.Terminal.Geometry.Rect InteractionBounds { get; }
         public bool IsCancel { get; set; }
         public bool IsDefault { get; set; }
@@ -2023,6 +2066,7 @@ namespace SharpVision.Controls.Input
         public bool IsOverflowOpen { get; set; }
         public SharpVision.Controls.Input.CommandBarEntryCollection Items { get; }
         protected override string PopupOpenPropertyName { get; }
+        protected override bool ProvidesContinuousBackground { get; }
         public int SelectedIndex { get; set; }
         public SharpVision.Controls.Input.CommandBarItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
@@ -2523,6 +2567,7 @@ namespace SharpVision.Controls.Input
         protected override void OnTextSelectionStateChanged(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool Redo() { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
         public bool ReplaceSelection(string value) { }
         protected override void RevealTextSelectionCaret(int caret) { }
         public void Select(int start, int length) { }
@@ -2593,6 +2638,7 @@ namespace SharpVision.Controls.Layout
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
     }
     public sealed class ExpanderStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Layout.ExpanderStyle>
     {
@@ -2628,6 +2674,7 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
         protected override void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
     }
     public interface ITableDataSource<T>
@@ -2643,9 +2690,12 @@ namespace SharpVision.Controls.Layout
         public bool ClipToBounds { get; set; }
         protected override bool ClipsChildren { get; }
         protected override bool ClipsDescendantVisualOverflow { get; }
+        protected override bool HitTestsSelf { get; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override void GetChildOrder(System.Span<int> indices) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override SharpVision.Controls.ControlBase NavigationAt(int index) { }
         public static SharpVision.Layout.Length? GetBottom(SharpVision.Controls.ControlBase control) { }
         public static SharpVision.Layout.Length? GetLeft(SharpVision.Controls.ControlBase control) { }
         public static SharpVision.Layout.Length? GetRight(SharpVision.Controls.ControlBase control) { }
@@ -3100,6 +3150,7 @@ namespace SharpVision.Dialogs
         protected override void OnSurfaceModalExited(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.ControlBase owner, SharpVision.Controls.ControlBase? initialFocus, System.Threading.CancellationToken cancellationToken) { }
+        protected override void ValidateAttachment() { }
     }
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
@@ -3446,6 +3497,15 @@ namespace SharpVision.Input
         public ColorChangedEventArgs(SharpVision.Terminal.Protocols.Color previousValue, SharpVision.Terminal.Protocols.Color value) { }
         public SharpVision.Terminal.Protocols.Color PreviousValue { get; }
         public SharpVision.Terminal.Protocols.Color Value { get; }
+    }
+    public readonly struct CommandBinding : System.IEquatable<SharpVision.Input.CommandBinding>
+    {
+        public CommandBinding(System.Windows.Input.ICommand? command, object? parameter) { }
+        public System.Windows.Input.ICommand? Command { get; }
+        public object? Parameter { get; }
+        public bool CanExecute() { }
+        public void Deconstruct(out System.Windows.Input.ICommand? command, out object? parameter) { }
+        public void ExecuteIfAny() { }
     }
     public sealed class CurrentItemNavigator
     {
@@ -3957,6 +4017,7 @@ namespace SharpVision.Menus
         public Menu() { }
         public SharpVision.Menus.MenuEntryCollection Items { get; }
         public SharpVision.Layout.Orientation Orientation { get; set; }
+        protected override bool ProvidesContinuousBackground { get; }
         public int SelectedIndex { get; set; }
         public SharpVision.Menus.MenuItem? SelectedItem { get; set; }
         public int Spacing { get; set; }
@@ -4139,6 +4200,7 @@ namespace SharpVision.Navigation
         public SharpVision.Navigation.NavigationViewItem? SelectedItem { get; }
         public bool WrapNavigation { get; set; }
         public event System.EventHandler<SharpVision.Navigation.NavigationViewSelectionChangedEventArgs>? SelectionChanged;
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         public bool BringItemIntoView(SharpVision.Navigation.NavigationViewItem item) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void SelectItem(SharpVision.Navigation.NavigationViewItem item) { }
@@ -4173,6 +4235,7 @@ namespace SharpVision.Navigation
         public SharpVision.Navigation.NavigationViewGroupStyle? Style { get; set; }
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Text.SelectableTextSnapshot CreateSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnDirectDisposalRequested() { }
@@ -4199,6 +4262,8 @@ namespace SharpVision.Navigation
         public override string Text { get; set; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
         protected override void Activate(SharpVision.Input.ActivationCause cause) { }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
+        protected override SharpVision.Text.SelectableTextSnapshot CreateSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override bool OnAccessKey(System.Text.Rune key) { }
         protected override void OnDirectDisposalRequested() { }
@@ -4303,8 +4368,10 @@ namespace SharpVision.Notifications
         protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected override SharpVision.Terminal.Geometry.Size OnMeasuredDesired(SharpVision.Layout.Constraint constraint, SharpVision.Terminal.Geometry.Size desired) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
     }
     public sealed class InfoBarDismissRequestedEventArgs : System.ComponentModel.CancelEventArgs
     {
@@ -4441,6 +4508,7 @@ namespace SharpVision.Popups
         protected override void OnSurfaceModalExited(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public SharpVision.Input.ModalScope OpenModal(SharpVision.Input.OutsideInteraction outsideInteraction = 1, SharpVision.Controls.ControlBase? initialFocus = null) { }
+        protected override void RenderChildren(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentClip) { }
         protected override void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override System.TimeSpan ResolveFadeOutDuration() { }
     }

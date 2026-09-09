@@ -121,7 +121,7 @@ public sealed class Prism: ContentControl
     /// bounds and <see cref="ControlBase.ContentBounds"/>, so empty content, underlay, this control's own
     /// border and shadow, and cells outside the child are not recolored.
     /// </remarks>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         var content = Content;
 

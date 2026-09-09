@@ -326,7 +326,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     internal bool TryActivateItem(
         BreadcrumbItem item,
         ActivationCause cause,
-        (System.Windows.Input.ICommand? Command, object? Parameter) command)
+        CommandBinding command)
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentOutOfRangeException.ThrowIfNotDefined(cause);
@@ -358,7 +358,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             IsAvailableOwned(item) &&
             ReferenceEquals(_currentItem, item))
         {
-            CaptureFailure(() => InputBase.ExecuteCommandIfAny(command), ref failure);
+            CaptureFailure(command.ExecuteIfAny, ref failure);
         }
 
         failure?.Throw();
@@ -373,7 +373,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         long overflowGeneration) =>
         collectionGeneration == CollectionGeneration &&
         overflowGeneration == OverflowGeneration &&
-        TryActivateItem(item, cause, item.CaptureCommand());
+        TryActivateItem(item, cause, item.CaptureCommandForOwner());
 
     /// <summary>Focuses this breadcrumb and activates a mnemonic-selected primary item.</summary>
     internal bool ActivateAccessKey(BreadcrumbItem item, Rune key)
@@ -386,7 +386,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
                IsAvailableOwned(item) &&
                Focus() &&
                IsAvailableOwned(item) &&
-               TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommand());
+               TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommandForOwner());
     }
 
     private void ConfigureItem(BreadcrumbItem item)
@@ -733,7 +733,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             }
 
             eventArgs.IsHandled = _navigator.Current is BreadcrumbItem item &&
-                                  TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommand());
+                                  TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommandForOwner());
             return;
         }
 
@@ -860,7 +860,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             _ = TryActivateItem(
                 activationItem,
                 ActivationCause.Pointer,
-                activationItem.CaptureCommand());
+                activationItem.CaptureCommandForOwner());
         }
         else if (activateOverflow)
         {

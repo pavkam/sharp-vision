@@ -230,14 +230,17 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     /// <summary>Renders only non-caption children through the ordinary descendant pass; a
     /// <see cref="DisplayText"/> header paints from <see cref="OnRenderContent"/> instead, with the
     /// expander's own state-resolved style.</summary>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         if (Header is { } header && header is not DisplayText)
         {
-            header.Render(canvas, contentClip);
+            RenderChild(header, canvas, contentClip);
         }
 
-        Content?.Render(canvas, contentClip);
+        if (Content is { } content)
+        {
+            RenderChild(content, canvas, contentClip);
+        }
     }
 
     /// <inheritdoc/>

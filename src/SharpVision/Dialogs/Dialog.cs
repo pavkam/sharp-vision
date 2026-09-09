@@ -668,7 +668,7 @@ public abstract class Dialog<TResult>: Window
     }
 
     /// <inheritdoc/>
-    internal override void ValidateAttachment()
+    protected internal override void ValidateAttachment()
     {
         base.ValidateAttachment();
 

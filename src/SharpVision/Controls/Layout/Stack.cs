@@ -226,11 +226,11 @@ public sealed class Stack: Container
                 : child.DesiredSize.Width;
             if (Orientation == Orientation.Vertical)
             {
-                child.ResolveHeightLimits(percentBase, out minimum[position], out maximum[position]);
+                ResolveChildHeightLimits(child, percentBase, out minimum[position], out maximum[position]);
             }
             else
             {
-                child.ResolveWidthLimits(percentBase, out minimum[position], out maximum[position]);
+                ResolveChildWidthLimits(child, percentBase, out minimum[position], out maximum[position]);
             }
             position++;
         }

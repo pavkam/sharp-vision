@@ -744,4 +744,61 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         control.ProbeTimeProvider.ShouldBeSameAs(clock);
     }
+
+    /// <summary>Verifies a third-party <see cref="ControlBase.RenderChildren"/> override that
+    /// skips the shared retained traversal leaves every owned child's cells completely unpainted,
+    /// proving the override governs the entire descendant paint rather than an advisory hook the
+    /// framework still runs afterward.</summary>
+    [Fact]
+    public void RenderChildren_WhenOverriddenToSkipChildren_LeavesChildCellsUnpainted()
+    {
+        // Arrange
+        var child = new ProbeControl(new Size(2, 1)) { Content = "X".AsMemory() };
+        var container = new LayoutProbe { SkipRenderChildren = true, Children = { child } };
+        new LayoutEngine().Layout(container, new Size(2, 1));
+        using Frame frame = new(new Size(2, 1));
+
+        // Act
+        container.Render(frame.Canvas);
+
+        // Assert
+        frame.GetCell(new Point(0, 0)).ShouldBe(CellInfo.Blank);
+        child.RenderCalls.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a third-party <see cref="ControlBase.OnMeasuredDesired"/> override can
+    /// report zero desired size regardless of measured content, the way a collapsed InfoBar
+    /// suppresses its own reserved layout space.</summary>
+    [Fact]
+    public void OnMeasuredDesired_WhenOverriddenToZero_ReportsZeroDesiredSize()
+    {
+        // Arrange
+        var probe = new ProbeControl(new Size(6, 3)) { ForceZeroDesiredSize = true };
+
+        // Act
+        probe.Measure(new Constraint(20, 20));
+
+        // Assert
+        probe.DesiredSize.ShouldBe(default);
+    }
+
+    /// <summary>Verifies a third-party <see cref="ControlBase.AddSelectableTextChildren"/>
+    /// override aggregates only the semantic children it names, excluding an owned sibling that
+    /// is not part of that named set.</summary>
+    [Fact]
+    public void AddSelectableTextChildren_WhenOverridden_AggregatesNamedChildrenOnly()
+    {
+        // Arrange
+        var named = new ControlText("Named");
+        var chrome = new ControlText("Chrome");
+        var probe = new LayoutProbe { AggregatesNamedChildren = true, Children = { named, chrome } };
+        probe.NamedSelectableTextChildren.Add(named);
+        new LayoutEngine().Layout(probe, new Size(20, 2));
+
+        // Act
+        var snapshot = probe.GetSelectableTextSnapshot();
+
+        // Assert
+        snapshot.Text.ShouldBe("Named");
+    }
 }

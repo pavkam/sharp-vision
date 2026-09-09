@@ -48,6 +48,16 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
     /// <summary>Gets the identity of the current availability generation.</summary>
     internal ulong AvailabilityGeneration { get; private set; }
 
+    /// <summary>Captures this item's command binding on behalf of its owning <see cref="CommandBar"/>.</summary>
+    /// <remarks>
+    /// The inherited <see cref="InputBase.CaptureCommand"/> is protected so a third-party
+    /// <see cref="InputBase"/> control can capture its own binding; the owning
+    /// <see cref="CommandBar"/> is a sibling type, not a subtype, so it reaches this item's binding
+    /// through this internal bridge instead.
+    /// </remarks>
+    /// <returns>The command and parameter currently bound to this item.</returns>
+    internal CommandBinding CaptureCommandForOwner() => CaptureCommand();
+
     /// <summary>Publishes the item-level event for one bar-owned activation stage.</summary>
     /// <param name="cause">The validated activation path.</param>
     internal void RaiseInvoked(ActivationCause cause) => Invoked?.Invoke(this, new ActivationEventArgs(cause));
@@ -80,7 +90,7 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
 
         var binding = CaptureCommand();
 
-        if (binding.Command is not null && !binding.Command.CanExecute(binding.Parameter))
+        if (!binding.CanExecute())
         {
             return;
         }

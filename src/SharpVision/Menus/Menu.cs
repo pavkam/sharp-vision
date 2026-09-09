@@ -67,7 +67,7 @@ public sealed class Menu: ItemsControl
         BarAppearance.Rebase((theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default));
 
     /// <inheritdoc/>
-    internal override bool ProvidesContinuousBackground => true;
+    protected internal override bool ProvidesContinuousBackground => true;
 
     /// <summary>Raised after an owned item invokes through keyboard, pointer, or programmatic input.</summary>
     public event EventHandler<MenuItemInvokedEventArgs>? ItemInvoked;

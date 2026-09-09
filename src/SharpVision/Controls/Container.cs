@@ -68,7 +68,7 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
 
@@ -148,10 +148,10 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
-    internal override int NavigationCount => Children.Count;
+    protected internal override int NavigationCount => Children.Count;
 
     /// <inheritdoc/>
-    internal override ControlBase NavigationAt(int index)
+    protected internal override ControlBase NavigationAt(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
@@ -182,7 +182,7 @@ public abstract class Container: ControlBase
     /// cref="Layout.Overlay.HitTestsOwnBounds"/> through this seam so a transparent presentation
     /// root - the private overlay <see cref="Screen"/> owns - never claims a click that missed
     /// every child.</remarks>
-    internal virtual bool HitTestsSelf => true;
+    protected internal virtual bool HitTestsSelf => true;
 
     /// <inheritdoc/>
     protected internal override ControlBase? HitTest(Point point)
@@ -260,7 +260,7 @@ public abstract class Container: ControlBase
     }
 
     /// <inheritdoc/>
-    internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal override void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         if (!AutoScroll)
         {
@@ -427,7 +427,7 @@ public abstract class Container: ControlBase
         reserve && bound.HasValue ? Math.Max(0, bound.Value - 1) : bound;
 
     /// <inheritdoc/>
-    internal override Size OnMeasuredDesired(Constraint constraint, Size desired)
+    protected internal override Size OnMeasuredDesired(Constraint constraint, Size desired)
     {
         var horizontalInset = Padding.Horizontal.Add(BorderInset.Horizontal);
         var verticalInset = Padding.Vertical.Add(BorderInset.Vertical);

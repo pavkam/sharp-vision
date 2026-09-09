@@ -96,7 +96,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     }
 
     /// <inheritdoc/>
-    internal override bool ProvidesContinuousBackground => true;
+    protected internal override bool ProvidesContinuousBackground => true;
 
     /// <summary>Raised after an eligible item event and before its captured command executes.</summary>
     public event EventHandler<CommandBarItemInvokedEventArgs>? ItemInvoked;
@@ -446,9 +446,9 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         }
 
         Select(item);
-        var (command, parameter) = item.CaptureCommand();
+        var binding = item.CaptureCommandForOwner();
 
-        if (command is not null && !command.CanExecute(parameter))
+        if (!binding.CanExecute())
         {
             return;
         }
@@ -468,7 +468,7 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
 
         if (IsActivationCurrent(item, activation, entries, availability, itemAvailability))
         {
-            CaptureFailure(() => command?.Execute(parameter), ref failure);
+            CaptureFailure(() => binding.Command?.Execute(binding.Parameter), ref failure);
         }
 
         failure?.Throw();

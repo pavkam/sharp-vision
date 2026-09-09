@@ -3214,12 +3214,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets the number of direct controls eligible for default focus navigation.</summary>
-    internal virtual int NavigationCount => OwnedControls.NavigationCount;
+    protected internal virtual int NavigationCount => OwnedControls.NavigationCount;
 
     /// <summary>Gets one direct control in default focus-navigation order.</summary>
     /// <param name="index">The valid zero-based navigation position.</param>
     /// <returns>The navigation-eligible child at the requested position.</returns>
-    internal virtual ControlBase NavigationAt(int index) => OwnedControls.NavigationAt(index);
+    protected internal virtual ControlBase NavigationAt(int index) => OwnedControls.NavigationAt(index);
 
     /// <summary>Returns the topmost open popup descendant containing one screen-cell point.</summary>
     /// <param name="point">The absolute terminal-cell point.</param>
@@ -3971,7 +3971,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Validates that the complete subtree may receive a dispatcher.</summary>
-    internal virtual void ValidateAttachment()
+    protected internal virtual void ValidateAttachment()
     {
         ThrowIfDisposed();
         OwnedControls.ValidateAttachment();
@@ -4002,7 +4002,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="constraint">The current containing border-box constraint.</param>
     /// <param name="desired">The border-box desired size.</param>
     /// <returns>The committed desired size.</returns>
-    internal virtual Size OnMeasuredDesired(Constraint constraint, Size desired) => desired;
+    protected internal virtual Size OnMeasuredDesired(Constraint constraint, Size desired) => desired;
 
     /// <summary>Adjusts the border-and-padding-deflated content box before arrangement. Default returns it unchanged.</summary>
     /// <param name="padded">The border-and-padding-deflated content-box rectangle.</param>
@@ -4249,7 +4249,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// chrome. The selectable-text collector consumes this seam without constructing intermediate
     /// snapshots.
     /// </remarks>
-    internal virtual bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal virtual bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
         return false;
@@ -4336,15 +4336,37 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets the soft layout aperture applied to normal-layer descendants.</summary>
     /// <remarks>The default is the arranged border box. Specialized translated faces may override it.</remarks>
-    internal virtual Rect DescendantRenderBounds => Bounds;
+    protected internal virtual Rect DescendantRenderBounds => Bounds;
 
     /// <summary>Renders owned descendants after this control's content.</summary>
     /// <param name="canvas">The nearest hard descendant clip.</param>
     /// <param name="contentClip">The inherited soft content clip.</param>
-    internal virtual void RenderChildren(TerminalCanvas canvas, Rect contentClip)
+    protected internal virtual void RenderChildren(TerminalCanvas canvas, Rect contentClip)
     {
         Debug.Assert(!IsDisposed, "A disposed control cannot render children.");
         OwnedControls.RenderNormal(canvas, contentClip);
+    }
+
+    /// <summary>Renders one direct owned child through the framework render transaction.</summary>
+    /// <remarks>
+    /// A <see cref="RenderChildren(TerminalCanvas, Rect)"/> override that renders a subset or a
+    /// reordered projection of owned children - rather than delegating to the default retained
+    /// traversal - calls this once per child it paints.
+    /// </remarks>
+    /// <param name="child">The non-null direct child owned by this control.</param>
+    /// <param name="canvas">The nearest hard descendant clip.</param>
+    /// <param name="contentClip">The inherited soft content clip.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="child"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="child"/> is not directly owned by this control.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached child is accessed off-dispatcher or render is reentered.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The child is disposed.</exception>
+    protected void RenderChild(ControlBase child, TerminalCanvas canvas, Rect contentClip)
+    {
+        ArgumentNullException.ThrowIfNull(child);
+        EnsureDirectOwnedChild(child);
+        child.Render(canvas, contentClip);
     }
 
     /// <summary>Renders owned child content through the current branch clips.</summary>
@@ -4376,7 +4398,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="point">The absolute terminal-cell point.</param>
     /// <param name="requireContainment">Whether the arranged bounds must contain the point.</param>
     /// <returns>True when this control may participate in hit testing.</returns>
-    internal bool CanHitTestSelf(Point point, bool requireContainment = true) =>
+    protected bool CanHitTestSelf(Point point, bool requireContainment = true) =>
         !IsDisposed && IsHitTestVisible && EffectiveIsVisible && EffectiveIsEnabled &&
         (!requireContainment || Bounds.Contains(point));
 
@@ -4683,7 +4705,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="dependency">The stable dependency descriptor.</param>
     /// <returns>The value resolved against the current Theme or library fallback.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="dependency"/> is null.</exception>
-    private protected T ResolveThemeValue<T>(ThemeValueDependency<T> dependency)
+    protected T ResolveThemeValue<T>(ThemeValueDependency<T> dependency)
     {
         ArgumentNullException.ThrowIfNull(dependency);
         RegisterThemeValueDependency(dependency);
@@ -4694,7 +4716,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="dependency">The stable dependency descriptor.</param>
     /// <param name="active">Whether the control currently consumes that Theme value.</param>
     /// <exception cref="ArgumentNullException"><paramref name="dependency"/> is null.</exception>
-    private protected void SetThemeValueDependency(IThemeValueDependency dependency, bool active)
+    protected void SetThemeValueDependency(IThemeValueDependency dependency, bool active)
     {
         ArgumentNullException.ThrowIfNull(dependency);
 
@@ -4930,14 +4952,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="containingWidth">The current containing width, or null during unbounded measurement.</param>
     /// <param name="minimum">The resolved minimum in cells.</param>
     /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
-    internal void ResolveWidthLimits(int? containingWidth, out int minimum, out int maximum) =>
+    protected void ResolveWidthLimits(int? containingWidth, out int minimum, out int maximum) =>
         ResolveLimits(MinWidth, MaxWidth, containingWidth, out minimum, out maximum);
 
     /// <summary>Resolves the authored height limits against one containing border-box height.</summary>
     /// <param name="containingHeight">The current containing height, or null during unbounded measurement.</param>
     /// <param name="minimum">The resolved minimum in cells.</param>
     /// <param name="maximum">The resolved maximum in cells, or <see cref="int.MaxValue"/> when unbounded.</param>
-    internal void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) =>
+    protected void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) =>
         ResolveLimits(MinHeight, MaxHeight, containingHeight, out minimum, out maximum);
 
     /// <summary>Resolves one direct child's authored width limits against a containing border-box
@@ -7305,7 +7327,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether this control establishes a continuous background plane that
     /// framework-owned descendant backgrounds must leave visible.</summary>
-    internal virtual bool ProvidesContinuousBackground => false;
+    protected internal virtual bool ProvidesContinuousBackground => false;
 
     /// <summary>Gets whether the active state locally authors the background and therefore opts out
     /// of a continuous ancestor plane.</summary>
@@ -7336,6 +7358,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;
+
+    /// <summary>Gets whether one visual state resolves to an opaque background fill.</summary>
+    /// <param name="state">The visual state to resolve.</param>
+    /// <returns>True when the resolved appearance paints a fully opaque background.</returns>
+    protected bool HasOpaqueFill(VisualState state) =>
+        GetResolvedAppearance(state).BackgroundMode == BackgroundMode.Opaque;
+
+    /// <summary>Resolves the effective border styles for one visual state.</summary>
+    /// <param name="state">The visual state to resolve.</param>
+    /// <returns>The resolved border glyphs, colors, and edges.</returns>
+    protected ResolvedBorderStyles ResolveBorderStyles(VisualState state) =>
+        GetResolvedAppearance(state).BorderStyles;
 
     private static void VerifyKnownVisualState(VisualState state, string paramName)
     {
@@ -8391,7 +8425,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Creates the concrete snapshot behind the inherited public selection source.</summary>
-    internal virtual SelectableTextSnapshot CreateSelectableTextSnapshot()
+    protected internal virtual SelectableTextSnapshot CreateSelectableTextSnapshot()
     {
         var children = new List<ControlBase>();
         return AddSelectableTextChildren(children)

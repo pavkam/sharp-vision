@@ -51,7 +51,7 @@ public sealed class Overlay: Container
     /// the pinned <c>MoveNext_WhenZOrderDiffers_UsesCollectionOrderAsync</c> regression. Only hit
     /// testing and rendering honor z-order.
     /// </remarks>
-    internal override ControlBase NavigationAt(int index)
+    protected internal override ControlBase NavigationAt(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
 
@@ -66,7 +66,7 @@ public sealed class Overlay: Container
     /// <inheritdoc/>
     /// <remarks>Deliberately bypasses <see cref="GetChildOrder"/> for the same reason as <see
     /// cref="NavigationAt"/>: selectable text reads in collection order, not z-order.</remarks>
-    internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
     {
         ArgumentNullException.ThrowIfNull(children);
         children.AddRange(Children);
@@ -182,7 +182,7 @@ public sealed class Overlay: Container
         => _zIndices.Set(control, value);
 
     /// <inheritdoc/>
-    internal override bool HitTestsSelf => HitTestsOwnBounds;
+    protected internal override bool HitTestsSelf => HitTestsOwnBounds;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
@@ -303,11 +303,11 @@ public sealed class Overlay: Container
         var margin = horizontal ? child.Margin.Horizontal : child.Margin.Vertical;
         if (horizontal)
         {
-            child.ResolveWidthLimits(axis, out var minimum, out var maximum);
+            ResolveChildWidthLimits(child, axis, out var minimum, out var maximum);
             return ResolveAxis(child, length, margin, minimum, maximum, horizontal, axis, leading, trailing);
         }
 
-        child.ResolveHeightLimits(axis, out var verticalMinimum, out var verticalMaximum);
+        ResolveChildHeightLimits(child, axis, out var verticalMinimum, out var verticalMaximum);
         return ResolveAxis(child, length, margin, verticalMinimum, verticalMaximum, horizontal, axis, leading, trailing);
     }
 

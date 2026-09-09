@@ -262,7 +262,7 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     }
 
     /// <inheritdoc/>
-    internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
+    protected internal override SelectableTextSnapshot CreateSelectableTextSnapshot()
     {
         var label = new Rect(
             ContentBounds.X.Add(3),
