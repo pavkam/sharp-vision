@@ -1648,8 +1648,10 @@ public sealed class ContainerTests
         // Act
         await surface.UpdateAsync(() => container.IsPopupOpen = true, "open the owned popup");
 
-        // Assert - the popup actually laid out and painted
-        var bounds = container.Popup.ShouldNotBeNull().Bounds;
+        // Assert - the popup actually laid out and painted. The popup's own Bounds is the root
+        // bounds it arranges within (see ControlBase.Arrange's RootBounds(bounds) call for the
+        // owned popup slot) - SurfaceBounds is its resolved, placed visual footprint.
+        var bounds = container.Popup.ShouldNotBeNull().SurfaceBounds;
         bounds.Width.ShouldBeGreaterThan(0);
         bounds.Height.ShouldBeGreaterThan(0);
         surface.Cell(new Point(bounds.X, bounds.Y)).Text.ShouldNotBeNullOrEmpty();
