@@ -590,6 +590,9 @@ public abstract class Container: ControlBase
     private readonly ScrollBarPairController _scroll;
     private ulong _scrollTransitionVersion;
     private ControlBase? _pendingBringIntoView;
+    private bool _isScrollReservationTransactionActive;
+    private bool _transactionReservedHorizontal;
+    private bool _transactionReservedVertical;
 
     /// <summary>Gets the offsets the last arrange pass translated the content by.</summary>
     /// <remarks>
@@ -613,6 +616,44 @@ public abstract class Container: ControlBase
     /// </remarks>
     private protected void CommitContentArrangedAtCurrentOffset() =>
         ArrangedOffset = new Point(HorizontalOffset, VerticalOffset);
+
+    /// <summary>Begins a scroll-reservation transaction that keeps every automatic
+    /// (<see cref="ScrollBarVisibility.Auto"/>) rail this container reserves monotonic - added but
+    /// never dropped - across every <see cref="ResolveContentSlot"/> call until
+    /// <see cref="EndScrollReservationTransaction"/> runs.</summary>
+    /// <remarks>
+    /// <see cref="Scrolling.WidthDependentViewportCoordinator"/> re-arranges this container several
+    /// times while it settles one width-dependent projection against the resulting viewport width.
+    /// Each re-arrange re-enters <see cref="ResolveContentSlot"/>, and an automatic rail decided
+    /// there ordinarily restarts its probe from "no bar" on every call; for a projection whose
+    /// measured height is not monotone in width, that lets a rail added on one attempt get dropped
+    /// on the next, flip the viewport width back, and repeat forever. Scoping the reservation to
+    /// only grow for the lifetime of one transaction bounds the viewport width to at most two
+    /// changes across the whole transaction (none, then one rail, then both), which the bounded
+    /// attempt budget always has room for. The transaction starts with nothing reserved, so the
+    /// first attempt behaves exactly as an ordinary, non-transactional arrange.
+    /// </remarks>
+    internal void BeginScrollReservationTransaction()
+    {
+        Debug.Assert(!_isScrollReservationTransactionActive, "Scroll reservation transactions do not nest.");
+
+        _isScrollReservationTransactionActive = true;
+        _transactionReservedHorizontal = false;
+        _transactionReservedVertical = false;
+    }
+
+    /// <summary>Ends the scroll-reservation transaction started by
+    /// <see cref="BeginScrollReservationTransaction"/>, restoring the ordinary per-arrange
+    /// automatic rail probe.</summary>
+    /// <remarks>Reservations are deliberately not carried into the next transaction or the next
+    /// ordinary arrange: an automatic rail must still be free to disappear on a later layout pass
+    /// once its content actually shrinks below the viewport.</remarks>
+    internal void EndScrollReservationTransaction()
+    {
+        _isScrollReservationTransactionActive = false;
+        _transactionReservedHorizontal = false;
+        _transactionReservedVertical = false;
+    }
 
     /// <summary>Gets the committed content-box rectangle, after scrollbar reservation, that a
     /// specialized container clips and hit-tests its scrollable content against.</summary>
@@ -1357,7 +1398,18 @@ public abstract class Container: ControlBase
                 new Size(padded.Width, padded.Height),
                 horizontal,
                 vertical),
-            remeasureInitial: RemeasureInitialScrollContent);
+            remeasureInitial: RemeasureInitialScrollContent,
+            // Seed the probe from what this same reservation transaction already added, not from
+            // what a previous, separate arrange left reserved - see BeginScrollReservationTransaction.
+            seedHorizontal: _isScrollReservationTransactionActive && _transactionReservedHorizontal,
+            seedVertical: _isScrollReservationTransactionActive && _transactionReservedVertical);
+
+        if (_isScrollReservationTransactionActive)
+        {
+            _transactionReservedHorizontal |= resolved.Horizontal;
+            _transactionReservedVertical |= resolved.Vertical;
+        }
+
         var extent = resolved.Extent;
         var viewport = resolved.Viewport;
         _scroll.ViewportBounds = new Rect(padded.X, padded.Y, viewport.Width, viewport.Height);

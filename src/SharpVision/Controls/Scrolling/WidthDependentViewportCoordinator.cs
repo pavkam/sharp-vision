@@ -95,6 +95,14 @@ public sealed class WidthDependentViewportCoordinator
         ScrollChangedEventArgs? settled = null;
         var completed = false;
 
+        // Every reprojection attempt below re-arranges _viewport, which re-resolves its own
+        // automatic scrollbar rails. Scoping that resolution to this one transaction keeps a rail
+        // reservation monotonic - added but never dropped - across every attempt, which is what
+        // bounds the viewport width to at most two changes and guarantees Reconcile converges
+        // within its attempt budget instead of oscillating forever. See
+        // Container.BeginScrollReservationTransaction for the full argument.
+        _viewport.BeginScrollReservationTransaction();
+
         try
         {
             arrange();
@@ -104,6 +112,7 @@ public sealed class WidthDependentViewportCoordinator
         }
         finally
         {
+            _viewport.EndScrollReservationTransaction();
             _isReconciling = false;
             _pendingScrollChanged = null;
         }

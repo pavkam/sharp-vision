@@ -126,6 +126,13 @@ internal sealed class ScrollBarPairController
     /// <param name="verticalVisibility">The vertical reservation policy.</param>
     /// <param name="remeasure">Optionally recomputes content after either reservation changes.</param>
     /// <param name="remeasureInitial">Whether to remeasure once against the initial candidate viewport before visibility probes, settling AutoSize content and initially reserved rails.</param>
+    /// <param name="seedHorizontal">Whether an automatic (<see cref="ScrollBarVisibility.Auto"/>)
+    /// horizontal rail already reserved earlier in the same caller-defined transaction should
+    /// start this probe reserved instead of empty. Ignored unless
+    /// <paramref name="horizontalVisibility"/> is <see cref="ScrollBarVisibility.Auto"/>; a caller
+    /// keeping reservations monotonic across several resolutions of the same content passes the
+    /// previous outcome back in here so a rail already added can never be probed away again.</param>
+    /// <param name="seedVertical">The vertical counterpart of <paramref name="seedHorizontal"/>.</param>
     /// <returns>The final content extent, viewport, and two reservation flags.</returns>
     public (Size Extent, Size Viewport, bool Horizontal, bool Vertical) Resolve(
         Size available,
@@ -134,15 +141,19 @@ internal sealed class ScrollBarPairController
         ScrollBarVisibility horizontalVisibility,
         ScrollBarVisibility verticalVisibility,
         Func<bool, bool, Size>? remeasure = null,
-        bool remeasureInitial = false)
+        bool remeasureInitial = false,
+        bool seedHorizontal = false,
+        bool seedVertical = false)
     {
         Debug.Assert(available is { Width: >= 0, Height: >= 0 }, "Scrollbar resolution requires non-negative bounds.");
         Debug.Assert(extent is { Width: >= 0, Height: >= 0 }, "Scrollbar resolution requires non-negative content.");
 
         var horizontal = (axes & ScrollBars.Horizontal) != 0 &&
-                         horizontalVisibility == ScrollBarVisibility.Always;
+                         (horizontalVisibility == ScrollBarVisibility.Always ||
+                          (seedHorizontal && horizontalVisibility == ScrollBarVisibility.Auto));
         var vertical = (axes & ScrollBars.Vertical) != 0 &&
-                       verticalVisibility == ScrollBarVisibility.Always;
+                       (verticalVisibility == ScrollBarVisibility.Always ||
+                        (seedVertical && verticalVisibility == ScrollBarVisibility.Auto));
 
         if (remeasureInitial && remeasure is not null)
         {

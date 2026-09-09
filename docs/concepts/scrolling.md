@@ -60,7 +60,9 @@ settled event, so intermediate layout offsets never become public.
 7. Clamp offsets to `0..max(0, extent - viewport)` and arrange once.
 
 An exact fit does not count as overflow. A zero extent produces a full-size,
-stationary thumb.
+stationary thumb. Step 6's "bars only grow" rule holds for one arrange pass by
+default; a width-dependent reconciliation transaction (below) extends it to
+hold for every attempt in the whole transaction instead.
 
 `Container` and `TextInput` use the same retained scrollbar-pair controller for
 rail ownership, style forwarding, this two-axis feedback loop, bounded tiny
@@ -71,11 +73,23 @@ owns nested input propagation and typed scroll causes.
 
 When a private projection depends on the final viewport width, as in `JsonView`
 or a wrapped `CodeView`, a bounded synchronous transaction captures the exact
-measure constraint, reprojects against the scrollbar-aware width, and remeasures
-and rearranges the retained viewport until stable. Four rebuilds are the
-defensive maximum; failure to converge throws instead of exposing a transitional
-extent. Intermediate scroll transitions are coalesced using the earliest
-previous offset and the final offset, extent, viewport, and cause.
+measure constraint, reprojects against the scrollbar-aware width, and
+remeasures and rearranges the retained viewport until stable. Every automatic
+bar reservation the retained viewport makes across that whole transaction is
+monotone: a later attempt may reserve a bar an earlier attempt left
+unreserved, but never drops one once reserved, extending the per-arrange
+stability probe above from one arrange pass to the whole transaction. Without
+that extension, a projection whose measured height is not monotone in width
+could flip an automatic bar on and off forever, since reprojecting against a
+narrower or wider viewport width changes the very content height the next
+arrange's bar decision depends on. Because a two-axis viewport can then change
+width at most twice across one transaction - unreserved, then one rail, then
+both - any projection is guaranteed to settle within the fixed attempt budget
+below. Four rebuilds are the defensive maximum; failure to converge throws,
+and given that guarantee it only signals an impossible state, never a
+projection shape the coordinator cannot in principle settle. Intermediate
+scroll transitions are coalesced using the earliest previous offset and the
+final offset, extent, viewport, and cause.
 
 A virtualized uniform-row host resolves a percentage row height from that same
 final scrollbar-aware viewport, not from the outer allocation. The resolved
