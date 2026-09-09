@@ -521,7 +521,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
         void CommitFailure()
         {
-            if (IsCurrent(attachment) && _acceptanceVersion == acceptanceVersion)
+            if (IsCurrentAttachment(attachment) && _acceptanceVersion == acceptanceVersion)
             {
                 SetStatus($"Cannot confirm overwrite: {exception.Message}");
             }

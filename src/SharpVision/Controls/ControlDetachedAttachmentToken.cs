@@ -5,11 +5,16 @@ namespace SharpVision.Controls;
 
 /// <summary>Identifies one exact detached lifetime of one control.</summary>
 /// <remarks>
-/// The identity is intentionally opaque and owner-bound. Framework continuations retain it only
-/// to request one synchronous publication through its owner; they cannot infer lifecycle order or
-/// recreate current authority from numeric state.
+/// This is the detached counterpart to <see cref="ControlAttachmentToken"/>: a derived control
+/// captures one with <see cref="ControlBase.TryCaptureDetachedAttachment"/>, then hands it back to
+/// <see cref="ControlBase.TryPublishForCurrentDetachedAttachment"/> so a synchronous publication
+/// runs only while this exact detached lifetime - not merely "still detached" - is still current.
+/// The identity is intentionally opaque and owner-bound: a derived control can retain and return an
+/// instance, but cannot compare, inspect, or recreate current authority from it. Only
+/// <see cref="ControlBase"/> itself can validate one, so a token from a foreign control instance is
+/// inert everywhere but where it was captured.
 /// </remarks>
-internal sealed class ControlDetachedAttachmentToken
+public sealed class ControlDetachedAttachmentToken
 {
     private ControlBase Control { get; }
     private object Identity { get; }

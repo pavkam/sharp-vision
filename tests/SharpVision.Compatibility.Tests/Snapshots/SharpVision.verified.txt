@@ -412,8 +412,10 @@ namespace SharpVision.Controls
         public bool EffectiveIsEnabled { get; }
         public bool EffectiveIsVisible { get; }
         public SharpVision.Styling.Face Face { get; set; }
+        protected SharpVision.Input.FocusReason FocusGainReason { get; }
         protected virtual bool HasAuthoritativeTextSelectionProjection { get; }
         public bool HasPointerCapture { get; }
+        public bool HasPopup { get; }
         public SharpVision.Layout.Length Height { get; set; }
         public SharpVision.Layout.HorizontalAlignment HorizontalAlignment { get; set; }
         protected virtual SharpVision.Terminal.Geometry.Rect InteractionBounds { get; }
@@ -421,6 +423,7 @@ namespace SharpVision.Controls
         protected virtual bool IsCheckedState { get; }
         protected virtual bool IsCurrentState { get; }
         public bool IsDisposed { get; }
+        protected bool IsDisposing { get; }
         protected bool IsDragging { get; }
         public bool IsEnabled { get; set; }
         public bool IsFocusable { get; set; }
@@ -451,6 +454,7 @@ namespace SharpVision.Controls
         protected ulong PopupSessionGeneration { get; }
         protected ulong PopupTransitionVersion { get; }
         protected virtual bool ReceivesInheritedSelectionState { get; }
+        protected virtual bool RequiresCompleteRender { get; }
         protected SharpVision.Terminal.Rendering.CellStyle ResolvedStyle { get; }
         public virtual string SelectedText { get; }
         public SharpVision.Styling.Shadow Shadow { get; set; }
@@ -458,10 +462,13 @@ namespace SharpVision.Controls
         public int TabIndex { get; set; }
         public SharpVision.Input.TabNavigation TabNavigation { get; set; }
         public object? Tag { get; set; }
+        protected bool TerminalDisposalStarted { get; }
+        protected bool TerminalDisposalStartedInAncestry { get; }
         public virtual SharpVision.Text.Selection TextSelection { get; }
         protected SharpVision.Text.TextSelectionGesturePhase TextSelectionPhase { get; }
         protected ulong TextSelectionTransitionVersion { get; }
         public SharpVision.Styling.Theme? Theme { get; }
+        protected System.TimeProvider TimeProvider { get; }
         public bool UseMnemonic { get; set; }
         public SharpVision.Layout.VerticalAlignment VerticalAlignment { get; set; }
         public SharpVision.Layout.Visibility Visibility { get; set; }
@@ -574,6 +581,7 @@ namespace SharpVision.Controls
         protected void InvalidateRetainedDescendant(SharpVision.Controls.ControlBase descendant, SharpVision.Controls.InvalidationImpact impact) { }
         protected void InvalidateVisualState() { }
         protected System.Threading.Tasks.ValueTask InvokeForCurrentAttachmentAsync(SharpVision.Controls.ControlAttachmentToken token, System.Action action, System.Func<bool>? isOperationCurrent = null) { }
+        protected bool IsCurrentAttachment(SharpVision.Controls.ControlAttachmentToken token) { }
         protected virtual bool IsTextSelectionPointerTarget(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected SharpVision.Controls.AffixMetrics MeasureAffixes(SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, int gap) { }
         protected int MeasureCells(System.ReadOnlySpan<char> value) { }
@@ -654,8 +662,10 @@ namespace SharpVision.Controls
         protected SharpVision.Terminal.Geometry.Rect ToLocalBounds(SharpVision.Terminal.Geometry.Rect absolute) { }
         protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
         protected bool TryCaptureAttachment([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SharpVision.Controls.ControlAttachmentToken? token) { }
+        protected bool TryCaptureDetachedAttachment([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SharpVision.Controls.ControlDetachedAttachmentToken? token) { }
         protected bool TryFocusForInteraction() { }
         protected bool TryNotifyPropertyChanged(string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
+        protected bool TryPublishForCurrentDetachedAttachment(SharpVision.Controls.ControlDetachedAttachmentToken token, System.Action action, System.Func<bool>? isOperationCurrent = null) { }
         protected bool TryStartDrag(SharpVision.Terminal.Geometry.Point cells) { }
         protected void VerifyMutable() { }
         protected void VerifyTextSelectionEnabled() { }
@@ -684,6 +694,7 @@ namespace SharpVision.Controls
         public bool Remove(SharpVision.Controls.ControlBase item) { }
         public void RemoveAt(int index) { }
     }
+    public sealed class ControlDetachedAttachmentToken { }
     public sealed class ControlTimer : SharpVision.Controls.IControlAttachmentParticipant, System.IDisposable
     {
         public ControlTimer(System.TimeSpan interval, System.Action onTick, System.Func<bool>? shouldTick = null) { }
@@ -768,7 +779,6 @@ namespace SharpVision.Controls
         protected void RenderSelectionMark(SharpVision.Terminal.Rendering.TerminalCanvas canvas, System.ReadOnlySpan<char> mark, int markWidth, SharpVision.Controls.Input.SelectionMarkPlacement placement, int affixGap) { }
         protected System.Text.Rune ResolveDropDownGlyph(System.Text.Rune fallback) { }
         protected SharpVision.Terminal.Geometry.Rect ResolveSegmentBox() { }
-        protected new void VerifyMutable() { }
         protected static bool TryGetStepDelta(SharpVision.Input.KeyEventArgs eventArgs, out int delta) { }
     }
     public enum InvalidationImpact

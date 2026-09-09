@@ -1554,7 +1554,7 @@ public sealed class Menu: ItemsControl
     }
 
     private bool IsCurrentAttachmentOrDetached(ControlAttachmentToken? attachment) =>
-        attachment is { } token ? IsCurrent(token) : Dispatcher is null;
+        attachment is { } token ? IsCurrentAttachment(token) : Dispatcher is null;
 
     private void UpdateItemSizing()
     {

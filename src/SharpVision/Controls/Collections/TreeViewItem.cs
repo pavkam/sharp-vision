@@ -1280,7 +1280,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     {
         attachment.Dispatcher.PostBackgroundCompletion(() =>
         {
-            if (IsCurrent(attachment) && (isOperationCurrent?.Invoke() ?? true))
+            if (IsCurrentAttachment(attachment) && (isOperationCurrent?.Invoke() ?? true))
             {
                 action();
             }
@@ -1377,7 +1377,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         ITreeViewChildSource source,
         LatestControlOperationLease lease) =>
         !IsDisposed &&
-        IsCurrent(attachment) &&
+        IsCurrentAttachment(attachment) &&
         ReferenceEquals(ChildSource, source) &&
         _loadOperation.IsCurrent(lease) &&
         ChildState == TreeViewChildState.Loading;

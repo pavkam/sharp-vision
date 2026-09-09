@@ -193,7 +193,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         var captured = new ControlAttachmentToken(this, dispatcher, AttachmentIdentity);
 
-        if (!IsCurrent(captured))
+        if (!IsCurrentAttachment(captured))
         {
             return false;
         }
@@ -245,7 +245,16 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Checks whether an opaque identity still names this exact live attachment.</summary>
     /// <param name="token">The captured identity.</param>
     /// <returns>True only while this control remains on that attachment.</returns>
-    internal bool IsCurrent(ControlAttachmentToken token)
+    /// <remarks>
+    /// This is the synchronous currency check <see cref="PostForCurrentAttachment"/> and
+    /// <see cref="InvokeForCurrentAttachmentAsync"/> already perform before running their deferred
+    /// callback. A control that already holds a captured token and needs an immediate yes-or-no
+    /// answer, rather than deferring through <c>Post</c> or <c>InvokeAsync</c>, calls this
+    /// directly - the way <see cref="Collections.TreeViewItem"/> and <see cref="Input.SuggestionInput"/>
+    /// gate a synchronous continuation against a captured attachment before touching retained state.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="token"/> is null.</exception>
+    protected internal bool IsCurrentAttachment(ControlAttachmentToken token)
     {
         ArgumentNullException.ThrowIfNull(token);
         return !IsDisposed &&
@@ -257,7 +266,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// identity.</summary>
     /// <param name="token">The exact owner-bound identity, or null when attached or disposing.</param>
     /// <returns>True only when a live detached identity was captured and revalidated.</returns>
-    internal bool TryCaptureDetachedAttachment(
+    /// <remarks>
+    /// The detached counterpart to <see cref="TryCaptureAttachment"/>, for owner-bound work that
+    /// only makes sense before this control is ever attached to a dispatcher - a derived
+    /// constructor that starts observing an external source it must stop observing again once
+    /// attachment or disposal makes the capture stale.
+    /// </remarks>
+    protected bool TryCaptureDetachedAttachment(
         [NotNullWhen(true)] out ControlDetachedAttachmentToken? token)
     {
         token = null;
@@ -298,7 +313,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
     /// <returns>True when the publication ran; false when lifecycle or domain authority was stale.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="token"/> or <paramref name="action"/> is null.</exception>
-    internal bool TryPublishForCurrentDetachedAttachment(
+    protected bool TryPublishForCurrentDetachedAttachment(
         ControlDetachedAttachmentToken token,
         Action action,
         Func<bool>? isOperationCurrent = null)
@@ -359,7 +374,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         void InvokeOrDiscard()
         {
-            if (IsCurrent(token) && (isOperationCurrent?.Invoke() ?? true))
+            if (IsCurrentAttachment(token) && (isOperationCurrent?.Invoke() ?? true))
             {
                 action();
                 return;
@@ -422,7 +437,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ArgumentNullException.ThrowIfNull(action);
         return token.Dispatcher.InvokeAsync(() =>
         {
-            if (IsCurrent(token) && (isOperationCurrent?.Invoke() ?? true))
+            if (IsCurrentAttachment(token) && (isOperationCurrent?.Invoke() ?? true))
             {
                 action();
             }
@@ -430,7 +445,15 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
-    private protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
+    /// <remarks>
+    /// A control that seeds "now" - a temporal input's initial value, a toast's auto-dismiss
+    /// deadline, a chase indicator's animation clock - reads this lazily every time it needs the
+    /// current instant rather than latching it once into a field at construction. The owning
+    /// dispatcher, and therefore its clock, is not committed until attachment completes, and a
+    /// deterministic test clock installed on that dispatcher must be observable by every control
+    /// that later attaches to it, not only by controls constructed after the swap.
+    /// </remarks>
+    protected TimeProvider TimeProvider => Dispatcher?.TimeProvider ?? TimeProvider.System;
 
     /// <summary>Gets the immutable Unicode cell policy inherited from the root.</summary>
     protected internal UnicodePolicy CellPolicy { get; private set; } = UnicodePolicy.Default;
@@ -1390,12 +1413,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether the popup capability is enabled, without throwing when it is not.</summary>
     /// <remarks>
-    /// <see cref="IsPopupOpen"/> throws when the popup capability is not enabled, so an in-assembly
-    /// capability that only conditionally involves an owned popup - such as <see cref="InputBase"/>
-    /// routing segment-editing input while the popup owner still supports a popup-less field
+    /// <see cref="IsPopupOpen"/> throws when the popup capability is not enabled, so a capability
+    /// that only conditionally involves an owned popup - such as <see cref="InputBase"/> routing
+    /// segment-editing input while the popup owner still supports a popup-less field
     /// (<see cref="Input.TimeInput"/>) - checks this first.
     /// </remarks>
-    private protected bool HasPopupCapability => _popupCoordinator is not null;
+    public bool HasPopup => _popupCoordinator is not null;
 
     /// <summary>Gets or sets whether the owned popup is open.</summary>
     /// <remarks>
@@ -1733,16 +1756,35 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private bool IsRendering { get; set; }
 
     /// <summary>Gets whether disposal is currently unwinding this control, before <see cref="IsDisposed"/> flips true.</summary>
-    internal bool IsDisposing { get; private set; }
+    /// <remarks>
+    /// True from the moment this control's dispose sequence begins until <see cref="IsDisposed"/>
+    /// itself commits. A foreign items owner that must tell "still unwinding disposal" apart from
+    /// "already fully disposed" - the distinction an owner needs before it can safely unlink a
+    /// removed item mid-teardown - reads this instead of relying on <see cref="IsDisposed"/> alone,
+    /// which stays false for this entire window.
+    /// </remarks>
+    protected internal bool IsDisposing { get; private set; }
 
     private bool _terminalDisposalStarted;
 
     /// <summary>Gets whether this control owns the active terminal-disposal lifetime boundary.</summary>
-    /// <remarks>Ownership publication uses this only to permit the framework's pre-disposal unlink.</remarks>
-    internal bool TerminalDisposalStarted => Volatile.Read(ref _terminalDisposalStarted);
+    /// <remarks>
+    /// True for the exact control that began an owner-driven terminal disposal, from the moment
+    /// that disposal is published until it completes. Ownership publication uses this only to
+    /// permit the framework's pre-disposal unlink. A descendant elsewhere in the same subtree
+    /// observes this as false on itself even while an ancestor's terminal disposal is under way -
+    /// see <see cref="TerminalDisposalStartedInAncestry"/> for the whole-ancestry check.
+    /// </remarks>
+    protected internal bool TerminalDisposalStarted => Volatile.Read(ref _terminalDisposalStarted);
 
     /// <summary>Gets whether this control or a retained ancestor has begun terminal disposal.</summary>
-    internal bool TerminalDisposalStartedInAncestry
+    /// <remarks>
+    /// Walks <see cref="Parent"/> upward from this control, returning true at the first ancestor -
+    /// including this control itself - whose own <see cref="TerminalDisposalStarted"/> is true. A
+    /// control that must abandon in-flight owner-scoped work anywhere under an ancestor's
+    /// unwinding disposal, not only its own, checks this instead of <see cref="TerminalDisposalStarted"/>.
+    /// </remarks>
+    protected bool TerminalDisposalStartedInAncestry
     {
         get
         {
@@ -2603,12 +2645,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     // owned popups of its own (OwnedControlCount covers both layers), and no visible shadow
     // (CopyFromPrevious never restores VisualBounds' shadow-expanded overflow region). A control
     // whose paint has an effect a cell copy alone cannot reproduce opts out via
-    // RequiresCompleteRender - still available as a general escape hatch, though nothing sets it
-    // today; Display.Image used to (see the placement paragraph below for why it no longer needs
-    // to). A transparent underlay never authors its uncovered cells - those cells hold whatever the
-    // parent painted underneath, so copying them resurrects the parent's OLD content over content
-    // that may have since changed with no invalidation of this otherwise render-clean control;
-    // requiring an opaque fill excludes exactly that case.
+    // RequiresCompleteRender - an escape hatch open to any derived control, not merely a
+    // framework-internal one, though nothing overrides it today; Display.Image used to (see the
+    // placement paragraph below for why it no longer needs to). A transparent underlay never
+    // authors its uncovered cells - those cells hold whatever the parent painted underneath, so
+    // copying them resurrects the parent's OLD content over content that may have since changed
+    // with no invalidation of this otherwise render-clean control; requiring an opaque fill
+    // excludes exactly that case.
     //
     // A visible shadow is safe to reuse under the identical reasoning, extended one level: a
     // shadow cell is safe to copy exactly when its own paint is a full destination overwrite that
@@ -4282,10 +4325,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     /// <summary>Gets whether this control's own paint has an effect a copied cell region cannot
     /// reproduce, so it always runs the complete paint sequence instead of a render-clean copy.</summary>
-    /// <remarks>Overridden by <see cref="Display.Image"/>: <see cref="TerminalCanvas.DrawImage"/>
-    /// records a backend-neutral placement alongside the cells it paints, and copying previous cells
-    /// never replays that call.</remarks>
-    internal virtual bool RequiresCompleteRender => false;
+    /// <remarks>
+    /// An escape hatch for a control whose own paint has an effect a cell copy alone cannot
+    /// reproduce - a side channel a render-clean reuse would silently skip replaying. Nothing in
+    /// the library overrides it today: <see cref="Display.Image"/> instead re-asserts its
+    /// backend-neutral placement through <see cref="OnReuseCleanRender"/>, which already runs at
+    /// the position a full render would have drawn it.
+    /// </remarks>
+    protected internal virtual bool RequiresCompleteRender => false;
 
     /// <summary>Gets the soft layout aperture applied to normal-layer descendants.</summary>
     /// <remarks>The default is the arranged border box. Specialized translated faces may override it.</remarks>
@@ -7357,9 +7404,6 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <returns>The non-null complete appearance states.</returns>
     internal AppearanceStates ResolveAppearanceStates(Theme? theme) => GetAppearanceStates(theme);
 
-    [Pure]
-    internal static Color ResolveThemeColor(Color color) => color;
-
     /// <summary>Resolves a possibly-literal color value against an optional theme.</summary>
     /// <param name="value">The literal or theme-referenced color value.</param>
     /// <param name="theme">The active theme, or null when no theme resolves the value.</param>
@@ -7387,15 +7431,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     protected TerminalStyle ResolveSpanStyle(StyleSpan span)
     {
         var inherited = ResolvedStyle;
-        var foreground = span.Foreground is { } configuredForeground
-            ? ResolveThemeColor(configuredForeground)
-            : (Color?) null;
-        var background = span.Background is { } configuredBackground
-            ? ResolveThemeColor(configuredBackground)
-            : (Color?) null;
-        var underlineColor = span.UnderlineColor is { } configuredUnderlineColor
-            ? ResolveThemeColor(configuredUnderlineColor)
-            : (Color?) null;
+        var foreground = span.Foreground;
+        var background = span.Background;
+        var underlineColor = span.UnderlineColor;
 
         return DecorationResolver.Merge(
             inherited,
@@ -7671,7 +7709,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// would move the viewport out from under the very cell the user is pressing, and the
     /// subsequent hit test would land on whatever scrolled underneath it instead.
     /// </remarks>
-    internal FocusReason FocusGainReason { get; private set; }
+    protected FocusReason FocusGainReason { get; private set; }
 
     /// <summary>Records the reason for an imminent direct focus gain.</summary>
     /// <param name="reason">The defined reason the focus manager is committing.</param>

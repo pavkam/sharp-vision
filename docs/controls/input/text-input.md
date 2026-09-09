@@ -71,13 +71,16 @@ assignments; `Select(start, length)` validates overflow, containment, and both
 grapheme boundaries before committing a forward range. The automatic
 caret-reveal chase that keeps `HorizontalOffset`/`VerticalOffset` tracking the
 caret runs only while the editor is focused, since there is no visible caret to
-reveal otherwise — gaining focus forces one reveal pass immediately, and losing
-focus leaves both offsets exactly where they were. Only content or viewport size
-changes still clamp an out-of-range offset back into bounds, focused or not;
-wheel scrolling is unaffected by any of this (see [Pointer](#pointer)). If
-`SelectionChanged` synchronously commits a newer range, the superseded
-transition does not subsequently reach inherited `TextSelectionChanged`
-subscribers.
+reveal otherwise — gaining focus forces one reveal pass immediately, except a
+focus gain reported through `ControlBase.FocusGainReason` as `Pointer`, which
+skips it: a primary press focuses the editor before the press itself is routed,
+so chasing the stale caret there would scroll the viewport out from under the
+very cell being pressed. Losing focus leaves both offsets exactly where they
+were. Only content or viewport size changes still clamp an out-of-range offset
+back into bounds, focused or not; wheel scrolling is unaffected by any of this
+(see [Pointer](#pointer)). If `SelectionChanged` synchronously commits a newer
+range, the superseded transition does not subsequently reach inherited
+`TextSelectionChanged` subscribers.
 
 `ReplaceSelection` reuses the control's ordinary validation, `MaxLength`
 truncation, grapheme-safe boundaries, undo recording, and

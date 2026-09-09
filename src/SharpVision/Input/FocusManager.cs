@@ -799,7 +799,7 @@ public sealed class FocusManager: IDisposable
         ReferenceEquals(Focused, target) &&
         ReferenceEquals(target.FocusOwner, this) &&
         PendingKeyboardRevealAttachment is { } attachment &&
-        target.IsCurrent(attachment) &&
+        target.IsCurrentAttachment(attachment) &&
         ReferenceEquals(Root.ModalityOwner?.Active, PendingKeyboardRevealScope) &&
         IsMember(target) &&
         IsAllowed(target) &&

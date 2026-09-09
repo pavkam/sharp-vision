@@ -444,7 +444,7 @@ public sealed class Binding: IDisposable
         var dispatcher = attachment.Dispatcher;
         Debug.Assert(dispatcher.CheckAccess(), "A posted binding update runs on its target dispatcher.");
 
-        if (!Target.IsCurrent(attachment))
+        if (!Target.IsCurrentAttachment(attachment))
         {
             ClearScheduled(attachment);
             ScheduleSourceUpdate();
@@ -468,7 +468,7 @@ public sealed class Binding: IDisposable
 
                 ApplySourceToTarget();
 
-                if (!Target.IsCurrent(attachment))
+                if (!Target.IsCurrentAttachment(attachment))
                 {
                     ClearScheduled(attachment);
                     ScheduleSourceUpdate();
@@ -599,7 +599,7 @@ public sealed class Binding: IDisposable
         dispatcher.PostBackgroundCompletion(
             () =>
             {
-                if (Target.IsCurrent(attachment))
+                if (Target.IsCurrentAttachment(attachment))
                 {
                     DrainSourceUpdates(attachment);
                 }

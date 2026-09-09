@@ -14,18 +14,18 @@ public sealed class ControlAttachmentTokenTests
         // Arrange
         using var owner = new ProbeControl();
         using var foreignOwner = new ProbeControl();
-        owner.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+        owner.ProbeTryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
         var synthetic = new ControlDetachedAttachmentToken(owner, new object());
         var publications = new List<string>();
 
         // Act
-        var current = owner.TryPublishForCurrentDetachedAttachment(
+        var current = owner.ProbeTryPublishForCurrentDetachedAttachment(
             authority,
             () => publications.Add("current"));
-        var foreign = foreignOwner.TryPublishForCurrentDetachedAttachment(
+        var foreign = foreignOwner.ProbeTryPublishForCurrentDetachedAttachment(
             authority,
             () => publications.Add("foreign"));
-        var forged = owner.TryPublishForCurrentDetachedAttachment(
+        var forged = owner.ProbeTryPublishForCurrentDetachedAttachment(
             synthetic,
             () => publications.Add("forged"));
 
@@ -43,20 +43,20 @@ public sealed class ControlAttachmentTokenTests
     {
         // Arrange
         var control = new ProbeControl();
-        control.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+        control.ProbeTryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
         await using var dispatcher = Dispatcher.Start();
 
         // Act
         var failures = await dispatcher.InvokeAsync(
             () =>
             {
-                var attach = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                var attach = Record.Exception(() => control.ProbeTryPublishForCurrentDetachedAttachment(
                     authority,
                     () => control.Attach(dispatcher)));
-                var detach = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                var detach = Record.Exception(() => control.ProbeTryPublishForCurrentDetachedAttachment(
                     authority,
                     control.Detach));
-                var dispose = Record.Exception(() => control.TryPublishForCurrentDetachedAttachment(
+                var dispose = Record.Exception(() => control.ProbeTryPublishForCurrentDetachedAttachment(
                     authority,
                     control.Dispose));
                 return new[] { attach, detach, dispose };
@@ -82,10 +82,10 @@ public sealed class ControlAttachmentTokenTests
         var owner = new ProbeOwnedControl();
         var child = new ProbeControl();
         owner.AddPrimary(child);
-        child.TryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
+        child.ProbeTryCaptureDetachedAttachment(out var authority).ShouldBeTrue();
 
         // Act
-        var failure = Record.Exception(() => child.TryPublishForCurrentDetachedAttachment(
+        var failure = Record.Exception(() => child.ProbeTryPublishForCurrentDetachedAttachment(
             authority,
             owner.Dispose));
 
@@ -99,7 +99,7 @@ public sealed class ControlAttachmentTokenTests
 
     /// <summary>Verifies away-and-back attachment to the same dispatcher invalidates a token.</summary>
     [Fact]
-    public async Task IsCurrent_WhenDetachedAndReattachedToSameDispatcher_ReturnsFalseAsync()
+    public async Task IsCurrentAttachment_WhenDetachedAndReattachedToSameDispatcher_ReturnsFalseAsync()
     {
         await using var dispatcher = Dispatcher.Start();
         var control = new ProbeControl();
@@ -109,7 +109,7 @@ public sealed class ControlAttachmentTokenTests
             var token = control.CaptureAttachment();
             control.Detach();
             control.Attach(dispatcher);
-            return control.IsCurrent(token);
+            return control.IsCurrentAttachment(token);
         }, TestContext.Current.CancellationToken);
 
         result.ShouldBeFalse();
@@ -117,7 +117,7 @@ public sealed class ControlAttachmentTokenTests
 
     /// <summary>Verifies reattachment to another dispatcher invalidates the prior identity.</summary>
     [Fact]
-    public async Task IsCurrent_WhenReattachedToAnotherDispatcher_ReturnsFalseAsync()
+    public async Task IsCurrentAttachment_WhenReattachedToAnotherDispatcher_ReturnsFalseAsync()
     {
         await using var firstDispatcher = Dispatcher.Start();
         await using var secondDispatcher = Dispatcher.Start();
@@ -134,7 +134,7 @@ public sealed class ControlAttachmentTokenTests
             () => control.Attach(secondDispatcher),
             TestContext.Current.CancellationToken);
 
-        control.IsCurrent(token).ShouldBeFalse();
+        control.IsCurrentAttachment(token).ShouldBeFalse();
     }
 
     /// <summary>Verifies a queued callback discarded after same-dispatcher reattachment never runs.</summary>

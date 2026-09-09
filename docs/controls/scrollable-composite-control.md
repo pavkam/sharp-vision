@@ -113,8 +113,8 @@ descendant of the component by the time `InitializeScrollableContent` runs.
 Internally, `InitializeScrollableContent` obtains a `RetainedScrollPart` through
 the protected `ControlBase.RegisterRetainedScrollPart` seam - the same seam
 `RegisterRetainedPartProperty<T>` uses for a single forwarded property. Both are
-public authoring primitives a derived control can use directly to build a custom
-retained-part bridge beyond scrolling; `RetainedScrollPart` and
+protected authoring primitives a derived control can use directly to build a
+custom retained-part bridge beyond scrolling; `RetainedScrollPart` and
 `RetainedPartProperty<T>` are obtained only through these registration methods
 and are never constructed directly. Either bridge's lifetime follows the
 registering component: it disposes automatically once the component disposes, or

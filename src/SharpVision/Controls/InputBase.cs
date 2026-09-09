@@ -793,7 +793,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     /// popup owns the interaction surface while open, so nothing beneath it - not even a pointer
     /// press into the closed field's own segment box - can reach the field underneath. This is
     /// only consulted when the popup capability is enabled at all (see
-    /// <see cref="ControlBase.HasPopupCapability"/>); a segmented field without a popup
+    /// <see cref="ControlBase.HasPopup"/>); a segmented field without a popup
     /// (<see cref="TimeInput"/>) never reaches this check, so it never swallows on
     /// this account.
     /// </remarks>
@@ -872,7 +872,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             segmentBox,
             provider(),
             isPlaceholder,
-            canHighlight: IsFocused && !(HasPopupCapability && IsPopupOpen));
+            canHighlight: IsFocused && !(HasPopup && IsPopupOpen));
 
         if (_segmentReservesDropDownIndicator)
         {
@@ -1294,7 +1294,7 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
                 return;
             }
 
-            if (HasPopupCapability && SwallowsInputWhilePopupOpen && IsPopupOpen)
+            if (HasPopup && SwallowsInputWhilePopupOpen && IsPopupOpen)
             {
                 return;
             }
@@ -1519,14 +1519,4 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     }
 
     #endregion
-
-    /// <summary>Throws when mutation is not valid for this control.</summary>
-    /// <remarks>
-    /// <see cref="ControlBase.VerifyMutable"/> is internal, so a third-party derivative cannot
-    /// call it directly. This exposes the identical off-dispatcher and disposed guard shipped
-    /// controls already use, under the same name.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    protected new void VerifyMutable() => base.VerifyMutable();
 }

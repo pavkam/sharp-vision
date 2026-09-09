@@ -642,4 +642,106 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         FrameOracle.Get(frame, new Point(0, 0)).ShouldBe("O");
     }
+
+    /// <summary>Verifies <see cref="ControlBase.HasPopup"/> reports false for a plain control that
+    /// never calls <see cref="ControlBase.EnablePopup"/>, matching the non-throwing probe
+    /// <see cref="ControlBase.IsPopupOpen"/> itself relies on before it can safely throw.</summary>
+    [Fact]
+    public void HasPopup_WhenCapabilityNotEnabled_IsFalse()
+    {
+        // Arrange
+        var control = new ProbeControl();
+
+        // Act and assert
+        control.HasPopup.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies <see cref="ControlBase.HasPopup"/> reports true once
+    /// <see cref="ControlBase.EnablePopup"/> has run.</summary>
+    [Fact]
+    public void HasPopup_WhenPopupEnabled_IsTrue()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+
+        // Act and assert
+        probe.HasPopup.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies <see cref="ControlBase.IsDisposing"/> is already true while
+    /// <c>OnUnavailable(ReleaseReason.Disposed)</c> runs, before <see cref="ControlBase.IsDisposed"/>
+    /// itself commits - the ordering a foreign items owner relies on to tell "still unwinding" apart
+    /// from "already disposed".</summary>
+    [Fact]
+    public void IsDisposing_WhenObservedFromOnUnavailableDuringDispose_IsTrue()
+    {
+        // Arrange
+        bool? isDisposingDuringUnavailable = null;
+        var control = new OwnershipObserverControl
+        {
+            BecomingUnavailable = (current, reason) =>
+            {
+                if (reason == ReleaseReason.Disposed)
+                {
+                    isDisposingDuringUnavailable = current.IsDisposing;
+                }
+            },
+        };
+
+        // Act
+        control.Dispose();
+
+        // Assert
+        isDisposingDuringUnavailable.ShouldBe(true);
+        control.IsDisposing.ShouldBeFalse();
+        control.IsDisposed.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a captured attachment stops being current the moment the control
+    /// detaches, exercising <see cref="ControlBase.IsCurrentAttachment(ControlAttachmentToken)"/>
+    /// directly rather than through the deferred <c>Post</c>/<c>InvokeAsync</c> seams that already
+    /// call it internally.</summary>
+    [Fact]
+    public async Task IsCurrentAttachment_WhenControlDetached_IsFalseAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var control = new AttachmentParticipantOwner();
+        ControlAttachmentToken? token = null;
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(dispatcher);
+                _ = control.TryCaptureAttachment(out token);
+                control.Detach();
+            },
+            TestContext.Current.CancellationToken);
+
+        // Act
+        var isCurrent = control.IsCurrentAttachment(token!);
+
+        // Assert
+        isCurrent.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies <see cref="ControlBase.TimeProvider"/> returns the exact clock installed
+    /// on the dispatcher the control attaches to, proving a control that seeds "now" observes a
+    /// deterministic test clock swapped in after construction rather than a value latched earlier.</summary>
+    [Fact]
+    public async Task TimeProvider_WhenAttachedToDispatcherWithClock_ReturnsThatClockAsync()
+    {
+        // Arrange
+        var clock = new ManualTimeProvider();
+        await using var dispatcher = Dispatcher.Start(timeProvider: clock);
+        var control = new ProbeControl();
+
+        // Act
+        await dispatcher.InvokeAsync(
+            () => control.Attach(dispatcher),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        control.ProbeTimeProvider.ShouldBeSameAs(clock);
+    }
 }

@@ -961,7 +961,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         ControlAttachmentToken attachment) =>
         !IsDisposed &&
         _loadOperation.IsCurrent(lease) &&
-        IsCurrent(attachment);
+        IsCurrentAttachment(attachment);
 
     private void AbortStartingLoad(LatestControlOperationLease lease)
     {

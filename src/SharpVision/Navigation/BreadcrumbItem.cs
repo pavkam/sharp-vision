@@ -45,7 +45,7 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
     }
 
     /// <summary>Gets whether this item is its owner's semantic current location.</summary>
-    public new bool IsCurrent => _isCurrent;
+    public bool IsCurrent => _isCurrent;
 
     /// <summary>Gets or sets the complete local item presentation, or null for theme ownership.</summary>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>

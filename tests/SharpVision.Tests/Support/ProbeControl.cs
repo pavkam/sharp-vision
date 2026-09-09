@@ -3,6 +3,8 @@
 
 namespace SharpVision.Tests.Support;
 
+using System.Diagnostics.CodeAnalysis;
+
 #pragma warning disable IDE0001 // Keep the terminal drawing alias explicit after retiring layout Canvas.
 #pragma warning restore IDE0001
 
@@ -106,6 +108,30 @@ internal sealed class ProbeControl: ChromeProbe
     /// <summary>Requests keyboard focus through the protected consumer seam.</summary>
     /// <returns>Whether focus was acquired or already owned.</returns>
     internal bool RequestProbeFocus() => RequestFocus();
+
+    /// <summary>Gets the attached dispatcher's clock, or the system clock while detached, through
+    /// the protected <see cref="ControlBase.TimeProvider"/> seam.</summary>
+    internal TimeProvider ProbeTimeProvider => TimeProvider;
+
+    /// <summary>Attempts to capture this probe's exact detached lifetime through the protected
+    /// <see cref="ControlBase.TryCaptureDetachedAttachment"/> seam.</summary>
+    /// <param name="token">The exact owner-bound identity, or null when attached or disposing.</param>
+    /// <returns>True only when a live detached identity was captured and revalidated.</returns>
+    internal bool ProbeTryCaptureDetachedAttachment(
+        [NotNullWhen(true)] out ControlDetachedAttachmentToken? token) =>
+        TryCaptureDetachedAttachment(out token);
+
+    /// <summary>Runs one synchronous publication through the protected
+    /// <see cref="ControlBase.TryPublishForCurrentDetachedAttachment"/> seam.</summary>
+    /// <param name="token">The exact captured detached identity.</param>
+    /// <param name="action">The complete synchronous state and callback publication.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <returns>True when the publication ran; false when lifecycle or domain authority was stale.</returns>
+    internal bool ProbeTryPublishForCurrentDetachedAttachment(
+        ControlDetachedAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null) =>
+        TryPublishForCurrentDetachedAttachment(token, action, isOperationCurrent);
 
     /// <summary>Forwards to the protected static current-item keyboard skeleton, exercising it
     /// without a concrete current-item owner such as TreeView or NavigationView.</summary>

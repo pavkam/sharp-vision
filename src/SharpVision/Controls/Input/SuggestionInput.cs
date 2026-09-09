@@ -598,7 +598,7 @@ public sealed class SuggestionInput: CompositeControlBase
         CanAcceptCurrentSnapshot() &&
         _resolutionGeneration == resolutionGeneration &&
         _currentSnapshotGeneration == resolutionGeneration &&
-        IsCurrent(attachment) &&
+        IsCurrentAttachment(attachment) &&
         eventArgs.ActivationGeneration == identity.ItemGeneration &&
         eventArgs.Index == identity.ItemIndex &&
         eventArgs.Index == _list.SelectedIndex &&
@@ -616,7 +616,7 @@ public sealed class SuggestionInput: CompositeControlBase
         CanAcceptCurrentSnapshot() &&
         _resolutionGeneration == resolutionGeneration &&
         _currentSnapshotGeneration == resolutionGeneration &&
-        IsCurrent(attachment) &&
+        IsCurrentAttachment(attachment) &&
         eventArgs.ActivationGeneration == identity.ItemGeneration &&
         eventArgs.Index == identity.ItemIndex &&
         IsCurrentSuggestionItem(eventArgs.Index, eventArgs.Item) &&
@@ -652,7 +652,7 @@ public sealed class SuggestionInput: CompositeControlBase
         current.Generation == transaction.Generation &&
         _acceptanceGeneration == transaction.Generation &&
         _acceptanceAttachment is { } attachment &&
-        IsCurrent(attachment) &&
+        IsCurrentAttachment(attachment) &&
         IsOpen &&
         PopupTransitionVersion == transaction.Activation.PopupTransitionVersion &&
         PopupSessionGeneration == transaction.Activation.PopupSessionGeneration;
@@ -665,7 +665,7 @@ public sealed class SuggestionInput: CompositeControlBase
         current.Generation == transaction.Generation &&
         _acceptanceGeneration == transaction.Generation &&
         _acceptanceAttachment is { } attachment &&
-        IsCurrent(attachment) &&
+        IsCurrentAttachment(attachment) &&
         string.Equals(Text, transaction.AcceptedText, StringComparison.Ordinal) &&
         !IsOpen;
 
@@ -1067,7 +1067,7 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             LastInlineResolutionObservation = Task.CompletedTask;
 
-            if (!IsCurrent(token) || !IsCurrentResolution(lease, generation))
+            if (!IsCurrentAttachment(token) || !IsCurrentResolution(lease, generation))
             {
                 CompleteResolution(lease, generation);
                 return LastInlineResolutionObservation;
@@ -1084,7 +1084,7 @@ public sealed class SuggestionInput: CompositeControlBase
 
         void ApplyOrDiscard()
         {
-            if (!IsCurrent(token) || !IsCurrentResolution(lease, generation))
+            if (!IsCurrentAttachment(token) || !IsCurrentResolution(lease, generation))
             {
                 Abandon();
                 return;
@@ -1149,7 +1149,7 @@ public sealed class SuggestionInput: CompositeControlBase
 
             try
             {
-                if (IsCurrent(attachment) && IsCurrentResolution(lease, generation))
+                if (IsCurrentAttachment(attachment) && IsCurrentResolution(lease, generation))
                 {
                     SetIsResolving(false);
                 }
