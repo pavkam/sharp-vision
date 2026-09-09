@@ -131,23 +131,58 @@ base classes.
 
 A concrete constructor calls `InitializeScrollableItemsHost(Container)` once.
 The host must already contain the control-specific layout behavior and may
-remain private for its complete lifetime.
+remain private for its complete lifetime. That same call subscribes the base
+class to the host's own `ScrollChanged` once; a derived owner never subscribes
+to it a second time.
 
-| Member                                      | Type                                   | Default          | Description                                               |
-| ------------------------------------------- | -------------------------------------- | ---------------- | --------------------------------------------------------- |
-| `ScrollBars`                                | `ScrollBars`                           | Host-defined     | Axes enabled by the private presentation host.            |
-| `ShowScrollBars`                            | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.              |
-| `ScrollBarStyle`                            | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                 |
-| `ActualScrollBarStyle`                      | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                       |
-| `Extent`                                    | `Size`                                 | Layout-dependent | Committed content extent.                                 |
-| `Viewport`                                  | `Size`                                 | Layout-dependent | Committed visible extent.                                 |
-| `HorizontalOffset`                          | `int`                                  | `0`              | Valid horizontal content offset.                          |
-| `VerticalOffset`                            | `int`                                  | `0`              | Valid vertical content offset.                            |
-| `LineSize`                                  | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.       |
-| `PageOverlap`                               | `int`                                  | `0`              | Non-negative context retained between page commands.      |
-| `ScrollBy(int x, int y, ScrollCause cause)` | `bool`                                 | —                | Adds signed deltas with saturation and endpoint clamping. |
-| `ScrollChanged`                             | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the item owner as sender.            |
-| `InitializeScrollableItemsHost(Container)`  | `void`                                 | —                | Protected; installs the private scrolling item host.      |
+A virtualizing item owner that lays out its realized items in equal-height
+strides - `ListView` and `Table` both do - calls the protected
+`ArrangeUniformRows` helper from its own `ArrangeOverride`, after arranging its
+private host, instead of re-implementing the same two-pass resolve loop and
+offset-remap arithmetic. The helper repeatedly asks the overridden
+`TryResolveUniformRowHeight(int viewportHeight)` to resolve and commit a new
+uniform row height against the viewport height with any leading band excluded,
+re-measuring and re-arranging the host through the shared `MeasureChild`/
+`ArrangeChild` seams whenever a pass actually commits one; once no further
+change occurs, if the overridden `ResolvedUniformRowHeight` ends up different
+from the height captured before the caller's own arrange began, the previous
+offset is remapped onto the same logical row and proportional point within it
+and the host is re-anchored there through `Container.ScrollByKnownMaximum`, so
+the caller never has to. A `leadingBandHeight` parameter (zero unless the caller
+reserves a header band ahead of its rows) and a `rowGap` parameter (zero for
+contiguous rows) let one shared implementation express both `ListView`'s
+bandless rows and `Table`'s header-and-gap arithmetic: an offset that already
+sits inside the band passes through unchanged, since the band's own height never
+changes with the row height.
+
+A virtualizing item owner also overrides the protected virtual
+`OnItemsHostScrollChanged(ScrollChangedEventArgs)` seam only to change which
+causes trigger reconciliation; the default implementation skips
+`ScrollCause.Content` and `ScrollCause.Resize` - both fire while the host's own
+arrange transaction is still open - and otherwise calls the protected virtual
+`RewindowItems()`, which the owner overrides to derealize items outside the
+current window and realize items inside it.
+
+| Member                                                                                           | Type                                   | Default          | Description                                                                         |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
+| `ScrollBars`                                                                                     | `ScrollBars`                           | Host-defined     | Axes enabled by the private presentation host.                                      |
+| `ShowScrollBars`                                                                                 | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.                                        |
+| `ScrollBarStyle`                                                                                 | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                                           |
+| `ActualScrollBarStyle`                                                                           | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                                                 |
+| `Extent`                                                                                         | `Size`                                 | Layout-dependent | Committed content extent.                                                           |
+| `Viewport`                                                                                       | `Size`                                 | Layout-dependent | Committed visible extent.                                                           |
+| `HorizontalOffset`                                                                               | `int`                                  | `0`              | Valid horizontal content offset.                                                    |
+| `VerticalOffset`                                                                                 | `int`                                  | `0`              | Valid vertical content offset.                                                      |
+| `LineSize`                                                                                       | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.                                 |
+| `PageOverlap`                                                                                    | `int`                                  | `0`              | Non-negative context retained between page commands.                                |
+| `ScrollBy(int x, int y, ScrollCause cause)`                                                      | `bool`                                 | —                | Adds signed deltas with saturation and endpoint clamping.                           |
+| `ScrollChanged`                                                                                  | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the item owner as sender.                                      |
+| `InitializeScrollableItemsHost(Container)`                                                       | `void`                                 | —                | Protected; installs the private scrolling item host.                                |
+| `ArrangeUniformRows(host, bounds, previousRowHeight, previousOffset, leadingBandHeight, rowGap)` | `void`                                 | —                | Protected; runs the shared virtualized uniform-row resolve-and-remap state machine. |
+| `TryResolveUniformRowHeight(int viewportHeight)`                                                 | `bool`                                 | `false`          | Protected virtual; resolves and commits this owner's uniform row height, if any.    |
+| `ResolvedUniformRowHeight`                                                                       | `int`                                  | Throws           | Protected virtual; the currently committed uniform row height.                      |
+| `OnItemsHostScrollChanged(ScrollChangedEventArgs)`                                               | `void`                                 | —                | Protected virtual; filters host scroll transitions and calls `RewindowItems`.       |
+| `RewindowItems()`                                                                                | `void`                                 | No-op            | Protected virtual; reconciles realized item controls against the current window.    |
 
 ## Keyboard
 

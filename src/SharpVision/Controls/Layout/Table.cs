@@ -68,7 +68,6 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         _style = InitializeStyle(TableStyle.Definition, OnStyleChanged);
         _ = AddHandler(Events.Key, OnKeyRouted, handledEventsToo: true);
         _ = AddHandler(Events.Pointer, OnPointerRouted, handledEventsToo: true);
-        _presenter.ScrollChanged += OnPresenterScrollChanged;
     }
 
     /// <summary>Gets the mutable titled column definitions.</summary>
@@ -766,34 +765,15 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         var previousOffset = VerticalOffset;
         ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
 
-        if (Progressive is { } controller)
+        if (Progressive is not null)
         {
-            for (var pass = 0; pass < 2; pass++)
-            {
-                var dataViewportHeight = Math.Max(0, Viewport.Height - _presenter.ProgressiveHeaderHeight);
-
-                if (!controller.ResolveRowHeight(dataViewportHeight))
-                {
-                    break;
-                }
-
-                _ = MeasureChild(_presenter, new Constraint(bounds.Width, bounds.Height));
-                ArrangeChild(_presenter, bounds, ResolvedAxes.Both);
-            }
-
-            if (previousHeight is int height && height != controller.RowHeight)
-            {
-                var headerHeight = _presenter.ProgressiveHeaderHeight;
-                var contentOffset = Math.Max(0, previousOffset - headerHeight);
-                var mapped = UniformRowHeight.RemapOffset(
-                    contentOffset,
-                    height,
-                    controller.RowHeight,
-                    _presenter.RowGap);
-                var target = previousOffset < headerHeight ? previousOffset : headerHeight.Add(mapped);
-                var maximum = Math.Max(0, Extent.Height - Viewport.Height);
-                _ = _presenter.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
-            }
+            ArrangeUniformRows(
+                _presenter,
+                bounds,
+                previousHeight,
+                previousOffset,
+                _presenter.ProgressiveHeaderHeight,
+                _presenter.RowGap);
         }
 
         // The presenter's own arrange transaction has already closed by this point - reconciling
@@ -1122,11 +1102,21 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         _presenter?.Invalidate(Invalidation.Render);
     }
 
+    /// <inheritdoc/>
+    protected override void RewindowItems() => ProgressiveRewindow();
+
+    /// <inheritdoc/>
+    protected override bool TryResolveUniformRowHeight(int viewportHeight) =>
+        Progressive is { } controller && controller.ResolveRowHeight(viewportHeight);
+
+    /// <inheritdoc/>
+    protected override int ResolvedUniformRowHeight => Progressive!.RowHeight;
+
     /// <summary>Reconciles the progressive window against the current scroll offset and viewport, a
-    /// no-op while not progressive. Called from <see cref="ArrangeOverride"/> and, skipping
-    /// <see cref="ScrollCause.Content"/>/<see cref="ScrollCause.Resize"/>, from the presenter's own
-    /// <see cref="Container.ScrollChanged"/> - matching <c>ListView.Rewindow</c>'s equivalent skip, since both
-    /// causes fire from inside an already-open arrange transaction.</summary>
+    /// no-op while not progressive. Called from <see cref="ArrangeOverride"/> and, through
+    /// <see cref="RewindowItems"/>, from <see cref="ScrollableItemsControl.OnItemsHostScrollChanged"/>,
+    /// which already skips <see cref="ScrollCause.Content"/>/<see cref="ScrollCause.Resize"/> because
+    /// both causes fire from inside the presenter's own already-open arrange transaction.</summary>
     internal void ProgressiveRewindow()
     {
         if (Progressive is not { } controller)
@@ -1197,18 +1187,6 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
         {
             controller.Reload();
         }
-    }
-
-    private void OnPresenterScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
-    {
-        _ = sender;
-
-        if (eventArgs.Cause is ScrollCause.Content or ScrollCause.Resize)
-        {
-            return;
-        }
-
-        ProgressiveRewindow();
     }
 
     private void OnControllerLoadStateChanged(object? sender, TableLoadStateChangedEventArgs eventArgs)

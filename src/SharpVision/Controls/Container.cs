@@ -887,14 +887,19 @@ public abstract class Container: ControlBase
     }
 
     /// <summary>Scrolls vertically by a signed delta, clamped against a caller-supplied maximum
-    /// instead of the committed <see cref="Extent"/>.</summary>
+    /// that is already known ahead of the next layout pass, instead of the committed <see
+    /// cref="Extent"/>.</summary>
     /// <remarks>
     /// <see cref="Extent"/> only refreshes on a real layout pass, so a caller that mutates content
     /// and must compensate the offset before that pass ever runs - a fixed-row-height virtualized
-    /// panel reacting to an item count change, for instance - would otherwise have its compensation
-    /// clamped against a stale, pre-mutation bound. This lets such a caller supply the true
-    /// post-mutation maximum it can already compute arithmetically, bypassing the stale <see
-    /// cref="Extent"/> entirely for this one call.
+    /// panel reacting to an item count or row-height change, for instance - would otherwise have its
+    /// compensation clamped against a stale, pre-mutation bound. This lets such a caller supply the
+    /// true post-mutation maximum it can already compute arithmetically, bypassing the stale <see
+    /// cref="Extent"/> entirely for this one call. A framework virtualizing item owner re-anchors a
+    /// resolved uniform row height through this method after
+    /// <see cref="UniformRowHeight.RemapOffset(int, int, int, int)"/>
+    /// computes the target offset for the same logical row; it is not a general-purpose scrolling
+    /// entry point and stays out of the public <see cref="ScrollBy"/> surface for that reason.
     /// </remarks>
     /// <param name="y">The signed vertical delta to add to the current offset before clamping.</param>
     /// <param name="maximumY">The caller-computed non-negative upper bound for the result.</param>
@@ -903,7 +908,7 @@ public abstract class Container: ControlBase
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="cause"/> is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
-    internal bool ScrollByKnownMaximum(int y, int maximumY, ScrollCause cause)
+    protected internal bool ScrollByKnownMaximum(int y, int maximumY, ScrollCause cause)
     {
         Debug.Assert(maximumY >= 0, "A known maximum is a non-negative offset bound.");
         ArgumentOutOfRangeException.ThrowIfNotDefined(cause, nameof(cause), "The enum value is unknown.");

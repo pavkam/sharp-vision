@@ -64,7 +64,6 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
             ScrollBars = ScrollBars.Vertical,
             ShowScrollBars = ShowScrollBars.WhenNeeded
         };
-        _stack.ScrollChanged += OnHostScrollChanged;
         InitializeScrollableItemsHost(_stack);
         _style = InitializeStyle(ListViewStyle.Definition, OnStyleChanged);
         _ = AddHandler(Events.Key, OnKeyRouted);
@@ -482,27 +481,7 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
 
         if (IsVirtualized)
         {
-            for (var pass = 0; pass < 2; pass++)
-            {
-                var resolved = UniformRowHeight.Resolve(RowHeight, Viewport.Height);
-
-                if (_stack.RowHeight == resolved)
-                {
-                    break;
-                }
-
-                _stack.SetRowHeightWithinLayout(resolved);
-                _ = MeasureChild(_stack, new Constraint(bounds.Width, bounds.Height));
-                ArrangeChild(_stack, bounds, ResolvedAxes.Both);
-            }
-
-            if (previousHeight is int height && height != ResolvedRowHeight)
-            {
-                var target = UniformRowHeight.RemapOffset(previousOffset, height, ResolvedRowHeight, gap: 0);
-                var maximum = Math.Max(0, Extent.Height - Viewport.Height);
-                _ = _stack.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
-            }
-
+            ArrangeUniformRows(_stack, bounds, previousHeight, previousOffset, leadingBandHeight: 0, rowGap: 0);
             _rowHeightAnchorPrevious = null;
         }
 
@@ -799,24 +778,29 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
         }
     }
 
-    private void OnHostScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
+    /// <inheritdoc/>
+    protected override void RewindowItems() => Rewindow();
+
+    /// <inheritdoc/>
+    protected override bool TryResolveUniformRowHeight(int viewportHeight)
     {
-        if (eventArgs.Cause is ScrollCause.Content or ScrollCause.Resize)
+        var resolved = UniformRowHeight.Resolve(RowHeight, viewportHeight);
+
+        if (_stack.RowHeight == resolved)
         {
-            // Both causes originate from this container's own ResolveContentSlot, called while
-            // this container's arrange transaction is still open - realizing or derealizing
-            // children there risks the exact non-convergence hazard Container.cs documents for
-            // lazy child creation during layout. A generous overscan margin absorbs ordinary
-            // resize deltas instead; the window catches up fully on the next genuine scroll.
-            return;
+            return false;
         }
 
-        Rewindow();
+        _stack.SetRowHeightWithinLayout(resolved);
+        return true;
     }
+
+    /// <inheritdoc/>
+    protected override int ResolvedUniformRowHeight => ResolvedRowHeight;
 
     /// <summary>Reconciles realized rows against the current viewport, offset, and overscan
     /// margin. A no-op in eager mode. Must only ever be called outside an active measure or
-    /// arrange transaction - see <see cref="OnHostScrollChanged"/>.</summary>
+    /// arrange transaction - see <see cref="ScrollableItemsControl.OnItemsHostScrollChanged"/>.</summary>
     private void Rewindow()
     {
         if (!IsVirtualized)

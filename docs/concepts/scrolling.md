@@ -85,7 +85,12 @@ compensation. Resize or scrollbar feedback starts a new transaction and remaps
 the existing offset by logical row plus its proportional position inside the old
 stride, preserving the visible anchor where the new range permits it. A
 progressive Table excludes its retained header from the percentage base because
-only the data viewport contains virtualized rows.
+only the data viewport contains virtualized rows. `ListView` and `Table` both
+run this resolve-and-remap sequence through the shared
+[`ScrollableItemsControl.ArrangeUniformRows`](../controls/items-control.md#scrollableitemscontrol)
+helper, parameterized by the leading band a caller reserves ahead of its rows
+(zero for `ListView`, the header for a progressive `Table`) and the fixed gap
+after each row.
 
 ## Scrollbar presentation
 
