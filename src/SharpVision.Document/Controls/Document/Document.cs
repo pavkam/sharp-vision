@@ -1658,8 +1658,16 @@ public sealed class Document:
 
                     if (spanIndex >= 0)
                     {
+                        var span = parsed.Spans[spanIndex];
                         var inheritedStyle = style;
-                        style = Merge(style, parsed.Spans[spanIndex]);
+                        style = DecorationResolver.Merge(
+                            style,
+                            span.Attributes,
+                            span.Underline,
+                            span.Foreground,
+                            span.Background,
+                            span.UnderlineColor,
+                            span.Link);
 
                         if (IsForegroundLocked(run))
                         {
@@ -1769,7 +1777,14 @@ public sealed class Document:
 
             var span = flushSpanIndex >= 0 ? spans[flushSpanIndex] : default;
             var position = new Point(origin.X + cells, origin.Y);
-            var merged = Merge(style, span);
+            var merged = DecorationResolver.Merge(
+                style,
+                span.Attributes,
+                span.Underline,
+                span.Foreground,
+                span.Background,
+                span.UnderlineColor,
+                span.Link);
 
             if (lockForeground)
             {
@@ -1964,41 +1979,6 @@ public sealed class Document:
         style.Hyperlink,
         style.Underline,
         style.UnderlineColor);
-
-    // Blink and rapid blink are mutually exclusive in a cell style, so a span asking for either must
-    // clear both inherited bits before contributing its own.
-    private static TerminalStyle Merge(TerminalStyle style, StyleSpan span)
-    {
-        var attributes = style.Attributes;
-
-        if ((span.Attributes & (TerminalAttributes.Blink | TerminalAttributes.RapidBlink)) != 0)
-        {
-            attributes &= ~(TerminalAttributes.Blink | TerminalAttributes.RapidBlink);
-        }
-
-        attributes |= span.Attributes;
-        Underline? underline = null;
-
-        if (span.Underline != Underline.None)
-        {
-            attributes &= ~TerminalAttributes.Underline;
-            underline = span.Underline;
-        }
-
-        var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = DecorationResolver.Resolve(
-            style,
-            attributes,
-            underline,
-            span.UnderlineColor);
-
-        return new TerminalStyle(
-            span.Foreground ?? style.Foreground,
-            span.Background ?? style.Background,
-            resolvedAttributes,
-            span.Link ?? style.Hyperlink,
-            resolvedUnderline,
-            resolvedUnderlineColor);
-    }
 
     [Pure]
     private static int SpanIndexAt(StyleSpan[] spans, int offset)

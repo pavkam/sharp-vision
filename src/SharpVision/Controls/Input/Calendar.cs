@@ -12,8 +12,6 @@ using SharpVision.Terminal.Input;
 public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 {
     private DateOnly Today => DateOnly.FromDateTime(TimeProvider.GetLocalNow().DateTime);
-    private const TerminalAttributes _blinkAttributes =
-        TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
     private const int _cellWidth = 4;
     private const int _columnCount = 7;
     // The header and weekday rows occupy one terminal cell row each; dates begin after both.
@@ -922,7 +920,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
     private TerminalStyle ResolveDateStyle(DateOnly date, Text.StyleSpan? markup = null)
     {
-        var style = markup is { } span ? ResolveMarkupStyle(span) : ResolvedStyle;
+        var style = markup is { } span ? ResolveSpanStyle(span) : ResolvedStyle;
         var adjacent = date.Year != DisplayMonth.Year || date.Month != DisplayMonth.Month;
         var actualStyle = ActualStyle;
 
@@ -987,46 +985,6 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         }
 
         return style;
-    }
-
-    private TerminalStyle ResolveMarkupStyle(Text.StyleSpan span)
-    {
-        var inherited = ResolvedStyle;
-        var attributes = inherited.Attributes;
-
-        if ((span.Attributes & _blinkAttributes) != 0)
-        {
-            attributes &= ~_blinkAttributes;
-        }
-
-        attributes |= span.Attributes;
-        Underline? underline = null;
-
-        if (span.Underline != Underline.None)
-        {
-            attributes &= ~TerminalAttributes.Underline;
-            underline = span.Underline;
-        }
-
-        var underlineColor = span.UnderlineColor is { } configuredUnderlineColor
-            ? ResolveThemeColor(configuredUnderlineColor)
-            : (Color?) null;
-        var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = DecorationResolver.Resolve(
-            inherited,
-            attributes,
-            underline,
-            underlineColor);
-        return new TerminalStyle(
-            span.Foreground is { } configuredForeground
-                ? ResolveThemeColor(configuredForeground)
-                : inherited.Foreground,
-            span.Background is { } configuredBackground
-                ? ResolveThemeColor(configuredBackground)
-                : inherited.Background,
-            resolvedAttributes,
-            span.Link ?? inherited.Hyperlink,
-            resolvedUnderline,
-            resolvedUnderlineColor);
     }
 
     private void DrawCentered(TerminalCanvas canvas, Rect bounds, string value, TerminalStyle style)

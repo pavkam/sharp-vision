@@ -1075,6 +1075,29 @@ public sealed class ControlBaseTests
         AccessibilityPromotionProbe.ProbeResolveColor(SemanticColor.Accent, null).ShouldBe(Color.Default);
     }
 
+    /// <summary>Verifies ControlBase.ResolveSpanStyle resolves a span's own foreground override
+    /// instead of falling back to the inherited resolved style, the shared seam Text, Calendar, and
+    /// Document all merge their parsed inline-markup spans through.</summary>
+    [Fact]
+    public void ResolveSpanStyle_WhenSpanOverridesForeground_ResolvesThemeColor()
+    {
+        var probe = new ProbeControl();
+        var literal = Color.Rgb(0x11, 0x22, 0x33);
+        var span = new StyleSpan(
+            offset: 0,
+            length: 1,
+            foreground: literal,
+            background: null,
+            attributes: TerminalAttributes.None,
+            underline: Underline.None,
+            underlineColor: null,
+            link: null);
+
+        var style = probe.ProbeResolveSpanStyle(span);
+
+        style.Foreground.ShouldBe(literal);
+    }
+
     /// <summary>Verifies Control.MaximumImpact is reachable from a third-party subclass in another
     /// assembly, which the previous internal accessibility disallowed.</summary>
     [Theory]

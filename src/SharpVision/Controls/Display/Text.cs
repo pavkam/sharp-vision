@@ -7,7 +7,6 @@ using SharpVision.Text;
 
 using Terminal.Rendering;
 
-using TerminalUnderline = Underline;
 using TextLayout = SharpVision.Text.Layout;
 using UnicodeWidth = Width;
 
@@ -19,9 +18,6 @@ using UnicodeWidth = Width;
 [PublicAPI]
 public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 {
-    private const TerminalAttributes _blinkAttributes =
-        TerminalAttributes.Blink | TerminalAttributes.RapidBlink;
-
     private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
         static theme => theme.Hotkey,
         InvalidationImpact.Render);
@@ -526,47 +522,6 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         }
 
         return index;
-    }
-
-    [Pure]
-    private TerminalStyle ResolveSpanStyle(StyleSpan span)
-    {
-        var inherited = ResolvedStyle;
-        var attributes = inherited.Attributes;
-
-        if ((span.Attributes & _blinkAttributes) != 0)
-        {
-            attributes &= ~_blinkAttributes;
-        }
-
-        attributes |= span.Attributes;
-        TerminalUnderline? underline = null;
-
-        if (span.Underline != TerminalUnderline.None)
-        {
-            attributes &= ~TerminalAttributes.Underline;
-            underline = span.Underline;
-        }
-
-        var underlineColor = span.UnderlineColor is { } configuredUnderlineColor
-            ? ResolveThemeColor(configuredUnderlineColor)
-            : (Color?) null;
-        var (resolvedAttributes, resolvedUnderline, resolvedUnderlineColor) = DecorationResolver.Resolve(
-            inherited,
-            attributes,
-            underline,
-            underlineColor);
-        return new TerminalStyle(
-            span.Foreground is { } configuredForeground
-                ? ResolveThemeColor(configuredForeground)
-                : inherited.Foreground,
-            span.Background is { } configuredBackground
-                ? ResolveThemeColor(configuredBackground)
-                : inherited.Background,
-            resolvedAttributes,
-            span.Link ?? inherited.Hyperlink,
-            resolvedUnderline,
-            resolvedUnderlineColor);
     }
 
     [Pure]

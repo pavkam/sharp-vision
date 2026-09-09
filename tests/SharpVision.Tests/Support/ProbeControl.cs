@@ -315,6 +315,11 @@ internal sealed class ProbeControl: ChromeProbe
         }
     }
 
+    /// <summary>Merges one inline-markup style span through the protected span-style seam.</summary>
+    /// <param name="span">The style span to merge over this probe's resolved style.</param>
+    /// <returns>The span merged over <see cref="ControlBase.ResolvedStyle"/>.</returns>
+    internal TerminalStyle ProbeResolveSpanStyle(StyleSpan span) => ResolveSpanStyle(span);
+
     /// <summary>Resolves the common text-selection adornment colors through the protected seam.</summary>
     /// <param name="current">The pre-adornment cell style being overlaid.</param>
     /// <returns>The style <see cref="ControlBase.ApplyTextSelectionStyle(TerminalStyle)"/> would

@@ -13,6 +13,18 @@ accept: it holds either a concrete `Color` or a library-defined `SemanticColor`.
 `ControlDecoration` likewise holds either concrete `TerminalAttributes` or a
 `SemanticDecoration`. Both convert implicitly from either branch.
 
+`DecorationResolver` is the one framework-owned home for reconciling attribute,
+underline, and underline-color conflicts once concrete values are in hand: its
+`Resolve` method settles whether a legacy attribute flag or a typed underline
+variant wins, and its `Merge` method layers one inline-markup `StyleSpan` -
+foreground, background, attributes, typed underline, underline color, and
+hyperlink - over a complete inherited `TerminalStyle`, including the rule that
+requesting either blink variant clears the inherited bit for the other one
+first. `ControlBase.ResolveSpanStyle` resolves a span's own colors and forwards
+to `Merge`, so `Text`, `Calendar`, `Document`, and any third-party control that
+renders its own inline markup share the identical merge algorithm instead of
+each repeating it.
+
 The Styling page in the live Showcase keeps concrete color samples beside the
 complete `SemanticColor` palette. Its swatches retain semantic values and let
 the active application theme resolve them; it does not build a detached theme or

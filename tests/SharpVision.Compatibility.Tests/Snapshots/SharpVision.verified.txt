@@ -617,6 +617,7 @@ namespace SharpVision.Controls
         protected SharpVision.Styling.BorderGlyphStyle ResolveBorderGlyphs(SharpVision.Styling.BorderGlyphStyle glyphs) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected System.Text.Rune ResolveControlGlyph(SharpVision.Styling.ControlGlyph glyph) { }
+        protected SharpVision.Terminal.Rendering.CellStyle ResolveSpanStyle(SharpVision.Text.StyleSpan span) { }
         protected void RestartPopupNavigationSession() { }
         protected virtual void RevealTextSelectionCaret(int caret) { }
         protected SharpVision.Terminal.Geometry.Rect RootBounds(SharpVision.Terminal.Geometry.Rect fallback) { }
@@ -4785,6 +4786,7 @@ namespace SharpVision.Styling
     }
     public static class DecorationResolver
     {
+        public static SharpVision.Terminal.Rendering.CellStyle Merge(SharpVision.Terminal.Rendering.CellStyle inherited, SharpVision.Terminal.Rendering.TerminalAttributes attributes, SharpVision.Terminal.Protocols.Underline underline, SharpVision.Terminal.Protocols.Color? foreground, SharpVision.Terminal.Protocols.Color? background, SharpVision.Terminal.Protocols.Color? underlineColor, string? link) { }
         [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
                 "Attributes",
                 "Underline",

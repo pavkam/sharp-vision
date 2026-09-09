@@ -4,7 +4,7 @@
 namespace SharpVision.Tests.Styling;
 
 /// <summary>Verifies decoration overlay resolution precedence between legacy attribute flags and
-/// typed underline overrides.</summary>
+/// typed underline overrides, and the inline-markup span merge built on top of it.</summary>
 public sealed class DecorationResolverTests
 {
     /// <summary>Verifies an explicit typed underline override wins over an inherited legacy
@@ -65,5 +65,47 @@ public sealed class DecorationResolverTests
 
         underline.ShouldBe(Underline.None);
         underlineColor.ShouldBe(Color.Default);
+    }
+
+    /// <summary>Verifies a span requesting one blink variant clears an inherited blink variant of
+    /// the other kind, the same way a directly-authored style must, since a cell style can never
+    /// carry both bits at once.</summary>
+    [Fact]
+    public void Merge_WhenSpanRequestsBlink_ClearsInheritedRapidBlink()
+    {
+        var inherited = new TerminalStyle(attributes: TerminalAttributes.RapidBlink);
+
+        var merged = DecorationResolver.Merge(
+            inherited,
+            attributes: TerminalAttributes.Blink,
+            underline: Underline.None,
+            foreground: null,
+            background: null,
+            underlineColor: null,
+            link: null);
+
+        (merged.Attributes & TerminalAttributes.RapidBlink).ShouldBe(TerminalAttributes.None);
+        (merged.Attributes & TerminalAttributes.Blink).ShouldBe(TerminalAttributes.Blink);
+    }
+
+    /// <summary>Verifies a span's typed underline variant supersedes an inherited legacy
+    /// straight-underline attribute, clearing the legacy bit so the two never both reach the merged
+    /// cell style.</summary>
+    [Fact]
+    public void Merge_WhenSpanHasTypedUnderline_DropsLegacyUnderlineAttribute()
+    {
+        var inherited = new TerminalStyle(attributes: TerminalAttributes.Underline);
+
+        var merged = DecorationResolver.Merge(
+            inherited,
+            attributes: TerminalAttributes.None,
+            underline: Underline.Curly,
+            foreground: null,
+            background: null,
+            underlineColor: null,
+            link: null);
+
+        merged.Underline.ShouldBe(Underline.Curly);
+        (merged.Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
     }
 }

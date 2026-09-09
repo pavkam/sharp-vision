@@ -7245,6 +7245,40 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     [Pure]
     protected Color ResolveColor(ControlColor value) => ResolveColor(value, Theme);
 
+    /// <summary>Merges one parsed inline-markup style span over <see cref="ResolvedStyle"/>.</summary>
+    /// <param name="span">The parsed inline-markup style span.</param>
+    /// <returns>The span's foreground, background, attributes, typed underline, underline color,
+    /// and hyperlink layered over this control's currently resolved style, through <see
+    /// cref="DecorationResolver.Merge"/>.</returns>
+    /// <remarks>A control that renders its own inline markup - the way <c>Text</c>, <c>Calendar</c>,
+    /// and <c>Document</c> render a parsed <see cref="StyleSpan"/> run - resolves that span
+    /// through this shared seam instead of repeating the blink-exclusivity and
+    /// typed-underline-precedence rules <see cref="DecorationResolver.Merge"/> already owns.
+    /// </remarks>
+    [Pure]
+    protected TerminalStyle ResolveSpanStyle(StyleSpan span)
+    {
+        var inherited = ResolvedStyle;
+        var foreground = span.Foreground is { } configuredForeground
+            ? ResolveThemeColor(configuredForeground)
+            : (Color?) null;
+        var background = span.Background is { } configuredBackground
+            ? ResolveThemeColor(configuredBackground)
+            : (Color?) null;
+        var underlineColor = span.UnderlineColor is { } configuredUnderlineColor
+            ? ResolveThemeColor(configuredUnderlineColor)
+            : (Color?) null;
+
+        return DecorationResolver.Merge(
+            inherited,
+            span.Attributes,
+            span.Underline,
+            foreground,
+            background,
+            underlineColor,
+            span.Link);
+    }
+
     /// <summary>Resolves one themed control glyph against this control's live cell policy.</summary>
     /// <param name="glyph">The preferred glyph and its portable one-cell fallback.</param>
     /// <returns>The preferred glyph when it renders as one cell under the live
