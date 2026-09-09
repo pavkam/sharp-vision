@@ -1853,7 +1853,7 @@ public sealed class MenuTests
 
         item.IsFocusable.ShouldBeTrue();
         item.IsTabStop.ShouldBeTrue();
-        menu.ItemCount.ShouldBe(0);
+        menu.Items.Count.ShouldBe(0);
     }
 
     /// <summary>Verifies disposing an item before the selected index publishes SelectedItem, since

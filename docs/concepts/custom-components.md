@@ -169,6 +169,18 @@ helpers. The host's `Children` collection never becomes public API. `ListView`,
 presenter private and exposes only `Rows`, `Columns`, and delegated scroll
 state.
 
+A typed collection over one `ItemsControl` owner - one `IReadOnlyList<TItem>`
+publishing that owner's realized items - derives from
+[`ItemCollection<TItem>`](../controls/items-control.md#typed-collections) rather
+than hand-writing the same forwarding shape again. The base class reads and
+mutates realized controls directly through the owner's accessors above; an owner
+whose collection needs more than that - reindexing a current or selected
+position, for example - keeps that logic on the owner itself and overrides the
+corresponding virtual collection member to call it, or reacts around the default
+path through the seven protected `On*` hooks instead of replacing it. See the
+[`TagCloud` example](../controls/items-control.md#example) for the smallest
+complete derivation.
+
 The private host must commit before the item owner is inserted or attached.
 Candidate rejection before commit leaves initialization available; callback
 failure after commit consumes it. Disposing the host directly leaves the owner

@@ -145,7 +145,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     public TabItem? SelectedItem
     {
         get => _selectedIndex < 0 ? null : ItemAt(_selectedIndex);
-        set => SelectedIndex = value is null ? -1 : IndexOfItem(value);
+        set => SelectedIndex = value is null ? -1 : IndexOfItemControl(value);
     }
 
     /// <summary>Gets or sets the complete developer-authored tab-strip style, or null for the
@@ -291,16 +291,11 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         return true;
     }
 
-    [NonNegativeValue]
-    internal int ItemCount => ItemControlCount;
-
     [Pure]
-    internal TabItem ItemAt([NonNegativeValue] int index) => (TabItem) GetItemControl(index);
+    private TabItem ItemAt([NonNegativeValue] int index) => (TabItem) GetItemControl(index);
 
     [Pure]
     internal TabHeader HeaderAt([NonNegativeValue] int index) => (TabHeader) _headers.Children[index];
-
-    internal void AddItem(TabItem item) => InsertItem(ItemControlCount, item);
 
     internal void InsertItem(int index, TabItem item)
     {
@@ -1033,19 +1028,6 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
             new TabSelectionChangedEventArgs(previousIndex, index, previousItem, currentItem, cause));
     }
 
-    [Pure]
-    internal int IndexOfItem(TabItem item)
-    {
-        for (var index = 0; index < ItemControlCount; index++)
-        {
-            if (ReferenceEquals(ItemAt(index), item))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
 
     private void ApplyPresentation()
     {

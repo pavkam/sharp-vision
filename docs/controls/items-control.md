@@ -91,17 +91,17 @@ classDiagram
 
 | Member                                                                                                                           | Type                                                | Default | Description                                                                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `ItemControlCount`                                                                                                               | `int`                                               | —       | Protected, read-only; the number of currently realized item controls.                                                  |
+| `ItemControlCount`                                                                                                               | `int`                                               | —       | Protected internal, read-only; the number of currently realized item controls.                                         |
 | `InitializeItemsHost(Container host)`                                                                                            | `void`                                              | —       | Protected; installs the one private presentation host for this item owner, exactly once.                               |
-| `GetItemControl(int index)`                                                                                                      | `ControlBase`                                       | —       | Protected; gets one realized item control by zero-based position.                                                      |
-| `IndexOfItemControl(ControlBase control)`                                                                                        | `int`                                               | —       | Protected; gets the identity position of one realized item control, or -1 when not realized.                           |
-| `InsertItemControl(int index, ControlBase control)`                                                                              | `void`                                              | —       | Protected; inserts one detached realized control at a validated position.                                              |
-| `RemoveItemControl(ControlBase control)`                                                                                         | `bool`                                              | —       | Protected; removes one identical realized control without disposing it.                                                |
-| `RemoveItemControlAt(int index)`                                                                                                 | `void`                                              | —       | Protected; removes one realized control by position without disposing it.                                              |
-| `ReplaceItemControl(int index, ControlBase control)`                                                                             | `void`                                              | —       | Protected; atomically replaces one realized control without disposing the previous control.                            |
-| `ClearItemControls()`                                                                                                            | `void`                                              | —       | Protected; atomically clears all realized controls without disposing them.                                             |
+| `GetItemControl(int index)`                                                                                                      | `ControlBase`                                       | —       | Protected internal; gets one realized item control by zero-based position.                                             |
+| `IndexOfItemControl(ControlBase control)`                                                                                        | `int`                                               | —       | Protected internal; gets the identity position of one realized item control, or -1 when not realized.                  |
+| `InsertItemControl(int index, ControlBase control)`                                                                              | `void`                                              | —       | Protected internal; inserts one detached realized control at a validated position.                                     |
+| `RemoveItemControl(ControlBase control)`                                                                                         | `bool`                                              | —       | Protected internal; removes one identical realized control without disposing it.                                       |
+| `RemoveItemControlAt(int index)`                                                                                                 | `void`                                              | —       | Protected internal; removes one realized control by position without disposing it.                                     |
+| `ReplaceItemControl(int index, ControlBase control)`                                                                             | `void`                                              | —       | Protected internal; atomically replaces one realized control without disposing the previous control.                   |
+| `ClearItemControls()`                                                                                                            | `void`                                              | —       | Protected internal; atomically clears all realized controls without disposing them.                                    |
 | `ReplaceItemControls(IEnumerable<ControlBase> controls)`                                                                         | `void`                                              | —       | Protected; atomically replaces the complete realized-control snapshot.                                                 |
-| `MoveItemControl(int oldIndex, int newIndex)`                                                                                    | `void`                                              | —       | Protected; atomically reorders one realized control without detaching it.                                              |
+| `MoveItemControl(int oldIndex, int newIndex)`                                                                                    | `void`                                              | —       | Protected internal; atomically reorders one realized control without detaching it.                                     |
 | `OnItemControlsChanged()`                                                                                                        | `void`                                              | —       | Protected virtual; responds after one complete realized-control snapshot is committed.                                 |
 | `OnItemControlsChanged(OwnedControlChange change)`                                                                               | `void`                                              | —       | Protected virtual; responds with the immutable committed delta; forwards to the parameterless overload by default.     |
 | `EnableSelectedItemPressActivation(getSelectedTarget, isTargetAvailable, setTargetPressed, activateTarget, consumeWhenNoTarget)` | `void`                                              | —       | Protected; opts a one-focus item owner into the shared selected-face Space activation gesture.                         |
@@ -115,6 +115,50 @@ classDiagram
 `ItemsControl` deliberately exposes no public `Children` collection. Concrete
 types such as [`ListView`](collections/list-view.md#overview) and
 [`Table`](layout/table.md#overview) publish typed semantic collections.
+
+### Typed collections
+
+`ItemCollection<TItem> : IReadOnlyList<TItem>` is the shared base for the
+`IReadOnlyList<TItem>` facade an `ItemsControl` owner publishes over its own
+realized item controls. A derived owner constructs one sealed collection type
+deriving from it, typically as a single get-only property assigned immediately
+after `InitializeItemsHost` in its own constructor. `StatusBarItemCollection`,
+`TabItemCollection`, `MenuEntryCollection`, `CommandBarEntryCollection`, and
+`BreadcrumbItemCollection` all derive from it today.
+
+The default `this[int]`, `Count`, `Add`, `Insert`, `Remove`, `RemoveAt`, `Move`,
+`IndexOf`, `Contains`, and `Clear` implementations read and mutate realized item
+controls directly through the owner's `protected internal` item-control
+accessors above. Those accessors are `protected internal` rather than plain
+`protected` specifically so `ItemCollection<TItem>` - a sibling class in the
+same assembly, not a subclass of `ItemsControl` - can reach them on the owner
+instance it wraps: C# protected access requires the accessing code to itself
+derive from the declaring type, so a plain `protected` member would stay
+unreachable from that base even though both live in the same assembly.
+
+An owner whose collection needs more than that raw structural mutation -
+reindexing a current or selected position, notifying a dependent property, or
+maintaining a private subscription - keeps that logic exactly where it already
+lives, on the owner itself, in the owner's own internal method. Its derived
+collection then overrides the corresponding virtual member to call that existing
+owner method instead of running the default accessor-only path; it does not move
+or duplicate the owner's logic into the collection. `TabControl` and `Menu` both
+keep their insert/remove index-repair blocks and dependent-property
+notifications on the owner for exactly this reason.
+
+`ItemCollection<TItem>` exposes the seven protected hooks below for the simpler
+case: a derived collection that only needs to react before or after a
+default-path mutation commits, without replacing the mutation itself.
+
+| Member                                              | Type   | Default | Description                                                                              |
+| --------------------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
+| `OnInserting(int index, TItem item)`                | `void` | No-op   | Protected virtual; runs immediately before the default `Insert` path commits.            |
+| `OnInserted(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately after the default `Insert` path commits.             |
+| `OnRemoving(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately before the default `Remove`/`RemoveAt` path commits. |
+| `OnRemoved(int index, TItem item)`                  | `void` | No-op   | Protected virtual; runs immediately after the default `Remove`/`RemoveAt` path commits.  |
+| `OnMoved(int oldIndex, int newIndex)`               | `void` | No-op   | Protected virtual; runs immediately after the default `Move` path commits.               |
+| `OnReplaced(int index, TItem previous, TItem item)` | `void` | No-op   | Protected virtual; runs immediately after the default indexer setter commits.            |
+| `OnCleared()`                                       | `void` | No-op   | Protected virtual; runs immediately after the default `Clear` path commits.              |
 
 ### ScrollableItemsControl
 
@@ -193,20 +237,32 @@ current window and realize items inside it.
 ## Example
 
 ```csharp
+public sealed class TagCloudItems : ItemCollection<Text>
+{
+    internal TagCloudItems(TagCloud owner)
+        : base(owner)
+    {
+    }
+
+    public void Add(string tag) => Add(new Text { Content = tag });
+}
+
 public sealed class TagCloud : ItemsControl
 {
     public TagCloud()
     {
         InitializeItemsHost(new Stack { Orientation = Orientation.Horizontal });
+        Items = new TagCloudItems(this);
     }
 
-    public void Add(string tag) =>
-        InsertItemControl(ItemControlCount, new Text { Content = tag });
+    public TagCloudItems Items { get; }
 }
 ```
 
-An application interacts with the semantic `TagCloud` API. It cannot replace the
-host or insert arbitrary presentation children.
+An application interacts with the semantic `TagCloud.Items` collection. It
+cannot replace the host or insert arbitrary presentation children: every
+insertion, removal, and replacement runs through `ItemCollection<Text>`'s
+default accessor-driven implementation, which `TagCloudItems` never overrides.
 
 ## Expected behavior
 

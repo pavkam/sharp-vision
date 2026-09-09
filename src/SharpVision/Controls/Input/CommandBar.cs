@@ -209,18 +209,10 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
     /// <summary>Gets one checked retained entry by source position.</summary>
     /// <param name="index">The valid source index.</param>
     /// <returns>The exact retained semantic entry.</returns>
-    internal ControlBase EntryAt(int index) => RequireEntry(GetItemControl(index));
+    private ControlBase EntryAt(int index) => RequireEntry(GetItemControl(index));
 
     /// <summary>Gets the current semantic entry count.</summary>
-    internal int EntryCount => ItemControlCount;
-
-    /// <summary>Gets the source position of one retained entry, or -1.</summary>
-    /// <param name="entry">The non-null candidate.</param>
-    internal int IndexOfEntry(ControlBase entry)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-        return IndexOfItemControl(entry);
-    }
+    private int EntryCount => ItemControlCount;
 
     /// <summary>Inserts one validated semantic entry at a source position.</summary>
     /// <param name="index">The insertion position.</param>

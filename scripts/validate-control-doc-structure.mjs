@@ -856,9 +856,12 @@ export function resolveTableSubjectKey(
     const headingKey =
         heading === undefined
             ? undefined
-            : `${heading.text.replaceAll("`", "").trim()}#0`;
+            : findSnapshotKeyForName(
+                  heading.text.replaceAll("`", "").trim(),
+                  snapshotMap,
+              );
 
-    if (headingKey !== undefined && snapshotMap.has(headingKey)) {
+    if (headingKey !== undefined) {
         return headingKey;
     }
 
@@ -868,13 +871,35 @@ export function resolveTableSubjectKey(
     const paragraphKey =
         paragraphIdentifier === undefined
             ? undefined
-            : `${paragraphIdentifier}#0`;
+            : findSnapshotKeyForName(paragraphIdentifier, snapshotMap);
 
-    if (paragraphKey !== undefined && snapshotMap.has(paragraphKey)) {
+    if (paragraphKey !== undefined) {
         return paragraphKey;
     }
 
     return primaryKey;
+}
+
+/**
+ * Finds the snapshot key a bare type name refers to, trying the non-generic key first and then the
+ * small generic arities the library uses (`ItemCollection<TItem>` is `ItemCollection#1`,
+ * `TemporalInputBase<TValue>` is `TemporalInputBase#1`), because a heading or lead paragraph names
+ * the type without its arity suffix.
+ *
+ * @param {string} name The bare type name without a generic arity suffix.
+ * @param {Map<string, unknown>} snapshotMap The parsed snapshot.
+ * @returns {string | undefined} The first matching snapshot key, or undefined when none exists.
+ */
+function findSnapshotKeyForName(name, snapshotMap) {
+    for (let arity = 0; arity <= 2; arity++) {
+        const key = `${name}#${arity}`;
+
+        if (snapshotMap.has(key)) {
+            return key;
+        }
+    }
+
+    return undefined;
 }
 
 /**

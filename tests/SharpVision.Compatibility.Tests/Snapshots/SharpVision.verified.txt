@@ -764,6 +764,29 @@ namespace SharpVision.Controls
         Arrange = 2,
         Measure = 3,
     }
+    public abstract class ItemCollection<TItem> : System.Collections.Generic.IEnumerable<TItem>, System.Collections.Generic.IReadOnlyCollection<TItem>, System.Collections.Generic.IReadOnlyList<TItem>, System.Collections.IEnumerable
+        where TItem : SharpVision.Controls.ControlBase
+    {
+        protected ItemCollection(SharpVision.Controls.ItemsControl owner) { }
+        public virtual int Count { get; }
+        public virtual TItem this[int index] { get; set; }
+        public virtual void Add(TItem item) { }
+        public virtual void Clear() { }
+        public virtual bool Contains(TItem item) { }
+        public System.Collections.Generic.IEnumerator<TItem> GetEnumerator() { }
+        public virtual int IndexOf(TItem item) { }
+        public virtual void Insert(int index, TItem item) { }
+        public virtual void Move(int oldIndex, int newIndex) { }
+        protected virtual void OnCleared() { }
+        protected virtual void OnInserted(int index, TItem item) { }
+        protected virtual void OnInserting(int index, TItem item) { }
+        protected virtual void OnMoved(int oldIndex, int newIndex) { }
+        protected virtual void OnRemoved(int index, TItem item) { }
+        protected virtual void OnRemoving(int index, TItem item) { }
+        protected virtual void OnReplaced(int index, TItem previous, TItem item) { }
+        public virtual bool Remove(TItem item) { }
+        public virtual void RemoveAt(int index) { }
+    }
     public abstract class ItemsControl : SharpVision.Controls.ControlBase
     {
         protected ItemsControl() { }
@@ -1325,18 +1348,14 @@ namespace SharpVision.Controls.Collections
         public bool IsClosable { get; set; }
         protected override void OnDirectDisposalRequested() { }
     }
-    public sealed class TabItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Collections.TabItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Collections.TabItem>, System.Collections.IEnumerable
+    public sealed class TabItemCollection : SharpVision.Controls.ItemCollection<SharpVision.Controls.Collections.TabItem>
     {
-        public int Count { get; }
-        public SharpVision.Controls.Collections.TabItem this[int index] { get; set; }
-        public void Add(SharpVision.Controls.Collections.TabItem item) { }
-        public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.Collections.TabItem> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.Collections.TabItem item) { }
-        public void Insert(int index, SharpVision.Controls.Collections.TabItem item) { }
-        public void Move(int oldIndex, int newIndex) { }
-        public bool Remove(SharpVision.Controls.Collections.TabItem item) { }
-        public void RemoveAt(int index) { }
+        public override SharpVision.Controls.Collections.TabItem this[int index] { get; set; }
+        public override void Clear() { }
+        public override void Insert(int index, SharpVision.Controls.Collections.TabItem item) { }
+        public override void Move(int oldIndex, int newIndex) { }
+        public override bool Remove(SharpVision.Controls.Collections.TabItem item) { }
+        public override void RemoveAt(int index) { }
     }
     public sealed class TabSelectionChangedEventArgs : System.EventArgs
     {
@@ -1708,18 +1727,9 @@ namespace SharpVision.Controls.Display
         Left = 0,
         Right = 1,
     }
-    public sealed class StatusBarItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.Display.StatusBarItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.Display.StatusBarItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.Display.StatusBarItem>, System.Collections.IEnumerable
+    public sealed class StatusBarItemCollection : SharpVision.Controls.ItemCollection<SharpVision.Controls.Display.StatusBarItem>
     {
-        public int Count { get; }
-        public SharpVision.Controls.Display.StatusBarItem this[int index] { get; set; }
-        public void Add(SharpVision.Controls.Display.StatusBarItem item) { }
-        public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.Display.StatusBarItem> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.Display.StatusBarItem item) { }
-        public void Insert(int index, SharpVision.Controls.Display.StatusBarItem item) { }
-        public void Move(int oldIndex, int newIndex) { }
-        public bool Remove(SharpVision.Controls.Display.StatusBarItem item) { }
-        public void RemoveAt(int index) { }
+        public override void Move(int oldIndex, int newIndex) { }
     }
     public sealed class StatusBarItemStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Controls.Display.StatusBarItemStyle>
     {
@@ -2004,21 +2014,20 @@ namespace SharpVision.Controls.Input
         protected override void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
-    public sealed class CommandBarEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
+    public sealed class CommandBarEntryCollection : SharpVision.Controls.ItemCollection<SharpVision.Controls.ControlBase>
     {
-        public int Count { get; }
-        public SharpVision.Controls.ControlBase this[int index] { get; set; }
+        public override SharpVision.Controls.ControlBase this[int index] { get; set; }
         public void Add(SharpVision.Controls.Input.CommandBarItem item) { }
         public void Add(SharpVision.Controls.Input.CommandBarSeparator separator) { }
-        public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.ControlBase entry) { }
+        public override void Clear() { }
+        public override void Insert(int index, SharpVision.Controls.ControlBase item) { }
         public void Insert(int index, SharpVision.Controls.Input.CommandBarItem item) { }
         public void Insert(int index, SharpVision.Controls.Input.CommandBarSeparator separator) { }
-        public void Move(int oldIndex, int newIndex) { }
+        public override void Move(int oldIndex, int newIndex) { }
+        public override bool Remove(SharpVision.Controls.ControlBase item) { }
         public bool Remove(SharpVision.Controls.Input.CommandBarItem item) { }
         public bool Remove(SharpVision.Controls.Input.CommandBarSeparator separator) { }
-        public void RemoveAt(int index) { }
+        public override void RemoveAt(int index) { }
     }
     public sealed class CommandBarItem : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CommandBarItemStyle>
     {
@@ -3962,21 +3971,20 @@ namespace SharpVision.Menus
         public static SharpVision.Menus.MenuBuilder Horizontal(int spacing = 1) { }
         public static SharpVision.Menus.MenuBuilder Vertical() { }
     }
-    public sealed class MenuEntryCollection : System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
+    public sealed class MenuEntryCollection : SharpVision.Controls.ItemCollection<SharpVision.Controls.ControlBase>
     {
-        public int Count { get; }
-        public SharpVision.Controls.ControlBase this[int index] { get; set; }
+        public override SharpVision.Controls.ControlBase this[int index] { get; set; }
         public void Add(SharpVision.Menus.MenuItem item) { }
         public void Add(SharpVision.Menus.MenuSeparator separator) { }
-        public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Controls.ControlBase> GetEnumerator() { }
-        public int IndexOf(SharpVision.Controls.ControlBase item) { }
+        public override void Clear() { }
+        public override void Insert(int index, SharpVision.Controls.ControlBase item) { }
         public void Insert(int index, SharpVision.Menus.MenuItem item) { }
         public void Insert(int index, SharpVision.Menus.MenuSeparator separator) { }
-        public void Move(int oldIndex, int newIndex) { }
+        public override void Move(int oldIndex, int newIndex) { }
+        public override bool Remove(SharpVision.Controls.ControlBase item) { }
         public bool Remove(SharpVision.Menus.MenuItem item) { }
         public bool Remove(SharpVision.Menus.MenuSeparator separator) { }
-        public void RemoveAt(int index) { }
+        public override void RemoveAt(int index) { }
     }
     public sealed class MenuItem : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Menus.MenuItemStyle>
     {
@@ -4089,18 +4097,14 @@ namespace SharpVision.Navigation
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformInvoke() { }
     }
-    public sealed class BreadcrumbItemCollection : System.Collections.Generic.IEnumerable<SharpVision.Navigation.BreadcrumbItem>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Navigation.BreadcrumbItem>, System.Collections.Generic.IReadOnlyList<SharpVision.Navigation.BreadcrumbItem>, System.Collections.IEnumerable
+    public sealed class BreadcrumbItemCollection : SharpVision.Controls.ItemCollection<SharpVision.Navigation.BreadcrumbItem>
     {
-        public int Count { get; }
-        public SharpVision.Navigation.BreadcrumbItem this[int index] { get; set; }
-        public void Add(SharpVision.Navigation.BreadcrumbItem item) { }
-        public void Clear() { }
-        public System.Collections.Generic.IEnumerator<SharpVision.Navigation.BreadcrumbItem> GetEnumerator() { }
-        public int IndexOf(SharpVision.Navigation.BreadcrumbItem item) { }
-        public void Insert(int index, SharpVision.Navigation.BreadcrumbItem item) { }
-        public void Move(int oldIndex, int newIndex) { }
-        public bool Remove(SharpVision.Navigation.BreadcrumbItem item) { }
-        public void RemoveAt(int index) { }
+        public override SharpVision.Navigation.BreadcrumbItem this[int index] { get; set; }
+        public override void Clear() { }
+        public override void Insert(int index, SharpVision.Navigation.BreadcrumbItem item) { }
+        public override void Move(int oldIndex, int newIndex) { }
+        public override bool Remove(SharpVision.Navigation.BreadcrumbItem item) { }
+        public override void RemoveAt(int index) { }
     }
     public sealed class BreadcrumbItemStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Navigation.BreadcrumbItemStyle>
     {

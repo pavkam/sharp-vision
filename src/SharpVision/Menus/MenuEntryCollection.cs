@@ -5,7 +5,7 @@ namespace SharpVision.Menus;
 
 /// <summary>Exposes one menu's constrained item and separator collection.</summary>
 [PublicAPI]
-public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
+public sealed class MenuEntryCollection: ItemCollection<ControlBase>
 {
     private readonly Menu _owner;
 
@@ -13,10 +13,8 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     /// <param name="owner">The owning menu.</param>
     /// <exception cref="ArgumentNullException"><paramref name="owner"/> is null.</exception>
     internal MenuEntryCollection(Menu owner)
-    {
-        ArgumentNullException.ThrowIfNull(owner);
+        : base(owner) =>
         _owner = owner;
-    }
 
     /// <summary>Gets or replaces one owned entry, preserving its position.</summary>
     /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
@@ -27,18 +25,15 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     /// <see cref="MenuSeparator"/>.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The menu or the assigned entry is disposed.</exception>
-    public ControlBase this[int index]
+    public override ControlBase this[int index]
     {
-        get => _owner.ItemAt(index);
+        get => base[index];
         set
         {
             ArgumentNullException.ThrowIfNull(value);
             _owner.ReplaceEntry(index, value);
         }
     }
-
-    /// <inheritdoc/>
-    public int Count => _owner.ItemCount;
 
     /// <summary>Adds one detached non-null menu item.</summary>
     /// <param name="item">The menu item to own.</param>
@@ -49,7 +44,7 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public void Add(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        _owner.Add(item);
+        Add((ControlBase) item);
     }
 
     /// <summary>Adds one detached non-null menu separator.</summary>
@@ -61,12 +56,38 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public void Add(MenuSeparator separator)
     {
         ArgumentNullException.ThrowIfNull(separator);
-        _owner.Add(separator);
+        Add((ControlBase) separator);
+    }
+
+    /// <summary>Inserts one detached entry at a position, dispatching to the owner's typed overload
+    /// for its exact runtime type.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The attached menu is mutated off-dispatcher, or <paramref name="item"/> is not a
+    /// <see cref="MenuItem"/> or <see cref="MenuSeparator"/>.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The menu or item is disposed.</exception>
+    public override void Insert(int index, ControlBase item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        switch (item)
+        {
+            case MenuItem menuItem:
+                _owner.Insert(index, menuItem);
+                break;
+            case MenuSeparator separator:
+                _owner.Insert(index, separator);
+                break;
+            default:
+                throw new InvalidOperationException(
+                    "Menus may own only MenuItem and MenuSeparator controls through Items.");
+        }
     }
 
     /// <summary>Inserts one detached non-null menu item at a position.</summary>
-    /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
-    /// <param name="item">The menu item to own.</param>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     /// <exception cref="ArgumentException">The item already belongs to a control tree.</exception>
@@ -75,12 +96,10 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public void Insert(int index, MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        _owner.Insert(index, item);
+        Insert(index, (ControlBase) item);
     }
 
     /// <summary>Inserts one detached non-null menu separator at a position.</summary>
-    /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
-    /// <param name="separator">The menu separator to own.</param>
     /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
     /// <exception cref="ArgumentException">The separator already belongs to a control tree.</exception>
@@ -89,7 +108,24 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public void Insert(int index, MenuSeparator separator)
     {
         ArgumentNullException.ThrowIfNull(separator);
-        _owner.Insert(index, separator);
+        Insert(index, (ControlBase) separator);
+    }
+
+    /// <summary>Removes one owned entry, dispatching to the owner's typed overload for its exact
+    /// runtime type. An entry of a foreign type was never owned and is reported as not removed.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
+    public override bool Remove(ControlBase item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return item switch
+        {
+            MenuItem menuItem => _owner.Remove(menuItem),
+            MenuSeparator separator => _owner.Remove(separator),
+            _ => false,
+        };
     }
 
     /// <summary>Removes one owned menu item.</summary>
@@ -101,7 +137,7 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public bool Remove(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return _owner.Remove(item);
+        return Remove((ControlBase) item);
     }
 
     /// <summary>Removes one owned menu separator.</summary>
@@ -113,14 +149,14 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     public bool Remove(MenuSeparator separator)
     {
         ArgumentNullException.ThrowIfNull(separator);
-        return _owner.Remove(separator);
+        return Remove((ControlBase) separator);
     }
 
     /// <summary>Removes the owned entry at a position.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current entries.</exception>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
-    public void RemoveAt(int index) => _owner.RemoveAt(index);
+    public override void RemoveAt(int index) => _owner.RemoveAt(index);
 
     /// <summary>Moves one owned entry to a different position, preserving its identity.</summary>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -128,30 +164,10 @@ public sealed class MenuEntryCollection: IReadOnlyList<ControlBase>
     /// </exception>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
-    public void Move(int oldIndex, int newIndex) => _owner.MoveEntry(oldIndex, newIndex);
-
-    /// <summary>Gets the position of one entry, or -1 when it is not owned by this menu.</summary>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    public int IndexOf(ControlBase item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        return _owner.IndexOfEntry(item);
-    }
+    public override void Move(int oldIndex, int newIndex) => _owner.MoveEntry(oldIndex, newIndex);
 
     /// <summary>Removes every owned item and separator.</summary>
     /// <exception cref="InvalidOperationException">The attached menu is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The menu is disposed.</exception>
-    public void Clear() => _owner.ClearItems();
-
-    /// <inheritdoc/>
-    public IEnumerator<ControlBase> GetEnumerator()
-    {
-        for (var index = 0; index < Count; index++)
-        {
-            yield return this[index];
-        }
-    }
-
-    /// <inheritdoc/>
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public override void Clear() => _owner.ClearItems();
 }

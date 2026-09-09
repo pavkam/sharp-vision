@@ -15,7 +15,7 @@ public sealed class TabControlTests
         var item = Create("General", "Body");
         item.ParentChanged += (_, _) =>
         {
-            tabs.ItemCount.ShouldBe(1);
+            tabs.Items.Count.ShouldBe(1);
             tabs.HeaderAt(0).Text.ShouldBe("General");
             tabs.SelectedIndex.ShouldBe(0);
             tabs.SelectedItem.ShouldBeSameAs(item);
@@ -160,7 +160,7 @@ public sealed class TabControlTests
         {
             if (header.Parent is null)
             {
-                tabs.ItemCount.ShouldBe(0);
+                tabs.Items.Count.ShouldBe(0);
                 _ = Should.Throw<ArgumentOutOfRangeException>(() => tabs.HeaderAt(0));
                 tabs.SelectedIndex.ShouldBe(-1);
             }

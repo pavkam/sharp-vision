@@ -35,8 +35,17 @@ public abstract class ItemsControl: ControlBase
     }
 
     /// <summary>Gets the number of currently realized item controls.</summary>
+    /// <remarks>
+    /// This accessor is <c>protected internal</c> rather than <c>protected</c> because
+    /// <see cref="ItemCollection{TItem}"/> - the shared base for a typed semantic collection -
+    /// is a sibling class in this assembly, not a subclass of <see cref="ItemsControl"/>: C#
+    /// protected access requires the accessing code to itself derive from the declaring type, so a
+    /// plain <c>protected</c> member here would be unreachable from that base even though both live
+    /// in the same assembly. See the "Typed collections" section on this type's documentation page
+    /// for the complete seam.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
-    protected int ItemControlCount => GetItemsHost().Children.Count;
+    protected internal int ItemControlCount => GetItemsHost().Children.Count;
 
     /// <summary>Gets the realized-control slot for a framework-owned compound transaction.</summary>
     private protected OwnedControlSlot ItemControlsSlot => GetItemsHost().Children.OwnedSlot;
@@ -249,14 +258,14 @@ public abstract class ItemsControl: ControlBase
     /// <returns>The realized control at <paramref name="index"/>.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the realized controls.</exception>
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
-    protected ControlBase GetItemControl(int index) => GetItemsHost().Children[index];
+    protected internal ControlBase GetItemControl(int index) => GetItemsHost().Children[index];
 
     /// <summary>Gets the identity position of one realized item control.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>The zero-based position, or -1 when the control is not realized by this owner.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
-    protected int IndexOfItemControl(ControlBase control)
+    protected internal int IndexOfItemControl(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return GetItemsHost().Children.IndexOf(control);
@@ -273,7 +282,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner, host, or control is disposed.</exception>
-    protected void InsertItemControl(int index, ControlBase control)
+    protected internal void InsertItemControl(int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         GetItemsHost().Children.Insert(index, control);
@@ -288,7 +297,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
-    protected bool RemoveItemControl(ControlBase control)
+    protected internal bool RemoveItemControl(ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         return GetItemsHost().Children.Remove(control);
@@ -302,7 +311,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
-    protected void RemoveItemControlAt(int index) => GetItemsHost().Children.RemoveAt(index);
+    protected internal void RemoveItemControlAt(int index) => GetItemsHost().Children.RemoveAt(index);
 
     /// <summary>Atomically replaces one realized control without disposing the previous control.</summary>
     /// <param name="index">The valid zero-based item-control position.</param>
@@ -315,7 +324,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner, host, or replacement is disposed.</exception>
-    protected void ReplaceItemControl(int index, ControlBase control)
+    protected internal void ReplaceItemControl(int index, ControlBase control)
     {
         ArgumentNullException.ThrowIfNull(control);
         GetItemsHost().Children[index] = control;
@@ -327,7 +336,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
-    protected void ClearItemControls() => GetItemsHost().Children.Clear();
+    protected internal void ClearItemControls() => GetItemsHost().Children.Clear();
 
     /// <summary>Atomically replaces the complete realized-control snapshot.</summary>
     /// <param name="controls">The non-null borrowed candidate sequence.</param>
@@ -363,7 +372,7 @@ public abstract class ItemsControl: ControlBase
     /// ownership transaction is active.
     /// </exception>
     /// <exception cref="ObjectDisposedException">The owner or host is disposed.</exception>
-    protected void MoveItemControl(int oldIndex, int newIndex) =>
+    protected internal void MoveItemControl(int oldIndex, int newIndex) =>
         GetItemsHost().Children.Move(oldIndex, newIndex);
 
     /// <summary>Responds after one complete realized-control snapshot is structurally committed.</summary>

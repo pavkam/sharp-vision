@@ -529,4 +529,43 @@ public sealed class ItemsControlTests
         engine.Layout(owner, new Size(20, 10));
         owner.DesiredSize.ShouldBe(new Size(6, 3));
     }
+
+    /// <summary>Verifies <see cref="ItemCollection{TItem}.Move"/>'s default implementation reorders
+    /// the owner's realized controls in place, through the owner's own <see
+    /// cref="ItemsControl.MoveItemControl"/> accessor, without detaching or disposing any item.</summary>
+    [Fact]
+    public void ItemCollection_WhenMoved_ReordersOwnerItems()
+    {
+        var owner = new ProbeItemsControl();
+        var collection = new ProbeItemCollection(owner);
+        var first = new ProbeControl();
+        var second = new ProbeControl();
+        var third = new ProbeControl();
+        collection.Add(first);
+        collection.Add(second);
+        collection.Add(third);
+
+        collection.Move(0, 2);
+
+        collection.ShouldBe([second, third, first]);
+        first.IsDisposed.ShouldBeFalse();
+        second.IsDisposed.ShouldBeFalse();
+        third.IsDisposed.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies <see cref="ItemCollection{TItem}.Insert"/>'s default implementation
+    /// validates the candidate before touching the owner's realized controls, so a null candidate
+    /// leaves the collection's committed content completely unchanged.</summary>
+    [Fact]
+    public void ItemCollection_WhenInsertingNull_ThrowsBeforeMutation()
+    {
+        var owner = new ProbeItemsControl();
+        var collection = new ProbeItemCollection(owner);
+        var existing = new ProbeControl();
+        collection.Add(existing);
+
+        _ = Should.Throw<ArgumentNullException>(() => collection.Insert(0, null!));
+
+        collection.ShouldBe([existing]);
+    }
 }

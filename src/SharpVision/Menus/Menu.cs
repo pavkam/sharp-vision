@@ -428,36 +428,7 @@ public sealed class Menu: ItemsControl
     /// <summary>Gets one checked typed child by index.</summary>
     /// <param name="index">The valid zero-based child index.</param>
     /// <returns>The exact owned item.</returns>
-    internal ControlBase ItemAt(int index) => RequireEntry(GetItemControl(index));
-
-    /// <summary>Gets the current semantic item count.</summary>
-    internal int ItemCount => ItemControlCount;
-
-    /// <summary>Gets the position of one owned entry, or -1 when it is not owned by this menu.</summary>
-    /// <param name="item">The non-null candidate.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
-    internal int IndexOfEntry(ControlBase item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        return IndexOfItemControl(item);
-    }
-
-    /// <summary>Adds one typed item and tracks its invocation.</summary>
-    /// <param name="item">The non-null detached item.</param>
-    internal void Add(MenuItem item)
-    {
-        ArgumentNullException.ThrowIfNull(item);
-        InsertEntry(ItemControlCount, item);
-    }
-
-    /// <summary>Adds one typed separator.</summary>
-    /// <param name="separator">The non-null detached separator.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="separator"/> is null.</exception>
-    internal void Add(MenuSeparator separator)
-    {
-        ArgumentNullException.ThrowIfNull(separator);
-        InsertEntry(ItemControlCount, separator);
-    }
+    private ControlBase ItemAt(int index) => RequireEntry(GetItemControl(index));
 
     /// <summary>Inserts one typed item at a position and tracks its invocation.</summary>
     /// <param name="index">The insertion position from zero through the current item count.</param>

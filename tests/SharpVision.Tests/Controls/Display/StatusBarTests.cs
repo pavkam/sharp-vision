@@ -54,7 +54,7 @@ public sealed class StatusBarTests
         new LayoutEngine().Layout(bar, new Size(20, 1));
 
         bar.Spacing.ShouldBe(2);
-        bar.ItemAt(1).Bounds.X.ShouldBe(bar.ItemAt(0).Bounds.Right + 2);
+        bar.Items[1].Bounds.X.ShouldBe(bar.Items[0].Bounds.Right + 2);
     }
     /// <summary>Verifies the conventional one-row passive strip and item defaults.</summary>
     [Fact]

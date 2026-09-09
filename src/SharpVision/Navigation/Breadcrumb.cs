@@ -125,10 +125,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     internal BreadcrumbItem ItemAt(int index) => (BreadcrumbItem) GetItemControl(index);
 
     /// <summary>Gets an item's identity position.</summary>
-    internal int IndexOfItem(BreadcrumbItem item) => IndexOfItemControl(item);
-
-    /// <summary>Adds one item.</summary>
-    internal void AddItem(BreadcrumbItem item) => InsertItem(ItemControlCount, item);
+    private int IndexOfItem(BreadcrumbItem item) => IndexOfItemControl(item);
 
     /// <summary>Inserts one item and establishes the final available location.</summary>
     internal void InsertItem(int index, BreadcrumbItem item)
