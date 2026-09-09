@@ -72,6 +72,67 @@ public sealed class TableDataControllerSurfaceTests
         controller.RowAt(controller.WindowStart)!.Cells[0].Bounds.Height.ShouldBe(2);
     }
 
+    /// <summary>Verifies the resolved row height and the remapped offset are already consistent on
+    /// the very first rendered frame after a resize, not only once <see
+    /// cref="ComponentSurface.ResizeAsync"/> settles at <see cref="Application.Idle"/>. <see
+    /// cref="Application.Idle"/> only fires after a correcting catch-up pass would have run, so it
+    /// cannot by itself distinguish a same-pass re-arrange from a stale first frame that a later idle
+    /// pass silently repairs; subscribing <see cref="Application.FrameRendered"/> and capturing state
+    /// on its first invocation observes the frame the harness's own settle wait cannot.</summary>
+    [Fact]
+    public async Task ResizeAsync_WhenProgressiveRowHeightIsRelative_PlacesRowsAtTheRemappedOffsetOnTheFirstFrameAsync()
+    {
+        var table = CreateHost();
+        table.RowSpacing = 1;
+        var source = CreateSource(10_000);
+        source.Gate();
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(20, 8),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(
+            () => table.SetDataSource(source, BuildRow, Length.Percent(50)),
+            "bind relative-row source");
+        await surface.UpdateAsync(() => table.SelectIndex(2), "select progressive row");
+        var controller = table.ProgressiveController!;
+        controller.RowHeight.ShouldBe(4);
+        await surface.UpdateAsync(() => table.ScrollBy(0, 40), "scroll relative-row table");
+
+        int? firstFrameOffset = null;
+        Rect? firstFrameRowBounds = null;
+
+        void OnFrameRendered(object? sender, FrameRenderedEventArgs eventArgs)
+        {
+            _ = sender;
+            _ = eventArgs;
+
+            if (firstFrameOffset is not null)
+            {
+                return;
+            }
+
+            firstFrameOffset = table.VerticalOffset;
+            firstFrameRowBounds = controller.RowAt(controller.WindowStart)?.Cells[0].Bounds;
+        }
+
+        surface.Application.FrameRendered += OnFrameRendered;
+
+        try
+        {
+            await surface.ResizeAsync(new Size(20, 4));
+        }
+        finally
+        {
+            surface.Application.FrameRendered -= OnFrameRendered;
+        }
+
+        controller.RowHeight.ShouldBe(2);
+        firstFrameOffset.ShouldNotBeNull();
+        firstFrameRowBounds.ShouldNotBeNull();
+        firstFrameOffset.ShouldBe(table.VerticalOffset);
+        firstFrameRowBounds!.Value.ShouldBe(controller.RowAt(controller.WindowStart)!.Cells[0].Bounds);
+    }
+
     /// <summary>Releases whatever is currently held and settles the dispatcher, repeatedly, until a
     /// predicate is satisfied or a generous iteration bound is exhausted. A gated fetch's completion
     /// still has to cross the controller's own dispatcher-marshaled commit and any resulting

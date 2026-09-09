@@ -77,4 +77,10 @@ internal sealed class ScrollableItemsControlUniformRowsProbe: ScrollableItemsCon
     /// <inheritdoc/>
     protected override int ResolvedUniformRowHeight =>
         _rowHeight ?? throw new InvalidOperationException("No uniform row height has resolved yet.");
+
+    /// <summary>Gets the private presentation host this probe installed, so a test can inspect its
+    /// realized children's <see cref="ControlBase.Bounds"/> directly - proving <c>ArrangeUniformRows</c>
+    /// re-arranged them in the same pass - instead of only the semantic
+    /// <see cref="ScrollableItemsControl.VerticalOffset"/> the owner exposes.</summary>
+    internal Stack Host => _host;
 }

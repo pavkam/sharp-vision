@@ -163,7 +163,14 @@ public abstract class ScrollableItemsControl: ItemsControl
     /// <see cref="Container.ScrollByKnownMaximum"/> so the caller never observes an
     /// unrelated jump. An offset that already sits inside <paramref name="leadingBandHeight"/> - a
     /// header band a derived control reserves ahead of its rows, for example - passes through
-    /// unchanged instead of being remapped, because that band's own height did not change.
+    /// unchanged instead of being remapped, because that band's own height did not change. This
+    /// re-anchor runs after <paramref name="host"/> was already arranged for this pass, so when it
+    /// actually moves the offset, <paramref name="host"/> is re-arranged synchronously in the same
+    /// transaction, the same way <see cref="Container"/> completes a retained bring-into-view
+    /// reveal: an offset change committed outside an arrange transaction only requests a later
+    /// pass, and this control's own owner is still arranging when the request is made, so without
+    /// this same-pass re-arrange the caller would render one frame with the host's children still
+    /// placed at the pre-remap offset before a subsequent idle pass corrects it.
     /// </remarks>
     /// <param name="host">The non-null private presentation host, already arranged by the caller.</param>
     /// <param name="bounds">This control's own final arranged bounds.</param>
@@ -220,7 +227,23 @@ public abstract class ScrollableItemsControl: ItemsControl
         var mapped = UniformRowHeight.RemapOffset(contentOffset, height, ResolvedUniformRowHeight, rowGap);
         var target = previousOffset < leadingBandHeight ? previousOffset : leadingBandHeight.Add(mapped);
         var maximum = Math.Max(0, Extent.Height - Viewport.Height);
-        _ = host.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
+        var moved = host.ScrollByKnownMaximum(target - VerticalOffset, maximum, ScrollCause.Resize);
+
+        // ScrollByKnownMaximum lands outside an arrange transaction - host.IsArranging is already
+        // false, since the caller's own ArrangeOverride arranged host before calling this method -
+        // so Container.Apply requests only an Arrange invalidation instead of incorporating the
+        // moved offset itself. This control's own owner is still arranging when that request is
+        // made, so it would otherwise be swallowed and only replayed by the self-heal in this
+        // control's Arrange finally block, which re-dirties Pending without re-running layout:
+        // the caller would render one frame with host's children still at their pre-remap Bounds
+        // (ResolveContentSlot bakes the offset into Bounds only at arrange time) before a later
+        // idle pass corrects it. Re-arranging host here, synchronously and in the same transaction,
+        // mirrors Container.CompleteRetainedBringIntoView and ends this pass with Bounds that
+        // already reflect the remapped offset.
+        if (moved)
+        {
+            ArrangeChild(host, bounds, ResolvedAxes.Both);
+        }
     }
 
     /// <summary>Attempts to resolve and commit this control's uniform row height against one
