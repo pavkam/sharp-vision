@@ -120,12 +120,14 @@ stale transition; it never indexes replacement state or opens another item.
 
 Opening the first submenu arms one top-menu-rooted
 [modal plane](../../concepts/modality.md#menu-planes) with
-`OutsideInteraction.Dismiss`. Sibling switches, command rows, retained popup
-surfaces, and arbitrarily deep submenus reuse that exact scope. Escape closes
-the deepest branch before ending the root session; invoking a leaf item or
-dismissing from outside closes the complete chain. A top menu inside a modal
-Window becomes a temporary younger scope and restores the Window plane when it
-closes.
+`OutsideInteraction.Dismiss`, entered through
+[`ControlBase.EnterOwnedModal`](../control.md#modal-sessions) the same way every
+other owned modal scope in the framework is. Sibling switches, command rows,
+retained popup surfaces, and arbitrarily deep submenus reuse that exact scope.
+Escape closes the deepest branch before ending the root session; invoking a leaf
+item or dismissing from outside closes the complete chain. A top menu inside a
+modal Window becomes a temporary younger scope and restores the Window plane
+when it closes.
 
 A horizontal menu opens item submenus below the anchor. A vertical menu opens
 nested submenus to the right; pressing Right on its selected submenu-bearing row

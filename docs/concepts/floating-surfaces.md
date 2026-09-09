@@ -53,16 +53,20 @@ concrete family owns its public open state and chrome:
 - `Tooltip` fixes passive, delayed, non-modal behavior.
 - `Toast` uses `Show(owner)` and `Dismiss()` with a timed, non-modal lifetime.
 
-The base composes its modal lifetime through the shared session primitive rather
-than wiring scope identity separately in Popup and Window. The session owns
-entry reentrancy, post-entry presentation validation, exact callback
-subscriptions, identity-safe external exit, and deterministic cleanup. Derived
-families provide only dismissal and external-exit policy; Dialog adds typed
-completion policy through the same cleared-before-callback boundary. Menu and
-private dropdown owners use the identical lifetime primitive without inheriting
-from the surface hierarchy. External-exit policy runs only after the old scope
-identity clears, while dismissal policy receives the still-active current scope
-so it can close that exact family lifetime.
+The base composes its modal lifetime through
+[`ControlBase.EnterOwnedModal`](../controls/control.md#modal-sessions) and a
+`ModalSession` rather than wiring scope identity separately in Popup and Window.
+The session owns entry reentrancy, post-entry presentation validation, exact
+callback subscriptions, identity-safe external exit, and deterministic cleanup;
+`EnterSurfaceModal` supplies its own `isCurrent` predicate so currentness also
+tracks `SurfacePresentationVersion`, not only the shared
+disposed/enabled/visible default. Derived families provide only dismissal and
+external-exit policy; Dialog adds typed completion policy through the same
+cleared-before-callback boundary. `Menu` and `PopupModalTracker` compose the
+identical `EnterOwnedModal` capability without inheriting from the surface
+hierarchy. External-exit policy runs only after the old scope identity clears,
+while dismissal policy receives the still-active current scope so it can close
+that exact family lifetime.
 
 The base also owns logical-open identity independently from mounted
 presentation. That distinction lets a never-attached visible Window close

@@ -514,6 +514,33 @@ public sealed class ControlBaseSurfaceTests
         probe.IsDisposed.ShouldBeTrue();
     }
 
+    /// <summary>Verifies <see cref="ControlBase.EnterOwnedModal"/> tracks a scope through the
+    /// same reentrancy-safe identity every framework owner (<see cref="Menu"/>,
+    /// <see cref="PopupModalTracker"/>, <see cref="SharpVision.Surfaces.FloatingSurfaceBase"/>) uses,
+    /// and that the modality manager's own unavailability unwind - not anything
+    /// <see cref="ControlBase.EnterOwnedModal"/> polls itself - ends the scope once the owner that
+    /// entered it becomes hidden.</summary>
+    [Fact]
+    public async Task EnterOwnedModal_WhenOwnerHidesWhileModal_ExitsScopeAsync()
+    {
+        // Arrange
+        var probe = new ControlBaseModalProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.ClickAsync(probe);
+        probe.IsModalSessionActive.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(
+            () => probe.Visibility = Visibility.Collapsed,
+            "hide the owner while its modal scope is active");
+
+        // Assert
+        probe.IsModalSessionActive.ShouldBeFalse();
+    }
+
     /// <summary>Verifies a control that overrides the promoted
     /// <see cref="ControlBase.GetAppearanceState"/> seam to force
     /// <see cref="VisualState.Disabled"/> - the way a third-party command control presents an

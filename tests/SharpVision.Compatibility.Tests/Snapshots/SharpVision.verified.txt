@@ -525,6 +525,7 @@ namespace SharpVision.Controls
                     bool markEnterHandledWithoutAcceptance = false,
                     bool enterRequiresActivationEligibleModifiers = false) { }
         protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null, System.Action<bool>? setPressed = null) { }
+        protected SharpVision.Input.ModalScope? EnterOwnedModal(SharpVision.Input.ModalSession session, SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.ControlBase? initialFocus, System.Func<bool>? isCurrent = null, System.Action? rollback = null) { }
         protected void EstablishTextSelectionCaret() { }
         protected T? FindAncestor<T>()
             where T : SharpVision.Controls.ControlBase { }
@@ -3568,6 +3569,15 @@ namespace SharpVision.Input
         public event System.EventHandler? Exited;
         public void Dispose() { }
         public void Include(SharpVision.Controls.ControlBase root) { }
+    }
+    public sealed class ModalSession
+    {
+        public ModalSession(System.Action<SharpVision.Input.ModalScope>? dismissRequested = null, System.Action<SharpVision.Input.ModalScope>? exited = null) { }
+        public SharpVision.Input.ModalScope? Current { get; }
+        public bool IsActive { get; }
+        public bool IsEntering { get; }
+        public SharpVision.Input.ModalScope Enter(System.Func<SharpVision.Input.ModalScope> enterScope, System.Func<bool> isCurrent, System.Action? rollback = null) { }
+        public void Exit() { }
     }
     public sealed class ModalityManager : System.IDisposable
     {

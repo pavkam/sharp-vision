@@ -1150,7 +1150,7 @@ public sealed class Menu: ItemsControl
             return true;
         }
 
-        if (ModalityOwner is not { } modality)
+        if (ModalityOwner is null)
         {
             return true;
         }
@@ -1160,13 +1160,8 @@ public sealed class Menu: ItemsControl
             return false;
         }
 
-        var scope = _modalSession.Enter(
-            () => modality.Enter(this, OutsideInteraction.Dismiss),
-            () => !IsDisposed &&
-                EffectiveIsEnabled &&
-                EffectiveIsVisible &&
-                ReferenceEquals(ModalityOwner, modality));
-        return scope.IsActive && ReferenceEquals(_modalSession.Current, scope);
+        var scope = EnterOwnedModal(_modalSession, OutsideInteraction.Dismiss, initialFocus: null);
+        return scope is null || (scope.IsActive && ReferenceEquals(_modalSession.Current, scope));
     }
 
     private void OnModalDismissRequested(ModalScope scope)

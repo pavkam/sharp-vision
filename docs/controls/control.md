@@ -99,6 +99,7 @@ authoring-role diagram.
 | `PopupSessionGeneration`                                                                                                                                       | `ulong`                                       | —                 | Protected, read-only; increments every time a navigation session begins or ends. A deferred continuation captures and compares it to detect a superseded session.                                                                                                                                                                                                          |
 | `OnDropDownOpened()`, `OnDropDownClosed()`                                                                                                                     | `void`                                        | —                 | Protected virtual, no-op by default; a control that enables the popup overrides these to raise its own public events.                                                                                                                                                                                                                                                      |
 | `OnPopupArranged()`                                                                                                                                            | `void`                                        | —                 | Protected virtual, no-op by default; runs immediately after the owned popup is arranged for the current pass. See [Owned popups](#owned-popups).                                                                                                                                                                                                                           |
+| `EnterOwnedModal(ModalSession, OutsideInteraction, ControlBase?, Func<bool>?, Action?)`                                                                        | `ModalScope?`                                 | —                 | Protected internal; enters one modal scope this control owns through its attached modality manager. Null when this control has no attached modality manager. See [Modal sessions](#modal-sessions).                                                                                                                                                                        |
 | `IsTextSelectionEnabled`                                                                                                                                       | `bool`                                        | `false`           | Enables inherited semantic text selection over this control and its retained descendants. Disabling clears the range and cancels an active drag.                                                                                                                                                                                                                           |
 | `TextSelection`                                                                                                                                                | `Selection`                                   | Empty at `0`      | Read-only directional UTF-16 range over the current semantic text projection.                                                                                                                                                                                                                                                                                              |
 | `SelectedText`                                                                                                                                                 | `string`                                      | `""`              | Read-only owned copy of the selected semantic substring.                                                                                                                                                                                                                                                                                                                   |
@@ -899,6 +900,46 @@ lifecycle automatically: `OnOwnerAttached()` runs immediately after
 A control that never calls `EnablePopup` owns no popup framework-part slot at
 all - `OwnedControlCount` and `FindOwnedSlot("drop-down")` reflect that
 directly.
+
+## Modal sessions
+
+`EnterOwnedModal` opts any `ControlBase` into entering one modal scope through
+its inherited `ModalityManager`, without hand-rolling the reentrancy-safe
+identity every framework owner already needs. It accepts a caller-owned
+`ModalSession` that tracks the current scope across repeated open and close
+cycles, the `OutsideInteraction` policy, an optional `initialFocus`, an optional
+`isCurrent` override, and an optional `rollback` callback. It returns null when
+this control has no attached modality manager; otherwise it enters through the
+manager and returns the resulting scope, active or inactive according to
+`isCurrent`.
+
+`isCurrent` runs once, immediately after the manager's own entry callbacks
+return, to check whether this control's presentation context is still the one
+that requested entry - a synchronous focus-change reaction the entry itself
+triggers may already have hidden or disposed the control by then. It defaults to
+`!IsDisposed && EffectiveIsEnabled && EffectiveIsVisible`, ANDed with a
+`ReferenceEquals` check against the modality manager captured at the start of
+the call. A caller supplies its own predicate only when its currentness depends
+on further or different conditions - `FloatingSurfaceBase` also checks its own
+presentation-version identity, and `PopupModalTracker` checks its tracked
+`Popup.IsOpen` instead of this control's disposed state, since the tracker owns
+a composite's popup rather than the composite itself.
+
+A `ModalSession` tracks at most one active scope per owner. Calling
+`EnterOwnedModal` again while the session already owns one is not an error - it
+returns that same active scope without invoking the manager or `isCurrent` a
+second time, so an owner never has to check `ModalSession.IsActive` itself
+before calling in. The session also clears its tracked identity before running
+its own dismiss and exit callbacks, so a callback that installs a replacement
+scope - closing one submenu chain and immediately opening a sibling, for
+example - is never erased by cleanup that still believes the old scope is
+current.
+
+`Menu`, `PopupModalTracker`, and `FloatingSurfaceBase` all compose
+`EnterOwnedModal` instead of each driving `ModalityManager.Enter` and a
+`ModalSession` by hand; a third-party control that needs its own exclusive modal
+presentation follows the same pattern instead of reimplementing that identity
+tracking against the raw manager.
 
 ## Appearance extension point
 

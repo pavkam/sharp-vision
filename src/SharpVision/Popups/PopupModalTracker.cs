@@ -63,13 +63,15 @@ internal sealed class PopupModalTracker
             ? focused
             : ownerInitialFocus ?? owner;
 
-        _ = _session.Enter(
-            () => modality.Enter(owner, OutsideInteraction.Dismiss, initialFocus),
-            () => _popup.IsOpen &&
+        _ = owner.EnterOwnedModal(
+            _session,
+            OutsideInteraction.Dismiss,
+            initialFocus,
+            isCurrent: () => _popup.IsOpen &&
                 owner.EffectiveIsEnabled &&
                 owner.EffectiveIsVisible &&
                 ReferenceEquals(owner.ModalityOwner, modality),
-            RollbackOpenState);
+            rollback: RollbackOpenState);
     }
 
     /// <summary>Exits and clears the tracked modal scope if one is active.</summary>

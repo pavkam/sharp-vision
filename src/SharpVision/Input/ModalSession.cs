@@ -7,11 +7,24 @@ using System.Runtime.ExceptionServices;
 
 /// <summary>Owns one current modal-scope identity and its policy callbacks.</summary>
 /// <remarks>
+/// <para>
 /// The session clears identity before external callbacks, so a callback may install a replacement
 /// without stale cleanup erasing it. Callers retain presentation policy and supply only currentness,
 /// dismissal, external-exit, and failed-entry rollback behavior.
+/// </para>
+/// <para>
+/// A session tracks at most one active scope at a time. <see cref="IsEntering"/> guards the window
+/// between calling the caller's <c>enterScope</c> delegate and committing (or rejecting) the
+/// resulting <see cref="ModalScope"/>: a nested call to <see cref="Enter"/> from inside that window -
+/// for example a focus-change callback the entry delegate itself triggers - would observe a session
+/// that is neither active nor idle, so it throws instead of racing the outer call to a conclusion. A
+/// sequential call while a scope is already active is rejected too: an owner asks
+/// <see cref="IsActive"/> before entering again, because two active scopes for one owner would
+/// leave the manager and the session disagreeing about which one dismissal addresses.
+/// </para>
 /// </remarks>
-internal sealed class ModalSession
+[PublicAPI]
+public sealed class ModalSession
 {
     /// <summary>Gets the optional current dismissal policy.</summary>
     private Action<ModalScope>? DismissPolicy { get; }
@@ -46,7 +59,10 @@ internal sealed class ModalSession
     /// <returns>The candidate scope, active or inactive according to manager and callback outcome.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="enterScope"/> or
     /// <paramref name="isCurrent"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Entry is reentered or a current scope is active.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Entry is reentered from inside an in-progress <paramref name="enterScope"/> or
+    /// <paramref name="isCurrent"/> call, or this session already owns an active scope.
+    /// </exception>
     /// <exception cref="Exception">Entry or cleanup fails; an initiating entry failure remains authoritative.</exception>
     public ModalScope Enter(
         Func<ModalScope> enterScope,
@@ -139,6 +155,8 @@ internal sealed class ModalSession
     }
 
     /// <summary>Clears and ends the exact current scope, if any.</summary>
+    /// <remarks>A no-op when no scope is tracked, including while <see cref="IsEntering"/> is true -
+    /// entry has not yet committed a scope for this method to end.</remarks>
     /// <exception cref="Exception">Modal focus restoration or an exit callback fails after cleanup.</exception>
     public void Exit()
     {

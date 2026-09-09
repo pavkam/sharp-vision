@@ -1330,12 +1330,16 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         try
         {
-            return _modalSession.Enter(
-                () => modality.Enter(this, outsideInteraction, initialFocus),
-                () => IsSurfacePresented &&
+            var scope = EnterOwnedModal(
+                _modalSession,
+                outsideInteraction,
+                initialFocus,
+                isCurrent: () => IsSurfacePresented &&
                     presentationVersion == SurfacePresentationVersion &&
                     Dispatcher is not null &&
                     ReferenceEquals(ModalityOwner, modality));
+            Debug.Assert(scope is not null, "The ModalityOwner captured above guarantees EnterOwnedModal enters rather than reporting no owner.");
+            return scope;
         }
         finally
         {

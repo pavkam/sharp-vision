@@ -8030,6 +8030,70 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     #endregion
 
+    #region Modal sessions
+
+    /// <summary>Enters one modal scope this control owns through its attached modality manager,
+    /// tracking reentrancy-safe identity through <paramref name="session"/>.</summary>
+    /// <param name="session">The non-null session that owns this control's tracked modal-scope
+    /// identity across repeated open/close cycles.</param>
+    /// <param name="outsideInteraction">The policy applied to input outside the entered plane.</param>
+    /// <param name="initialFocus">An optional eligible focus target inside this control's
+    /// subtree; null lets the modality manager resolve the first eligible descendant.</param>
+    /// <param name="isCurrent">Validates, once the modality manager's own entry callbacks have
+    /// run, that this control's presentation context is still the one that requested entry.
+    /// Defaults to <c>!IsDisposed &amp;&amp; EffectiveIsEnabled &amp;&amp; EffectiveIsVisible
+    /// &amp;&amp; ReferenceEquals(ModalityOwner, &lt;the manager captured at the start of this
+    /// call&gt;)</c>; supply this only when a concrete owner's currentness depends on further or
+    /// different conditions than that default, such as a floating surface's own
+    /// presentation-version identity.</param>
+    /// <param name="rollback">Optionally restores caller presentation after an entry that did not
+    /// take - the candidate scope came back inactive, or <paramref name="isCurrent"/> reported
+    /// this control's context had already moved on.</param>
+    /// <returns>
+    /// <see langword="null"/> when this control has no attached modality manager; otherwise the
+    /// candidate scope <paramref name="session"/> tracked, active or inactive according to the
+    /// manager and <paramref name="isCurrent"/>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="session"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="outsideInteraction"/> is undefined.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// This control is not an eligible modal root, or <paramref name="initialFocus"/> is invalid.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The caller is off-dispatcher, <paramref name="session"/> already owns an active scope, or
+    /// entry is reentered from inside an in-progress <paramref name="isCurrent"/> evaluation.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This control, the modality manager, or <paramref name="initialFocus"/> is disposed.
+    /// </exception>
+    /// <exception cref="Exception">
+    /// Pointer cleanup, focus publication, or transactional rollback notification fails after
+    /// committed cleanup.
+    /// </exception>
+    protected internal ModalScope? EnterOwnedModal(
+        ModalSession session,
+        OutsideInteraction outsideInteraction,
+        ControlBase? initialFocus,
+        Func<bool>? isCurrent = null,
+        Action? rollback = null)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return ModalityOwner is not { } modality
+            ? null
+            : session.Enter(
+                () => modality.Enter(this, outsideInteraction, initialFocus),
+                isCurrent ?? (() => !IsDisposed &&
+                    EffectiveIsEnabled &&
+                    EffectiveIsVisible &&
+                    ReferenceEquals(ModalityOwner, modality)),
+                rollback);
+    }
+
+    #endregion
+
     #region Text selection
 
     private TextSelectionGesture? _textSelectionGesture;
