@@ -820,25 +820,6 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// </summary>
     internal Task? LastLoadObservation { get; private set; }
 
-    /// <summary>Posts attachment- and lease-guarded load work through the dispatcher's shared
-    /// background-completion bridge.</summary>
-    /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
-    /// <param name="lease">The latest-load authority required by the callback.</param>
-    /// <param name="action">The callback to post.</param>
-    private void PostOrReportFault(
-        ControlAttachmentToken attachment,
-        LatestControlOperationLease lease,
-        Action action)
-    {
-        attachment.Dispatcher.PostBackgroundCompletion(() =>
-        {
-            if (IsCurrentLoad(lease, attachment))
-            {
-                action();
-            }
-        });
-    }
-
     private async Task ObserveLoadAsync(
         Task<IReadOnlyList<FilePickerEntry>> task,
         ControlAttachmentToken attachment,
@@ -848,14 +829,20 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         try
         {
             var entries = await task.ConfigureAwait(false);
-            PostOrReportFault(attachment, lease, () => CommitLoad(directory, entries, lease, attachment));
+            PostBackgroundCompletionForCurrentAttachment(
+                attachment,
+                () => CommitLoad(directory, entries, lease, attachment),
+                () => IsCurrentLoad(lease, attachment));
         }
         catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            PostOrReportFault(attachment, lease, () => CommitLoadFailure(exception, lease, attachment));
+            PostBackgroundCompletionForCurrentAttachment(
+                attachment,
+                () => CommitLoadFailure(exception, lease, attachment),
+                () => IsCurrentLoad(lease, attachment));
         }
         catch (ObjectDisposedException)
         {

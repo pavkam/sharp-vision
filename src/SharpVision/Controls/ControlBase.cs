@@ -444,6 +444,117 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         });
     }
 
+    /// <summary>Posts one callback through the dispatcher's shared, never-throwing background-
+    /// completion bridge, running it only while its captured attachment and optional operation
+    /// predicate remain current.</summary>
+    /// <param name="token">The exact captured attachment.</param>
+    /// <param name="action">The callback to post.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <param name="onDiscarded">Optional cleanup run when the posted callback executes but the
+    /// attachment or operation is no longer current.</param>
+    /// <param name="onAbandoned">Optional cleanup passed straight through as the dispatcher's own
+    /// queue-abandonment callback, invoked when shutdown cancels the queued work before it runs or
+    /// the callback cannot be queued at all.</param>
+    /// <remarks>
+    /// Use this instead of <see cref="PostForCurrentAttachment"/> for a completion that originates on
+    /// a worker thread rather than dispatcher-affine code - the tail of an <c>async</c> continuation
+    /// resuming off <c>ConfigureAwait(false)</c>, for example. <see cref="PostForCurrentAttachment"/>
+    /// is a foreground post that applies a caller-selected
+    /// <see cref="ControlAttachmentQueueRejectionPolicy"/> and can throw back into the caller on
+    /// synchronous queue rejection; this method instead routes through
+    /// <see cref="Dispatcher.PostBackgroundCompletion(Action, Action?)"/>, which never
+    /// throws and instead resolves a full or disposed queue through its own bounded, reported
+    /// recovery path - the right shape for a worker thread that has nothing useful to do with a
+    /// synchronous exception from a queue it does not own.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="token"/> or <paramref name="action"/> is null.</exception>
+    protected void PostBackgroundCompletionForCurrentAttachment(
+        ControlAttachmentToken token,
+        Action action,
+        Func<bool>? isOperationCurrent = null,
+        Action? onDiscarded = null,
+        Action? onAbandoned = null)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(action);
+
+        void InvokeOrDiscard()
+        {
+            if (IsCurrentAttachment(token) && (isOperationCurrent?.Invoke() ?? true))
+            {
+                action();
+                return;
+            }
+
+            onDiscarded?.Invoke();
+        }
+
+        token.Dispatcher.PostBackgroundCompletion(InvokeOrDiscard, onAbandoned);
+    }
+
+    /// <summary>Runs one deferred completion against whatever attachment can currently receive it,
+    /// recapturing a newly attached control when the operation began before this control was ever
+    /// attached.</summary>
+    /// <param name="captured">The attachment captured when the operation began, or null when the
+    /// operation began while this control was detached.</param>
+    /// <param name="action">The completion to run.</param>
+    /// <param name="isOperationCurrent">An optional additional domain-current predicate.</param>
+    /// <remarks>
+    /// A resolution that starts while this control is detached captures no
+    /// <see cref="ControlAttachmentToken"/>; by the time its result is ready, the control may since
+    /// have attached. The originally captured (null) attachment can no longer deliver the completion,
+    /// so this method distinguishes three cases: still detached with no dispatcher - run inline
+    /// immediately while <paramref name="isOperationCurrent"/> holds; still detached but a dispatcher
+    /// now exists - recapture the live attachment with <see cref="TryCaptureAttachment"/> and post
+    /// through it; already attached when the operation began - post through the originally captured
+    /// token. Both posting branches use <see cref="PostForCurrentAttachment"/> and swallow only
+    /// <see cref="ObjectDisposedException"/>, matching this method's own currency checks rather than
+    /// a broader rejection policy - a transiently full queue still propagates to the caller.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The captured dispatcher's queue is full.</exception>
+    protected void DispatchToCurrentAttachment(
+        ControlAttachmentToken? captured,
+        Action action,
+        Func<bool>? isOperationCurrent = null)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (captured is not { } token)
+        {
+            if (Dispatcher is null)
+            {
+                if (isOperationCurrent?.Invoke() ?? true)
+                {
+                    action();
+                }
+
+                return;
+            }
+
+            if (TryCaptureAttachment(out var recovered) && (isOperationCurrent?.Invoke() ?? true))
+            {
+                try
+                {
+                    PostForCurrentAttachment(recovered, action, isOperationCurrent);
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+            }
+
+            return;
+        }
+
+        try
+        {
+            PostForCurrentAttachment(token, action, isOperationCurrent);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     /// <summary>Gets the attached dispatcher's clock, or the system clock while detached.</summary>
     /// <remarks>
     /// A control that seeds "now" - a temporal input's initial value, a toast's auto-dismiss

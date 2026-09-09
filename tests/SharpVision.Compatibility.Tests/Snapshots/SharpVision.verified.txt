@@ -534,6 +534,7 @@ namespace SharpVision.Controls
         protected virtual void CommitTextSelectionNavigation(SharpVision.Text.Selection selection) { }
         public virtual string CopySelectedText() { }
         protected virtual SharpVision.Text.SelectableTextSnapshot CreateSelectableTextSnapshot() { }
+        protected void DispatchToCurrentAttachment(SharpVision.Controls.ControlAttachmentToken? captured, System.Action action, System.Func<bool>? isOperationCurrent = null) { }
         public void Dispose() { }
         protected void EnableChromeAuthoring() { }
         protected void EnableDrag(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Func<bool>? tryCapture = null, System.Func<bool>? isAvailable = null) { }
@@ -645,6 +646,7 @@ namespace SharpVision.Controls
         protected virtual void OnTextSelectionEnabledChanged(bool enabled) { }
         protected virtual void OnTextSelectionStateChanged(SharpVision.Input.TextSelectionChangedEventArgs eventArgs) { }
         protected virtual void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
+        protected void PostBackgroundCompletionForCurrentAttachment(SharpVision.Controls.ControlAttachmentToken token, System.Action action, System.Func<bool>? isOperationCurrent = null, System.Action? onDiscarded = null, System.Action? onAbandoned = null) { }
         protected void PostForCurrentAttachment(SharpVision.Controls.ControlAttachmentToken token, System.Action action, System.Func<bool>? isOperationCurrent = null, System.Action? onDiscarded = null, SharpVision.Controls.ControlAttachmentQueueRejectionPolicy rejectionPolicy = 0) { }
         protected void PublishTransitionProperty(ref SharpVision.Controls.CallbackTransitionTransaction transition, string propertyName, SharpVision.Controls.InvalidationImpact impact) { }
         protected void RaiseTextSelectionCompatibilityEvent(System.EventHandler? handlers, object? sender, ulong transitionVersion) { }
@@ -890,6 +892,21 @@ namespace SharpVision.Controls
         protected void RemoveItemControlAt(int index) { }
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
+    }
+    public sealed class LatestControlOperation
+    {
+        public LatestControlOperation() { }
+        public bool HasCurrent { get; }
+        public SharpVision.Controls.LatestControlOperationLease Begin() { }
+        public void Cancel() { }
+        public bool IsCurrent(SharpVision.Controls.LatestControlOperationLease lease) { }
+        public bool TryAbort(SharpVision.Controls.LatestControlOperationLease lease) { }
+        public bool TryComplete(SharpVision.Controls.LatestControlOperationLease lease) { }
+    }
+    public sealed class LatestControlOperationLease : System.IDisposable
+    {
+        public System.Threading.CancellationToken CancellationToken { get; }
+        public void Dispose() { }
     }
     public readonly struct OwnedControlChange
     {

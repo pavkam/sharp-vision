@@ -1268,25 +1268,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
     /// regardless.</summary>
     internal Task? LastChildLoadObservation { get; private set; }
 
-    /// <summary>Posts attachment- and operation-guarded load work through the dispatcher's shared
-    /// background-completion bridge.</summary>
-    /// <param name="attachment">The exact attachment allowed to receive the callback.</param>
-    /// <param name="action">The callback to post.</param>
-    /// <param name="isOperationCurrent">An optional additional load-current predicate.</param>
-    private void PostOrReportFault(
-        ControlAttachmentToken attachment,
-        Action action,
-        Func<bool>? isOperationCurrent = null)
-    {
-        attachment.Dispatcher.PostBackgroundCompletion(() =>
-        {
-            if (IsCurrentAttachment(attachment) && (isOperationCurrent?.Invoke() ?? true))
-            {
-                action();
-            }
-        });
-    }
-
     /// <summary>Gets whether this item currently holds a queued admission-slot wait.</summary>
     internal bool IsAwaitingLoadSlot => _slotWait is not null;
 
@@ -1424,7 +1405,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
             var result = await source.GetChildrenAsync(context, cancellationToken).ConfigureAwait(false);
 
-            PostOrReportFault(
+            PostBackgroundCompletionForCurrentAttachment(
                 attachment,
                 () => CommitChildLoad(attachment, source, lease, result),
                 () => IsCurrentLoad(attachment, source, lease));
@@ -1434,7 +1415,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         }
         catch (Exception exception)
         {
-            PostOrReportFault(
+            PostBackgroundCompletionForCurrentAttachment(
                 attachment,
                 () => CommitChildLoadFailure(attachment, source, lease, exception),
                 () => IsCurrentLoad(attachment, source, lease));
@@ -1447,7 +1428,7 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
             // and ReleaseLoadSlot mutates the owning tree's unsynchronized admission bookkeeping
             // (and, transitively, another item's _slotWait via GrantQueuedLoadSlot), so both must
             // be posted back rather than touched inline here.
-            PostOrReportFault(attachment, () =>
+            PostBackgroundCompletionForCurrentAttachment(attachment, () =>
             {
                 // Only clear the field if it still refers to this call's own wait handle. A
                 // collapse followed immediately by a re-expand, before this posted cleanup

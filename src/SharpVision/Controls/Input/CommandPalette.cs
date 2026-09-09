@@ -630,60 +630,20 @@ public sealed class CommandPalette: CompositeControlBase
         try
         {
             var results = await pending.ConfigureAwait(false);
-            DispatchCompletion(
-                lease,
+            DispatchToCurrentAttachment(
                 attachment,
-                () => ApplyCompletion(lease, generation, searchTerms, results));
+                () => ApplyCompletion(lease, generation, searchTerms, results),
+                () => IsCurrentResolution(lease));
         }
         catch (OperationCanceledException) when (lease.CancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            DispatchCompletion(lease, attachment, () => ApplyFailure(lease, searchTerms, exception));
-        }
-    }
-
-    private void DispatchCompletion(
-        LatestControlOperationLease lease,
-        ControlAttachmentToken? attachment,
-        Action action)
-    {
-        if (attachment is not { } token)
-        {
-            if (Dispatcher is null)
-            {
-                if (IsCurrentResolution(lease))
-                {
-                    action();
-                }
-
-                return;
-            }
-
-            // The resolution began while detached, but the control has since attached: the
-            // originally captured (null) attachment can no longer deliver this completion, so a
-            // freshly captured attachment is required or the result silently vanishes.
-            if (TryCaptureAttachment(out var recovered) && IsCurrentResolution(lease))
-            {
-                try
-                {
-                    PostForCurrentAttachment(recovered, action, () => IsCurrentResolution(lease));
-                }
-                catch (ObjectDisposedException)
-                {
-                }
-            }
-
-            return;
-        }
-
-        try
-        {
-            PostForCurrentAttachment(token, action, () => IsCurrentResolution(lease));
-        }
-        catch (ObjectDisposedException)
-        {
+            DispatchToCurrentAttachment(
+                attachment,
+                () => ApplyFailure(lease, searchTerms, exception),
+                () => IsCurrentResolution(lease));
         }
     }
 

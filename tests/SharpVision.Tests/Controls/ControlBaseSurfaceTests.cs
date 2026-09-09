@@ -1099,4 +1099,104 @@ public sealed class ControlBaseSurfaceTests
         parent.DescendantDisposalRequests.ShouldBe([leaf]);
         grandparent.DescendantDisposalRequests.ShouldBeEmpty();
     }
+
+    /// <summary>Verifies a background-thread completion posted for the exact live attachment runs
+    /// its action once the dispatcher drains the queued work.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletionForCurrentAttachment_WhenControlStillAttached_RunsActionAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var control = new AttachmentParticipantOwner();
+        ControlAttachmentToken? token = null;
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(dispatcher);
+                _ = control.TryCaptureAttachment(out token);
+            },
+            TestContext.Current.CancellationToken);
+        var ran = false;
+
+        // Act
+        control.PostBackgroundCompletion(token!, () => ran = true);
+
+        // Draining the queue guarantees the posted completion already ran before the assertion
+        // below observes it.
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ran.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a background-thread completion whose domain-current predicate no longer
+    /// holds runs its discard callback instead of the superseded action.</summary>
+    [Fact]
+    public async Task PostBackgroundCompletionForCurrentAttachment_WhenOperationSuperseded_RunsOnDiscardedAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var control = new AttachmentParticipantOwner();
+        ControlAttachmentToken? token = null;
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                control.Attach(dispatcher);
+                _ = control.TryCaptureAttachment(out token);
+            },
+            TestContext.Current.CancellationToken);
+        var ran = false;
+        var discarded = false;
+
+        // Act
+        control.PostBackgroundCompletion(
+            token!,
+            () => ran = true,
+            isOperationCurrent: () => false,
+            onDiscarded: () => discarded = true);
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ran.ShouldBeFalse();
+        discarded.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a completion that began while its control was detached (no captured
+    /// attachment) recaptures and posts onto the attachment the control has since gained, rather
+    /// than silently vanishing.</summary>
+    [Fact]
+    public async Task DispatchToCurrentAttachment_WhenStartedDetachedAndAttachedSince_PostsOnTheNewAttachmentAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var control = new AttachmentParticipantOwner();
+        await dispatcher.InvokeAsync(() => control.Attach(dispatcher), TestContext.Current.CancellationToken);
+        var ran = false;
+
+        // Act
+        control.DispatchCompletion(null, () => ran = true);
+
+        // Draining the queue guarantees the recaptured, posted completion already ran before the
+        // assertion below observes it.
+        await dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        // Assert
+        ran.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a completion that began, and remains, detached with no dispatcher at all
+    /// runs its action inline rather than attempting to post anywhere.</summary>
+    [Fact]
+    public void DispatchToCurrentAttachment_WhenDetachedWithoutDispatcher_RunsInline()
+    {
+        // Arrange
+        var control = new AttachmentParticipantOwner();
+        var ran = false;
+
+        // Act
+        control.DispatchCompletion(null, () => ran = true);
+
+        // Assert
+        ran.ShouldBeTrue();
+    }
 }

@@ -1084,12 +1084,6 @@ public sealed class SuggestionInput: CompositeControlBase
 
         void ApplyOrDiscard()
         {
-            if (!IsCurrentAttachment(token) || !IsCurrentResolution(lease, generation))
-            {
-                Abandon();
-                return;
-            }
-
             try
             {
                 action();
@@ -1102,7 +1096,12 @@ public sealed class SuggestionInput: CompositeControlBase
             }
         }
 
-        token.Dispatcher.PostBackgroundCompletion(ApplyOrDiscard, Abandon);
+        PostBackgroundCompletionForCurrentAttachment(
+            token,
+            ApplyOrDiscard,
+            () => IsCurrentResolution(lease, generation),
+            onDiscarded: Abandon,
+            onAbandoned: Abandon);
         return observation.Task;
     }
 

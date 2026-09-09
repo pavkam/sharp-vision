@@ -63,7 +63,12 @@ control's opaque attachment before leaving the dispatcher, and retain an opaque
 latest-operation lease when newer work supersedes older work. A completion may
 mutate retained state only when both remain current. Do not expose attachment
 generation numbers, reuse cancellation sources, or treat returning to the same
-dispatcher as the same attachment.
+dispatcher as the same attachment. Deliver the completion back through
+`PostForCurrentAttachment` when the caller already runs on the dispatcher, or
+through its `PostBackgroundCompletionForCurrentAttachment` counterpart when the
+completion instead arrives from a worker thread that cannot usefully react to a
+synchronous queue rejection; both re-check the captured attachment and lease
+before running anything.
 
 Framework controls that compose a dispatcher-owned resource register that
 resource once during construction as an attachment participant. The framework
