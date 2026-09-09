@@ -30,8 +30,16 @@ internal sealed class ControlBasePopupProbe: ControlBase
     internal List<string> LifecycleEvents { get; } = [];
 
     /// <inheritdoc/>
-    protected override void OnDropDownOpened() => LifecycleEvents.Add(nameof(OnDropDownOpened));
+    protected override void OnDropDownOpened()
+    {
+        LifecycleEvents.Add(nameof(OnDropDownOpened));
+        base.OnDropDownOpened();
+    }
 
     /// <inheritdoc/>
-    protected override void OnDropDownClosed() => LifecycleEvents.Add(nameof(OnDropDownClosed));
+    protected override void OnDropDownClosed()
+    {
+        LifecycleEvents.Add(nameof(OnDropDownClosed));
+        base.OnDropDownClosed();
+    }
 }

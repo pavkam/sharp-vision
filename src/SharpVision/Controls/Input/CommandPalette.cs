@@ -7,8 +7,6 @@ using System.Runtime.ExceptionServices;
 
 using Collections;
 
-using Popups;
-
 using SharpVision.Terminal.Input;
 
 /// <summary>Provides an editable command search field with asynchronously resolved popup results.</summary>
@@ -24,10 +22,7 @@ public sealed class CommandPalette: CompositeControlBase
     private readonly RetainedPartProperty<ItemTemplate> _itemTemplate;
     private readonly ListView _list;
     private readonly RetainedPartProperty<string?> _placeholder;
-    private readonly Popup _popup;
-    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly LatestControlOperation _resolutionOperation = new();
-    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly RetainedPartProperty<Length> _rowHeight;
     private readonly RetainedPartProperty<Affix?> _startAffix;
     private int _resolutionGeneration;
@@ -58,7 +53,7 @@ public sealed class CommandPalette: CompositeControlBase
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
-        _popup = EnablePopupNavigationSession(
+        _ = EnablePopupNavigationSession(
             _list,
             focusOnOpen: false,
             anchor: _input,
@@ -101,26 +96,7 @@ public sealed class CommandPalette: CompositeControlBase
             nameof(RowHeight),
             () => _list.RowHeight,
             value => _list.RowHeight = value);
-        _popupChrome = ForwardPartProperty(
-            _popup,
-            nameof(Popup.Style),
-            nameof(PopupChrome),
-            () => _popup.Style,
-            value => _popup.Style = value);
-        _dropDownHeight = ForwardPartProperty(
-            _popup,
-            nameof(Popup.ContentHeightLimit),
-            nameof(DropDownHeight),
-            () => _popup.ContentHeightLimit,
-            value => _popup.ContentHeightLimit = value,
-            InvalidationImpact.Measure);
     }
-
-    /// <summary>Raised after a non-empty result popup opens.</summary>
-    public event EventHandler? Opened;
-
-    /// <summary>Raised after the result popup closes.</summary>
-    public event EventHandler? Closed;
 
     /// <summary>Raised after the current result snapshot changes.</summary>
     public event EventHandler? ResultsChanged;
@@ -350,31 +326,6 @@ public sealed class CommandPalette: CompositeControlBase
         NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
     }
 
-    /// <summary>Gets or sets the result popup's border and shadow together.</summary>
-    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
-    public PopupChrome PopupChrome
-    {
-        get => _popupChrome.Value;
-        set => _popupChrome.Value = value;
-    }
-
-    /// <summary>Returns the result popup border and shadow to its appearance role.</summary>
-    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
-    public void ResetPopupChrome() => PopupChrome = default;
-
-    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible result height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
-    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
-    /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
-    public Length DropDownHeight
-    {
-        get => _dropDownHeight.Value;
-        set => _dropDownHeight.Value = value;
-    }
-
     /// <summary>Gets or sets whether the non-empty result popup is open.</summary>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
@@ -496,8 +447,6 @@ public sealed class CommandPalette: CompositeControlBase
             _input.TextChanged -= OnTextChanged;
             _list.ItemActivationStarting -= OnItemActivationStarting;
             _list.ItemInvoked -= OnItemInvoked;
-            Opened = null;
-            Closed = null;
             ResultsChanged = null;
             ResolutionFailed = null;
             ItemInvoked = null;
@@ -583,7 +532,7 @@ public sealed class CommandPalette: CompositeControlBase
             _ = _list.MoveSelection(Code.Home);
         }
 
-        Opened?.Invoke(this, EventArgs.Empty);
+        base.OnDropDownOpened();
     }
 
     /// <inheritdoc/>
@@ -591,7 +540,7 @@ public sealed class CommandPalette: CompositeControlBase
     {
         _wantsOpen = false;
         ClearPendingFirstResultSelection();
-        Closed?.Invoke(this, EventArgs.Empty);
+        base.OnDropDownClosed();
     }
 
     #endregion

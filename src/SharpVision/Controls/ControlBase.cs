@@ -1053,6 +1053,10 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     private Popup? _popup;
     private PopupDropDownCoordinator? _popupCoordinator;
+    private RetainedPartProperty<Length>? _dropDownHeight;
+    private RetainedPartProperty<PopupChrome>? _popupChrome;
+    private EventHandler? _dropDownOpened;
+    private EventHandler? _dropDownClosed;
 
     /// <summary>Opts a control into an owned popup with shared open/close publication, modal
     /// composition, focus restoration, and a framework-part slot.</summary>
@@ -1294,6 +1298,19 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             capacity: 1);
         slot.Add(popup);
         _popup = popup;
+        _dropDownHeight = ForwardPartProperty(
+            popup,
+            nameof(Popup.ContentHeightLimit),
+            nameof(DropDownHeight),
+            () => popup.ContentHeightLimit,
+            value => popup.ContentHeightLimit = value,
+            InvalidationImpact.Measure);
+        _popupChrome = ForwardPartProperty(
+            popup,
+            nameof(Popup.Style),
+            nameof(PopupChrome),
+            () => popup.Style,
+            value => popup.Style = value);
         var openProperty = PopupOpenPropertyName;
         _popupCoordinator = new PopupDropDownCoordinator(
             this,
@@ -1435,15 +1452,117 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         ? coordinator.SessionGeneration
         : throw new InvalidOperationException("The popup capability is not enabled.");
 
-    /// <summary>Called after the owned popup opens.</summary>
-    protected virtual void OnDropDownOpened()
+    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible owned
+    /// popup content height.</summary>
+    /// <remarks>Forwards <see cref="Popup.ContentHeightLimit"/> on the owned popup.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
+    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public Length DropDownHeight
     {
+        get => _dropDownHeight is { } bridge
+            ? bridge.Value
+            : throw new InvalidOperationException("The popup capability is not enabled.");
+        set
+        {
+            if (_dropDownHeight is not { } bridge)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            bridge.Value = value;
+        }
     }
 
-    /// <summary>Called after the owned popup closes.</summary>
-    protected virtual void OnDropDownClosed()
+    /// <summary>Gets or sets the owned popup's border and shadow together.</summary>
+    /// <remarks>
+    /// A component left null keeps the popup on its own <see cref="PopupChrome"/> role
+    /// appearance for that part. Forwards <see cref="Popup.Style"/> on the owned popup.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public PopupChrome PopupChrome
     {
+        get => _popupChrome is { } bridge
+            ? bridge.Value
+            : throw new InvalidOperationException("The popup capability is not enabled.");
+        set
+        {
+            if (_popupChrome is not { } bridge)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            bridge.Value = value;
+        }
     }
+
+    /// <summary>Returns the owned popup's border and shadow to <see cref="PopupChrome"/> role ownership.</summary>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled, or the
+    /// control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    public void ResetPopupChrome() => PopupChrome = default;
+
+    /// <summary>Raised after the owned popup opens.</summary>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
+    public event EventHandler? DropDownOpened
+    {
+        add
+        {
+            if (_popupCoordinator is null)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            _dropDownOpened += value;
+        }
+        remove
+        {
+            if (_popupCoordinator is null)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            _dropDownOpened -= value;
+        }
+    }
+
+    /// <summary>Raised after the owned popup closes.</summary>
+    /// <exception cref="InvalidOperationException">The popup capability is not enabled.</exception>
+    public event EventHandler? DropDownClosed
+    {
+        add
+        {
+            if (_popupCoordinator is null)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            _dropDownClosed += value;
+        }
+        remove
+        {
+            if (_popupCoordinator is null)
+            {
+                throw new InvalidOperationException("The popup capability is not enabled.");
+            }
+
+            _dropDownClosed -= value;
+        }
+    }
+
+    /// <summary>Called after the owned popup opens.</summary>
+    /// <remarks>The base implementation raises <see cref="DropDownOpened"/>; an override that does
+    /// its own opening work must call the base implementation to keep publishing the event.</remarks>
+    protected virtual void OnDropDownOpened() => _dropDownOpened?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Called after the owned popup closes.</summary>
+    /// <remarks>The base implementation raises <see cref="DropDownClosed"/>; an override that does
+    /// its own closing work must call the base implementation to keep publishing the event.</remarks>
+    protected virtual void OnDropDownClosed() => _dropDownClosed?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Called immediately after this control's owned popup is arranged for the current pass.</summary>
     /// <remarks>
@@ -3010,6 +3129,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             BoundsChanged = null;
             EnabledChanged = null;
             VisibilityChanged = null;
+            _dropDownOpened = null;
+            _dropDownClosed = null;
         }
 
         ExceptionAggregation.Capture(OnDisposed, ref failure);

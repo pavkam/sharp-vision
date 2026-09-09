@@ -492,6 +492,50 @@ public sealed class ControlBaseSurfaceTests
         probe.LifecycleEvents.ShouldBe(["OnDropDownOpened", "OnDropDownClosed"]);
     }
 
+    /// <summary>Verifies setting <see cref="ControlBase.DropDownHeight"/> on a base-only popup
+    /// owner forwards to the owned <see cref="Popup.ContentHeightLimit"/> and caps the popup's
+    /// rendered content height.</summary>
+    [Fact]
+    public async Task DropDownHeight_WhenSetOnOwner_LimitsPopupContentHeightAsync()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(() => probe.DropDownHeight = Length.Cells(1), "cap the popup content height");
+        await surface.UpdateAsync(() => probe.IsPopupOpen = true, "open the owned popup");
+
+        // Assert
+        probe.Popup.ContentHeightLimit.ShouldBe(Length.Cells(1));
+        probe.Content.Bounds.Height.ShouldBe(1);
+    }
+
+    /// <summary>Verifies <see cref="ControlBase.DropDownOpened"/> fires once when the base-owned
+    /// popup opens, proving the base <c>OnDropDownOpened</c> default raises it once the owner's
+    /// own override - which records its own lifecycle marker first - calls base.</summary>
+    [Fact]
+    public async Task DropDownOpened_WhenPopupOpens_RaisesOnOwnerAsync()
+    {
+        // Arrange
+        var probe = new ControlBasePopupProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(20, 10),
+            TestContext.Current.CancellationToken);
+        var raised = 0;
+        probe.DropDownOpened += (_, _) => raised++;
+
+        // Act
+        await surface.UpdateAsync(() => probe.IsPopupOpen = true, "open the owned popup");
+
+        // Assert
+        raised.ShouldBe(1);
+    }
+
     /// <summary>Verifies disposing the owner while its base-owned popup is open detaches the
     /// popup coordinator cleanly - no throw, and the owner commits disposed - proving
     /// <see cref="ControlBase"/> forwards attach/unavailable lifecycle for any popup owner, not

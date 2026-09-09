@@ -30,7 +30,8 @@ Press/keyboard activation (`EnablePressActivation`, `HandlePressActivation`,
 with its open/close lifecycle and modal composition (`EnablePopup`,
 `EnablePopupNavigationSession`, `IsPopupOpen`, `AcceptPopupAndClose`,
 `RestartPopupNavigationSession`, `PopupTransitionVersion`,
-`PopupSessionGeneration`, `OnDropDownOpened`/`OnDropDownClosed`,
+`PopupSessionGeneration`, `DropDownHeight`, `PopupChrome`, `ResetPopupChrome()`,
+`DropDownOpened`/`DropDownClosed`, `OnDropDownOpened`/`OnDropDownClosed`,
 `OnPopupArranged`) are inherited straight from [`ControlBase`](control.md#api);
 `InputBase` adds only the family's public `IsOpen` name for that open state. See
 [Owned popups](control.md#owned-popups) for the provisional navigation session's
@@ -184,21 +185,20 @@ public sealed class TagField : InputBase
     }
 
     protected override void Activate(ActivationCause cause) => IsOpen = !IsOpen;
-
-    protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
-
-    protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
-
-    public event EventHandler? DropDownOpened;
-    public event EventHandler? DropDownClosed;
 }
 ```
 
-`EnablePopup`, `AcceptPopupAndClose`, and the `OnDropDownOpened`/
-`OnDropDownClosed`/`OnPopupArranged` hooks used above are inherited from
-`ControlBase`, and `IsOpen` is this family's name for the inherited
-`IsPopupOpen`; see [Owned popups](control.md#owned-popups) for their complete
-authoring contract, including base-owned layout and lifecycle forwarding.
+`EnablePopup`, `AcceptPopupAndClose`, `DropDownHeight`, `PopupChrome`,
+`ResetPopupChrome()`, `DropDownOpened`/`DropDownClosed`, and the
+`OnDropDownOpened`/`OnDropDownClosed`/`OnPopupArranged` hooks are all inherited
+from `ControlBase` - `TagField` needs no code of its own to expose the popup's
+height cap, chrome, or open/close events, and `IsOpen` is this family's name for
+the inherited `IsPopupOpen`. A derived field whose own opening or closing work
+needs to run alongside the inherited events - synchronizing a provisional
+selection, for example - overrides `OnDropDownOpened`/`OnDropDownClosed` and
+calls the base implementation to keep publishing them. See
+[Owned popups](control.md#owned-popups) for their complete authoring contract,
+including base-owned layout and lifecycle forwarding.
 
 ## Expected behavior
 

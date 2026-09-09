@@ -23,10 +23,8 @@ public sealed class ComboBox: InputBase
     // resolution adds the border inset on top of the content size returned here.
     private const int _fieldContentHeight = 1;
     private const int _indicatorReservedWidth = DropDownIndicatorReservedWidth;
-    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly ListView _list;
     private readonly Popup _popup;
-    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly RetainedPartProperty<Length> _rowHeight;
     private readonly RetainedPartProperty<ScrollBars> _scrollBars;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
@@ -73,13 +71,6 @@ public sealed class ComboBox: InputBase
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
         BindStyle(_scrollBarStyle, _list, nameof(ScrollBarStyle));
-        _dropDownHeight = ForwardPartProperty(
-            _popup,
-            nameof(Popup.ContentHeightLimit),
-            nameof(DropDownHeight),
-            () => _popup.ContentHeightLimit,
-            value => _popup.ContentHeightLimit = value,
-            InvalidationImpact.Measure);
         _scrollBars = ForwardPartProperty(
             _list,
             nameof(ListView.ScrollBars),
@@ -92,12 +83,6 @@ public sealed class ComboBox: InputBase
             nameof(ShowScrollBars),
             () => _list.ShowScrollBars,
             value => _list.ShowScrollBars = value);
-        _popupChrome = ForwardPartProperty(
-            _popup,
-            nameof(Popup.Style),
-            nameof(PopupChrome),
-            () => _popup.Style,
-            value => _popup.Style = value);
         _rowHeight = ForwardPartProperty(
             _list,
             nameof(ListView.RowHeight),
@@ -109,12 +94,6 @@ public sealed class ComboBox: InputBase
 
     /// <summary>Raised after a selected index commits through direct assignment or the drop-down list.</summary>
     public event EventHandler<ListSelectionChangedEventArgs>? SelectionChanged;
-
-    /// <summary>Raised after the drop-down list opens.</summary>
-    public event EventHandler? DropDownOpened;
-
-    /// <summary>Raised after the drop-down list closes.</summary>
-    public event EventHandler? DropDownClosed;
 
     /// <summary>Gets the private drop-down list, exposed for the incremental data-binding path.</summary>
     internal ListView GetDropDownList() => _list;
@@ -245,17 +224,6 @@ public sealed class ComboBox: InputBase
         }
     }
 
-    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible list height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
-    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public Length DropDownHeight
-    {
-        get => _dropDownHeight.Value;
-        set => _dropDownHeight.Value = value;
-    }
-
     /// <summary>Gets or sets the axes available to the owned drop-down overflow host.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value contains unknown axis flags.</exception>
     /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
@@ -287,24 +255,6 @@ public sealed class ComboBox: InputBase
 
     /// <summary>Gets the resolved drop-down scrollbar style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Gets or sets the owned drop-down popup's border and shadow together.</summary>
-    /// <remarks>
-    /// A component left null keeps the popup on its own <see cref="PopupChrome"/> role
-    /// appearance for that part.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public PopupChrome PopupChrome
-    {
-        get => _popupChrome.Value;
-        set => _popupChrome.Value = value;
-    }
-
-    /// <summary>Returns the drop-down popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
-    /// <exception cref="InvalidOperationException">The attached combo box is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The combo box is disposed.</exception>
-    public void ResetPopupChrome() => PopupChrome = default;
 
     /// <summary>Gets or sets the automatic, fixed, or popup-viewport-relative uniform row height.</summary>
     /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
@@ -468,8 +418,6 @@ public sealed class ComboBox: InputBase
             _list.SelectionChanged -= OnSelectionChanged;
             _list.PropertyChanged -= OnListPropertyChanged;
             SelectionChanged = null;
-            DropDownOpened = null;
-            DropDownClosed = null;
         }
     }
 
@@ -489,11 +437,8 @@ public sealed class ComboBox: InputBase
     {
         SynchronizeListSelection(_selectedIndex);
         _list.SetProvisionalCurrentIndex(_list.ActiveIndex);
-        DropDownOpened?.Invoke(this, EventArgs.Empty);
+        base.OnDropDownOpened();
     }
-
-    /// <inheritdoc/>
-    protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
 
     private void BeginNavigationSession()
     {
@@ -616,8 +561,8 @@ public sealed class ComboBox: InputBase
 
     /// <summary>Resolves the row count one closed-state page step covers before the popup has ever
     /// been laid out, when the private list's viewport still reports no height.</summary>
-    /// <remarks>A fixed <see cref="DropDownHeight"/> is the page the popup will show; any other
-    /// limit shows every row that fits, so the whole list stands in for a page.</remarks>
+    /// <remarks>A fixed <see cref="ControlBase.DropDownHeight"/> is the page the popup will show;
+    /// any other limit shows every row that fits, so the whole list stands in for a page.</remarks>
     private int CollapsedPageRows() =>
         DropDownHeight.Kind == LengthKind.Cells
             ? Math.Max(1, (int) DropDownHeight.Value)

@@ -12,7 +12,7 @@ public sealed class CommandPaletteInteractionTests
     #region Typing, Escape, Space, and activation
 
     /// <summary>Verifies the first typed character resolves, opens the results, and publishes
-    /// ResultsChanged before PropertyChanged(IsOpen) and Opened, with the first row selected.</summary>
+    /// ResultsChanged before PropertyChanged(IsOpen) and DropDownOpened, with the first row selected.</summary>
     [Fact]
     public async Task Typing_WhenTextIsTypedWhileClosed_OpensResultsAndPublishesInOrderAsync()
     {
@@ -31,7 +31,7 @@ public sealed class CommandPaletteInteractionTests
 
         palette.Text.ShouldBe("o");
         palette.IsOpen.ShouldBeTrue();
-        events.ShouldBe(["ResultsChanged", "PropertyChanged:IsOpen", "Opened"]);
+        events.ShouldBe(["ResultsChanged", "PropertyChanged:IsOpen", "DropDownOpened"]);
         list.SelectedIndex.ShouldBe(0);
         list.ActiveIndex.ShouldBe(0);
         surface.ShouldHaveFocus(editor);
@@ -76,7 +76,7 @@ public sealed class CommandPaletteInteractionTests
         palette.IsOpen.ShouldBeFalse();
         palette.Text.ShouldBe("ab");
         palette.Items.ShouldBe(["ab-1", "ab-2"]);
-        events.ShouldBe(["PropertyChanged:IsOpen", "Closed"]);
+        events.ShouldBe(["PropertyChanged:IsOpen", "DropDownClosed"]);
         surface.ShouldHaveFocus(openPath == "button" ? button : editor);
         surface.Application.Modality.Active.ShouldBeNull();
         surface.Cell(new Point(palette.Bounds.X + 1, palette.Bounds.Y + 1)).Text.ShouldBe("a");
@@ -238,7 +238,7 @@ public sealed class CommandPaletteInteractionTests
         Overlay.SetTop(outside, Length.Cells(7));
         var root = new Overlay { Children = { palette, outside } };
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         await using var surface = await MountAsync(root, new Size(24, 9));
         var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
         await surface.UpdateAsync(() => palette.Open(), "open the palette");
@@ -283,7 +283,7 @@ public sealed class CommandPaletteInteractionTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         palette.ResolutionFailed += (_, eventArgs) => failed.TrySetResult(eventArgs);
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         var button = new Button { Text = "Go" };
         var root = new Stack { Children = { button, palette } };
         await using var surface = await MountAsync(root, new Size(24, 12));
@@ -464,7 +464,7 @@ public sealed class CommandPaletteInteractionTests
         var resultsChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         palette.ResultsChanged += (_, _) => resultsChanged.TrySetResult();
         var opened = 0;
-        palette.Opened += (_, _) => opened++;
+        palette.DropDownOpened += (_, _) => opened++;
         var root = new Overlay { Children = { palette } };
         await using var surface = await MountAsync(root, new Size(24, 8));
         var unhandled = new List<Exception>();
@@ -609,7 +609,7 @@ public sealed class CommandPaletteInteractionTests
     {
         var palette = NewPalette(static _ => ["One", "Two"]);
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         var root = new Overlay { Children = { palette } };
         await using var surface = await MountAsync(root, new Size(24, 9));
         var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
@@ -653,17 +653,17 @@ public sealed class CommandPaletteInteractionTests
     #region Result sets
 
     /// <summary>Verifies a refresh that yields no results while open closes the popup, raises
-    /// Closed once, never raises Opened again, clears the rendered rows, and keeps focus in the
-    /// editor (even when Open() came from a button) so the next keystroke still edits the query
-    /// and non-empty results reopen.</summary>
+    /// DropDownClosed once, never raises DropDownOpened again, clears the rendered rows, and keeps
+    /// focus in the editor (even when Open() came from a button) so the next keystroke still edits
+    /// the query and non-empty results reopen.</summary>
     [Fact]
     public async Task Results_WhenRefreshedToEmptyWhileOpen_ClosesWithoutOpenedAndKeepsEditorFocusAsync()
     {
         var palette = NewPalette(static terms => terms.Contains('!') ? [] : ["One", "Two"]);
         var opened = 0;
         var closed = 0;
-        palette.Opened += (_, _) => opened++;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownOpened += (_, _) => opened++;
+        palette.DropDownClosed += (_, _) => closed++;
         var button = new Button { Text = "Go" };
         var root = new Stack { Children = { button, palette } };
         await using var surface = await MountAsync(root, new Size(24, 12));
@@ -756,7 +756,7 @@ public sealed class CommandPaletteInteractionTests
     {
         var palette = new CommandPalette { Width = Length.Cells(18) };
         var opened = 0;
-        palette.Opened += (_, _) => opened++;
+        palette.DropDownOpened += (_, _) => opened++;
         await using var surface = await MountAsync(palette, new Size(24, 8));
         var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
         var focused = false;
@@ -974,8 +974,8 @@ public sealed class CommandPaletteInteractionTests
     {
         var palette = NewPalette(static _ => ["One"]);
         var raised = 0;
-        palette.Opened += (_, _) => raised++;
-        palette.Closed += (_, _) => raised++;
+        palette.DropDownOpened += (_, _) => raised++;
+        palette.DropDownClosed += (_, _) => raised++;
         palette.ResultsChanged += (_, _) => raised++;
         palette.ResolutionFailed += (_, _) => raised++;
         palette.ItemInvoked += (_, _) => raised++;
@@ -1014,8 +1014,8 @@ public sealed class CommandPaletteInteractionTests
             }
         };
         palette.ResultsChanged += (_, _) => events.Add("ResultsChanged");
-        palette.Opened += (_, _) => events.Add("Opened");
-        palette.Closed += (_, _) => events.Add("Closed");
+        palette.DropDownOpened += (_, _) => events.Add("DropDownOpened");
+        palette.DropDownClosed += (_, _) => events.Add("DropDownClosed");
         palette.ItemInvoked += (_, _) => events.Add("ItemInvoked");
     }
 }

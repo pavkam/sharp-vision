@@ -29,33 +29,34 @@ classDiagram
 
 ## API
 
-| Member                 | Type                                                | Default            | Description                                                                                             |
-| ---------------------- | --------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| `Text`                 | `string`                                            | `""`               | Freely editable non-null text forwarded to the retained `TextInput`.                                    |
-| `Placeholder`          | `string?`                                           | `null`             | Placeholder shown while the retained editor is empty.                                                   |
-| `StartAffix`           | `Affix?`                                            | `null`             | Optional leading edge-pinned editor decoration.                                                         |
-| `EndAffix`             | `Affix?`                                            | `null`             | Optional trailing edge-pinned editor decoration.                                                        |
-| `MinimumPrefixLength`  | `int`                                               | `1`                | Minimum extended-grapheme count eligible for resolution; zero permits an empty query.                   |
-| `Resolver`             | `SuggestionResolver?`                               | `null`             | Resolves a borrowed item snapshot for the current text and cancellation token.                          |
-| `Suggestions`          | `IReadOnlyList<object?>`                            | Empty              | Read-only copied snapshot from the latest current successful resolution.                                |
-| `IsResolving`          | `bool`                                              | `false`            | Read-only; true while the current asynchronous request has not settled.                                 |
-| `IsOpen`               | `bool`                                              | `false`            | Opens a non-empty current snapshot, or closes while preserving text and the current request.            |
-| `ItemTemplate`         | `ItemTemplate`                                      | List text template | Realizes each copied suggestion as one detached row control.                                            |
-| `TextSelector`         | `Func<object?, string>?`                            | `null`             | Projects an accepted item to non-null text; invariant `Convert.ToString` is the fallback.               |
-| `DropDownHeight`       | `Length`                                            | `Length.Cells(8)`  | Automatic, fixed-cell, or placement-relative maximum suggestion-list height.                            |
-| `RowHeight`            | `Length`                                            | `Length.Auto`      | Automatic eager rows or a positive fixed/percentage uniform row request.                                |
-| `ScrollBars`           | `ScrollBars`                                        | `Vertical`         | Forwards the available overflow axes to the retained list.                                              |
-| `ShowScrollBars`       | `ShowScrollBars`                                    | `WhenNeeded`       | Forwards the suggestion-list scrollbar reservation policy.                                              |
-| `ScrollBarStyle`       | `ScrollBarStyle?`                                   | `null`             | Complete local style for the retained list's rails.                                                     |
-| `ActualScrollBarStyle` | `ScrollBarStyle`                                    | Resolved           | Read-only local, theme-owned, or code-owned rail style.                                                 |
-| `PopupChrome`          | `PopupChrome`                                       | `default`          | Local border and shadow fragments for the owned suggestion popup.                                       |
-| `ResetPopupChrome()`   | `void`                                              | —                  | Returns both popup chrome facets to Popup appearance ownership.                                         |
-| `Open()`               | `bool`                                              | —                  | Records open intent, resolves stale results, focuses the retained editor, and returns the focus result. |
-| `Close()`              | `void`                                              | —                  | Closes suggestions without changing text or cancelling the current request.                             |
-| `Refresh()`            | `void`                                              | —                  | Starts a fresh current-text request and makes a non-empty completion eligible to open.                  |
-| `SuggestionsChanged`   | `EventHandler`                                      | —                  | Raised after the copied current suggestion snapshot changes.                                            |
-| `ResolutionFailed`     | `EventHandler<SuggestionResolutionFailedEventArgs>` | —                  | Raised when a still-current request fails after its suggestions are cleared.                            |
-| `SuggestionAccepted`   | `EventHandler<ItemInvokedEventArgs>`                | —                  | Raised after accepted text commits and the popup closes; carries index, borrowed item, and cause.       |
+| Member                                       | Type                                                | Default            | Description                                                                                             |
+| -------------------------------------------- | --------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| `Text`                                       | `string`                                            | `""`               | Freely editable non-null text forwarded to the retained `TextInput`.                                    |
+| `Placeholder`                                | `string?`                                           | `null`             | Placeholder shown while the retained editor is empty.                                                   |
+| `StartAffix`                                 | `Affix?`                                            | `null`             | Optional leading edge-pinned editor decoration.                                                         |
+| `EndAffix`                                   | `Affix?`                                            | `null`             | Optional trailing edge-pinned editor decoration.                                                        |
+| `MinimumPrefixLength`                        | `int`                                               | `1`                | Minimum extended-grapheme count eligible for resolution; zero permits an empty query.                   |
+| `Resolver`                                   | `SuggestionResolver?`                               | `null`             | Resolves a borrowed item snapshot for the current text and cancellation token.                          |
+| `Suggestions`                                | `IReadOnlyList<object?>`                            | Empty              | Read-only copied snapshot from the latest current successful resolution.                                |
+| `IsResolving`                                | `bool`                                              | `false`            | Read-only; true while the current asynchronous request has not settled.                                 |
+| `IsOpen`                                     | `bool`                                              | `false`            | Opens a non-empty current snapshot, or closes while preserving text and the current request.            |
+| `ItemTemplate`                               | `ItemTemplate`                                      | List text template | Realizes each copied suggestion as one detached row control.                                            |
+| `TextSelector`                               | `Func<object?, string>?`                            | `null`             | Projects an accepted item to non-null text; invariant `Convert.ToString` is the fallback.               |
+| Inherited `DropDownHeight`                   | `Length`                                            | `Length.Cells(8)`  | Automatic, fixed-cell, or placement-relative maximum suggestion-list height.                            |
+| `RowHeight`                                  | `Length`                                            | `Length.Auto`      | Automatic eager rows or a positive fixed/percentage uniform row request.                                |
+| `ScrollBars`                                 | `ScrollBars`                                        | `Vertical`         | Forwards the available overflow axes to the retained list.                                              |
+| `ShowScrollBars`                             | `ShowScrollBars`                                    | `WhenNeeded`       | Forwards the suggestion-list scrollbar reservation policy.                                              |
+| `ScrollBarStyle`                             | `ScrollBarStyle?`                                   | `null`             | Complete local style for the retained list's rails.                                                     |
+| `ActualScrollBarStyle`                       | `ScrollBarStyle`                                    | Resolved           | Read-only local, theme-owned, or code-owned rail style.                                                 |
+| Inherited `PopupChrome`                      | `PopupChrome`                                       | `default`          | Local border and shadow fragments for the owned suggestion popup.                                       |
+| Inherited `ResetPopupChrome()`               | `void`                                              | —                  | Returns both popup chrome facets to Popup appearance ownership.                                         |
+| `Open()`                                     | `bool`                                              | —                  | Records open intent, resolves stale results, focuses the retained editor, and returns the focus result. |
+| `Close()`                                    | `void`                                              | —                  | Closes suggestions without changing text or cancelling the current request.                             |
+| `Refresh()`                                  | `void`                                              | —                  | Starts a fresh current-text request and makes a non-empty completion eligible to open.                  |
+| `SuggestionsChanged`                         | `EventHandler`                                      | —                  | Raised after the copied current suggestion snapshot changes.                                            |
+| `ResolutionFailed`                           | `EventHandler<SuggestionResolutionFailedEventArgs>` | —                  | Raised when a still-current request fails after its suggestions are cleared.                            |
+| `SuggestionAccepted`                         | `EventHandler<ItemInvokedEventArgs>`                | —                  | Raised after accepted text commits and the popup closes; carries index, borrowed item, and cause.       |
+| Inherited `DropDownOpened`, `DropDownClosed` | `EventHandler`                                      | No subscribers     | Raised after the owned suggestion popup opens or closes.                                                |
 
 `SuggestionResolver` returns `ValueTask<IReadOnlyList<object?>>`. Returning null
 is a resolver contract failure and follows the current-failure path. The result

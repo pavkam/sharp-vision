@@ -394,7 +394,7 @@ public sealed class CommandPaletteSurfaceTests
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
         };
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         var background = new ControlText("outside");
         Overlay.SetTop(background, Length.Cells(7));
         Overlay.SetLeft(background, Length.Cells(20));
@@ -462,7 +462,7 @@ public sealed class CommandPaletteSurfaceTests
         var popup = OwnedTree.FindAll<Popup>(palette)
             .Single(candidate => ReferenceEquals(candidate.Content, list));
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
 
         await surface.UpdateAsync(
             () =>
@@ -517,7 +517,7 @@ public sealed class CommandPaletteSurfaceTests
         var popup = OwnedTree.FindAll<Popup>(palette)
             .Single(candidate => ReferenceEquals(candidate.Content, list));
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         palette.IsOpen = true;
         palette.Text = "fresh";
         popup.IsOpen.ShouldBeTrue();
@@ -549,7 +549,7 @@ public sealed class CommandPaletteSurfaceTests
             Resolver = static (_, _) => ValueTask.FromResult<IReadOnlyList<object?>>(["One", "Two", "Three"])
         };
         var closed = 0;
-        palette.Closed += (_, _) => closed++;
+        palette.DropDownClosed += (_, _) => closed++;
         await using var surface = await ComponentSurface.MountAsync(
             palette,
             new Size(24, 8),

@@ -160,22 +160,19 @@ internal sealed class CalendarDropDownCoordinator<T>: IDisposable
         _openingBoundsVersion = _getBoundsVersion();
     }
 
-    /// <summary>Handles popup navigation, cancellation, traversal, and acceptance keys.</summary>
+    /// <summary>Handles popup navigation, traversal, and acceptance keys.</summary>
+    /// <remarks>
+    /// Escape needs no branch here: <see cref="Popups.PopupDropDownCoordinator"/> claims every
+    /// initial-key-down Escape with activation-eligible modifiers in its own shared prologue,
+    /// before this owner-specific delegate ever runs, and always returns without forwarding the
+    /// stroke to it.
+    /// </remarks>
     /// <param name="eventArgs">The routed key event.</param>
     /// <returns>True when popup navigation consumes the event.</returns>
     public bool HandleNavigationKey(KeyEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
         var stroke = eventArgs.Stroke;
-
-        if (eventArgs.IsInitialKeyDown &&
-            stroke.Code == Code.Escape &&
-            stroke.Modifiers.IsActivationEligible())
-        {
-            eventArgs.IsHandled = true;
-            _closePopup();
-            return true;
-        }
 
         if (eventArgs.IsInitialKeyDown &&
             stroke.Code == Code.Tab &&

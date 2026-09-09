@@ -7,8 +7,6 @@ using System.Runtime.ExceptionServices;
 
 using Collections;
 
-using Popups;
-
 using Scrolling;
 
 using SharpVision.Terminal.Input;
@@ -27,11 +25,8 @@ public sealed class SuggestionInput: CompositeControlBase
     private readonly ListView _list;
     private readonly CallbackTransitionStream _minimumPrefixLengthTransitions = new();
     private readonly RetainedPartProperty<string?> _placeholder;
-    private readonly Popup _popup;
-    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
     private readonly LatestControlOperation _resolutionOperation = new();
     private readonly CallbackTransitionStream _resolverTransitions = new();
-    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly RetainedPartProperty<Length> _rowHeight;
     private readonly RetainedPartProperty<ScrollBars> _scrollBars;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
@@ -68,7 +63,7 @@ public sealed class SuggestionInput: CompositeControlBase
         };
         _list.ItemActivationStarting += OnItemActivationStarting;
         _list.ItemInvoked += OnItemInvoked;
-        _popup = EnablePopupNavigationSession(
+        _ = EnablePopupNavigationSession(
             _list,
             focusOnOpen: false,
             anchor: _input,
@@ -112,13 +107,6 @@ public sealed class SuggestionInput: CompositeControlBase
             nameof(ItemTemplate),
             () => _list.ItemTemplate,
             value => _list.ItemTemplate = value);
-        _dropDownHeight = ForwardPartProperty(
-            _popup,
-            nameof(Popup.ContentHeightLimit),
-            nameof(DropDownHeight),
-            () => _popup.ContentHeightLimit,
-            value => _popup.ContentHeightLimit = value,
-            InvalidationImpact.Measure);
         _rowHeight = ForwardPartProperty(
             _list,
             nameof(ListView.RowHeight),
@@ -137,12 +125,6 @@ public sealed class SuggestionInput: CompositeControlBase
             nameof(ShowScrollBars),
             () => _list.ShowScrollBars,
             value => _list.ShowScrollBars = value);
-        _popupChrome = ForwardPartProperty(
-            _popup,
-            nameof(Popup.Style),
-            nameof(PopupChrome),
-            () => _popup.Style,
-            value => _popup.Style = value);
     }
 
     /// <summary>Raised after the copied current suggestion snapshot changes.</summary>
@@ -320,17 +302,6 @@ public sealed class SuggestionInput: CompositeControlBase
         set => _ = SetProperty(ref field, value, InvalidationImpact.None);
     }
 
-    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible suggestion height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
-    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length DropDownHeight
-    {
-        get => _dropDownHeight.Value;
-        set => _dropDownHeight.Value = value;
-    }
-
     /// <summary>Gets or sets the automatic, fixed, or viewport-relative uniform suggestion-row height.</summary>
     /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
     /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
@@ -373,21 +344,6 @@ public sealed class SuggestionInput: CompositeControlBase
 
     /// <summary>Gets the complete local, theme-owned, or code-owned suggestion-list rail style.</summary>
     public ScrollBarStyle ActualScrollBarStyle => _scrollBarStyle.Actual;
-
-    /// <summary>Gets or sets the suggestion popup's border and shadow together.</summary>
-    /// <remarks>A null component keeps that facet under the Popup's own appearance ownership.</remarks>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public PopupChrome PopupChrome
-    {
-        get => _popupChrome.Value;
-        set => _popupChrome.Value = value;
-    }
-
-    /// <summary>Returns both suggestion-popup chrome facets to Popup appearance ownership.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void ResetPopupChrome() => PopupChrome = default;
 
     /// <summary>Gets or sets whether a non-empty current suggestion snapshot is open.</summary>
     /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
@@ -1646,6 +1602,8 @@ public sealed class SuggestionInput: CompositeControlBase
         {
             RequestFirstSuggestionSelection(generation);
         }
+
+        base.OnDropDownOpened();
     }
 
     /// <inheritdoc/>
@@ -1653,6 +1611,7 @@ public sealed class SuggestionInput: CompositeControlBase
     {
         _wantsOpen = false;
         ClearPendingFirstSuggestionSelection();
+        base.OnDropDownClosed();
     }
 
     [Pure]

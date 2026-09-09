@@ -22,9 +22,7 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
 
     private readonly CalendarDropDownCoordinator<DateOnly> _calendarDropDown;
     private readonly RetainedPartProperty<CalendarStyle?> _calendarStyle;
-    private readonly RetainedPartProperty<Length> _dropDownHeight;
     private readonly Popup _popup;
-    private readonly RetainedPartProperty<PopupChrome> _popupChrome;
 
     #region Construction and properties
 
@@ -77,19 +75,6 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
             nameof(Calendar.ActualStyle),
             nameof(ActualCalendarStyle),
             () => _calendarDropDown.Calendar.ActualStyle);
-        _dropDownHeight = ForwardPartProperty(
-            _popup,
-            nameof(Popup.ContentHeightLimit),
-            nameof(DropDownHeight),
-            () => _popup.ContentHeightLimit,
-            value => _popup.ContentHeightLimit = value,
-            InvalidationImpact.Measure);
-        _popupChrome = ForwardPartProperty(
-            _popup,
-            nameof(Popup.Style),
-            nameof(PopupChrome),
-            () => _popup.Style,
-            value => _popup.Style = value);
         _calendarStyle = ForwardPartProperty(
             _calendarDropDown.Calendar,
             nameof(Calendar.Style),
@@ -99,12 +84,6 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
         EnablePressActivation();
         TabNavigation = TabNavigation.None;
     }
-
-    /// <summary>Raised after the Calendar popup opens.</summary>
-    public event EventHandler? DropDownOpened;
-
-    /// <summary>Raised after the Calendar popup closes.</summary>
-    public event EventHandler? DropDownClosed;
 
     /// <summary>Gets or sets the date format string used for display.</summary>
     /// <remarks>The pattern must be renderable by <see cref="DateOnly"/> under <see cref="TemporalInputBase{TValue}.Culture"/>: a single
@@ -129,35 +108,6 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
             }
         }
     } = "d";
-
-    /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative maximum visible calendar height.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">A fixed or percentage value is zero.</exception>
-    /// <exception cref="ArgumentException">The value uses proportional sizing.</exception>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public Length DropDownHeight
-    {
-        get => _dropDownHeight.Value;
-        set => _dropDownHeight.Value = value;
-    }
-
-    /// <summary>Gets or sets the owned Calendar popup's border and shadow together.</summary>
-    /// <remarks>
-    /// A component left null keeps the popup on its own <see cref="PopupChrome"/> role
-    /// appearance for that part.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public PopupChrome PopupChrome
-    {
-        get => _popupChrome.Value;
-        set => _popupChrome.Value = value;
-    }
-
-    /// <summary>Returns the Calendar popup's border and shadow to <see cref="PopupChrome"/> ownership.</summary>
-    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
-    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    public void ResetPopupChrome() => PopupChrome = default;
 
     /// <summary>Gets or sets the complete local style of the owned Calendar, or null to use its own
     /// role-normal presentation.</summary>
@@ -206,8 +156,6 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
         if (reason == ReleaseReason.Disposed)
         {
             _calendarDropDown.Dispose();
-            DropDownOpened = null;
-            DropDownClosed = null;
         }
     }
 
@@ -225,12 +173,6 @@ public sealed class DateInput: TemporalInputBase<DateOnly>
 
         IsOpen = !IsOpen;
     }
-
-    /// <inheritdoc/>
-    protected override void OnDropDownOpened() => DropDownOpened?.Invoke(this, EventArgs.Empty);
-
-    /// <inheritdoc/>
-    protected override void OnDropDownClosed() => DropDownClosed?.Invoke(this, EventArgs.Empty);
 
     #endregion
 
