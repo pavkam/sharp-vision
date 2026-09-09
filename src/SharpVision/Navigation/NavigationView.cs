@@ -768,16 +768,12 @@ public sealed class NavigationView: ScrollableCompositeControlBase
     {
         _ = sender;
 
-        if (eventArgs.Phase != RoutingPhase.Preview ||
-            eventArgs.IsHandled ||
-            eventArgs.Pointer.Action != PointerAction.Wheel)
+        if (eventArgs.Phase != RoutingPhase.Preview || eventArgs.IsHandled)
         {
             return;
         }
 
-        var x = eventArgs.Pointer.WheelX.Multiply(LineSize);
-        var y = (int) Math.Clamp(-(long) eventArgs.Pointer.WheelY * LineSize, int.MinValue, int.MaxValue);
-        eventArgs.IsHandled = _itemsStack.ScrollBy(x, y, ScrollCause.Wheel);
+        eventArgs.IsHandled = HandleScrollWheel(eventArgs);
     }
 
     /// <inheritdoc/>

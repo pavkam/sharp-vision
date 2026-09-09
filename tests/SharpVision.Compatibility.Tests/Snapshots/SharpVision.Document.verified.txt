@@ -28,6 +28,7 @@
         public System.Threading.Tasks.ValueTask<SharpVision.Documents.DocumentReadResult> LoadAsync(System.IO.Stream source, SharpVision.Documents.IDocumentFormatReader reader, SharpVision.Documents.DocumentReadOptions? options = null, System.Text.Encoding? encoding = null, System.Threading.CancellationToken cancellationToken = default) { }
         protected override int NormalizeTextSelectionClickCount(SharpVision.Controls.ControlBase? originalSource, int clickCount) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnScrollHostScrollChanged(SharpVision.Scrolling.ScrollChangedEventArgs eventArgs) { }
         protected override void OnTextSelectionClickCompleted(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point pressCells, SharpVision.Terminal.Geometry.Point releaseCells, int clickCount, SharpVision.Input.PointerEventArgs eventArgs) { }
         protected override void OnTextSelectionCommitted(SharpVision.Input.TextSelectionChangedEventArgs eventArgs, ulong transitionVersion) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -41,7 +42,6 @@
         public void SelectAll() { }
         public void SetSelection(SharpVision.Text.Selection selection) { }
         public override void SetTextSelection(SharpVision.Text.Selection selection) { }
-        protected override int TextSelectionPageDistance() { }
     }
     public abstract class DocumentBlock : SharpVision.Controls.Document.DocumentNode { }
     public sealed class DocumentBlockCollection : SharpVision.Controls.Document.DocumentNodeCollection<SharpVision.Controls.Document.DocumentBlock> { }

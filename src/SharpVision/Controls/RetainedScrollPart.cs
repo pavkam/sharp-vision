@@ -23,6 +23,7 @@ public sealed class RetainedScrollPart: IDisposable
     private readonly RetainedPartProperty<ScrollBars> _scrollBars;
     private readonly RetainedPartProperty<ShowScrollBars> _showScrollBars;
     private readonly Container _source;
+    private readonly Action<ScrollChangedEventArgs>? _sourceScrollChanged;
     private readonly OwnedControlSlot _sourceSlot;
     private readonly RetainedPartProperty<int> _verticalOffset;
     private readonly RetainedPartProperty<Size> _viewport;
@@ -39,7 +40,18 @@ public sealed class RetainedScrollPart: IDisposable
     /// otherwise transformed transition instead - through a different mechanism such as a projection
     /// coordinator - passes false and raises through <see cref="RaiseScrollChanged"/> itself.
     /// </param>
-    internal RetainedScrollPart(ControlBase owner, Container source, bool forwardsScrollEvent)
+    /// <param name="sourceScrollChanged">
+    /// An optional callback invoked for every committed source transition, after this bridge has
+    /// refreshed the owner's cached <see cref="Extent"/>/<see cref="Viewport"/>/offset properties and
+    /// before <paramref name="forwardsScrollEvent"/> decides whether the transition is also
+    /// forwarded. This ordering lets the callback synchronously dispose or hide the owner without
+    /// racing the refresh above it.
+    /// </param>
+    internal RetainedScrollPart(
+        ControlBase owner,
+        Container source,
+        bool forwardsScrollEvent,
+        Action<ScrollChangedEventArgs>? sourceScrollChanged = null)
     {
         Debug.Assert(owner is not null, "A retained scroll bridge requires its owner.");
         Debug.Assert(source is not null, "A retained scroll bridge requires its source.");
@@ -48,6 +60,7 @@ public sealed class RetainedScrollPart: IDisposable
         _source = source;
         _sourceSlot = source.OwningSlot;
         _forwardsScrollEvent = forwardsScrollEvent;
+        _sourceScrollChanged = sourceScrollChanged;
         _scrollBars = Property(
             nameof(Container.ScrollBars),
             nameof(Container.ScrollBars),
@@ -196,6 +209,7 @@ public sealed class RetainedScrollPart: IDisposable
         _verticalOffset.Refresh();
         _extent.Refresh();
         _viewport.Refresh();
+        _sourceScrollChanged?.Invoke(eventArgs);
 
         if (_forwardsScrollEvent)
         {

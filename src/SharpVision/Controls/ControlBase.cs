@@ -3395,6 +3395,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </remarks>
     /// <param name="source">The non-null retained scrolling container, already owned by this control.</param>
     /// <param name="forwardsScrollEvent">Whether the bridge directly forwards ScrollChanged.</param>
+    /// <param name="sourceScrollChanged">
+    /// An optional callback invoked for every committed <paramref name="source"/> transition, after
+    /// the bridge refreshes this control's cached forwarded properties and before it decides whether
+    /// to forward the event per <paramref name="forwardsScrollEvent"/>. See
+    /// <see cref="RetainedScrollPart"/>'s constructor for the exact ordering guarantee.
+    /// </param>
     /// <returns>The lifecycle-owned forwarding bridge.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
@@ -3404,7 +3410,8 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <exception cref="ObjectDisposedException">This control is disposed.</exception>
     protected RetainedScrollPart RegisterRetainedScrollPart(
         Container source,
-        bool forwardsScrollEvent = true)
+        bool forwardsScrollEvent = true,
+        Action<ScrollChangedEventArgs>? sourceScrollChanged = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         VerifyMutable();
@@ -3414,7 +3421,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             throw new InvalidOperationException("A retained-part bridge requires an owned descendant.");
         }
 
-        var registration = new RetainedScrollPart(this, source, forwardsScrollEvent);
+        var registration = new RetainedScrollPart(this, source, forwardsScrollEvent, sourceScrollChanged);
         _retainedPartRegistrations ??= [];
         _retainedPartRegistrations.Add(registration);
         return registration;
@@ -3713,7 +3720,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// after focus callbacks and pending layout have settled. A pointer press already proves the
     /// target was visible and clickable, and a programmatic
     /// <see cref="Focus()"/> call leaves the deliberate choice of whether to reveal its
-    /// target to the caller, who can already call <see cref="Container.BringIntoView"/> directly;
+    /// target to the caller, who can already call <see cref="Container.BringIntoView(ControlBase)"/> directly;
     /// neither reason invokes this method.
     /// </para>
     /// <para>
@@ -3721,7 +3728,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// matching the boundary check every other ancestor walk in this codebase applies before
     /// crossing a modal plane - remembering the outermost <see cref="Container"/> found along the
     /// way rather than the innermost. A single call to that outermost container's own
-    /// <see cref="Container.BringIntoView"/> already reveals through every intervening armed
+    /// <see cref="Container.BringIntoView(ControlBase)"/> already reveals through every intervening armed
     /// container in between, innermost to outermost, so this never needs to call it more than
     /// once.
     /// </para>
@@ -8837,6 +8844,22 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     private Point ToTextSelectionProjectionCell(Point cells) => new(
         cells.X.SaturatingSubtract(Bounds.X),
         cells.Y.SaturatingSubtract(Bounds.Y));
+
+    /// <summary>Translates an absolute cell rectangle into this control's local coordinates.</summary>
+    /// <remarks>
+    /// Subtracts <see cref="Bounds"/>'s origin from <paramref name="absolute"/>'s
+    /// origin with the same saturating arithmetic every other absolute-to-local translation in this
+    /// selection region uses, so a component projecting glyphs or a selectable viewport out of
+    /// screen-absolute geometry shares one overflow-safe conversion instead of repeating the
+    /// subtraction inline.
+    /// </remarks>
+    /// <param name="absolute">The rectangle expressed in absolute screen cells.</param>
+    /// <returns>The equivalent rectangle expressed relative to this control's own origin.</returns>
+    protected Rect ToLocalBounds(Rect absolute) => new(
+        absolute.X.SaturatingSubtract(Bounds.X),
+        absolute.Y.SaturatingSubtract(Bounds.Y),
+        absolute.Width,
+        absolute.Height);
 
     /// <summary>Maps one semantic glyph from projection coordinates into final screen cells.</summary>
     protected virtual Rect GetTextSelectionAdornmentBounds(Rect bounds) => new(

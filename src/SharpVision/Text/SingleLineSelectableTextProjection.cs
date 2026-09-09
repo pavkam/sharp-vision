@@ -35,7 +35,7 @@ internal static class SingleLineSelectableTextProjection
             var width = UnicodeWidth.Measure(cluster, source.CellPolicy.AmbiguousWidth).Cells;
             var absolute = new Rect(x, origin.Y, width, 1);
 
-            if (width > 0 && SelectableTextAggregation.ContainsCompleteGlyph(clip, absolute))
+            if (width > 0 && clip.Contains(absolute))
             {
                 glyphs.Add(new SelectableTextGlyph(
                     new Selection(grapheme.Offset, grapheme.Offset + grapheme.Length),

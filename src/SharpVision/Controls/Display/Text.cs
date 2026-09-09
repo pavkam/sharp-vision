@@ -182,7 +182,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
                     width,
                     1);
 
-                if (width > 0 && SelectableTextAggregation.ContainsCompleteGlyph(clip, absolute))
+                if (width > 0 && clip.Contains(absolute))
                 {
                     glyphs.Add(new SelectableTextGlyph(
                         new Selection(offset, offset + grapheme.Length),

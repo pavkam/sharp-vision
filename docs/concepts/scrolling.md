@@ -231,6 +231,16 @@ preserves any already-visible slice on later arranged passes. It does not
 alternate between top/bottom or left/right alignment, and still returns `false`
 to report that the complete bounds cannot fit.
 
+`BringIntoView(Rect, ScrollCause)` reveals the same way for a caller that
+already has the target expressed in content (extent) coordinates instead of a
+realized descendant - a focus-owning `ScrollableCompositeControlBase` revealing
+a caret cell inside its own private scrolling host, for instance, has no
+descendant control to name for a purely logical position. It reuses the same
+minimal-reveal and oversized-target math as the descendant overload, but it is
+immediate: there is no retained pending reveal to complete on a later arrange
+pass, because the caller already supplies fully current geometry rather than
+bounds a not-yet-arranged descendant would otherwise need.
+
 Horizontal clipping is grapheme-safe. Hit testing uses viewport coordinates
 after the offset is applied and never targets clipped content.
 

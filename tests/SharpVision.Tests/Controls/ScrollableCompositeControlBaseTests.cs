@@ -64,4 +64,112 @@ public sealed class ScrollableCompositeControlBaseTests
         // Act and assert
         _ = Should.Throw<InvalidOperationException>(probe.InitializeScrollableContentAgain);
     }
+
+    /// <summary>Verifies PageDown maps through the host's own key-scroll mapping and advances the
+    /// owner's VerticalOffset by exactly one page step.</summary>
+    [Fact]
+    public void HandleScrollKey_WhenPageDownWithContentToScroll_ScrollsHostByPageStep()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        var expectedStep = Math.Max(1, probe.ScrollableHost.Viewport.Height - probe.PageOverlap);
+
+        // Act
+        var handled = probe.RaiseScrollKey(Code.PageDown);
+
+        // Assert
+        handled.ShouldBeTrue();
+        probe.VerticalOffset.ShouldBe(expectedStep);
+    }
+
+    /// <summary>Verifies a key mapped to an axis the owner can still scroll overall is reported
+    /// handled even when the offset is already at that axis's endpoint, matching the "handled
+    /// whenever there is anything to scroll" policy a focus-owning composite relies on so the
+    /// keystroke cannot escape to page an enclosing scrollable ancestor instead.</summary>
+    [Fact]
+    public void HandleScrollKey_WhenAtEndpointAndConsumeAtBoundary_ReturnsTrueWithoutMoving()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        probe.VerticalOffset = probe.ScrollableHost.MaximumVerticalOffset;
+        var before = probe.VerticalOffset;
+
+        // Act
+        var handled = probe.RaiseScrollKey(Code.Down);
+
+        // Assert
+        handled.ShouldBeTrue();
+        probe.VerticalOffset.ShouldBe(before);
+    }
+
+    /// <summary>Verifies a key the host maps to an axis this component cannot scroll at all -
+    /// Left/Right against a vertical-only host - is left unhandled instead of being consumed for
+    /// no effect or forwarded into an override that rejects a non-zero horizontal delta.</summary>
+    [Fact]
+    public void HandleScrollKey_WhenAxisCannotScroll_ReturnsFalse()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+
+        // Act
+        var handled = probe.RaiseScrollKey(Code.Left);
+
+        // Assert
+        handled.ShouldBeFalse();
+        probe.HorizontalOffset.ShouldBe(0);
+    }
+
+    /// <summary>Verifies a wheel-down record scrolls the owner by one line increment.</summary>
+    [Fact]
+    public void HandleScrollWheel_WhenWheelDown_ScrollsByLineSize()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        probe.LineSize = 2;
+
+        // Act
+        var handled = probe.RaiseScrollWheel(wheelX: 0, wheelY: -1);
+
+        // Assert
+        handled.ShouldBeTrue();
+        probe.VerticalOffset.ShouldBe(2);
+    }
+
+    /// <summary>Verifies the hook observes VerticalOffset already refreshed to the newly committed
+    /// host value, not the value before the host's transition.</summary>
+    [Fact]
+    public void OnScrollHostScrollChanged_WhenHostScrolls_ObservesRefreshedVerticalOffset()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+
+        // Act
+        _ = probe.ScrollBy(0, 3);
+
+        // Assert
+        probe.ScrollEventOrder.ShouldContain("hook:3");
+    }
+
+    /// <summary>Verifies the hook runs strictly before the same transition is forwarded through the
+    /// owner's own public ScrollChanged, so an override can synchronously dispose or hide the owner
+    /// without racing the bridge's own cached-property refresh.</summary>
+    [Fact]
+    public void OnScrollHostScrollChanged_WhenHostScrolls_RunsBeforeForwardedScrollChanged()
+    {
+        // Arrange
+        var probe = new ScrollableCompositeControlProbe();
+        new LayoutEngine().Layout(probe, new Size(10, 4));
+        probe.ScrollChanged += (_, eventArgs) => probe.ScrollEventOrder.Add($"forwarded:{eventArgs.Offset.Y}");
+
+        // Act
+        _ = probe.ScrollBy(0, 3);
+
+        // Assert
+        probe.ScrollEventOrder.ShouldBe(["hook:3", "forwarded:3"]);
+    }
 }

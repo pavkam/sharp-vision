@@ -1476,7 +1476,7 @@ public sealed class FocusManagerTests
     }
 
     /// <summary>Verifies a programmatic focus change never scrolls: the caller owns that choice
-    /// and can already call <see cref="Container.BringIntoView"/> directly.</summary>
+    /// and can already call <see cref="Container.BringIntoView(ControlBase)"/> directly.</summary>
     [Fact]
     public async Task Focus_WhenReasonIsProgrammatic_DoesNotScrollAsync()
     {

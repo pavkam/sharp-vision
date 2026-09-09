@@ -5,6 +5,8 @@ namespace SharpVision.Controls;
 
 using Scrolling;
 
+using SharpVision.Terminal.Input;
+
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 
 /// <summary>Defines a composite component whose private presentation host provides bounded
@@ -162,7 +164,7 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
         }
 
         _scrollHost = host;
-        _scrollPart = RegisterRetainedScrollPart(host, forwardsScrollEvent);
+        _scrollPart = RegisterRetainedScrollPart(host, forwardsScrollEvent, OnScrollHostScrollChanged);
         _scrollBarStyle = InitializePartStyle(
             ScrollBarStyle.ForwardingDefinition,
             nameof(ScrollBarStyle));
@@ -200,6 +202,106 @@ public abstract class ScrollableCompositeControlBase: CompositeControlBase
     /// <exception cref="InvalidOperationException">No scrolling host is installed.</exception>
     protected void RaiseScrollChanged(ScrollChangedEventArgs eventArgs) =>
         GetScrollPart().RaiseScrollChanged(eventArgs);
+
+    /// <summary>Maps one keyboard navigation stroke through the installed host's scroll mapping and
+    /// applies it, for a focus-owning derived component whose private scrolling host never sits on
+    /// the routed key path and so never sees the host's own automatic keyboard scrolling.</summary>
+    /// <remarks>
+    /// Mirrors <c>Container.Handle(KeyEventArgs)</c>'s own modifier and key-down gating exactly, so
+    /// a derived component forwarding into this method observes the identical policy a plain
+    /// scrollable <see cref="Container"/> would. The delta is applied through the virtual
+    /// <see cref="ScrollBy(int, int, ScrollCause)"/> rather than directly against the host, so an
+    /// override that composes a second axis - <c>Document</c>'s vertical-only override, for instance
+    /// - participates in the same call.
+    /// </remarks>
+    /// <param name="eventArgs">The non-null routed key event.</param>
+    /// <param name="consumeAtBoundary">
+    /// Whether a navigation key that maps to an axis this component can scroll at all is reported
+    /// handled even when the offset is already at that axis's endpoint, so the keystroke cannot
+    /// escape to page an enclosing scrollable ancestor out from under this still-focused component.
+    /// When false, only a key that actually moves an offset is reported handled.
+    /// </param>
+    /// <returns>
+    /// True when an offset moved, or when <paramref name="consumeAtBoundary"/> is true and the
+    /// mapped delta targets an axis this component can scroll at all. Does not set
+    /// <see cref="RoutedEventArgs.IsHandled"/> - the caller decides that from the result.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    protected bool HandleScrollKey(KeyEventArgs eventArgs, bool consumeAtBoundary = true)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!eventArgs.IsKeyDown ||
+            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
+        {
+            return false;
+        }
+
+        var host = GetScrollHost();
+        var delta = host.ComputeKeyScrollDelta(eventArgs.Stroke.Code);
+
+        if (delta is null)
+        {
+            return false;
+        }
+
+        var scrollableHorizontally = delta.Value.X != 0 && host.MaximumHorizontalOffset > 0;
+        var scrollableVertically = delta.Value.Y != 0 && host.MaximumVerticalOffset > 0;
+
+        if (!scrollableHorizontally && !scrollableVertically)
+        {
+            return false;
+        }
+
+        var moved = ScrollBy(delta.Value.X, delta.Value.Y, ScrollCause.Keyboard);
+        return moved || consumeAtBoundary;
+    }
+
+    /// <summary>Maps one wheel record through the installed host's line increment and applies it,
+    /// for a focus-owning derived component whose private scrolling host is not the pointer's hit
+    /// target and so never sees the host's own automatic wheel scrolling.</summary>
+    /// <param name="eventArgs">The non-null routed pointer event.</param>
+    /// <returns>
+    /// True when an offset moved. Does not set <see cref="RoutedEventArgs.IsHandled"/> - the caller
+    /// decides that from the result.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    protected bool HandleScrollWheel(PointerEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action != PointerAction.Wheel)
+        {
+            return false;
+        }
+
+        var lineSize = GetScrollHost().LineSize;
+        var x = pointer.WheelX.Multiply(lineSize);
+        var y = (int) Math.Clamp(-(long) pointer.WheelY * lineSize, int.MinValue, int.MaxValue);
+        return ScrollBy(x, y, ScrollCause.Wheel);
+    }
+
+    /// <summary>Responds to one committed offset, extent, or viewport transition on the private
+    /// scrolling host.</summary>
+    /// <remarks>
+    /// The default implementation does nothing. Runs after the retained bridge has refreshed this
+    /// component's own cached <see cref="Extent"/>, <see cref="Viewport"/>, <see
+    /// cref="HorizontalOffset"/>, and <see cref="VerticalOffset"/> against the host's newly committed
+    /// values, and before the bridge forwards the transition through this component's public
+    /// <see cref="ScrollChanged"/> when <c>forwardsScrollEvent</c> was true at <see
+    /// cref="InitializeScrollableContent"/>. That ordering is what lets an override synchronously
+    /// dispose or hide this component without racing the bridge's own refresh above it.
+    /// </remarks>
+    /// <param name="eventArgs">The non-null committed transition.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    protected virtual void OnScrollHostScrollChanged(ScrollChangedEventArgs eventArgs) =>
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+    /// <inheritdoc/>
+    protected override int TextSelectionPageDistance() => _scrollHost is not null
+        ? Math.Max(1, Viewport.Height - PageOverlap)
+        : base.TextSelectionPageDistance();
 
     [Pure]
     private RetainedScrollPart GetScrollPart() => _scrollPart ??

@@ -1259,6 +1259,60 @@ public sealed class ContainerTests
         container.VerticalOffset.ShouldBe(0);
     }
 
+    /// <summary>Verifies the logical-rectangle overload scrolls minimally to expose a rectangle
+    /// below the viewport, with no realized descendant control involved.</summary>
+    [Fact]
+    public void BringIntoView_WhenLogicalRectangleBelowViewport_ScrollsMinimally()
+    {
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 20)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        var changed = container.BringIntoView(new Rect(0, 15, 4, 1));
+
+        changed.ShouldBeTrue();
+        container.VerticalOffset.ShouldBe(6);
+    }
+
+    /// <summary>Verifies a logical rectangle taller than the viewport exposes the nearest edge once,
+    /// then keeps that visible slice stable on a later call against the identical still-oversized
+    /// rectangle instead of alternating between top- and bottom-edge alignment.</summary>
+    [Fact]
+    public void BringIntoView_WhenLogicalRectangleTallerThanViewport_KeepsVisibleSlice()
+    {
+        var container = new LayoutProbe { AutoScroll = true, ShowScrollBars = ShowScrollBars.Never };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+        var target = new Rect(0, 15, 4, 20);
+
+        var first = container.BringIntoView(target);
+
+        first.ShouldBeTrue();
+        container.VerticalOffset.ShouldBe(15);
+
+        var second = container.BringIntoView(target);
+
+        second.ShouldBeFalse();
+        container.VerticalOffset.ShouldBe(15);
+    }
+
+    /// <summary>Verifies MaximumVerticalOffset is zero whenever the vertical axis does not
+    /// currently scroll, regardless of how much taller the content is than the viewport.</summary>
+    [Fact]
+    public void MaximumVerticalOffset_WhenAxisDisabled_IsZero()
+    {
+        var container = new LayoutProbe
+        {
+            AutoScroll = true,
+            ScrollBars = ScrollBars.Horizontal,
+            ShowScrollBars = ShowScrollBars.Never
+        };
+        container.Children.Add(new ProbeControl(new Size(4, 40)));
+        new LayoutEngine().Layout(container, new Size(4, 10));
+
+        container.MaximumVerticalOffset.ShouldBe(0);
+    }
+
     /// <summary>Verifies ScrollBy rejects an undefined cause before any offset changes.</summary>
     [Fact]
     public void ScrollBy_WhenCauseIsUndefined_ThrowsArgumentOutOfRangeException()

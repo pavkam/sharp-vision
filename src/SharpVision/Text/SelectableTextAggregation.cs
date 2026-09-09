@@ -140,7 +140,7 @@ internal static class SelectableTextAggregation
                 glyph.Bounds.Width,
                 glyph.Bounds.Height);
 
-            if (!ContainsCompleteGlyph(clip, absolute))
+            if (!clip.Contains(absolute))
             {
                 continue;
             }
@@ -157,12 +157,6 @@ internal static class SelectableTextAggregation
                 selectionSource));
         }
     }
-
-    /// <summary>Gets whether a complete glyph rectangle lies inside the effective aperture.</summary>
-    internal static bool ContainsCompleteGlyph(Rect clip, Rect candidate) =>
-        candidate.X >= clip.X && candidate.Y >= clip.Y &&
-        (long) candidate.X + candidate.Width <= (long) clip.X + clip.Width &&
-        (long) candidate.Y + candidate.Height <= (long) clip.Y + clip.Height;
 
     /// <summary>Gets the effective absolute render aperture inherited by one source control.</summary>
     /// <param name="source">The attached source whose retained ancestors define the aperture.</param>

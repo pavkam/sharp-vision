@@ -954,8 +954,8 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
     }
 
     /// <summary>Scrolls minimally so a logical index's arithmetic row slot is fully inside the
-    /// viewport, without requiring a realized descendant the way <see cref="Container.BringIntoView"/>
-    /// does.</summary>
+    /// viewport, without requiring a realized descendant the way
+    /// <see cref="Container.BringIntoView(ControlBase)"/> does.</summary>
     private void ScrollIndexIntoView(int index, int height)
     {
         var current = VerticalOffset;

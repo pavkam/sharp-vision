@@ -333,6 +333,8 @@ namespace SharpVision.Controls
         public bool IsKeyboardScrollingEnabled { get; set; }
         public bool IsWheelScrollingEnabled { get; set; }
         public int LineSize { get; set; }
+        public int MaximumHorizontalOffset { get; }
+        public int MaximumVerticalOffset { get; }
         public int PageOverlap { get; set; }
         protected virtual bool RemeasureInitialScrollContent { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? ScrollBarStyle { get; set; }
@@ -346,6 +348,11 @@ namespace SharpVision.Controls
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected abstract override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         public bool BringIntoView(SharpVision.Controls.ControlBase descendant) { }
+        public bool BringIntoView(SharpVision.Terminal.Geometry.Rect logicalBounds, SharpVision.Scrolling.ScrollCause cause = 4) { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "X",
+                "Y"})]
+        public System.ValueTuple<int, int>? ComputeKeyScrollDelta(SharpVision.Terminal.Input.Code code) { }
         protected virtual void GetChildOrder(System.Span<int> indices) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
@@ -609,7 +616,7 @@ namespace SharpVision.Controls
         protected void RaiseTextSelectionCompatibilityEvent<TEventArgs>(System.EventHandler<TEventArgs>? handlers, object? sender, TEventArgs eventArgs, ulong transitionVersion) { }
         protected void RegisterAttachmentParticipant(SharpVision.Controls.IControlAttachmentParticipant participant) { }
         protected SharpVision.Controls.RetainedPartProperty<T> RegisterRetainedPartProperty<T>(SharpVision.Controls.ControlBase source, string sourcePropertyName, string ownerPropertyName, System.Func<T> get, System.Action<T>? set = null, System.Collections.Generic.IEqualityComparer<T>? comparer = null, SharpVision.Controls.InvalidationImpact ownerImpact = 0) { }
-        protected SharpVision.Controls.RetainedScrollPart RegisterRetainedScrollPart(SharpVision.Controls.Container source, bool forwardsScrollEvent = true) { }
+        protected SharpVision.Controls.RetainedScrollPart RegisterRetainedScrollPart(SharpVision.Controls.Container source, bool forwardsScrollEvent = true, System.Action<SharpVision.Scrolling.ScrollChangedEventArgs>? sourceScrollChanged = null) { }
         protected void ReleasePointerCapture() { }
         protected void RenderAffixes(SharpVision.Terminal.Rendering.TerminalCanvas canvas, SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics, SharpVision.Styling.Affix? start, SharpVision.Styling.Affix? end, SharpVision.Terminal.Rendering.CellStyle style) { }
         protected virtual void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -644,6 +651,7 @@ namespace SharpVision.Controls
         protected bool SetVersionedProperty<T>(ref T field, T value, SharpVision.Controls.InvalidationImpact impact, ref long version, out long commitVersion, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected bool SetVisualStateProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null) { }
         protected virtual int TextSelectionPageDistance() { }
+        protected SharpVision.Terminal.Geometry.Rect ToLocalBounds(SharpVision.Terminal.Geometry.Rect absolute) { }
         protected bool TryActivate(SharpVision.Input.ActivationCause cause) { }
         protected bool TryCaptureAttachment([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SharpVision.Controls.ControlAttachmentToken? token) { }
         protected bool TryFocusForInteraction() { }
@@ -958,10 +966,14 @@ namespace SharpVision.Controls
         public virtual SharpVision.Terminal.Geometry.Size Viewport { get; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? ScrollChanged;
         protected virtual void AddScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
+        protected bool HandleScrollKey(SharpVision.Input.KeyEventArgs eventArgs, bool consumeAtBoundary = true) { }
+        protected bool HandleScrollWheel(SharpVision.Input.PointerEventArgs eventArgs) { }
         protected void InitializeScrollableContent(SharpVision.Controls.Container host, bool forwardsScrollEvent = true) { }
+        protected virtual void OnScrollHostScrollChanged(SharpVision.Scrolling.ScrollChangedEventArgs eventArgs) { }
         protected void RaiseScrollChanged(SharpVision.Scrolling.ScrollChangedEventArgs eventArgs) { }
         protected virtual void RemoveScrollChangedHandler(System.EventHandler<SharpVision.Scrolling.ScrollChangedEventArgs>? handler) { }
         public virtual bool ScrollBy(int x, int y, SharpVision.Scrolling.ScrollCause cause = 0) { }
+        protected override int TextSelectionPageDistance() { }
     }
     public abstract class ScrollableItemsControl : SharpVision.Controls.ItemsControl
     {

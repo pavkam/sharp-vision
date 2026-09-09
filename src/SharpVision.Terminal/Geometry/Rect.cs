@@ -59,6 +59,22 @@ public readonly record struct Rect
     public bool Contains(Point point) =>
         point.X >= X && point.X < (long) X + Width && point.Y >= Y && point.Y < (long) Y + Height;
 
+    /// <summary>Gets whether another rectangle lies entirely within this rectangle.</summary>
+    /// <param name="other">The candidate rectangle.</param>
+    /// <returns>Whether every cell of <paramref name="other"/> lies inside this rectangle.</returns>
+    /// <remarks>
+    /// Compares against true (64-bit) edges rather than the saturated <see cref="Right"/>/<see
+    /// cref="Bottom"/> properties, for the same overflow-safety reason documented on <see
+    /// cref="Contains(Point)"/>: a rectangle whose true edge exceeds <see cref="int.MaxValue"/> can
+    /// still validly contain a candidate reaching that representable boundary.
+    /// </remarks>
+    [Pure]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Contains(Rect other) =>
+        other.X >= X && other.Y >= Y &&
+        (long) other.X + other.Width <= (long) X + Width &&
+        (long) other.Y + other.Height <= (long) Y + Height;
+
     /// <summary>Returns the geometric intersection with another rectangle.</summary>
     /// <param name="other">The other rectangle.</param>
     /// <returns>A possibly empty intersection.</returns>

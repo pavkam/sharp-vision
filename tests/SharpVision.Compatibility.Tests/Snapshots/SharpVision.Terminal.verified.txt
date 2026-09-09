@@ -600,6 +600,7 @@ namespace SharpVision.Terminal.Geometry
         public int X { get; }
         public int Y { get; }
         public bool Contains(SharpVision.Terminal.Geometry.Point point) { }
+        public bool Contains(SharpVision.Terminal.Geometry.Rect other) { }
         public SharpVision.Terminal.Geometry.Rect Intersect(SharpVision.Terminal.Geometry.Rect other) { }
         public override string ToString() { }
     }

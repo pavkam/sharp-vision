@@ -369,17 +369,13 @@ public sealed class CodeView:
                     width,
                     1);
 
-                if (width > 0 && ContainsCompleteGlyph(clip, absolute))
+                if (width > 0 && clip.Contains(absolute))
                 {
                     glyphs.Add(new SelectableTextGlyph(
                         new TextSelection(
                             lineStart + grapheme.Offset,
                             lineStart + grapheme.Offset + grapheme.Length),
-                        new Rect(
-                            absolute.X - Bounds.X,
-                            absolute.Y - Bounds.Y,
-                            absolute.Width,
-                            absolute.Height)));
+                        ToLocalBounds(absolute)));
                 }
 
                 if (absolute.X >= clip.Right)
@@ -400,12 +396,7 @@ public sealed class CodeView:
         get
         {
             VerifyMutable();
-            var viewport = SelectableTextViewportAbsolute();
-            return new Rect(
-                viewport.X - Bounds.X,
-                viewport.Y - Bounds.Y,
-                viewport.Width,
-                viewport.Height);
+            return ToLocalBounds(SelectableTextViewportAbsolute());
         }
     }
 
@@ -449,12 +440,6 @@ public sealed class CodeView:
         _stack.Bounds.Y,
         Viewport.Width,
         Viewport.Height);
-
-    [Pure]
-    private static bool ContainsCompleteGlyph(Rect clip, Rect candidate) =>
-        candidate.X >= clip.X && candidate.Y >= clip.Y &&
-        (long) candidate.X + candidate.Width <= (long) clip.X + clip.Width &&
-        (long) candidate.Y + candidate.Height <= (long) clip.Y + clip.Height;
 
     [Pure]
     private int CodeClusterWidth(ReadOnlySpan<char> cluster) =>
@@ -573,38 +558,6 @@ public sealed class CodeView:
             ? viewport.Y
             : Math.Clamp(cells.Y, viewport.Y, viewport.Bottom - 1);
         return OffsetAt(new Point(cells.X, y)) ?? 0;
-    }
-
-    /// <inheritdoc/>
-    protected override int TextSelectionPageDistance() => Math.Max(1, Viewport.Height - PageOverlap);
-
-    /// <inheritdoc/>
-    protected override SelectableTextSnapshot GetTextSelectionProjection()
-    {
-        var glyphs = new List<SelectableTextGlyph>();
-        var viewport = SelectableTextViewportAbsolute();
-        var originX = viewport.X - Bounds.X + GutterWidth;
-        var originY = viewport.Y - Bounds.Y;
-
-        for (var rowIndex = 0; rowIndex < _rows.Count; rowIndex++)
-        {
-            var row = _rows[rowIndex];
-            var text = _lines[row.SourceLine].AsSpan(row.Offset, row.Length);
-            var lineStart = LineStartOffset(row.SourceLine) + row.Offset;
-            var x = 0;
-
-            foreach (var grapheme in Graphemes.Enumerate(text))
-            {
-                var cluster = text.Slice(grapheme.Offset, grapheme.Length);
-                var width = CodeClusterWidth(cluster);
-                glyphs.Add(new SelectableTextGlyph(
-                    new TextSelection(lineStart + grapheme.Offset, lineStart + grapheme.Offset + grapheme.Length),
-                    new Rect(originX + x, originY + rowIndex, width, 1)));
-                x += width;
-            }
-        }
-
-        return new SelectableTextSnapshot(NormalizedCode, glyphs, isAuthoritative: true);
     }
 
     /// <inheritdoc/>
@@ -1234,8 +1187,7 @@ public sealed class CodeView:
             // Container-validated maximum offset. Clamping saturates at the furthest offset that is
             // still valid - matching ScrollBy's own saturating contract - instead of letting the
             // Container's offset setter throw ArgumentOutOfRangeException out of a keyboard handler.
-            var maximumHorizontalOffset = Math.Max(0, Extent.Width - Viewport.Width);
-            targetHorizontal = Math.Min(maximumHorizontalOffset, column - textViewportWidth + 1);
+            targetHorizontal = Math.Min(_stack.MaximumHorizontalOffset, column - textViewportWidth + 1);
         }
 
         if (targetHorizontal != previousHorizontal)
@@ -1360,6 +1312,15 @@ public sealed class CodeView:
     #region Pointer input
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A wheel record is never handled here: the pointer's actual hit target for a wheel over the
+    /// rendered code is <see cref="_content"/>, a descendant of the private scrolling host
+    /// <see cref="_stack"/>. Routing visits <see cref="_stack"/>'s own <c>Container.OnEvent</c>
+    /// before it ever reaches this outer composite, and that inner handling either moves an offset
+    /// and marks the record handled - so it never reaches here - or the record could not move any
+    /// offset at all, in which case an identical attempt against the same host here would be an
+    /// inert no-op too. Folding remains the one gesture this override still owns directly.
+    /// </remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -1367,12 +1328,6 @@ public sealed class CodeView:
 
         if (eventArgs.IsHandled || eventArgs is not PointerEventArgs { Pointer: var pointer })
         {
-            return;
-        }
-
-        if (pointer.Action == PointerAction.Wheel)
-        {
-            eventArgs.IsHandled = ScrollBy(pointer.WheelX, -pointer.WheelY, ScrollCause.Wheel);
             return;
         }
 

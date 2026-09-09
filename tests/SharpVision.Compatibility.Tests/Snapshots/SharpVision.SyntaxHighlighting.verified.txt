@@ -28,7 +28,6 @@
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override SharpVision.Text.TextSelectionMap GetTextSelectionMap() { }
-        protected override SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
         protected override int HitTestTextSelectionCore(SharpVision.Terminal.Geometry.Point cells) { }
         public bool IsFoldStart(int line) { }
         public bool IsFolded(int line) { }
@@ -43,7 +42,6 @@
         public void SelectAll() { }
         public bool SetFolded(int line, bool folded) { }
         public void SetSelection(SharpVision.Text.Selection selection) { }
-        protected override int TextSelectionPageDistance() { }
         public bool ToggleFold(int line) { }
     }
     public sealed class CodeViewContextMenu : SharpVision.Menus.ContextMenu, SharpVision.Runtime.IClipboardWriterContextMenu

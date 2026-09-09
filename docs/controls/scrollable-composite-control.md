@@ -30,24 +30,28 @@ classDiagram
 
 ## API
 
-| Member                                           | Type                                   | Default          | Description                                                                          |
-| ------------------------------------------------ | -------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| `ScrollBars`                                     | `ScrollBars`                           | Host-defined     | Virtual; axes enabled by the private scrolling host.                                 |
-| `ShowScrollBars`                                 | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.                                         |
-| `ScrollBarStyle`                                 | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                                            |
-| `ActualScrollBarStyle`                           | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                                                  |
-| `Extent`                                         | `Size`                                 | Layout-dependent | Virtual; committed content extent.                                                   |
-| `Viewport`                                       | `Size`                                 | Layout-dependent | Virtual; committed visible extent.                                                   |
-| `HorizontalOffset`                               | `int`                                  | `0`              | Virtual; valid horizontal content offset.                                            |
-| `VerticalOffset`                                 | `int`                                  | `0`              | Valid vertical content offset.                                                       |
-| `LineSize`                                       | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.                                  |
-| `PageOverlap`                                    | `int`                                  | `0`              | Non-negative context retained between page commands.                                 |
-| `ScrollBy(int x, int y, ScrollCause cause)`      | `bool`                                 | —                | Virtual; adds signed deltas with saturation and endpoint clamping.                   |
-| `ScrollChanged`                                  | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the component as sender.                                        |
-| `InitializeScrollableContent(Container, bool)`   | `void`                                 | —                | Protected; installs the scrolling contract over an already-owned host, exactly once. |
-| `AddScrollChangedHandler(EventHandler<...>?)`    | `void`                                 | —                | Protected virtual; adds one `ScrollChanged` subscriber.                              |
-| `RemoveScrollChangedHandler(EventHandler<...>?)` | `void`                                 | —                | Protected virtual; removes one `ScrollChanged` subscriber.                           |
-| `RaiseScrollChanged(ScrollChangedEventArgs)`     | `void`                                 | —                | Protected; publishes one transition directly, independent of host forwarding.        |
+| Member                                              | Type                                   | Default          | Description                                                                          |
+| --------------------------------------------------- | -------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `ScrollBars`                                        | `ScrollBars`                           | Host-defined     | Virtual; axes enabled by the private scrolling host.                                 |
+| `ShowScrollBars`                                    | `ShowScrollBars`                       | Host-defined     | Reservation policy for generated scrollbars.                                         |
+| `ScrollBarStyle`                                    | `ScrollBarStyle?`                      | `null`           | Complete local generated-scrollbar style.                                            |
+| `ActualScrollBarStyle`                              | `ScrollBarStyle`                       | Resolved         | Resolved generated-scrollbar style.                                                  |
+| `Extent`                                            | `Size`                                 | Layout-dependent | Virtual; committed content extent.                                                   |
+| `Viewport`                                          | `Size`                                 | Layout-dependent | Virtual; committed visible extent.                                                   |
+| `HorizontalOffset`                                  | `int`                                  | `0`              | Virtual; valid horizontal content offset.                                            |
+| `VerticalOffset`                                    | `int`                                  | `0`              | Valid vertical content offset.                                                       |
+| `LineSize`                                          | `int`                                  | `1`              | Non-negative keyboard and wheel increment in cells.                                  |
+| `PageOverlap`                                       | `int`                                  | `0`              | Non-negative context retained between page commands.                                 |
+| `ScrollBy(int x, int y, ScrollCause cause)`         | `bool`                                 | —                | Virtual; adds signed deltas with saturation and endpoint clamping.                   |
+| `ScrollChanged`                                     | `EventHandler<ScrollChangedEventArgs>` | No subscribers   | Reports offsets with the component as sender.                                        |
+| `InitializeScrollableContent(Container, bool)`      | `void`                                 | —                | Protected; installs the scrolling contract over an already-owned host, exactly once. |
+| `AddScrollChangedHandler(EventHandler<...>?)`       | `void`                                 | —                | Protected virtual; adds one `ScrollChanged` subscriber.                              |
+| `RemoveScrollChangedHandler(EventHandler<...>?)`    | `void`                                 | —                | Protected virtual; removes one `ScrollChanged` subscriber.                           |
+| `RaiseScrollChanged(ScrollChangedEventArgs)`        | `void`                                 | —                | Protected; publishes one transition directly, independent of host forwarding.        |
+| `HandleScrollKey(KeyEventArgs, bool)`               | `bool`                                 | —                | Protected; maps and applies one keyboard navigation stroke through the host.         |
+| `HandleScrollWheel(PointerEventArgs)`               | `bool`                                 | —                | Protected; maps and applies one wheel record through the host.                       |
+| `OnScrollHostScrollChanged(ScrollChangedEventArgs)` | `void`                                 | No-op            | Protected virtual; runs after the bridge refreshes cached properties.                |
+| `TextSelectionPageDistance()`                       | `int`                                  | Host-derived     | Protected override; the host's `Viewport.Height - PageOverlap` once installed.       |
 
 `Extent`, `Viewport`, `HorizontalOffset`, `ScrollBars`, and `ScrollBy` are
 `virtual` so a derived component can widen, restrict, or fully replace one axis
@@ -67,9 +71,23 @@ double-publishes. `JsonView` and `CodeView` do this.
 
 ## Keyboard
 
-| Key | Behavior                                                                                                                                                                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| —   | This base defines no control-specific keyboard commands; the private scrolling host's own `AutoScroll` arrow, page, and wheel handling applies within that host's routed scope. |
+This base still defines no control-specific keyboard commands of its own. A
+derived component whose scrolling host is itself the focus target never sees
+that host's own `AutoScroll` arrow, page, and wheel handling: routed input walks
+the ancestry between the terminal focus and the root, and a private scrolling
+host nested inside a focus-owning composite - `Document`, `CodeView`, and
+`NavigationView` all keep focus on the outer component, not on their private
+host - sits on the descendant side of that walk, not the ancestor side, so it
+never receives the routed key or pointer event at all. Such a derivative
+forwards the navigation key or wheel record it does own into `HandleScrollKey`
+or `HandleScrollWheel`, which replay the identical mapping and endpoint policy
+the host's own `AutoScroll` handling would have applied had the host been
+reachable directly.
+
+| Key                                            | Behavior                                                                |
+| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Up, Down, Left, Right, Page Up/Down, Home, End | Only when forwarded by a derived component through `HandleScrollKey`.   |
+| Wheel                                          | Only when forwarded by a derived component through `HandleScrollWheel`. |
 
 ## Construction and ownership
 

@@ -269,6 +269,12 @@ The chosen copy method runs exactly once; an empty result remains authoritative.
 `ControlBase` never exposes cut, replacement, or other text mutation because
 those remain editor-specific operations.
 
+### Coordinate translation
+
+| Member                         | Type   | Description                                                                                                                                                                                                                                                                                                          |
+| ------------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ToLocalBounds(Rect absolute)` | `Rect` | Protected; translates an absolute cell rectangle into this control's own local coordinates with saturating arithmetic. Shared by every component that projects glyphs or a selectable viewport out of screen-absolute geometry, so `Document` and `CodeView` no longer each carry their own copy of the subtraction. |
+
 ## Intrinsic appearance
 
 Every `ControlBase` carries its own face, border, and shadow composites; there

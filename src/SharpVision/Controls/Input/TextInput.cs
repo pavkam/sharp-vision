@@ -473,7 +473,7 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     {
         var candidate = new Rect(x, y, Math.Max(0, width), 1);
 
-        if (width <= 0 || !SelectableTextAggregation.ContainsCompleteGlyph(clip, candidate))
+        if (width <= 0 || !clip.Contains(candidate))
         {
             return;
         }

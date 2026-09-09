@@ -598,7 +598,7 @@ public abstract class Container: ControlBase
     /// Arranged children carry bounds shifted by these offsets, not by the live ones, until the
     /// next pass: an offset change takes effect immediately while the arrange it requests is
     /// deferred. A computation that combines a child's bounds with an offset - the reveal walk in
-    /// <see cref="BringIntoView"/> - must use the offset the child was arranged under, or a scroll
+    /// <see cref="BringIntoView(ControlBase)"/> - must use the offset the child was arranged under, or a scroll
     /// committed earlier in the same dispatcher turn (a Home keystroke the host handles before
     /// its owner reveals the new current entry) skews the result into negative geometry.
     /// </remarks>
@@ -610,7 +610,7 @@ public abstract class Container: ControlBase
     /// <see cref="ResolveContentSlot"/> records the offsets a genuine pass arranges under. A
     /// container that bridges a scroll by re-arranging its realized children itself before the
     /// next pass - <see cref="Collections.ListViewHost"/> after <c>ListView</c> rewindows its rows - has moved
-    /// those children onto the live offsets, and calls this so <see cref="BringIntoView"/> reads
+    /// those children onto the live offsets, and calls this so <see cref="BringIntoView(ControlBase)"/> reads
     /// their bounds against the offsets they were actually placed under.
     /// </remarks>
     private protected void CommitContentArrangedAtCurrentOffset() =>
@@ -835,6 +835,24 @@ public abstract class Container: ControlBase
     /// <summary>Gets the committed non-negative visible extent.</summary>
     public Size Viewport => _scroll.Viewport;
 
+    /// <summary>Gets the non-negative upper bound <see cref="HorizontalOffset"/> may commit,
+    /// computed from the committed <see cref="Extent"/> and <see cref="Viewport"/>.</summary>
+    /// <remarks>Zero whenever this container does not currently scroll its horizontal axis - either
+    /// <see cref="AutoScroll"/> is false or <see cref="ScrollBars"/> excludes
+    /// <see cref="ScrollBars.Horizontal"/> - regardless of how wide the content actually is.</remarks>
+    public int MaximumHorizontalOffset => ScrollsHorizontally()
+        ? Math.Max(0, Extent.Width - Viewport.Width)
+        : 0;
+
+    /// <summary>Gets the non-negative upper bound <see cref="VerticalOffset"/> may commit, computed
+    /// from the committed <see cref="Extent"/> and <see cref="Viewport"/>.</summary>
+    /// <remarks>Zero whenever this container does not currently scroll its vertical axis - either
+    /// <see cref="AutoScroll"/> is false or <see cref="ScrollBars"/> excludes
+    /// <see cref="ScrollBars.Vertical"/> - regardless of how tall the content actually is.</remarks>
+    public int MaximumVerticalOffset => ScrollsVertically()
+        ? Math.Max(0, Extent.Height - Viewport.Height)
+        : 0;
+
     /// <summary>Gets or sets the valid horizontal content offset.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the current extent.</exception>
     /// <exception cref="InvalidOperationException">The attached container is mutated off-dispatcher.</exception>
@@ -848,7 +866,7 @@ public abstract class Container: ControlBase
         }
         set
         {
-            ValidateOffset(value, MaximumX(), nameof(value));
+            ValidateOffset(value, MaximumHorizontalOffset, nameof(value));
             _ = Apply(value, VerticalOffset, ScrollCause.Programmatic);
         }
     }
@@ -866,7 +884,7 @@ public abstract class Container: ControlBase
         }
         set
         {
-            ValidateOffset(value, MaximumY(), nameof(value));
+            ValidateOffset(value, MaximumVerticalOffset, nameof(value));
             _ = Apply(HorizontalOffset, value, ScrollCause.Programmatic);
         }
     }
@@ -1047,6 +1065,35 @@ public abstract class Container: ControlBase
                logicalY >= VerticalOffset && logicalY.Add(bounds.Height) <= VerticalOffset.Add(Viewport.Height);
     }
 
+    /// <summary>Scrolls minimally so a rectangle expressed in content (extent) coordinates ends up
+    /// fully visible within this container's viewport.</summary>
+    /// <remarks>
+    /// Unlike <see cref="BringIntoView(ControlBase)"/>, this overload names no descendant and keeps
+    /// no pending state across arrange passes: it is immediate math over the already-committed
+    /// <see cref="Extent"/> and <see cref="Viewport"/>, for a caller that already knows the logical
+    /// rectangle it wants visible - a focus-owning composite revealing a caret cell inside its own
+    /// private scrolling host, for instance - and has no realized descendant control to name.
+    /// </remarks>
+    /// <param name="logicalBounds">The non-negative rectangle to reveal, in content coordinates.</param>
+    /// <param name="cause">The defined input path.</param>
+    /// <returns>True when at least one offset changed.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="cause"/> is unknown, or <paramref name="logicalBounds"/> has a negative origin.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The attached container is accessed off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The container is disposed.</exception>
+    public bool BringIntoView(Rect logicalBounds, ScrollCause cause = ScrollCause.BringIntoView)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotDefined(cause, nameof(cause), "The enum value is unknown.");
+        ArgumentOutOfRangeException.ThrowIfNegative(logicalBounds.X);
+        ArgumentOutOfRangeException.ThrowIfNegative(logicalBounds.Y);
+        VerifyMutable();
+
+        var x = Reveal(HorizontalOffset, Viewport.Width, logicalBounds.X, logicalBounds.Width);
+        var y = Reveal(VerticalOffset, Viewport.Height, logicalBounds.Y, logicalBounds.Height);
+        return Apply(x, y, cause);
+    }
+
     /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
@@ -1114,14 +1161,19 @@ public abstract class Container: ControlBase
     /// cref="Handle(KeyEventArgs)"/> would apply, or null when the code has no scroll mapping.</summary>
     /// <remarks>
     /// Factored out so a caller that must forward a key into this container from outside normal
-    /// event routing - <c>MessageBox</c>'s message area is the motivating case, since it sits as a
-    /// sibling of the focused action Button rather than an ancestor on the routed path - can reuse
-    /// the exact same PageUp/PageDown/Home/End/arrow-key math instead of maintaining a second copy
-    /// that could drift out of sync with this one.
+    /// event routing can reuse the exact same PageUp/PageDown/Home/End/arrow-key math instead of
+    /// maintaining a second copy that could drift out of sync with this one. Two shapes of caller
+    /// need this: <c>MessageBox</c>'s message area sits as a sibling of the focused action Button
+    /// rather than an ancestor on the routed path, so it is never on the path this container's own
+    /// <see cref="Handle(KeyEventArgs)"/> reaches; a focus-owning composite that wraps a private
+    /// scrolling host - <c>Document</c>, <c>CodeView</c>, <c>NavigationView</c> - has the identical
+    /// problem in the other direction, since the host is a descendant of the focused component
+    /// rather than an ancestor, and forwards through <see
+    /// cref="ScrollableCompositeControlBase.HandleScrollKey"/> instead of duplicating this mapping.
     /// </remarks>
-    /// <param name="code">The non-null key code from the originating stroke.</param>
+    /// <param name="code">The key code from the originating stroke.</param>
     /// <returns>The signed (x, y) delta, or null when <paramref name="code"/> has no mapping.</returns>
-    internal (int X, int Y)? ComputeKeyScrollDelta(Code code)
+    public (int X, int Y)? ComputeKeyScrollDelta(Code code)
     {
         // PageUp/PageDown and Home/End prefer the vertical axis - matching the pre-existing
         // vertical-only mapping for the common case - and fall back to horizontal only when this
@@ -1168,8 +1220,8 @@ public abstract class Container: ControlBase
 
         return code == Code.End
             ? pageAxisIsVertical
-                ? (0, MaximumY().SaturatingSubtract(VerticalOffset))
-                : (MaximumX().SaturatingSubtract(HorizontalOffset), 0)
+                ? (0, MaximumVerticalOffset.SaturatingSubtract(VerticalOffset))
+                : (MaximumHorizontalOffset.SaturatingSubtract(HorizontalOffset), 0)
             : null;
     }
 
@@ -1317,8 +1369,8 @@ public abstract class Container: ControlBase
         _scroll.ReserveHorizontal = resolved.Horizontal;
         _scroll.ReserveVertical = resolved.Vertical;
         _ = Apply(
-            Math.Min(HorizontalOffset, MaximumX()),
-            Math.Min(VerticalOffset, MaximumY()),
+            Math.Min(HorizontalOffset, MaximumHorizontalOffset),
+            Math.Min(VerticalOffset, MaximumVerticalOffset),
             extentChanged ? ScrollCause.Content : ScrollCause.Resize);
 
         // Apply above can run a caller's ScrollChanged handler synchronously, and that handler may
@@ -1358,7 +1410,7 @@ public abstract class Container: ControlBase
         Synchronize();
     }
 
-    /// <summary>Completes a reveal retained by <see cref="BringIntoView"/> now that this pass has
+    /// <summary>Completes a reveal retained by <see cref="BringIntoView(ControlBase)"/> now that this pass has
     /// arranged the content, and re-arranges the content when the reveal moved an offset so the
     /// pass ends with bounds that already reflect it.</summary>
     /// <param name="padded">The border-and-padding-deflated content-box rectangle of this pass.</param>
@@ -1441,8 +1493,8 @@ public abstract class Container: ControlBase
     private void Synchronize(int? maximumYOverride = null)
     {
         _scroll.Synchronize(
-            MaximumX(),
-            maximumYOverride ?? MaximumY(),
+            MaximumHorizontalOffset,
+            maximumYOverride ?? MaximumVerticalOffset,
             Viewport.Width,
             Viewport.Height,
             HorizontalOffset,
@@ -1471,8 +1523,8 @@ public abstract class Container: ControlBase
     {
         Debug.Assert(Enum.IsDefined(cause), "Scroll changes require a defined cause.");
 
-        x = Math.Clamp(x, 0, MaximumX());
-        y = Math.Clamp(y, 0, maximumYOverride ?? MaximumY());
+        x = Math.Clamp(x, 0, MaximumHorizontalOffset);
+        y = Math.Clamp(y, 0, maximumYOverride ?? MaximumVerticalOffset);
         var previous = new Point(HorizontalOffset, VerticalOffset);
 
         // ResolveContentSlot (Arrange-time only) calls here to clamp a now-stale offset before
@@ -1491,7 +1543,7 @@ public abstract class Container: ControlBase
             return false;
         }
 
-        // Synchronize's own MaximumY() read would otherwise re-derive the stale bound the y-clamp
+        // Synchronize's own MaximumVerticalOffset read would otherwise re-derive the stale bound the y-clamp
         // above was deliberately overridden to avoid, handing the generated vertical ScrollBar a
         // Maximum inconsistent with the VerticalOffset just committed against maximumYOverride -
         // the rail would clamp its value to that stale bound and disagree with the committed
@@ -1568,16 +1620,6 @@ public abstract class Container: ControlBase
                     ? Math.Max(0, end - viewport)
                     : current;
     }
-
-    [Pure]
-    private int MaximumX() => ScrollsHorizontally()
-        ? Math.Max(0, Extent.Width - Viewport.Width)
-        : 0;
-
-    [Pure]
-    private int MaximumY() => ScrollsVertically()
-        ? Math.Max(0, Extent.Height - Viewport.Height)
-        : 0;
 
     private Size MeasureContent(Size available, bool horizontal, bool vertical)
     {

@@ -76,4 +76,40 @@ public sealed class RectTests
 
         rect.Contains(new Point(int.MaxValue, 0)).ShouldBeTrue();
     }
+
+    /// <summary>Verifies a rectangle fully inside another is reported contained.</summary>
+    [Fact]
+    public void Contains_WhenRectangleLiesEntirelyInside_ReturnsTrue()
+    {
+        var outer = new Rect(0, 0, 10, 10);
+        var inner = new Rect(2, 3, 4, 5);
+
+        outer.Contains(inner).ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a rectangle that extends even one cell past any edge is not contained.</summary>
+    [Fact]
+    public void Contains_WhenRectangleExtendsPastAnEdge_ReturnsFalse()
+    {
+        var outer = new Rect(0, 0, 10, 10);
+        var overflowingRight = new Rect(5, 0, 6, 1);
+        var overflowingLeft = new Rect(-1, 0, 2, 1);
+
+        outer.Contains(overflowingRight).ShouldBeFalse();
+        outer.Contains(overflowingLeft).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a candidate reaching the representable coordinate maximum is still contained when
+    /// this rect's true (unrepresentable) right edge lies beyond it, instead of being excluded by
+    /// overflow in the naive 32-bit sum.
+    /// </summary>
+    [Fact]
+    public void Contains_WhenTrueRightEdgeOverflowsPastMaxValue_ContainsRectReachingMaxValue()
+    {
+        var outer = new Rect(5, 0, int.MaxValue, 1);
+        var candidate = new Rect(int.MaxValue - 1, 0, 1, 1);
+
+        outer.Contains(candidate).ShouldBeTrue();
+    }
 }

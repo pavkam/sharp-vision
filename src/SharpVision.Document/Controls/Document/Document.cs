@@ -88,17 +88,6 @@ public sealed class Document:
         InitializeContent(_stack);
         InitializeScrollableContent(_stack, forwardsScrollEvent: false);
 
-        // Subscribed after the scrollable-content bridge above, not before: _stack.ScrollChanged is
-        // a multicast event, and OnStackScrollChanged below is the one handler in this chain that can
-        // synchronously dispose or hide this document (a subscriber to the public ScrollChanged event
-        // this raises is free to do that). The bridge's own source-scroll handler refreshes this
-        // control's cached Extent/Viewport/offset properties and, finding them changed, publishes
-        // PropertyChanged through this control - which requires this control to still be mutable.
-        // Subscribing here keeps that refresh strictly earlier in the invocation list than the
-        // handler that can tear this control down, so it always runs against a still-available
-        // owner regardless of what a ScrollChanged subscriber does.
-        _stack.ScrollChanged += OnStackScrollChanged;
-
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -536,18 +525,12 @@ public sealed class Document:
                 glyph.Bounds.Width,
                 glyph.Bounds.Height);
 
-            if (!ContainsCompleteSelectionGlyph(clip, absolute))
+            if (!clip.Contains(absolute))
             {
                 continue;
             }
 
-            glyphs.Add(new SelectableTextGlyph(
-                glyph.Range,
-                new Rect(
-                    Difference(absolute.X, Bounds.X),
-                    Difference(absolute.Y, Bounds.Y),
-                    absolute.Width,
-                    absolute.Height)));
+            glyphs.Add(new SelectableTextGlyph(glyph.Range, ToLocalBounds(absolute)));
         }
 
         return new SelectableTextSnapshot(map.Text, glyphs, isAuthoritative: true);
@@ -559,12 +542,7 @@ public sealed class Document:
         get
         {
             VerifyMutable();
-            var viewport = SelectionViewportBounds();
-            return new Rect(
-                Difference(viewport.X, Bounds.X),
-                Difference(viewport.Y, Bounds.Y),
-                viewport.Width,
-                viewport.Height);
+            return ToLocalBounds(SelectionViewportBounds());
         }
     }
 
@@ -626,12 +604,6 @@ public sealed class Document:
             Difference(VerticalOffset, previousVertical));
         return changed;
     }
-
-    [Pure]
-    private static bool ContainsCompleteSelectionGlyph(Rect clip, Rect candidate) =>
-        candidate.X >= clip.X && candidate.Y >= clip.Y &&
-        (long) candidate.X + candidate.Width <= (long) clip.X + clip.Width &&
-        (long) candidate.Y + candidate.Height <= (long) clip.Y + clip.Height;
 
     /// <summary>Gets the current directional selection over the normalized semantic document stream.</summary>
     /// <remarks>
@@ -991,13 +963,23 @@ public sealed class Document:
         return true;
     }
 
-    // The private scrolling host only ever tracks the vertical axis, so its own committed offset
-    // always carries a stale horizontal component (whatever it was constructed with) rather than
-    // this control's own _horizontalOffset. Rebuilding both endpoints here keeps every subscriber's
-    // observed Offset.X consistent with HorizontalOffset regardless of which axis actually moved.
-    private void OnStackScrollChanged(object? sender, ScrollChangedEventArgs eventArgs)
+    /// <summary>Republishes the private scrolling host's vertical-only transition with this
+    /// document's own horizontal offset stitched into both endpoints.</summary>
+    /// <remarks>
+    /// The private scrolling host only ever tracks the vertical axis, so its own committed offset
+    /// always carries a stale horizontal component (whatever it was constructed with) rather than
+    /// this document's own <c>_horizontalOffset</c>. Rebuilding both endpoints here keeps every
+    /// subscriber's observed <see cref="ScrollChangedEventArgs.Offset"/>.X consistent with <see
+    /// cref="ScrollableCompositeControlBase.HorizontalOffset"/> regardless of which axis actually
+    /// moved. <see cref="ScrollableCompositeControlBase.InitializeScrollableContent"/> is called
+    /// with <c>forwardsScrollEvent: false</c> specifically so the base bridge never republishes the
+    /// host's own stale-horizontal transition ahead of this rebuilt one.
+    /// </remarks>
+    /// <param name="eventArgs">The non-null committed host transition.</param>
+    protected override void OnScrollHostScrollChanged(ScrollChangedEventArgs eventArgs)
     {
-        _ = sender;
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        base.OnScrollHostScrollChanged(eventArgs);
 
         RaiseScrollChanged(
             new ScrollChangedEventArgs(
@@ -1350,63 +1332,10 @@ public sealed class Document:
             return;
         }
 
-        var page = Math.Max(1, Viewport.Height - PageOverlap);
-        var handled = false;
-
-        if (stroke.Code == Code.Up)
-        {
-            handled = Scroll(-LineSize);
-        }
-        else if (stroke.Code == Code.Down)
-        {
-            handled = Scroll(LineSize);
-        }
-        else if (stroke.Code == Code.PageUp)
-        {
-            handled = Scroll(-page);
-        }
-        else if (stroke.Code == Code.PageDown)
-        {
-            handled = Scroll(page);
-        }
-        else if (stroke.Code == Code.Home)
-        {
-            handled = Endpoint(0);
-        }
-        else if (stroke.Code == Code.End)
-        {
-            handled = Endpoint(MaximumOffset);
-        }
-
-        if (handled)
+        if (HandleScrollKey(eventArgs))
         {
             eventArgs.IsHandled = true;
         }
-    }
-
-    // Reported handled whenever the document has anything to scroll, even when already at the
-    // boundary, so the keystroke cannot escape and page an enclosing scrollable container out from
-    // under the still-focused document.
-    private bool Scroll(int lines)
-    {
-        if (MaximumOffset <= 0)
-        {
-            return false;
-        }
-
-        _ = _stack.ScrollBy(0, lines, ScrollCause.Keyboard);
-        return true;
-    }
-
-    private bool Endpoint(int offset)
-    {
-        if (MaximumOffset <= 0)
-        {
-            return false;
-        }
-
-        _ = Apply(offset, ScrollCause.Keyboard);
-        return true;
     }
 
     /// <inheritdoc/>
@@ -1443,9 +1372,6 @@ public sealed class Document:
             style.Underline,
             style.UnderlineColor);
     }
-
-    /// <inheritdoc/>
-    protected override int TextSelectionPageDistance() => Math.Max(1, Viewport.Height - PageOverlap);
 
     /// <inheritdoc/>
     protected override int NormalizeTextSelectionClickCount(ControlBase? originalSource, int clickCount)
