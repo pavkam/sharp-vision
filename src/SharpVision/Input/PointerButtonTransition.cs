@@ -6,7 +6,8 @@ namespace SharpVision.Input;
 using SharpVision.Terminal.Input;
 
 /// <summary>Classifies pointer button transitions shared by press, drag, and selection gestures.</summary>
-internal static class PointerButtonTransition
+[PublicAPI]
+public static class PointerButtonTransition
 {
     /// <summary>Returns whether the input completes a primary-button gesture.</summary>
     /// <param name="pointer">The immutable pointer transition.</param>
@@ -15,7 +16,11 @@ internal static class PointerButtonTransition
     /// cannot identify the released button; otherwise false.
     /// </returns>
     [Pure]
-    internal static bool IsPrimaryRelease(Pointer pointer) =>
+    [SuppressMessage(
+        "Naming",
+        "CA1720:Identifier contains type name",
+        Justification = "Pointer is the conventional terminal input domain term.")]
+    public static bool IsPrimaryRelease(Pointer pointer) =>
         pointer.Action == PointerAction.Release &&
         (pointer.Buttons == Buttons.None || (pointer.Buttons & Buttons.Primary) != 0);
 }

@@ -26,8 +26,9 @@ capability is meant to be wired exactly once.
 
 Press/keyboard activation (`EnablePressActivation`, `HandlePressActivation`,
 `Activate`, `TryActivate`, `InteractionBounds`), pointer-driven drag
-(`EnableDrag`, `TryStartDrag`, `CancelDrag`, `IsDragging`), and the owned popup
-with its open/close lifecycle and modal composition (`EnablePopup`,
+(`EnableDrag`, `TryStartDrag`, `CancelDrag`, `HandleDrag`, `OnDragMoved`,
+`OnDragEnded`, `DragStart`, `IsDragging`), and the owned popup with its
+open/close lifecycle and modal composition (`EnablePopup`,
 `EnablePopupNavigationSession`, `IsPopupOpen`, `AcceptPopupAndClose`,
 `RestartPopupNavigationSession`, `PopupTransitionVersion`,
 `PopupSessionGeneration`, `DropDownHeight`, `PopupChrome`, `ResetPopupChrome()`,

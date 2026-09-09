@@ -7785,6 +7785,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     private void NotifyLifecycleFocusChanged(bool focused)
     {
+        var wasDragging = IsDragging;
         ExceptionDispatchInfo? failure = null;
 
         foreach (var participant in SnapshotLifecycleParticipants())
@@ -7797,11 +7798,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             }
         }
 
+        RunOnDragEndedIfDragJustEnded(wasDragging, ref failure);
         failure?.Throw();
     }
 
     private void NotifyLifecycleCaptureLost(PointerCaptureLossReason reason)
     {
+        var wasDragging = IsDragging;
         ExceptionDispatchInfo? failure = null;
 
         foreach (var participant in SnapshotLifecycleParticipants())
@@ -7814,11 +7817,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             }
         }
 
+        RunOnDragEndedIfDragJustEnded(wasDragging, ref failure);
         failure?.Throw();
     }
 
     private void NotifyLifecycleUnavailable(ReleaseReason reason)
     {
+        var wasDragging = IsDragging;
         ExceptionDispatchInfo? failure = null;
 
         foreach (var participant in SnapshotLifecycleParticipants())
@@ -7831,7 +7836,25 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             }
         }
 
+        RunOnDragEndedIfDragJustEnded(wasDragging, ref failure);
         failure?.Throw();
+    }
+
+    /// <summary>Runs <see cref="OnDragEnded"/> once, capturing any failure alongside earlier ones,
+    /// when the drag lifecycle fan-out just cancelled a drag that was active beforehand. Shared by
+    /// every lifecycle notification that can end a drag as a side effect (direct focus loss,
+    /// pointer-capture loss, and unavailability), so the component hook runs exactly once
+    /// regardless of which one observed the transition.</summary>
+    /// <param name="wasDragging">Whether a drag enabled through <see cref="EnableDrag"/> was in
+    /// progress before the fan-out this call follows.</param>
+    /// <param name="failure">Accumulates the earliest exception across every step; unchanged when
+    /// no drag ended here.</param>
+    private void RunOnDragEndedIfDragJustEnded(bool wasDragging, ref ExceptionDispatchInfo? failure)
+    {
+        if (wasDragging && !IsDragging && !IsDisposed)
+        {
+            ExceptionAggregation.Capture(OnDragEnded, ref failure);
+        }
     }
 
     private IControlLifecycleParticipant[] SnapshotLifecycleParticipants() =>
@@ -8223,10 +8246,85 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <returns>True when a drag started.</returns>
     protected bool TryStartDrag(Point cells) => _drag?.TryStart(cells) ?? false;
 
-    /// <summary>Cancels an active drag, if enabled.</summary>
+    /// <summary>Gets the pointer cell the active drag started at.</summary>
+    /// <remarks>Valid only while <see cref="IsDragging"/> is true; a control reads this only from
+    /// <see cref="OnDragMoved"/> or <see cref="OnDragEnded"/>, or after checking
+    /// <see cref="IsDragging"/> itself. It is meaningless before a drag has ever started or after
+    /// one has ended, since a fresh drag overwrites it on its own next start.</remarks>
+    protected Point DragStart => _drag?.Start ?? default;
+
+    /// <summary>Cancels an active drag, if enabled, running <see cref="OnDragEnded"/> when a drag
+    /// was actually ended.</summary>
     /// <param name="releaseCapture">Whether to also release pointer capture when this control
     /// currently holds it.</param>
-    protected void CancelDrag(bool releaseCapture) => _drag?.Cancel(releaseCapture);
+    protected void CancelDrag(bool releaseCapture)
+    {
+        var wasDragging = IsDragging;
+        _drag?.Cancel(releaseCapture);
+
+        if (wasDragging && !IsDragging && !IsDisposed)
+        {
+            OnDragEnded();
+        }
+    }
+
+    /// <summary>Routes one pointer event through an active drag started via
+    /// <see cref="TryStartDrag"/>, if enabled.</summary>
+    /// <param name="eventArgs">The event to evaluate.</param>
+    /// <returns><see langword="true"/> when a drag was active and this method fully resolved the
+    /// event - ending the drag, or reporting a move through <see cref="OnDragMoved"/> - in which
+    /// case the caller returns immediately; otherwise <see langword="false"/>, meaning no drag is
+    /// active and the caller must still resolve its own press-to-start handling.</returns>
+    /// <remarks>
+    /// A held wheel record arriving mid-drag is consumed (handled, with no <see cref="OnDragMoved"/>
+    /// call) rather than treated as a move, since a wheel event's coordinates describe where the
+    /// wheel turned, not a pointer relocation the drag should track.
+    /// </remarks>
+    protected bool HandleDrag(PointerEventArgs eventArgs)
+    {
+        Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
+
+        if (!IsDragging)
+        {
+            return false;
+        }
+
+        eventArgs.IsHandled = true;
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
+        {
+            CancelDrag(releaseCapture: true);
+        }
+        else if (_drag is not null && !_drag.IsAvailable)
+        {
+            CancelDrag(releaseCapture: true);
+        }
+        else if (pointer.Action != PointerAction.Wheel && pointer.Cells is { } cells)
+        {
+            OnDragMoved(new DragMove(DragStart, cells));
+        }
+
+        return true;
+    }
+
+    /// <summary>Reports one pointer position update from an active drag enabled through
+    /// <see cref="EnableDrag"/>.</summary>
+    /// <param name="move">The reported drag start and current pointer cell.</param>
+    /// <remarks>No-op by default; a control enabling drag overrides this to apply the reported
+    /// motion, typically by reading <see cref="DragMove.DeltaX"/>/<see cref="DragMove.DeltaY"/> or
+    /// <see cref="DragMove.Current"/> against its own gesture-start snapshot.</remarks>
+    protected virtual void OnDragMoved(DragMove move) => _ = move;
+
+    /// <summary>Runs once after an active drag enabled through <see cref="EnableDrag"/> ends, on
+    /// every path that can end one: an explicit release or terminal leave, the drag's
+    /// <c>isAvailable</c> predicate turning false mid-gesture, direct focus loss, pointer-capture
+    /// loss, or the control becoming unavailable.</summary>
+    /// <remarks>No-op by default; a control enabling drag overrides this to reset gesture-local
+    /// state it captured when the drag started, such as a divider's anchor extent.</remarks>
+    protected virtual void OnDragEnded()
+    {
+    }
 
     #endregion
 

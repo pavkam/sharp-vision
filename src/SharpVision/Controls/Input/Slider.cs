@@ -328,31 +328,8 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
             return;
         }
 
-        if (IsDragging)
+        if (HandleDrag(eventArgs))
         {
-            eventArgs.IsHandled = true;
-
-            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
-            {
-                CancelDrag(releaseCapture: true);
-            }
-            else if (pointer.Cells is { } dragCells)
-            {
-                // Map against the live rail, never a snapshot taken at press time: a resize while
-                // the drag is in flight would otherwise convert the pointer's position through a
-                // stale rail length and leave the thumb far from the pointer until the drag ends.
-                // A rail without travel mid-drag - empty, or a single cell whose only mappable
-                // value is Minimum - commits nothing rather than collapsing the live value on the
-                // first held move; the ScrollBar thumb drag applies the same no-travel rule.
-                var dragBounds = ContentBounds;
-                var dragLength = AxisLength(dragBounds);
-
-                if (HasTravel(dragLength))
-                {
-                    _ = Commit(ValueAt(dragCells, dragBounds, dragLength));
-                }
-            }
-
             return;
         }
 
@@ -387,6 +364,24 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
 
         eventArgs.IsHandled = true;
         _ = TryStartDrag(cells);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDragMoved(DragMove move)
+    {
+        // Map against the live rail, never a snapshot taken at press time: a resize while the drag
+        // is in flight would otherwise convert the pointer's position through a stale rail length
+        // and leave the thumb far from the pointer until the drag ends. A rail without travel
+        // mid-drag - empty, or a single cell whose only mappable value is Minimum - commits
+        // nothing rather than collapsing the live value on the first held move; the ScrollBar
+        // thumb drag applies the same no-travel rule.
+        var dragBounds = ContentBounds;
+        var dragLength = AxisLength(dragBounds);
+
+        if (HasTravel(dragLength))
+        {
+            _ = Commit(ValueAt(move.Current, dragBounds, dragLength));
+        }
     }
 
     /// <summary>Reports whether a rail of <paramref name="length"/> cells can map more than one

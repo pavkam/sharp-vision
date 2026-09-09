@@ -218,19 +218,8 @@ internal sealed class ColorPlane: ControlBase
     {
         var pointer = eventArgs.Pointer;
 
-        if (IsDragging)
+        if (HandleDrag(eventArgs))
         {
-            eventArgs.IsHandled = true;
-
-            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
-            {
-                CancelDrag(releaseCapture: true);
-            }
-            else if (pointer.Cells is { } dragCells)
-            {
-                Select(dragCells);
-            }
-
             return;
         }
 
@@ -251,6 +240,9 @@ internal sealed class ColorPlane: ControlBase
         eventArgs.IsHandled = true;
         _ = TryStartDrag(cells);
     }
+
+    /// <inheritdoc/>
+    protected override void OnDragMoved(DragMove move) => Select(move.Current);
 
     private void Select(Point point)
     {

@@ -14,7 +14,6 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     private int _value;
     private readonly CallbackTransitionStream _valueTransitions = new();
     private int _dragPointerStart;
-    private int? _dragPixelStart;
     private int _dragValueStart;
     private readonly StyleSlot<ScrollBarStyle> _style;
 
@@ -205,17 +204,9 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-        ResetDragState();
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        ResetDragState();
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -224,11 +215,14 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
     }
 
     /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        ResetDragState();
-    }
+    /// <remarks>
+    /// Resets the drag's value anchor. Direct focus loss, pointer-capture loss, and
+    /// unavailability - the cases dedicated <c>OnFocusChanged</c> and
+    /// <c>OnLostPointerCapture</c> overrides used to reset this state from directly - already end
+    /// the drag itself through the framework's lifecycle fan-out before this hook runs, so neither
+    /// override is needed here any more.
+    /// </remarks>
+    protected override void OnDragEnded() => ResetDragState();
 
     /// <inheritdoc/>
     protected override void OnRenderContent(TerminalCanvas canvas)
@@ -348,7 +342,17 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 
         if (IsDragging)
         {
-            Drag(eventArgs);
+            // A release still commits the position it carries before the drag ends: a
+            // ValueChanged/PropertyChanged callback observing that release can invalidate this
+            // bar (dispose, detach, hide, or re-release it), and it must see the position the
+            // release itself reports, not the last one before it. HandleDrag's shared release
+            // branch only ends the gesture, so the commit is applied here first.
+            if (PointerButtonTransition.IsPrimaryRelease(pointer) && pointer.Cells is { } releaseCells)
+            {
+                ApplyDragPosition(releaseCells);
+            }
+
+            _ = HandleDrag(eventArgs);
             return;
         }
 
@@ -401,7 +405,7 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         }
         else
         {
-            BeginDrag(pointer, cells, trackPosition);
+            BeginDrag(cells, trackPosition);
         }
     }
 
@@ -425,56 +429,42 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
         eventArgs.IsHandled = ScrollBy(delta, ScrollCause.Wheel);
     }
 
-    private void BeginDrag(
-        Pointer pointer,
-        Point cells,
-        int trackPosition)
+    private void BeginDrag(Point cells, int trackPosition)
     {
         if (!TryStartDrag(cells))
         {
             return;
         }
 
+        // Frozen at press time, deliberately not re-derived from the live rail on every move: it
+        // anchors the delta below against the geometry the pointer's own position was captured
+        // against, so a mid-drag change to that geometry (a resize, or an ancestor re-arranging
+        // this bar to an extreme coordinate) shows up as a shift between this frozen anchor and
+        // the live position ApplyDragPosition recomputes, not as a silent, canceled-out no-op.
         _dragPointerStart = trackPosition;
-        _dragPixelStart = pointer.Pixels is { } pixels ? Axis(pixels) : null;
 
         // Anchors the drag on the *value* the bar held when the drag began, not the thumb's
         // absolute track cell position. Value has no dependency on track geometry, so it stays
-        // meaningful across a resize; an absolute cell offset does not (see Drag()'s
+        // meaningful across a resize; an absolute cell offset does not (see ApplyDragPosition's
         // recomputation of the anchor thumb on every move for why this matters).
         _dragValueStart = Value;
     }
 
-    private void Drag(PointerEventArgs eventArgs)
+    /// <inheritdoc/>
+    protected override void OnDragMoved(DragMove move) => ApplyDragPosition(move.Current);
+
+    /// <summary>Recomputes the bar's value from one live pointer cell against the drag's frozen
+    /// press-time anchor. Called from <see cref="OnDragMoved"/> for an ordinary held move, and
+    /// directly for a primary release that still carries cells, since a release must commit the
+    /// position it reports before <see cref="ControlBase.HandleDrag"/> ends the gesture.</summary>
+    /// <param name="cells">The pointer cell to convert into a value.</param>
+    private void ApplyDragPosition(Point cells)
     {
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Cells is not { } cells)
-        {
-            eventArgs.IsHandled = true;
-
-            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
-            {
-                CancelDrag(releaseCapture: true);
-                ResetDragState();
-            }
-
-            return;
-        }
-
         var bounds = ContentBounds;
         var length = AxisLength(bounds);
         var buttons = ButtonCount(length);
         var position = Axis(cells).SaturatingSubtract(AxisOrigin(bounds)).SaturatingSubtract(buttons);
         var delta = position.SaturatingSubtract(_dragPointerStart);
-
-        if (_dragPixelStart.HasValue && pointer.Pixels is { } pixels)
-        {
-            var pixelDelta = Axis(pixels).SaturatingSubtract(_dragPixelStart.Value);
-            Debug.Assert(
-                delta == 0 || pixelDelta == 0 || Math.Sign(delta) == Math.Sign(pixelDelta),
-                "Inferred cell and pixel drag directions must agree.");
-        }
 
         // The track length and range are re-read from live geometry on every move rather than
         // reused from BeginDrag's captured snapshot: a resize (or a Minimum/Maximum/ViewportSize
@@ -509,17 +499,13 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
             var value = ScrollThumb.ValueAt(range, trackLength, start);
             _ = Commit(value, ScrollCause.Pointer);
         }
-
-        eventArgs.IsHandled = true;
-
-        if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
-        {
-            CancelDrag(releaseCapture: true);
-            ResetDragState();
-        }
     }
 
-    private void ResetDragState() => _dragPixelStart = null;
+    private void ResetDragState()
+    {
+        _dragPointerStart = 0;
+        _dragValueStart = 0;
+    }
 
     private ScrollRange CurrentRange() => new(Minimum, Maximum, Value, ViewportSize);
 

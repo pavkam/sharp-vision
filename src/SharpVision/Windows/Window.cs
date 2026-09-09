@@ -23,11 +23,9 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private const int _minimumCloseWidth = 4;
 
     private readonly ThemeValueDependency<WindowInteractionChromeThemeValue> _interactionChromeThemeDependency;
-    private bool _dragging;
-    private Point _dragPointerOrigin;
+    private WindowGesture _gesture;
     private Point _dragWindowOrigin;
     private bool _resizing;
-    private Point _resizePointerOrigin;
     private Size _resizeWindowOrigin;
     private Point _resizeWindowPosition;
     private bool _closePointerOver;
@@ -47,6 +45,19 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         _interactionChromeThemeDependency = new ThemeValueDependency<WindowInteractionChromeThemeValue>(
             ResolveInteractionChromeThemeValue,
             InvalidationImpact.Render);
+        EnableDrag(
+            bounds: () => Bounds,
+            tryCapture: CapturePointer,
+            isAvailable: () =>
+                (_gesture switch
+                {
+                    WindowGesture.None => CanMove || CanResize,
+                    WindowGesture.Move => CanMove,
+                    WindowGesture.Resize => CanResize,
+                    _ => CanMove || CanResize
+                }) &&
+                EffectiveIsEnabled &&
+                EffectiveIsVisible);
         InitializeSurfaceCloseInteraction(
             ResolveCloseTargetBounds,
             () => !IsDisposed && CanClose && EffectiveIsEnabled && EffectiveIsVisible && ResolveCloseTargetBounds().Width > 0,
@@ -724,13 +735,13 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
             // pressed: PressBehavior.HandlePointer's Leave branch releases capture whenever
             // _hasPointerCapture() is true, with no check for whether *it* is the one holding
             // it, so a Leave mid-drag would release the drag's own capture out from under it
-            // and leave HandlePointerDrag's matching Leave/Release branch permanently
-            // unreachable (its (_dragging || _resizing) guard is already false by the time it
-            // runs, since OnLostPointerCapture unconditionally clears both flags first). Skip
-            // the close chrome entirely while a gesture is active so HandlePointerDrag's own
+            // and leave HandleDrag's matching Leave/Release branch permanently unreachable (its
+            // IsDragging guard is already false by the time it runs, since the capture-loss
+            // fan-out ends the drag and runs OnDragEnded before this handler sees the event at
+            // all). Skip the close chrome entirely while a gesture is active so HandleDrag's own
             // Leave/Release branch can run and correctly end the gesture and mark the event
             // handled.
-            if (!_dragging && !_resizing)
+            if (!IsDragging)
             {
                 HandleSurfaceCloseInteraction(pointer);
             }
@@ -740,14 +751,6 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
                 HandlePointerDrag(pointer);
             }
         }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        _dragging = false;
-        SetResizing(false);
     }
 
     /// <inheritdoc/>
@@ -909,192 +912,204 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     {
         Debug.Assert(eventArgs is not null, "Pointer handling receives a non-null event.");
 
-        var action = eventArgs.Pointer.Action;
-
-        // A Release or Leave must always be able to end an active drag/resize and release
-        // capture, regardless of whether CanMove/CanResize was toggled off mid-gesture or
-        // this particular event has no cell coordinates (a legitimate state
-        // in SGR-pixel mouse mode without cell-metrics mapping, and true of every
-        // Leave by construction). Otherwise the Window keeps pointer capture and the
-        // gesture flag stuck true forever — releasing the button outside the terminal
-        // delivers only a Leave, never a Release.
-        if ((action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(eventArgs.Pointer)) &&
-            (_dragging || _resizing))
-        {
-            _dragging = false;
-            SetResizing(false);
-            ReleasePointerCapture();
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (eventArgs.Pointer.Cells is not { } cells)
+        if (HandleDrag(eventArgs))
         {
             return;
         }
 
-        if (action == PointerAction.Press &&
-            (eventArgs.Pointer.Buttons & Buttons.Primary) != 0)
+        var pointer = eventArgs.Pointer;
+
+        if (pointer.Action != PointerAction.Press ||
+            (pointer.Buttons & Buttons.Primary) == 0 ||
+            pointer.Cells is not { } cells)
         {
-            // The resize corner is checked first: at a minimum window size it can coincide
-            // with the title bar row, and resizing is the more specific gesture there.
-            if (CanResize && IsResizeCorner(cells) && CapturePointer())
+            return;
+        }
+
+        // The resize corner is checked first: at a minimum window size it can coincide
+        // with the title bar row, and resizing is the more specific gesture there.
+        if (CanResize && IsResizeCorner(cells))
+        {
+            _gesture = WindowGesture.Resize;
+            _resizeWindowOrigin = new Size(LocalBounds.Width, LocalBounds.Height);
+            _resizeWindowPosition = new Point(LocalBounds.X, LocalBounds.Y);
+
+            if (TryStartDrag(cells))
             {
                 SetResizing(true);
-                _resizePointerOrigin = cells;
-                _resizeWindowOrigin = new Size(LocalBounds.Width, LocalBounds.Height);
-                _resizeWindowPosition = new Point(LocalBounds.X, LocalBounds.Y);
                 eventArgs.IsHandled = true;
                 return;
             }
 
-            if (CanMove && IsTitleBar(cells) && CapturePointer())
+            _gesture = WindowGesture.None;
+        }
+
+        if (CanMove && IsTitleBar(cells))
+        {
+            _gesture = WindowGesture.Move;
+            _dragWindowOrigin = new Point(LocalBounds.X, LocalBounds.Y);
+
+            if (TryStartDrag(cells))
             {
-                _dragging = true;
-                _dragPointerOrigin = cells;
-                _dragWindowOrigin = new Point(LocalBounds.X, LocalBounds.Y);
                 eventArgs.IsHandled = true;
+                return;
             }
 
-            return;
+            _gesture = WindowGesture.None;
         }
+    }
 
-        if (action != PointerAction.Move || !HasPointerCapture)
+    /// <inheritdoc/>
+    protected override void OnDragMoved(DragMove move)
+    {
+        if (_gesture == WindowGesture.Resize)
         {
-            return;
+            ResizeByGesture(move);
         }
-
-        if ((_resizing && !CanResize) || (_dragging && !CanMove))
+        else if (_gesture == WindowGesture.Move)
         {
-            _dragging = false;
+            MoveByGesture(move);
+        }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Resets the active gesture's tracked state. Pointer-capture loss, direct focus loss, and
+    /// unavailability - the cases a dedicated <c>OnLostPointerCapture</c> override used to reset
+    /// <c>_dragging</c>/<c>_resizing</c> from directly - already end the drag itself through the
+    /// framework's lifecycle fan-out before this hook runs, so a dedicated override of either is
+    /// no longer needed here.
+    /// </remarks>
+    protected override void OnDragEnded()
+    {
+        if (_gesture == WindowGesture.Resize)
+        {
             SetResizing(false);
-            ReleasePointerCapture();
-            eventArgs.IsHandled = true;
+        }
+
+        _gesture = WindowGesture.None;
+    }
+
+    private void ResizeByGesture(DragMove move)
+    {
+        var gestureParent = Parent;
+        var originalHeight = Height;
+        var originalLeft = Overlay.GetLeft(this);
+        var originalTop = Overlay.GetTop(this);
+        var originalRight = Overlay.GetRight(this);
+        var originalBottom = Overlay.GetBottom(this);
+        var deltaX = (long) move.DeltaX;
+        var deltaY = (long) move.DeltaY;
+        var clientBounds = Parent?.ContentBounds ?? default;
+        var (floorWidth, floorHeight) = ChromeResizeFloor();
+        ResolveWidthLimits(clientBounds.Width, out var authoredMinimumWidth, out var authoredMaximumWidth);
+        ResolveHeightLimits(clientBounds.Height, out var authoredMinimumHeight, out var authoredMaximumHeight);
+        var minWidth = Math.Max(authoredMinimumWidth, floorWidth);
+        var minHeight = Math.Max(authoredMinimumHeight, floorHeight);
+        var maximumWidth = Math.Max(minWidth, clientBounds.Width - _resizeWindowPosition.X);
+        var maximumHeight = Math.Max(minHeight, clientBounds.Height - _resizeWindowPosition.Y);
+        // MaxWidth/MaxHeight are validated only against MinWidth/MinHeight (which default to
+        // 0), not against the chrome resize floor computed above, so a caller can legally set
+        // e.g. MaxWidth below the border chrome's minimum drawable width. Clamping the upper
+        // bound up to at least minWidth/minHeight (in addition to the lower bound already
+        // being minWidth/minHeight) keeps Math.Clamp's [low, high] arguments ordered in that
+        // case, instead of throwing ArgumentException on the very first resize drag.
+        var width = (int) Math.Clamp(
+            _resizeWindowOrigin.Width + deltaX,
+            minWidth,
+            Math.Max(minWidth, Math.Min(authoredMaximumWidth, maximumWidth)));
+        var height = (int) Math.Clamp(
+            _resizeWindowOrigin.Height + deltaY,
+            minHeight,
+            Math.Max(minHeight, Math.Min(authoredMaximumHeight, maximumHeight)));
+        var targetWidth = Length.Cells(width);
+        var targetHeight = Length.Cells(height);
+        var targetLeft = Length.Cells(_resizeWindowPosition.X);
+        var targetTop = Length.Cells(_resizeWindowPosition.Y);
+        Width = targetWidth;
+
+        if (!CanContinueResize(
+                gestureParent,
+                targetWidth,
+                originalHeight,
+                originalLeft,
+                originalTop,
+                originalRight,
+                originalBottom))
+        {
             return;
         }
 
-        if (_resizing)
+        Height = targetHeight;
+
+        if (!CanContinueResize(
+                gestureParent,
+                targetWidth,
+                targetHeight,
+                originalLeft,
+                originalTop,
+                originalRight,
+                originalBottom))
         {
-            var gestureParent = Parent;
-            var originalHeight = Height;
-            var originalLeft = Overlay.GetLeft(this);
-            var originalTop = Overlay.GetTop(this);
-            var originalRight = Overlay.GetRight(this);
-            var originalBottom = Overlay.GetBottom(this);
-            var deltaX = (long) cells.X - _resizePointerOrigin.X;
-            var deltaY = (long) cells.Y - _resizePointerOrigin.Y;
-            var clientBounds = Parent?.ContentBounds ?? default;
-            var (floorWidth, floorHeight) = ChromeResizeFloor();
-            ResolveWidthLimits(clientBounds.Width, out var authoredMinimumWidth, out var authoredMaximumWidth);
-            ResolveHeightLimits(clientBounds.Height, out var authoredMinimumHeight, out var authoredMaximumHeight);
-            var minWidth = Math.Max(authoredMinimumWidth, floorWidth);
-            var minHeight = Math.Max(authoredMinimumHeight, floorHeight);
-            var maximumWidth = Math.Max(minWidth, clientBounds.Width - _resizeWindowPosition.X);
-            var maximumHeight = Math.Max(minHeight, clientBounds.Height - _resizeWindowPosition.Y);
-            // MaxWidth/MaxHeight are validated only against MinWidth/MinHeight (which default to
-            // 0), not against the chrome resize floor computed above, so a caller can legally set
-            // e.g. MaxWidth below the border chrome's minimum drawable width. Clamping the upper
-            // bound up to at least minWidth/minHeight (in addition to the lower bound already
-            // being minWidth/minHeight) keeps Math.Clamp's [low, high] arguments ordered in that
-            // case, instead of throwing ArgumentException on the very first resize drag.
-            var width = (int) Math.Clamp(
-                _resizeWindowOrigin.Width + deltaX,
-                minWidth,
-                Math.Max(minWidth, Math.Min(authoredMaximumWidth, maximumWidth)));
-            var height = (int) Math.Clamp(
-                _resizeWindowOrigin.Height + deltaY,
-                minHeight,
-                Math.Max(minHeight, Math.Min(authoredMaximumHeight, maximumHeight)));
-            var targetWidth = Length.Cells(width);
-            var targetHeight = Length.Cells(height);
-            var targetLeft = Length.Cells(_resizeWindowPosition.X);
-            var targetTop = Length.Cells(_resizeWindowPosition.Y);
-            eventArgs.IsHandled = true;
-            Width = targetWidth;
-
-            if (!CanContinueResize(
-                    gestureParent,
-                    targetWidth,
-                    originalHeight,
-                    originalLeft,
-                    originalTop,
-                    originalRight,
-                    originalBottom))
-            {
-                return;
-            }
-
-            Height = targetHeight;
-
-            if (!CanContinueResize(
-                    gestureParent,
-                    targetWidth,
-                    targetHeight,
-                    originalLeft,
-                    originalTop,
-                    originalRight,
-                    originalBottom))
-            {
-                return;
-            }
-
-            // Own the origin for the duration of the gesture, exactly as the drag path
-            // already does, so the top-left corner stays fixed regardless of the window's
-            // alignment or Overlay.Right/Bottom anchoring.
-            Overlay.SetLeft(this, targetLeft);
-
-            if (!CanContinueResize(
-                    gestureParent,
-                    targetWidth,
-                    targetHeight,
-                    targetLeft,
-                    originalTop,
-                    originalRight,
-                    originalBottom))
-            {
-                return;
-            }
-
-            Overlay.SetTop(this, targetTop);
+            return;
         }
-        else if (_dragging)
+
+        // Own the origin for the duration of the gesture, exactly as the drag path
+        // already does, so the top-left corner stays fixed regardless of the window's
+        // alignment or Overlay.Right/Bottom anchoring.
+        Overlay.SetLeft(this, targetLeft);
+
+        if (!CanContinueResize(
+                gestureParent,
+                targetWidth,
+                targetHeight,
+                targetLeft,
+                originalTop,
+                originalRight,
+                originalBottom))
         {
-            var gestureParent = Parent;
-            var deltaX = (long) cells.X - _dragPointerOrigin.X;
-            var deltaY = (long) cells.Y - _dragPointerOrigin.Y;
-            var clientBounds = Parent?.ContentBounds ?? default;
-            var maximumLeft = Math.Max(0, clientBounds.Width - LocalBounds.Width);
-            var maximumTop = Math.Max(0, clientBounds.Height - LocalBounds.Height);
-
-            // A move owns resolved geometry, not flexible sizing semantics. Snapshot Auto/Star
-            // dimensions before replacing trailing anchors with leading anchors; otherwise the
-            // next arrange resolves a different width or height and turns a move into a resize.
-            if (Width.Kind is LengthKind.Auto or LengthKind.Star)
-            {
-                Width = Length.Cells(LocalBounds.Width);
-
-                if (!CanContinueDrag(gestureParent))
-                {
-                    return;
-                }
-            }
-
-            if (Height.Kind is LengthKind.Auto or LengthKind.Star)
-            {
-                Height = Length.Cells(LocalBounds.Height);
-
-                if (!CanContinueDrag(gestureParent))
-                {
-                    return;
-                }
-            }
-
-            Overlay.SetRight(this, null);
-            Overlay.SetBottom(this, null);
-            Overlay.SetLeft(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
-            Overlay.SetTop(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.Y + deltaY, 0, maximumTop)));
-            eventArgs.IsHandled = true;
+            return;
         }
+
+        Overlay.SetTop(this, targetTop);
+    }
+
+    private void MoveByGesture(DragMove move)
+    {
+        var gestureParent = Parent;
+        var deltaX = (long) move.DeltaX;
+        var deltaY = (long) move.DeltaY;
+        var clientBounds = Parent?.ContentBounds ?? default;
+        var maximumLeft = Math.Max(0, clientBounds.Width - LocalBounds.Width);
+        var maximumTop = Math.Max(0, clientBounds.Height - LocalBounds.Height);
+
+        // A move owns resolved geometry, not flexible sizing semantics. Snapshot Auto/Star
+        // dimensions before replacing trailing anchors with leading anchors; otherwise the
+        // next arrange resolves a different width or height and turns a move into a resize.
+        if (Width.Kind is LengthKind.Auto or LengthKind.Star)
+        {
+            Width = Length.Cells(LocalBounds.Width);
+
+            if (!CanContinueDrag(gestureParent))
+            {
+                return;
+            }
+        }
+
+        if (Height.Kind is LengthKind.Auto or LengthKind.Star)
+        {
+            Height = Length.Cells(LocalBounds.Height);
+
+            if (!CanContinueDrag(gestureParent))
+            {
+                return;
+            }
+        }
+
+        Overlay.SetRight(this, null);
+        Overlay.SetBottom(this, null);
+        Overlay.SetLeft(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.X + deltaX, 0, maximumLeft)));
+        Overlay.SetTop(this, Length.Cells((int) Math.Clamp(_dragWindowOrigin.Y + deltaY, 0, maximumTop)));
     }
 
     [Pure]
@@ -1130,7 +1145,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private bool CanContinueDrag(ControlBase? gestureParent) =>
         !IsDisposed &&
         CanMove &&
-        _dragging &&
+        _gesture == WindowGesture.Move &&
         HasPointerCapture &&
         ReferenceEquals(Parent, gestureParent);
 

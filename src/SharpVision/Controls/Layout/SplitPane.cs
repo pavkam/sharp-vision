@@ -16,7 +16,6 @@ public sealed class SplitPane: Container
     private ControlBase? _secondVisibilitySource;
     private Dispatcher? _dragFocusDispatcher;
     private Point? _pendingDragCell;
-    private int? _dragPointerStart;
     private int _dragFirstPaneExtent;
     private int _effectiveFirstPaneExtent;
     private int _dividerExcludedPool;
@@ -612,21 +611,9 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (!focused)
-        {
-            ResetDividerDragState();
-        }
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        ResetDividerDragState();
         _latestPointerCell = null;
         SetDividerPointerOver(false);
 
@@ -637,11 +624,14 @@ public sealed class SplitPane: Container
     }
 
     /// <inheritdoc/>
-    protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
-    {
-        base.OnLostPointerCapture(reason);
-        ResetDividerDragState();
-    }
+    /// <remarks>
+    /// Resets the divider's own gesture-local bookkeeping. Direct focus loss, pointer-capture
+    /// loss, and unavailability - the cases dedicated <c>OnFocusChanged</c> and
+    /// <c>OnLostPointerCapture</c> overrides used to reset this state from directly - already end
+    /// the drag itself through the framework's lifecycle fan-out before this hook runs, so neither
+    /// override is needed here any more.
+    /// </remarks>
+    protected override void OnDragEnded() => ResetDividerDragState();
 
     /// <inheritdoc/>
     protected override void OnDisposing()
@@ -763,28 +753,8 @@ public sealed class SplitPane: Container
             return;
         }
 
-        if (IsDragging)
+        if (HandleDrag(eventArgs))
         {
-            eventArgs.IsHandled = true;
-
-            if (pointer.Action == PointerAction.Leave || PointerButtonTransition.IsPrimaryRelease(pointer))
-            {
-                CancelDividerDrag();
-                return;
-            }
-
-            if (pointer.Action == PointerAction.Move &&
-                pointer.Cells is { } dragCell &&
-                _dragPointerStart is { } pointerStart)
-            {
-                var delta = (long) Primary(dragCell) - pointerStart;
-                var target = (int) Math.Clamp(
-                    _dragFirstPaneExtent + delta,
-                    MinimumFirstPaneExtent,
-                    MaximumFirstPaneExtent);
-                _ = CommitFirstPaneExtent(target);
-            }
-
             return;
         }
 
@@ -817,6 +787,17 @@ public sealed class SplitPane: Container
         }
     }
 
+    /// <inheritdoc/>
+    protected override void OnDragMoved(DragMove move)
+    {
+        var delta = (long) Primary(move.Current) - Primary(move.Start);
+        var target = (int) Math.Clamp(
+            _dragFirstPaneExtent + delta,
+            MinimumFirstPaneExtent,
+            MaximumFirstPaneExtent);
+        _ = CommitFirstPaneExtent(target);
+    }
+
     private bool TryCaptureDividerPointer()
     {
         if (_pendingDragCell is not { } cells ||
@@ -829,7 +810,6 @@ public sealed class SplitPane: Container
             return false;
         }
 
-        _dragPointerStart = Primary(cells);
         _dragFirstPaneExtent = _effectiveFirstPaneExtent;
 
         if (CapturePointer())
@@ -863,17 +843,15 @@ public sealed class SplitPane: Container
         _dividerExcludedPool = 0;
     }
 
-    private void CancelDividerDrag()
-    {
-        CancelDrag(releaseCapture: true);
-        ResetDividerDragState();
-    }
+    // OnDragEnded already resets divider drag state when CancelDrag actually ends a drag, so this
+    // wrapper exists only to give the programmatic cancellation call sites below (a children,
+    // orientation, or IsResizable change) their established name.
+    private void CancelDividerDrag() => CancelDrag(releaseCapture: true);
 
     private void ResetDividerDragState()
     {
         _dragFocusDispatcher = null;
         _pendingDragCell = null;
-        _dragPointerStart = null;
         _dragFirstPaneExtent = 0;
     }
 

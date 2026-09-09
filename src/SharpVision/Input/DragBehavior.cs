@@ -46,6 +46,13 @@ internal sealed class DragBehavior: IControlLifecycleParticipant
 
     public bool IsDragging { get; private set; }
 
+    /// <summary>Gets the pressed cell the active (or most recently active) drag started at.</summary>
+    public Point Start { get; private set; }
+
+    /// <summary>Gets whether the caller-supplied availability predicate currently allows the drag
+    /// to start or continue, re-evaluated on every read.</summary>
+    public bool IsAvailable => _isAvailable();
+
     /// <summary>Attempts to start a drag from a pointer press event. Returns true if drag started.</summary>
     public bool TryStart(Point cells)
     {
@@ -59,6 +66,7 @@ internal sealed class DragBehavior: IControlLifecycleParticipant
         if (_capturePointer())
         {
             IsDragging = true;
+            Start = cells;
             _setPressed(true);
             return true;
         }

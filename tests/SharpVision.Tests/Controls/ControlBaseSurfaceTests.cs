@@ -446,6 +446,131 @@ public sealed class ControlBaseSurfaceTests
         probe.IsDraggingNow.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a pointer move during an active drag reports both the gesture's starting
+    /// cell and the move's current cell through <see cref="ControlBase.OnDragMoved"/>.</summary>
+    [Fact]
+    public async Task HandleDrag_WhenPointerMovesDuringDrag_ReportsStartAndCurrentAsync()
+    {
+        // Arrange
+        var probe = new DragActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(probe, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        var start = probe.DragStartNow;
+        await surface.Pointer.MovePressedToAsync(probe, new Point(2, 1));
+
+        // Assert
+        var move = probe.DragMoves.ShouldHaveSingleItem();
+        move.Start.ShouldBe(start);
+        move.Current.ShouldBe(new Point(2, 1));
+        await surface.Pointer.ReleaseAsync();
+    }
+
+    /// <summary>Verifies a primary release ends an active drag, runs <see cref="ControlBase.OnDragEnded"/>
+    /// exactly once, and releases pointer capture.</summary>
+    [Fact]
+    public async Task HandleDrag_WhenPrimaryReleased_EndsDragAndReleasesCaptureAsync()
+    {
+        // Arrange
+        var probe = new DragActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(probe);
+        await surface.Pointer.PressAsync();
+        probe.IsDraggingNow.ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeFalse();
+        probe.DragEndedCalls.ShouldBe(1);
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies a terminal Leave - which by construction carries no cell coordinates -
+    /// still ends an active drag, matching an explicit release.</summary>
+    [Fact]
+    public async Task HandleDrag_WhenLeaveWithoutCells_EndsDragAsync()
+    {
+        // Arrange - the terminal-leave report only exists in the pixel-coordinate mouse protocol.
+        var probe = new DragActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TerminalOptions.Minimal with { Coordinates = MouseCoordinates.Pixel },
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(probe);
+        await surface.Pointer.PressAsync();
+        probe.IsDraggingNow.ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.LeaveAsync();
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeFalse();
+        probe.DragEndedCalls.ShouldBe(1);
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies the drag's own <c>isAvailable</c> predicate turning false mid-gesture ends
+    /// the drag on the next pointer event, the same way a Window's CanMove toggling off mid-drag
+    /// does.</summary>
+    [Fact]
+    public async Task HandleDrag_WhenAvailabilityDropsMidDrag_EndsDragAsync()
+    {
+        // Arrange
+        var probe = new DragActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(probe, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        probe.IsDraggingNow.ShouldBeTrue();
+
+        // Act
+        await surface.UpdateAsync(() => probe.IsAvailableOverride = false, "drop drag availability mid-gesture");
+        await surface.Pointer.MovePressedToAsync(probe, new Point(1, 0));
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeFalse();
+        probe.DragEndedCalls.ShouldBe(1);
+        surface.ShouldHaveCapture(null);
+    }
+
+    /// <summary>Verifies losing pointer capture to another control - independent of release, leave,
+    /// or availability - still runs <see cref="ControlBase.OnDragEnded"/> exactly once.</summary>
+    [Fact]
+    public async Task OnDragEnded_WhenCaptureLost_RunsAsync()
+    {
+        // Arrange
+        var probe = new DragActivationProbe();
+        var other = new ProbeControl { IsFocusable = true, Width = Length.Cells(2), Height = Length.Cells(2) };
+        var stack = new Stack { Children = { probe, other } };
+        await using var surface = await ComponentSurface.MountAsync(
+            stack,
+            new Size(8, 4),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(probe);
+        await surface.Pointer.PressAsync();
+        probe.IsDraggingNow.ShouldBeTrue();
+
+        // Act - capturing pointer on a sibling transfers capture away from the dragging probe.
+        await surface.UpdateAsync(() => other.CaptureProbePointer().ShouldBeTrue(), "steal pointer capture");
+
+        // Assert
+        probe.IsDraggingNow.ShouldBeFalse();
+        probe.DragEndedCalls.ShouldBe(1);
+    }
+
     /// <summary>Verifies <see cref="ControlBase.EnablePopup"/>'s owner never has to lay out its own
     /// popup: the base class measures and arranges the owned popup after
     /// <see cref="ControlBase.MeasureOverride"/>/<see cref="ControlBase.ArrangeOverride"/> even

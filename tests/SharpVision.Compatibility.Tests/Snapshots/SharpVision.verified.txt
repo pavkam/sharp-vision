@@ -417,6 +417,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Terminal.Geometry.Rect DescendantRenderBounds { get; }
         public SharpVision.Terminal.Geometry.Size DesiredSize { get; }
         public SharpVision.Threading.Dispatcher? Dispatcher { get; }
+        protected SharpVision.Terminal.Geometry.Point DragStart { get; }
         public SharpVision.Layout.Length DropDownHeight { get; set; }
         public bool EffectiveIsEnabled { get; }
         public bool EffectiveIsVisible { get; }
@@ -581,6 +582,7 @@ namespace SharpVision.Controls
         protected virtual SharpVision.Text.SelectableTextSnapshot GetTextSelectionProjection() { }
         protected virtual SharpVision.Text.TextSelectionSource? GetTextSelectionSource(SharpVision.Controls.ControlBase? originalSource, SharpVision.Terminal.Geometry.Point cells) { }
         protected virtual SharpVision.Controls.InvalidationImpact GetThemeChangeImpact(SharpVision.Styling.Theme? previous, SharpVision.Styling.Theme? current, SharpVision.Styling.Face? previousParentAmbientFace, SharpVision.Styling.Face? currentParentAmbientFace) { }
+        protected bool HandleDrag(SharpVision.Input.PointerEventArgs eventArgs) { }
         protected void HandlePressActivation(SharpVision.Input.RoutedEventArgs e) { }
         protected bool HasOpaqueFill(SharpVision.Styling.VisualState state) { }
         protected virtual SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
@@ -616,6 +618,8 @@ namespace SharpVision.Controls
         protected virtual void OnDirectDisposalRequested() { }
         protected virtual void OnDisposed() { }
         protected virtual void OnDisposing() { }
+        protected virtual void OnDragEnded() { }
+        protected virtual void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected virtual void OnDropDownClosed() { }
         protected virtual void OnDropDownOpened() { }
         protected virtual void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
@@ -2425,6 +2429,7 @@ namespace SharpVision.Controls.Input
         public event System.EventHandler<SharpVision.Input.SliderValueChangedEventArgs>? ValueChanged;
         public bool ChangeBy(int delta) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -2737,9 +2742,9 @@ namespace SharpVision.Controls.Layout
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnChildrenChanged() { }
         protected override void OnDisposing() { }
+        protected override void OnDragEnded() { }
+        protected override void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnRenderAdornment(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -2992,9 +2997,9 @@ namespace SharpVision.Controls.Scrolling
         public int ViewportSize { get; set; }
         public event System.EventHandler<SharpVision.Scrolling.ScrollEventArgs>? ValueChanged;
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override void OnDragEnded() { }
+        protected override void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnFocusChanged(bool focused) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public bool ScrollBy(int delta, SharpVision.Scrolling.ScrollCause cause = 0) { }
@@ -3522,6 +3527,14 @@ namespace SharpVision.Input
         public bool Move(int delta, bool wrap) { }
         public bool SetCurrent(SharpVision.Controls.ControlBase? value) { }
     }
+    public readonly struct DragMove : System.IEquatable<SharpVision.Input.DragMove>
+    {
+        public DragMove(SharpVision.Terminal.Geometry.Point start, SharpVision.Terminal.Geometry.Point current) { }
+        public SharpVision.Terminal.Geometry.Point Current { get; }
+        public int DeltaX { get; }
+        public int DeltaY { get; }
+        public SharpVision.Terminal.Geometry.Point Start { get; }
+    }
     public sealed class Event<TArgs>
         where TArgs : SharpVision.Input.RoutedEventArgs
     {
@@ -3680,6 +3693,10 @@ namespace SharpVision.Input
     {
         public PasteEventArgs(SharpVision.Terminal.Input.Paste paste) { }
         public SharpVision.Terminal.Input.Paste Paste { get; }
+    }
+    public static class PointerButtonTransition
+    {
+        public static bool IsPrimaryRelease(SharpVision.Terminal.Input.Pointer pointer) { }
     }
     public enum PointerCaptureLossReason
     {
@@ -5596,8 +5613,9 @@ namespace SharpVision.Windows
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
+        protected override void OnDragEnded() { }
+        protected override void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnPointerOverChanged(bool isPointerOver, bool isPointerDirectlyOver) { }
         protected override void OnPropertyChanged(string propertyName) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }

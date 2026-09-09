@@ -77,10 +77,14 @@ rather than forwarding the same attachment plumbing.
 Framework press and drag behaviors use a separate control-owned lifecycle
 participant seam. A control registers each composed behavior once; direct focus
 loss, pointer-capture loss, and unavailability then cancel it before the
-component hook. Registration rejects duplicate identities, uses deterministic
-snapshot order under reentry, and releases retained participant references when
-the control is disposed. Concrete cleanup remains in the component hook after
-that shared fan-out.
+component hook - `OnDragEnded` for a control that called `EnableDrag`.
+Registration rejects duplicate identities, uses deterministic snapshot order
+under reentry, and releases retained participant references when the control is
+disposed. Concrete cleanup remains in the component hook after that shared
+fan-out, which runs it exactly once regardless of which lifecycle path (an
+explicit `HandleDrag`-routed release/leave, the drag's `isAvailable` predicate
+turning false, or one of the three automatic notifications above) ended the
+drag.
 
 ### Choosing a role
 
