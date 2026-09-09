@@ -275,6 +275,28 @@ public sealed class DamageTests
         scroll.SourceOffset.ShouldBe(1);
     }
 
+    /// <summary>
+    /// Verifies enumerating with an active vertical-scroll candidate reports only the exposed
+    /// row even when a retained row holds a wide glyph cluster. Every retained row a scroll
+    /// candidate keeps was already proven column-by-column equal to its mapped source row when
+    /// Damage.ConsiderCandidate built the candidate (see the comment there), so
+    /// DamageEnumerator's mismatch loop can never stop mid-row on a retained row and its
+    /// wide-glyph boundary expansion - which reads the target row, not the mapped source row -
+    /// is never reached for one.
+    /// </summary>
+    [Fact]
+    public void Enumerate_WhenVerticalScrollRetainsWideGlyphRow_ReportsOnlyExposedRow()
+    {
+        using var front = CreateRows("head", "1111", "界界", "3333", "4444");
+        using var back = CreateRows("head", "界界", "3333", "4444", "5555");
+        var found = Damage.TryFindVerticalScroll(front, back, frontOverlay: null, backOverlay: null, out var scroll);
+        found.ShouldBeTrue();
+
+        List<DamageSpan> spans = [.. Damage.Enumerate(front, back, scroll)];
+
+        spans.ShouldBe([new DamageSpan(4, 0, 4)]);
+    }
+
     internal static List<DamageSpan> GetSpans(Frame? front, Frame back, bool full = false)
     {
         List<DamageSpan> result = [.. Damage.Enumerate(front, back, full)];

@@ -199,6 +199,30 @@ public sealed class FrameEncoderTests
         result.ShouldBe(new EncodeResult(1, false));
     }
 
+    /// <summary>Verifies a retained row inside a vertical-scroll region may hold a wide glyph
+    /// cluster without either cell being corrupted. The retained row here ("界界") is identical
+    /// on both sides of the scroll, so the emitted bytes only scroll the region and repaint the
+    /// exposed row - the retained cluster is never re-printed, it moves with the terminal's own
+    /// scroll. This is the wide-glyph counterpart of
+    /// <see cref="Encode_WhenRowsScrollUp_WritesRegionScrollResetAndExposedRow"/>.</summary>
+    [Fact]
+    public void Encode_WhenRetainedScrollRowContainsWideGlyph_WritesRegionScrollAndPreservesCluster()
+    {
+        using var front = CreateRows("head", "1111", "界界", "3333", "4444");
+        using var back = CreateRows("head", "界界", "3333", "4444", "5555");
+        var destination = new ArrayBufferWriter<byte>();
+
+        var result = FrameEncoder.Encode(front, back, destination, TrueColorCapabilities);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b[2;5r\u001b[1S\u001b[r\u001b[5;1H5555\u001b[5;4H\u001b[1;1H"u8.ToArray());
+        result.ShouldBe(new EncodeResult(1, false));
+        var screen = new VirtualScreen(back.Size, automaticMargins: true, eatNewlineGlitch: true);
+        screen.Apply(Encode(null, front));
+        screen.Apply(destination.WrittenSpan);
+        screen.ShouldMatch(back);
+    }
+
     /// <summary>Verifies scroll-shaped incremental output converges to the complete semantic target.</summary>
     [Fact]
     public void Encode_WhenRowsScrollDown_AgreesWithFullRender()

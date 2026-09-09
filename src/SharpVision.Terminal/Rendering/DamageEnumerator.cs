@@ -82,6 +82,17 @@ public ref struct DamageEnumerator
                 continue;
             }
 
+            // This boundary expansion reads the lead column and owned end at the TARGET row
+            // (_row), not at a scroll-mapped SOURCE row. That is only correct because a row a
+            // vertical scroll retains is fully RowsEqual-verified when Damage.ConsiderCandidate
+            // builds the candidate, so CellsEqual can never return false before the row end on a
+            // retained row; the mismatch loop above can only stop early on an exposed row, whose
+            // columns are already compared directly against the target row. If that invariant
+            // ever broke, this expansion would silently read glyph boundaries from the wrong row.
+            Debug.Assert(
+                !_scroll.IsActive || !_scroll.TryMapSourceRow(_row, out _),
+                "A retained scroll row cannot mismatch before the row end, so the boundary expansion should only ever run on an exposed or unscrolled row.");
+
             var start = Math.Min(
                 _front.GetLeadColumn(_row, _column),
                 _back.GetLeadColumn(_row, _column));

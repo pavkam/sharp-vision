@@ -273,6 +273,16 @@ public static class Damage
         ref int bestSavings,
         ref VerticalScrollDamage best)
     {
+        // The retained (non-exposed) rows of the resulting region must never extend past
+        // [runStart, runEnd), because that is exactly the run TrySourceRow already grew one row
+        // at a time while every added row passed RowsEqual against its mapped source row. A
+        // scroll-retained target row is therefore guaranteed to compare identical, column by
+        // column, to its source row. DamageEnumerator.CellsEqual relies on that guarantee to
+        // avoid ever stopping mid-row on a retained row, which in turn lets its wide-glyph
+        // boundary expansion read GetLeadColumn/GetOwnedEnd at the target row instead of the
+        // scroll-mapped source row. Widening top/bottom beyond the verified run would let a
+        // retained row mismatch mid-row and silently read glyph-cluster boundaries from the
+        // wrong row.
         var top = Math.Min(runStart, runStart + sourceOffset);
         var bottom = Math.Max(runEnd - 1, runEnd - 1 + sourceOffset);
 
