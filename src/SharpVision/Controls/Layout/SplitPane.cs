@@ -697,44 +697,32 @@ public sealed class SplitPane: Container
 
     private void HandleDividerKey(KeyEventArgs eventArgs)
     {
-        if (!eventArgs.IsKeyDown ||
-            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
-        {
-            return;
-        }
-
-        var code = eventArgs.Stroke.Code;
+        var command = ResolveRangeKey(eventArgs, Orientation, upIsIncrement: false);
         long target;
 
-        if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
-            (Orientation == Orientation.Vertical && code == Code.Up))
+        switch (command)
         {
-            target = (long) _effectiveFirstPaneExtent - SmallChange;
-        }
-        else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
-                 (Orientation == Orientation.Vertical && code == Code.Down))
-        {
-            target = (long) _effectiveFirstPaneExtent + SmallChange;
-        }
-        else if (code == Code.PageUp)
-        {
-            target = (long) _effectiveFirstPaneExtent - LargeChange;
-        }
-        else if (code == Code.PageDown)
-        {
-            target = (long) _effectiveFirstPaneExtent + LargeChange;
-        }
-        else if (code == Code.Home)
-        {
-            target = MinimumFirstPaneExtent;
-        }
-        else if (code == Code.End)
-        {
-            target = MaximumFirstPaneExtent;
-        }
-        else
-        {
-            return;
+            case RangeKeyCommand.SmallDecrement:
+                target = (long) _effectiveFirstPaneExtent - SmallChange;
+                break;
+            case RangeKeyCommand.SmallIncrement:
+                target = (long) _effectiveFirstPaneExtent + SmallChange;
+                break;
+            case RangeKeyCommand.LargeDecrement:
+                target = (long) _effectiveFirstPaneExtent - LargeChange;
+                break;
+            case RangeKeyCommand.LargeIncrement:
+                target = (long) _effectiveFirstPaneExtent + LargeChange;
+                break;
+            case RangeKeyCommand.Minimum:
+                target = MinimumFirstPaneExtent;
+                break;
+            case RangeKeyCommand.Maximum:
+                target = MaximumFirstPaneExtent;
+                break;
+            case RangeKeyCommand.None:
+            default:
+                return;
         }
 
         _ = CommitFirstPaneExtent((int) Math.Clamp(

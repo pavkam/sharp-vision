@@ -758,13 +758,6 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
 
         var code = eventArgs.Stroke.Code;
 
-        if (eventArgs.IsInitialKeyDown &&
-            code == Code.Character &&
-            eventArgs.Stroke.Character == new Rune(' '))
-        {
-            code = Code.Enter;
-        }
-
         if (code is Code.Up or Code.Down or Code.PageUp or Code.PageDown or
             Code.Home or Code.End or Code.Left or Code.Right &&
             !KeyboardModifierPolicy.IsScalarNavigationEligible(eventArgs.Stroke.Modifiers))
@@ -804,9 +797,9 @@ public sealed class JsonView: ScrollableCompositeControlBase, IStyled<JsonViewSt
         {
             eventArgs.IsHandled = NavigateRight();
         }
-        else if (eventArgs.IsInitialKeyDown && code == Code.Enter)
+        else if (IsActivationStroke(eventArgs))
         {
-            eventArgs.IsHandled = eventArgs.Stroke.Modifiers.IsActivationEligible() && ToggleSelected();
+            eventArgs.IsHandled = ToggleSelected();
         }
     }
 

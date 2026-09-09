@@ -42,6 +42,22 @@ public sealed class ControlTimer: IControlAttachmentParticipant
         _shouldTick = shouldTick;
     }
 
+    /// <summary>Validates one timer interval before observable state changes, against the same
+    /// supported range every <see cref="ControlTimer"/> and <see cref="DispatcherTimer"/> enforce.
+    /// </summary>
+    /// <param name="interval">The interval to validate.</param>
+    /// <param name="parameterName">The public parameter or property value name to report.</param>
+    /// <remarks>
+    /// A control or satellite package that exposes its own <see cref="TimeSpan"/> delay or interval
+    /// property - a custom animation cadence, a bespoke auto-dismiss delay - validates it through
+    /// this shared seam so its accepted range matches every framework timer exactly, rather than
+    /// duplicating or drifting from the underlying platform timer's own limit.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="interval"/> is below one
+    /// millisecond or above 2,147,483,647 milliseconds.</exception>
+    public static void ValidateInterval(TimeSpan interval, string parameterName) =>
+        DispatcherTimer.ValidateInterval(interval, parameterName);
+
     /// <summary>Gets or sets the interval between ticks.</summary>
     /// <remarks>
     /// Assigning while a dispatcher timer is already allocated rearms it with the new interval

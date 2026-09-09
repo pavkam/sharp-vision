@@ -146,6 +146,22 @@ internal sealed class ProbeControl: ChromeProbe
         Action<ControlBase, Modifiers> commit) =>
         HandleCurrentItemNavigation(eventArgs, navigator, ordered, viewportExtent, pageOverlap, pageItemExtent, wrap, commit);
 
+    /// <summary>Forwards to the protected static activation-stroke predicate, exercising it without
+    /// a concrete activation owner such as NavigationView or Breadcrumb.</summary>
+    internal static bool ProbeIsActivationStroke(KeyEventArgs eventArgs) => IsActivationStroke(eventArgs);
+
+    /// <summary>Forwards to the protected static oriented range-key resolver, exercising it without
+    /// a concrete range owner such as Slider or ScrollBar.</summary>
+    internal static RangeKeyCommand ProbeResolveRangeKey(
+        KeyEventArgs eventArgs,
+        Orientation orientation,
+        bool upIsIncrement) =>
+        ResolveRangeKey(eventArgs, orientation, upIsIncrement);
+
+    /// <summary>Forwards to the protected face-style resolver, exercising it against this probe's
+    /// own theme resolution.</summary>
+    internal TerminalStyle ProbeResolveFaceStyle(Face face) => ResolveFaceStyle(face);
+
     /// <summary>Requests pointer capture through the protected consumer seam.</summary>
     /// <returns>Whether capture was acquired or already owned.</returns>
     internal bool CaptureProbePointer() => CapturePointer();

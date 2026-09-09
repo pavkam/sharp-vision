@@ -706,15 +706,8 @@ public sealed class NavigationView: ScrollableCompositeControlBase
             return;
         }
 
-        if (eventArgs.IsInitialKeyDown &&
-            (eventArgs.Stroke.Code == Code.Enter ||
-             (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' '))))
+        if (IsActivationStroke(eventArgs))
         {
-            if (!eventArgs.Stroke.Modifiers.IsActivationEligible())
-            {
-                return;
-            }
-
             eventArgs.IsHandled = ActivateCurrent();
             return;
         }

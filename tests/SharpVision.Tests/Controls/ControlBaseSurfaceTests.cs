@@ -1199,4 +1199,84 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         ran.ShouldBeTrue();
     }
+
+    /// <summary>Verifies the shared oriented range-key resolver maps Up to the increment command
+    /// for a vertical owner whose convention treats Up as toward the maximum, matching
+    /// <c>Slider</c>'s own <c>upIsIncrement: true</c> usage.</summary>
+    [Fact]
+    public void ResolveRangeKey_WhenVerticalAndUpIsIncrement_MapsUpToSmallIncrement()
+    {
+        // Arrange
+        var eventArgs = new KeyEventArgs(new Stroke(Code.Up, null, 0, Modifiers.None, KeyAction.Press));
+
+        // Act
+        var command = ProbeControl.ProbeResolveRangeKey(eventArgs, Orientation.Vertical, upIsIncrement: true);
+
+        // Assert
+        command.ShouldBe(RangeKeyCommand.SmallIncrement);
+    }
+
+    /// <summary>Verifies a command modifier held alongside an otherwise-recognized range key
+    /// resolves to no command at all, matching every range owner's shared unmodified-only
+    /// prologue.</summary>
+    [Fact]
+    public void ResolveRangeKey_WhenModifierHeld_ReturnsNone()
+    {
+        // Arrange
+        var eventArgs = new KeyEventArgs(new Stroke(Code.Left, null, 0, Modifiers.Control, KeyAction.Press));
+
+        // Act
+        var command = ProbeControl.ProbeResolveRangeKey(eventArgs, Orientation.Horizontal, upIsIncrement: true);
+
+        // Assert
+        command.ShouldBe(RangeKeyCommand.None);
+    }
+
+    /// <summary>Verifies the shared activation-stroke predicate follows
+    /// <see cref="ActivationModifiers.IsActivationEligible"/> exactly: Shift is one of the
+    /// modifiers activation tolerates, so an initial Space press held with Shift still counts as
+    /// an activation stroke.</summary>
+    [Fact]
+    public void IsActivationStroke_WhenSpaceWithShift_IsTrue()
+    {
+        // Arrange
+        var eventArgs = new KeyEventArgs(
+            new Stroke(Code.Character, new Rune(' '), 0, Modifiers.Shift, KeyAction.Press));
+
+        // Act
+        var isActivationStroke = ProbeControl.ProbeIsActivationStroke(eventArgs);
+
+        // Assert
+        isActivationStroke.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a face whose attributes carry a semantic decoration resolve through the
+    /// mounted control's own Theme rather than a literal value, matching the resolution order
+    /// <c>Toast</c> and <c>InfoBar</c> previously duplicated by hand.</summary>
+    [Fact]
+    public async Task ResolveFaceStyle_WhenFaceUsesSemanticAttributes_ResolvesThroughThemeAsync()
+    {
+        // Arrange
+        var theme = new Theme();
+        theme.SetAttributes(SemanticDecoration.SelectedText, TerminalAttributes.Bold | TerminalAttributes.Italic);
+        theme.Freeze();
+        var probe = new ProbeControl();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 1),
+            theme,
+            TestContext.Current.CancellationToken);
+        var face = AppearanceTestValues.Face(
+            foreground: Color.Rgb(10, 20, 30),
+            background: Color.Rgb(1, 2, 3),
+            attributes: SemanticDecoration.SelectedText);
+
+        // Act
+        var style = probe.ProbeResolveFaceStyle(face);
+
+        // Assert
+        style.Attributes.ShouldBe(TerminalAttributes.Bold | TerminalAttributes.Italic);
+        style.Foreground.ShouldBe(Color.Rgb(10, 20, 30));
+        style.Background.ShouldBe(Color.Rgb(1, 2, 3));
+    }
 }

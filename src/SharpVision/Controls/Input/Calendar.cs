@@ -551,10 +551,7 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
             Code.End when navigationEligible => MoveToWeekEdge(end: true),
             Code.PageUp when navigationEligible => MoveByMonth(-1),
             Code.PageDown when navigationEligible => MoveByMonth(1),
-            Code.Enter => eventArgs.IsInitialKeyDown &&
-                stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
-            Code.Character when eventArgs.IsInitialKeyDown && stroke.Character == new Rune(' ') =>
-                stroke.Modifiers.IsActivationEligible() && ActivateDate(ActiveDate),
+            Code.Enter or Code.Character when IsActivationStroke(eventArgs) => ActivateDate(ActiveDate),
             _ => false
         };
 #pragma warning restore IDE0072

@@ -556,7 +556,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// "window" theme section, so this base implementation is that section's Normal state; a
     /// dialog subtype that owns its own style overrides this to resolve its own section instead.
     /// </remarks>
-    private protected virtual WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
+    protected virtual WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetWindowStyleSet().Normal;
 
     /// <summary>Resolves every interaction-chrome member to immutable Theme-specific data.</summary>

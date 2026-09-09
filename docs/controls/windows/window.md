@@ -135,6 +135,14 @@ value as a render dependency. Theme replacement compares its resolved glyphs and
 colors directly, so equivalent output stays clean and Window needs no separate
 whole-pipeline Theme comparison override.
 
+The protected virtual `ResolveInteractionChromeStyle(Theme? theme)` decides
+which `WindowStyle` section this member resolves against: the base
+implementation returns the generic `styles.window.normal` section, and a dialog
+subtype that owns its own style - `FilePickerDialog`, `SaveFileDialog`, and
+`MessageBox` in this library - overrides it to resolve its own section instead.
+A `Window` subtype defined outside this assembly overrides the same seam the
+same way to route its own chrome style.
+
 `Header` is non-null text, clipped before either corner. `HeaderPlacement`
 aligns it left or right within the lane left over after close chrome. `Center`
 centers the header on the whole frame, so the title sits under the frame's

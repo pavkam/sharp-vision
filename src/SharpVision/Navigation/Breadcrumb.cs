@@ -729,14 +729,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
-        if (eventArgs.Stroke.Code == Code.Enter ||
-            (eventArgs.Stroke.Code == Code.Character && eventArgs.Stroke.Character == new Rune(' ')))
+        if (IsActivationStroke(eventArgs))
         {
-            if (!eventArgs.Stroke.Modifiers.IsActivationEligible())
-            {
-                return;
-            }
-
             eventArgs.IsHandled = _navigator.Current is BreadcrumbItem item &&
                                   TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommandForOwner());
             return;
@@ -894,7 +888,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     }
 
     /// <inheritdoc/>
-    private protected override void OnItemsControlDisposing()
+    protected override void OnItemsControlDisposing()
     {
         CancelPressActivation(releaseCapture: true);
 

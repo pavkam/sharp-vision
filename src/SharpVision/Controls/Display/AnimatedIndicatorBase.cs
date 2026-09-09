@@ -35,7 +35,7 @@ public abstract class AnimatedIndicatorBase: ControlBase
         get;
         set
         {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
+            ControlTimer.ValidateInterval(value, nameof(value));
             VerifyMutable();
 
             _ = ShouldSynchronizeIntervalBeforePublication()
@@ -94,7 +94,7 @@ public abstract class AnimatedIndicatorBase: ControlBase
     /// <exception cref="ArgumentOutOfRangeException">The value is outside the supported timer range.</exception>
     protected void ScheduleAnimation(TimeSpan interval)
     {
-        DispatcherTimer.ValidateInterval(interval, nameof(interval));
+        ControlTimer.ValidateInterval(interval, nameof(interval));
         _animation.Interval = interval;
     }
 

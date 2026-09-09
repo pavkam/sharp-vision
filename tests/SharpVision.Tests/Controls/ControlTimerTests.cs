@@ -313,4 +313,18 @@ public sealed class ControlTimerTests
         ticks.ShouldBe(1);
         timer.Dispose();
     }
+
+    /// <summary>Verifies the public interval validator, which every satellite control with its own
+    /// <c>TimeSpan</c> delay or interval property forwards to, rejects a negative interval the same
+    /// way the internal <c>DispatcherTimer</c> validator does.</summary>
+    [Fact]
+    public void ValidateInterval_WhenNegative_Throws()
+    {
+        // Arrange and act
+        var exception = Should.Throw<ArgumentOutOfRangeException>(
+            () => ControlTimer.ValidateInterval(TimeSpan.FromMilliseconds(-1), "interval"));
+
+        // Assert
+        exception.ParamName.ShouldBe("interval");
+    }
 }

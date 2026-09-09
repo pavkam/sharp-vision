@@ -902,7 +902,7 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
     }
 
     /// <inheritdoc/>
-    private protected override void OnItemsControlDisposing()
+    protected override void OnItemsControlDisposing()
     {
         ClearItems(disposing: true);
         _propertyOverrides.Dispose();

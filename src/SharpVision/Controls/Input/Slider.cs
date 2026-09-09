@@ -266,43 +266,31 @@ public sealed class Slider: ControlBase, IStyled<SliderStyle>
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (!eventArgs.IsKeyDown ||
-            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
-        {
-            return;
-        }
+        var command = ResolveRangeKey(eventArgs, Orientation, upIsIncrement: true);
 
-        var code = eventArgs.Stroke.Code;
-
-        if ((Orientation == Orientation.Horizontal && code == Code.Left) ||
-            (Orientation == Orientation.Vertical && code == Code.Down))
+        switch (command)
         {
-            _ = ChangeBy(IsDirectionReversed ? SmallChange : SmallChange.Negate());
-        }
-        else if ((Orientation == Orientation.Horizontal && code == Code.Right) ||
-                 (Orientation == Orientation.Vertical && code == Code.Up))
-        {
-            _ = ChangeBy(IsDirectionReversed ? SmallChange.Negate() : SmallChange);
-        }
-        else if (code == Code.PageUp)
-        {
-            _ = ChangeBy(LargeChange);
-        }
-        else if (code == Code.PageDown)
-        {
-            _ = ChangeBy(LargeChange.Negate());
-        }
-        else if (code == Code.Home)
-        {
-            _ = Commit(Minimum);
-        }
-        else if (code == Code.End)
-        {
-            _ = Commit(Maximum);
-        }
-        else
-        {
-            return;
+            case RangeKeyCommand.SmallDecrement:
+                _ = ChangeBy(IsDirectionReversed ? SmallChange : SmallChange.Negate());
+                break;
+            case RangeKeyCommand.SmallIncrement:
+                _ = ChangeBy(IsDirectionReversed ? SmallChange.Negate() : SmallChange);
+                break;
+            case RangeKeyCommand.LargeIncrement:
+                _ = ChangeBy(LargeChange);
+                break;
+            case RangeKeyCommand.LargeDecrement:
+                _ = ChangeBy(LargeChange.Negate());
+                break;
+            case RangeKeyCommand.Minimum:
+                _ = Commit(Minimum);
+                break;
+            case RangeKeyCommand.Maximum:
+                _ = Commit(Maximum);
+                break;
+            case RangeKeyCommand.None:
+            default:
+                return;
         }
 
         eventArgs.IsHandled = true;

@@ -120,7 +120,7 @@ public sealed class Tooltip: Popup
             placement,
             nameof(placement),
             "The popup placement is unknown.");
-        DispatcherTimer.ValidateInterval(showDelay, nameof(showDelay));
+        ControlTimer.ValidateInterval(showDelay, nameof(showDelay));
         SetText(anchor, text, placement);
         GetTooltip(anchor)!.ShowDelay = showDelay;
     }
@@ -242,7 +242,7 @@ public sealed class Tooltip: Popup
         get;
         set
         {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
+            ControlTimer.ValidateInterval(value, nameof(value));
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
     } = TimeSpan.FromMilliseconds(500);
@@ -256,7 +256,7 @@ public sealed class Tooltip: Popup
         get;
         set
         {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
+            ControlTimer.ValidateInterval(value, nameof(value));
             _ = SetProperty(ref field, value, InvalidationImpact.None);
         }
     } = TimeSpan.FromMilliseconds(100);

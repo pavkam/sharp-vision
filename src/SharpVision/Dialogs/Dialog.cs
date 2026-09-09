@@ -93,7 +93,7 @@ public abstract class Dialog<TResult>: Window
     /// <see cref="SeparatorStyle"/> onto it.</param>
     /// <returns>A full-width action bar containing the separator and shadow-aware action host.</returns>
     /// <exception cref="ArgumentNullException">The action layout, array, or one Button is null.</exception>
-    private protected static Grid CreateActionBar(ControlBase actions, Button[] buttons, out Separator separator)
+    protected static Grid CreateActionBar(ControlBase actions, Button[] buttons, out Separator separator)
     {
         ArgumentNullException.ThrowIfNull(actions);
         ArgumentNullException.ThrowIfNull(buttons);

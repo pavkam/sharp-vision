@@ -462,20 +462,6 @@ public sealed class InfoBar: ContentControl, IStyled<InfoBarStyle>
         ArrangeChild(_dismissButton, dismissBounds, ResolvedAxes.Both);
     }
 
-    [Pure]
-    private TerminalStyle ResolveFaceStyle(Face face)
-    {
-        var attributes = face.Attributes.IsLiteral
-            ? face.Attributes.Literal
-            : Theme?.ResolveAttributes(face.Attributes.SemanticDecoration) ?? TerminalAttributes.None;
-        return new TerminalStyle(
-            ResolveColor(face.Foreground),
-            ResolveColor(face.Background),
-            attributes,
-            underline: face.Underline,
-            underlineColor: ResolveColor(face.UnderlineColor));
-    }
-
     #endregion
 
     #region Retained availability

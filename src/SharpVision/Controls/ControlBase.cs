@@ -7672,6 +7672,34 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     [Pure]
     protected Color ResolveColor(ControlColor value) => ResolveColor(value, Theme);
 
+    /// <summary>Resolves one <see cref="Face"/> value into a complete <see cref="TerminalStyle"/>
+    /// against this control's active theme.</summary>
+    /// <param name="face">The literal-or-theme-referenced foreground, background, attributes, and
+    /// underline to resolve.</param>
+    /// <returns>A style whose attributes are the face's literal attributes, or its semantic
+    /// decoration resolved through <see cref="Theme.ResolveAttributes"/> when no theme is active;
+    /// whose foreground, background, and underline color are resolved through
+    /// <see cref="ResolveColor(ControlColor)"/>; and whose underline carries the face's own value.
+    /// </returns>
+    /// <remarks>
+    /// <c>Toast</c> and <c>InfoBar</c> resolve every themed face they paint - a title, a severity
+    /// accent - through this shared seam instead of repeating the attribute-then-color resolution
+    /// order by hand.
+    /// </remarks>
+    [Pure]
+    protected TerminalStyle ResolveFaceStyle(Face face)
+    {
+        var attributes = face.Attributes.IsLiteral
+            ? face.Attributes.Literal
+            : Theme?.ResolveAttributes(face.Attributes.SemanticDecoration) ?? TerminalAttributes.None;
+        return new TerminalStyle(
+            ResolveColor(face.Foreground),
+            ResolveColor(face.Background),
+            attributes,
+            underline: face.Underline,
+            underlineColor: ResolveColor(face.UnderlineColor));
+    }
+
     /// <summary>Merges one parsed inline-markup style span over <see cref="ResolvedStyle"/>.</summary>
     /// <param name="span">The parsed inline-markup style span.</param>
     /// <returns>The span's foreground, background, attributes, typed underline, underline color,
@@ -8143,6 +8171,86 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
         IsCurrentFact = value;
         return true;
+    }
+
+    /// <summary>Reports whether one keyboard stroke is the initial-press Enter or Space chord that
+    /// activates a control, subject to <see cref="ActivationModifiers.IsActivationEligible"/>.
+    /// </summary>
+    /// <param name="eventArgs">The non-null routed key event to inspect.</param>
+    /// <returns>True when <paramref name="eventArgs"/> is the initial press of Enter or the
+    /// Character stroke for Space, and its modifiers carry no more than Shift and lock-key state.
+    /// </returns>
+    /// <remarks>
+    /// A control-specific press-and-hold repeat of Enter or Space is never an activation stroke:
+    /// only the initial press is, matching the identical predicate every adopting owner
+    /// (<c>NavigationView</c>, <c>Breadcrumb</c>, and <c>JsonView</c>) previously re-typed by hand.
+    /// A collection owner whose Space additionally carries selection semantics -
+    /// <c>ListView</c> and <c>TreeView</c> - keeps its own broader
+    /// <see cref="KeyboardModifierPolicy.IsCollectionSelectionEligible"/> gate instead of this one.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    protected static bool IsActivationStroke(KeyEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        var stroke = eventArgs.Stroke;
+        return eventArgs.IsInitialKeyDown &&
+            (stroke.Code == Code.Enter || (stroke.Code == Code.Character && stroke.Character == new Rune(' '))) &&
+            stroke.Modifiers.IsActivationEligible();
+    }
+
+    /// <summary>Resolves one unmodified key-down stroke against an oriented small/large-step and
+    /// endpoint ladder, shared by every control that exposes a single scalar range along one
+    /// <see cref="Orientation"/> - <c>Slider</c>, <c>ScrollBar</c>, and <c>SplitPane</c>'s divider.
+    /// </summary>
+    /// <param name="eventArgs">The non-null routed key event to inspect.</param>
+    /// <param name="orientation">The axis Left/Right or Up/Down step along; the other pair is
+    /// ignored.</param>
+    /// <param name="upIsIncrement">Whether <c>Up</c> and <c>PageUp</c> move the value toward its
+    /// maximum. A <c>Slider</c> passes true; a <c>ScrollBar</c>, whose value tracks scrolled
+    /// position rather than a picked point, passes false. <c>Left</c> and <c>Right</c> always mean
+    /// decrement and increment respectively, regardless of this flag.</param>
+    /// <returns><see cref="RangeKeyCommand.None"/> unless <paramref name="eventArgs"/> is a key-down
+    /// stroke carrying no command modifier; otherwise the semantic command for <c>Left</c>/<c>Right</c>
+    /// (small step, when <paramref name="orientation"/> is <see cref="Orientation.Horizontal"/>),
+    /// <c>Up</c>/<c>Down</c> (small step, when <paramref name="orientation"/> is
+    /// <see cref="Orientation.Vertical"/>), <c>PageUp</c>/<c>PageDown</c> (large step, always), and
+    /// <c>Home</c>/<c>End</c> (minimum/maximum, always).</returns>
+    /// <remarks>
+    /// This resolves only the physical-key-to-semantic-command mapping. A caller that additionally
+    /// reverses its small step by some other flag - the way <c>Slider.IsDirectionReversed</c> does -
+    /// applies that reversal itself after receiving <see cref="RangeKeyCommand.SmallDecrement"/> or
+    /// <see cref="RangeKeyCommand.SmallIncrement"/> back; this method has no opinion on it. A key
+    /// that resolves to <see cref="RangeKeyCommand.None"/> leaves
+    /// <see cref="RoutedEventArgs.IsHandled"/> untouched, exactly as a caller's own unmatched
+    /// <c>else return;</c> branch would.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs"/> is null.</exception>
+    protected static RangeKeyCommand ResolveRangeKey(KeyEventArgs eventArgs, Orientation orientation, bool upIsIncrement)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
+        if (!eventArgs.IsKeyDown || !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
+        {
+            return RangeKeyCommand.None;
+        }
+
+#pragma warning disable IDE0072 // Unknown or unsupported keys intentionally remain unhandled.
+        return eventArgs.Stroke.Code switch
+        {
+            Code.Left when orientation == Orientation.Horizontal => RangeKeyCommand.SmallDecrement,
+            Code.Right when orientation == Orientation.Horizontal => RangeKeyCommand.SmallIncrement,
+            Code.Up when orientation == Orientation.Vertical =>
+                upIsIncrement ? RangeKeyCommand.SmallIncrement : RangeKeyCommand.SmallDecrement,
+            Code.Down when orientation == Orientation.Vertical =>
+                upIsIncrement ? RangeKeyCommand.SmallDecrement : RangeKeyCommand.SmallIncrement,
+            Code.PageUp => upIsIncrement ? RangeKeyCommand.LargeIncrement : RangeKeyCommand.LargeDecrement,
+            Code.PageDown => upIsIncrement ? RangeKeyCommand.LargeDecrement : RangeKeyCommand.LargeIncrement,
+            Code.Home => RangeKeyCommand.Minimum,
+            Code.End => RangeKeyCommand.Maximum,
+            _ => RangeKeyCommand.None
+        };
+#pragma warning restore IDE0072
     }
 
     /// <summary>Runs the shared Home/End/PageUp/PageDown/Up/Down current-item keyboard skeleton

@@ -539,7 +539,7 @@ public abstract class ItemsControl: ControlBase
     }
 
     /// <summary>Allows framework item owners to settle semantic state before their private hosts are disposed.</summary>
-    private protected virtual void OnItemsControlDisposing()
+    protected virtual void OnItemsControlDisposing()
     {
     }
 

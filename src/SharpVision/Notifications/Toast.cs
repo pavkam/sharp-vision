@@ -142,7 +142,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
 
             if (value > TimeSpan.Zero)
             {
-                DispatcherTimer.ValidateInterval(value, nameof(value));
+                ControlTimer.ValidateInterval(value, nameof(value));
             }
 
             VerifyClosedMutation();
@@ -165,7 +165,7 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         {
             if (value != Timeout.InfiniteTimeSpan)
             {
-                DispatcherTimer.ValidateInterval(value, nameof(value));
+                ControlTimer.ValidateInterval(value, nameof(value));
             }
 
             VerifyClosedMutation();
@@ -673,20 +673,6 @@ public sealed class Toast: FloatingSurfaceBase, IStyled<ToastStyle>, IOverlayPos
         return IsDismissible && header.Width > 0
             ? new Rect(header.Right - 1, header.Y, 1, header.Height)
             : new Rect(header.Right, header.Y, 0, header.Height);
-    }
-
-    [Pure]
-    private TerminalStyle ResolveFaceStyle(Face face)
-    {
-        var attributes = face.Attributes.IsLiteral
-            ? face.Attributes.Literal
-            : Theme?.ResolveAttributes(face.Attributes.SemanticDecoration) ?? TerminalAttributes.None;
-        return new TerminalStyle(
-            ResolveColor(face.Foreground),
-            ResolveColor(face.Background),
-            attributes,
-            underline: face.Underline,
-            underlineColor: ResolveColor(face.UnderlineColor));
     }
 
     private void StartPresentationTimers()

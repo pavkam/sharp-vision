@@ -56,7 +56,12 @@ sequenceDiagram
 
 Built-in dialogs also share the base action-bar composition: a horizontal
 separator sits directly above a shadow-aware action host, while each concrete
-dialog retains control of its own Button alignment and semantics.
+dialog retains control of its own Button alignment and semantics. A dialog type
+defined outside this assembly builds the identical action bar through the
+protected static
+`CreateActionBar(ControlBase actions, Button[] buttons, out Separator separator)`,
+the same way `FileDialogBase` and `MessageBox` do; the internal action-host type
+it composes internally never appears in the signature.
 
 Dialog types defined outside this assembly reach this same lifecycle through a
 `protected` `PresentAsync` overload:

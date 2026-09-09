@@ -288,43 +288,31 @@ public sealed class ScrollBar: ControlBase, IStyled<ScrollBarStyle>
 
     private void Handle(KeyEventArgs eventArgs)
     {
-        if (!eventArgs.IsKeyDown ||
-            !KeyboardModifierPolicy.MatchesCommand(eventArgs.Stroke.Modifiers, Modifiers.None))
-        {
-            return;
-        }
+        var command = ResolveRangeKey(eventArgs, Orientation, upIsIncrement: false);
 
-        var code = eventArgs.Stroke.Code;
-        var decrement = Orientation == Orientation.Vertical ? Code.Up : Code.Left;
-        var increment = Orientation == Orientation.Vertical ? Code.Down : Code.Right;
-
-        if (code == decrement)
+        switch (command)
         {
-            _ = ScrollBy(SmallChange.Negate(), ScrollCause.Keyboard);
-        }
-        else if (code == increment)
-        {
-            _ = ScrollBy(SmallChange, ScrollCause.Keyboard);
-        }
-        else if (code == Code.PageUp)
-        {
-            _ = ScrollBy(LargeChange.Negate(), ScrollCause.Keyboard);
-        }
-        else if (code == Code.PageDown)
-        {
-            _ = ScrollBy(LargeChange, ScrollCause.Keyboard);
-        }
-        else if (code == Code.Home)
-        {
-            _ = Commit(Minimum, ScrollCause.Keyboard);
-        }
-        else if (code == Code.End)
-        {
-            _ = Commit(Maximum, ScrollCause.Keyboard);
-        }
-        else
-        {
-            return;
+            case RangeKeyCommand.SmallDecrement:
+                _ = ScrollBy(SmallChange.Negate(), ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.SmallIncrement:
+                _ = ScrollBy(SmallChange, ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.LargeDecrement:
+                _ = ScrollBy(LargeChange.Negate(), ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.LargeIncrement:
+                _ = ScrollBy(LargeChange, ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.Minimum:
+                _ = Commit(Minimum, ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.Maximum:
+                _ = Commit(Maximum, ScrollCause.Keyboard);
+                break;
+            case RangeKeyCommand.None:
+            default:
+                return;
         }
 
         eventArgs.IsHandled = true;

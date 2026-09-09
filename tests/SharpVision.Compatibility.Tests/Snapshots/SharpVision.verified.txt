@@ -671,6 +671,7 @@ namespace SharpVision.Controls
         protected SharpVision.Styling.ResolvedBorderStyles ResolveBorderStyles(SharpVision.Styling.VisualState state) { }
         protected SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value) { }
         protected System.Text.Rune ResolveControlGlyph(SharpVision.Styling.ControlGlyph glyph) { }
+        protected SharpVision.Terminal.Rendering.CellStyle ResolveFaceStyle(SharpVision.Styling.Face face) { }
         protected void ResolveHeightLimits(int? containingHeight, out int minimum, out int maximum) { }
         protected SharpVision.Terminal.Rendering.CellStyle ResolveSpanStyle(SharpVision.Text.StyleSpan span) { }
         protected T ResolveThemeValue<T>(SharpVision.Controls.ThemeValueDependency<T> dependency) { }
@@ -711,11 +712,13 @@ namespace SharpVision.Controls
         protected static void CaptureFailure(System.Action action, ref System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure) { }
         protected static SharpVision.Terminal.Geometry.Rect DeflateForAffixes(SharpVision.Terminal.Geometry.Rect contentBox, SharpVision.Controls.AffixMetrics metrics) { }
         protected static bool HandleCurrentItemNavigation(SharpVision.Input.KeyEventArgs eventArgs, SharpVision.Input.CurrentItemNavigator navigator, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase> ordered, int viewportExtent, int pageOverlap, System.Func<int, int>? pageItemExtent, bool wrap, System.Action<SharpVision.Controls.ControlBase, SharpVision.Terminal.Input.Modifiers> commit) { }
+        protected static bool IsActivationStroke(SharpVision.Input.KeyEventArgs eventArgs) { }
         protected static bool IsVersionedPropertyCurrent<T>(T field, T value, long version, long commitVersion) { }
         protected static SharpVision.Controls.InvalidationImpact MaximumImpact(SharpVision.Controls.InvalidationImpact left, SharpVision.Controls.InvalidationImpact right) { }
         protected static void ResolveChildHeightLimits(SharpVision.Controls.ControlBase child, int? containingHeight, out int minimum, out int maximum) { }
         protected static void ResolveChildWidthLimits(SharpVision.Controls.ControlBase child, int? containingWidth, out int minimum, out int maximum) { }
         protected static SharpVision.Terminal.Protocols.Color ResolveColor(SharpVision.Styling.ControlColor value, SharpVision.Styling.Theme? theme) { }
+        protected static SharpVision.Input.RangeKeyCommand ResolveRangeKey(SharpVision.Input.KeyEventArgs eventArgs, SharpVision.Layout.Orientation orientation, bool upIsIncrement) { }
     }
     public sealed class ControlCollection : System.Collections.Generic.ICollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase>, System.Collections.Generic.IList<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyCollection<SharpVision.Controls.ControlBase>, System.Collections.Generic.IReadOnlyList<SharpVision.Controls.ControlBase>, System.Collections.IEnumerable
     {
@@ -743,6 +746,7 @@ namespace SharpVision.Controls
         public void OnOwnerAttached(SharpVision.Threading.Dispatcher dispatcher) { }
         public void OnOwnerDetached() { }
         public void Stop() { }
+        public static void ValidateInterval(System.TimeSpan interval, string parameterName) { }
     }
     public static class EnumValidation
     {
@@ -888,6 +892,7 @@ namespace SharpVision.Controls
         protected virtual void OnItemControlsChanged(SharpVision.Controls.OwnedControlChange change) { }
         protected virtual bool OnItemDisposalRequested(SharpVision.Controls.ControlBase item) { }
         protected virtual void OnItemFocused(SharpVision.Controls.ControlBase item) { }
+        protected virtual void OnItemsControlDisposing() { }
         protected bool RemoveItemControl(SharpVision.Controls.ControlBase control) { }
         protected void RemoveItemControlAt(int index) { }
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
@@ -1437,6 +1442,7 @@ namespace SharpVision.Controls.Collections
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
         protected override bool OnItemDisposalRequested(SharpVision.Controls.ControlBase item) { }
+        protected override void OnItemsControlDisposing() { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected override void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         public bool RequestClose(SharpVision.Controls.Collections.TabItem item) { }
@@ -3197,6 +3203,7 @@ namespace SharpVision.Dialogs
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected System.Threading.Tasks.Task<TResult> PresentAsync(SharpVision.Controls.ControlBase owner, SharpVision.Controls.ControlBase? initialFocus, System.Threading.CancellationToken cancellationToken) { }
         protected override void ValidateAttachment() { }
+        protected static SharpVision.Controls.Layout.Grid CreateActionBar(SharpVision.Controls.ControlBase actions, SharpVision.Controls.Input.Button[] buttons, out SharpVision.Controls.Display.Separator separator) { }
     }
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
@@ -3265,6 +3272,7 @@ namespace SharpVision.Dialogs
         protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
         protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
         protected override void OnListSelectionChanged() { }
+        protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
         protected override void WireAcceptInteraction() { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.FilePickerResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.FilePickerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
@@ -3345,6 +3353,7 @@ namespace SharpVision.Dialogs
         public string Title { get; }
         public string YesText { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
+        protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message) { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons) { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxOptions options) { }
@@ -3406,6 +3415,7 @@ namespace SharpVision.Dialogs
         protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
         protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
         protected override void OnListSelectionChanged() { }
+        protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
         protected override void WireAcceptInteraction() { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.SaveFileResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.SaveFileOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
@@ -3774,6 +3784,16 @@ namespace SharpVision.Input
         None = 0,
         TabNext = 1,
         TabPrevious = 2,
+    }
+    public enum RangeKeyCommand
+    {
+        None = 0,
+        SmallDecrement = 1,
+        SmallIncrement = 2,
+        LargeDecrement = 3,
+        LargeIncrement = 4,
+        Minimum = 5,
+        Maximum = 6,
     }
     public enum ReleaseReason
     {
@@ -4200,6 +4220,7 @@ namespace SharpVision.Navigation
         protected override void OnFocusChanged(bool focused) { }
         protected override bool OnItemAccessKey(SharpVision.Controls.ControlBase item, System.Text.Rune key) { }
         protected override bool OnItemDisposalRequested(SharpVision.Controls.ControlBase item) { }
+        protected override void OnItemsControlDisposing() { }
         protected override void OnLostPointerCapture(SharpVision.Input.PointerCaptureLossReason reason) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected override void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
@@ -4526,6 +4547,10 @@ namespace SharpVision.Popups
         protected override void OnAnchorReflow() { }
         public void ShowAt(SharpVision.Controls.ControlBase anchor) { }
     }
+    public sealed class OwnedContentDisposalEventArgs : System.EventArgs
+    {
+        public SharpVision.Controls.ControlBase Content { get; }
+    }
     public class Popup : SharpVision.Surfaces.FloatingSurfaceBase
     {
         public Popup() { }
@@ -4535,6 +4560,7 @@ namespace SharpVision.Popups
         public bool ConnectsToAnchor { get; init; }
         public bool ConstrainToRoot { get; set; }
         public SharpVision.Layout.Length ContentHeightLimit { get; set; }
+        public SharpVision.Terminal.Geometry.Point? FixedOrigin { get; set; }
         public bool FocusOnOpen { get; set; }
         public bool IsOpen { get; set; }
         public SharpVision.Popups.PopupModalBehavior ModalBehavior { get; set; }
@@ -4543,7 +4569,9 @@ namespace SharpVision.Popups
         public bool ShowAnchorIndicator { get; set; }
         public SharpVision.Popups.PopupChrome Style { get; set; }
         public bool SuppressCloseOtherPopups { get; init; }
+        public bool TracksAnchorReflow { get; set; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
+        public event System.EventHandler<SharpVision.Popups.OwnedContentDisposalEventArgs>? ContentDisposalRequested;
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected SharpVision.Surfaces.FloatingSurfaceCloseOutcome CloseImmediatelyForPeerTransition() { }
         protected virtual bool CompleteOpenContent(bool suppressFocusOnOpen) { }
@@ -5656,6 +5684,7 @@ namespace SharpVision.Windows
         protected override void OnSurfaceModalDismissRequested(SharpVision.Input.ModalScope scope) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         protected override void RenderOverlay(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
+        protected virtual SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
         public SharpVision.Input.ModalScope ShowModal(SharpVision.Input.OutsideInteraction outsideInteraction = 0, SharpVision.Controls.ControlBase? initialFocus = null) { }
     }
     public enum WindowClosePlacement

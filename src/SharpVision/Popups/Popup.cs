@@ -21,7 +21,10 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     private ControlBase? _lightDismissFocusBeforeOpen;
 
     /// <summary>Raised before directly disposed content leaves this popup's owned slot.</summary>
-    internal event EventHandler<OwnedContentDisposalEventArgs>? ContentDisposalRequested;
+    /// <remarks>A menu-like owner that tracks its own popup content - <c>ContextMenu</c> and
+    /// <c>MenuItem</c>'s submenu, in this library - subscribes to detach its own bookkeeping before
+    /// the content disposes further.</remarks>
+    public event EventHandler<OwnedContentDisposalEventArgs>? ContentDisposalRequested;
 
     /// <summary>Raised after an open popup commits closed and its guarded or availability-forced
     /// cleanup has completed.</summary>
@@ -197,7 +200,7 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     /// subscription is already live does not retroactively detach or attach one - the change only
     /// takes effect the next time subscription is reconsidered.
     /// </remarks>
-    internal bool TracksAnchorReflow { get; set; } = true;
+    public bool TracksAnchorReflow { get; set; } = true;
 
     /// <summary>Gets or sets the intrinsic, fixed, or placement-side-relative ceiling applied to
     /// owned content height.</summary>
@@ -228,9 +231,12 @@ public class Popup: FloatingSurfaceBase, IOwnedChildDisposalObserver
     }
 
     /// <summary>Gets or sets an optional fixed origin that overrides anchor-based positioning.</summary>
+    /// <remarks>A caller that opens a popup at a specific point rather than relative to an anchor
+    /// control - a context menu opened at the pointer position that triggered it - sets this
+    /// instead of assigning <see cref="Anchor"/>.</remarks>
     /// <exception cref="InvalidOperationException">The attached popup is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The popup is disposed.</exception>
-    internal Point? FixedOrigin
+    public Point? FixedOrigin
     {
         get;
         set => _ = SetProperty(ref field, value, InvalidationImpact.Arrange);
