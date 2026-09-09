@@ -113,10 +113,6 @@ public sealed class CommandBarItem: InputBase, IStyled<CommandBarItemStyle>
     }
 
     /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key) =>
-        FindAncestor<CommandBar>()?.InvokeAccessKey(this, key) ?? base.OnAccessKey(key);
-
-    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         var content = TextControl;

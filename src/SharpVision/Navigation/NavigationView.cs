@@ -359,13 +359,10 @@ public sealed class NavigationView: ScrollableCompositeControlBase
 
     /// <summary>Detaches a top-level semantic entry before direct disposal publication begins.</summary>
     /// <param name="entry">The owned entry whose caller requested disposal.</param>
-    internal void RemoveEntryForDisposal(ControlBase entry)
-    {
-        if (!RemoveEntryCore(entry, isFooter: false, restorePresentation: false))
-        {
-            _ = RemoveEntryCore(entry, isFooter: true, restorePresentation: false);
-        }
-    }
+    /// <returns>True when <paramref name="entry"/> was a direct top-level entry and was removed.</returns>
+    internal bool RemoveEntryForDisposal(ControlBase entry) =>
+        RemoveEntryCore(entry, isFooter: false, restorePresentation: false) ||
+        RemoveEntryCore(entry, isFooter: true, restorePresentation: false);
 
     // Repairs state only when a disposing entry initiated its own semantic removal. Ordinary API
     // removals run their position-aware repair after commit; the removed snapshot distinguishes
@@ -540,6 +537,50 @@ public sealed class NavigationView: ScrollableCompositeControlBase
             PropertyOverrides(isFooter).Restore(lease);
         }
     }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// This view is not an <see cref="ItemsControl"/> - its entries and grouped items are a
+    /// hand-rolled retained tree, not one private presentation host - so it overrides the
+    /// <see cref="ControlBase"/> ancestor hooks directly instead of through that base type's item
+    /// helpers.
+    /// </remarks>
+    protected internal override void OnDescendantFocused(ControlBase descendant)
+    {
+        if (descendant is NavigationViewItem item)
+        {
+            NotifyItemFocused(item);
+        }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Once <paramref name="descendant"/> resolves to one of this view's own entries, this claims
+    /// the match and reports the result of <see cref="InvokeAccessKey(NavigationViewItem)"/> or
+    /// <see cref="InvokeAccessKey(NavigationViewGroup)"/>, so the entry's own default
+    /// focus-then-activate fallback never also runs while a declined match still lets the next
+    /// duplicate candidate handle the key.
+    /// </remarks>
+    protected internal override bool? OnDescendantAccessKey(ControlBase descendant, Rune key)
+    {
+        _ = key;
+
+        return descendant switch
+        {
+            NavigationViewItem item => InvokeAccessKey(item),
+            NavigationViewGroup group => InvokeAccessKey(group),
+            _ => null
+        };
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// A grouped item never reaches this override: <see cref="NavigationViewGroup"/> claims its
+    /// own items through its own <see cref="ControlBase.OnDescendantDisposalRequested"/> override
+    /// first, nearer in the ancestor walk, and stops the walk before it reaches this view.
+    /// </remarks>
+    protected internal override bool OnDescendantDisposalRequested(ControlBase descendant) =>
+        RemoveEntryForDisposal(descendant);
 
     /// <summary>Updates the selected item when a child receives focus externally.</summary>
     internal void NotifyItemFocused(NavigationViewItem item)

@@ -392,9 +392,17 @@ public sealed class Menu: ItemsControl
         failure?.Throw();
     }
 
+    /// <inheritdoc/>
+    protected override bool OnItemAccessKey(ControlBase item, Rune key)
+    {
+        _ = key;
+        return InvokeAccessKey((MenuItem) item);
+    }
+
     /// <summary>Selects and invokes one mnemonic-matched item through the ordinary keyboard path.</summary>
     /// <param name="item">The available item owned by this menu.</param>
     /// <returns>True when the item belongs to this menu and was invoked.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     internal bool InvokeAccessKey(MenuItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -793,11 +801,10 @@ public sealed class Menu: ItemsControl
         failure?.Throw();
     }
 
-    /// <summary>Updates the selected index when a child item receives focus externally.</summary>
-    /// <param name="item">The non-null owned item that received focus.</param>
-    internal void NotifyItemFocused(MenuItem item)
+    /// <inheritdoc/>
+    /// <remarks>Updates the selected index when a child item receives focus externally.</remarks>
+    protected override void OnItemFocused(ControlBase item)
     {
-        ArgumentNullException.ThrowIfNull(item);
         var index = IndexOfItemControl(item);
 
         if (index >= 0 && index != _selectedIndex)

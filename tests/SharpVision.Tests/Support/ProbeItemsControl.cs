@@ -117,4 +117,33 @@ internal sealed class ProbeItemsControl: ItemsControl
         LastChangeKind = change.Kind;
         base.OnItemControlsChanged(change);
     }
+
+    /// <summary>Gets the item controls reported through the protected
+    /// <see cref="ItemsControl.OnItemFocused"/> seam, in call order.</summary>
+    internal List<ControlBase> ItemFocusedCalls { get; } = [];
+
+    /// <inheritdoc/>
+    protected override void OnItemFocused(ControlBase item)
+    {
+        base.OnItemFocused(item);
+        ItemFocusedCalls.Add(item);
+    }
+
+    /// <summary>Gets the item controls reported through the protected
+    /// <see cref="ItemsControl.OnItemDisposalRequested"/> seam, in call order.</summary>
+    internal List<ControlBase> ItemDisposalRequests { get; } = [];
+
+    /// <summary>Gets, for each reported item in <see cref="ItemDisposalRequests"/>, whether that
+    /// item still occupied a realized item-control position at the moment the hook fired -
+    /// proving the notification runs before this owner's own removal, not merely before the
+    /// caller's disposal fully completes.</summary>
+    internal List<bool> ItemDisposalRequestsWerePresentBeforeRemoval { get; } = [];
+
+    /// <inheritdoc/>
+    protected override bool OnItemDisposalRequested(ControlBase item)
+    {
+        ItemDisposalRequests.Add(item);
+        ItemDisposalRequestsWerePresentBeforeRemoval.Add(IndexOfItemControl(item) >= 0);
+        return base.OnItemDisposalRequested(item);
+    }
 }

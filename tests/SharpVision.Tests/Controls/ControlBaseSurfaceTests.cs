@@ -1007,4 +1007,96 @@ public sealed class ControlBaseSurfaceTests
         // Assert
         snapshot.Text.ShouldBe("Named");
     }
+
+    /// <summary>Verifies <see cref="ControlBase.OnDescendantFocused"/> fires on the shared
+    /// ancestor for each individual focus commit, not only the first time that ancestor gains a
+    /// focused descendant - a move from one descendant to a sibling descendant must still notify
+    /// the ancestor both times, the way an owning list tracks whichever of its own items currently
+    /// holds focus.</summary>
+    [Fact]
+    public async Task OnDescendantFocused_WhenFocusMovesBetweenTwoDescendants_NotifiesTheCommonAncestorEachTimeAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var ancestor = new ProbeContainer();
+        var first = new ProbeControl { IsFocusable = true };
+        var second = new ProbeControl { IsFocusable = true };
+        ancestor.Children.Add(first);
+        ancestor.Children.Add(second);
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                ancestor.Attach(dispatcher);
+                using var focus = new FocusManager(ancestor);
+
+                // Act
+                focus.Focus(first).ShouldBeTrue();
+                focus.Focus(second).ShouldBeTrue();
+
+                // Assert
+                ancestor.DescendantFocusedCalls.ShouldBe([first, second]);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the default <see cref="ControlBase.OnAccessKey"/> stops at the first
+    /// ancestor whose <see cref="ControlBase.OnDescendantAccessKey"/> claims the match, so the
+    /// item's own fallback - focusing itself through <c>FocusAccessKeyTarget</c> - never runs.</summary>
+    [Fact]
+    public async Task OnDescendantAccessKey_WhenAncestorHandles_ItemDefaultDoesNotFocusAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var ancestor = new ProbeContainer { ClaimsDescendantAccessKey = true };
+        var item = new ProbeControl
+        {
+            IsFocusable = true,
+            UseMnemonic = true,
+            AccessKeyCaption = "&Save"
+        };
+        ancestor.Children.Add(item);
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                ancestor.Attach(dispatcher);
+                using var focus = new FocusManager(ancestor);
+
+                // Act
+                var handled = item.InvokeAccessKey(new Rune('S'));
+
+                // Assert
+                handled.ShouldBeTrue();
+                ancestor.DescendantAccessKeyCalls.ShouldBe([item]);
+                item.IsFocused.ShouldBeFalse();
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies the <see cref="ControlBase.Dispose"/> ancestor walk for
+    /// <see cref="ControlBase.OnDescendantDisposalRequested"/> stops at the first ancestor that
+    /// claims the request, so a farther ancestor - a grandparent whose only path to the disposing
+    /// control runs through the nearer ancestor - is never asked once the nearer one already
+    /// handled it.</summary>
+    [Fact]
+    public async Task OnDescendantDisposalRequested_WhenNearestAncestorHandles_FartherAncestorIsNotAskedAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var grandparent = new ProbeContainer();
+        var parent = new ProbeContainer { ClaimsDescendantDisposal = true };
+        var leaf = new ProbeControl();
+        parent.Children.Add(leaf);
+        grandparent.Children.Add(parent);
+
+        await dispatcher.InvokeAsync(() => grandparent.Attach(dispatcher), TestContext.Current.CancellationToken);
+
+        // Act
+        await dispatcher.InvokeAsync(leaf.Dispose, TestContext.Current.CancellationToken);
+
+        // Assert
+        parent.DescendantDisposalRequests.ShouldBe([leaf]);
+        grandparent.DescendantDisposalRequests.ShouldBeEmpty();
+    }
 }

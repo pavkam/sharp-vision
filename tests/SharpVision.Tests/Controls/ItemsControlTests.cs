@@ -568,4 +568,53 @@ public sealed class ItemsControlTests
 
         collection.ShouldBe([existing]);
     }
+
+    /// <summary>Verifies <see cref="ItemsControl.OnItemFocused"/> resolves a descendant deep
+    /// inside a realized item control to that item control itself, through
+    /// <see cref="ItemsControl.FindItemControl"/>, rather than firing only when the item control
+    /// is itself the one gaining focus.</summary>
+    [Fact]
+    public async Task OnItemFocused_WhenDescendantOfItemGainsFocus_ReportsTheItemAsync()
+    {
+        // Arrange
+        await using var dispatcher = Dispatcher.Start();
+        var owner = new ProbeItemsControl();
+        var descendant = new ProbeControl { IsFocusable = true };
+        var item = new ProbeContentControl { Content = descendant };
+        owner.Insert(0, item);
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                owner.Attach(dispatcher);
+                using var focus = new FocusManager(owner);
+
+                // Act
+                focus.Focus(descendant).ShouldBeTrue();
+
+                // Assert
+                owner.ItemFocusedCalls.ShouldBe([item]);
+            },
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies <see cref="ItemsControl.OnItemDisposalRequested"/> fires while the item
+    /// still occupies a realized item-control position, before this owner's own removal runs -
+    /// so an override can still resolve the item's index or sibling state at that moment.</summary>
+    [Fact]
+    public void OnItemDisposalRequested_WhenItemDisposedDirectly_ReportsBeforeRemoval()
+    {
+        // Arrange
+        var owner = new ProbeItemsControl();
+        var item = new ProbeControl();
+        owner.Insert(0, item);
+
+        // Act
+        item.Dispose();
+
+        // Assert
+        owner.ItemDisposalRequests.ShouldBe([item]);
+        owner.ItemDisposalRequestsWerePresentBeforeRemoval.ShouldBe([true]);
+        owner.Count.ShouldBe(0);
+    }
 }

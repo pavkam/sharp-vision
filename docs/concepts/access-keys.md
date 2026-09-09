@@ -137,10 +137,23 @@ flowchart TD
 
 ## Focus and semantic actions
 
-The common `ControlBase.OnAccessKey(Rune)` default focuses an eligible captioned
-control. A non-focusable captioned scope focuses its first eligible descendant
-in hierarchical tab order. A label-like leaf advances through the same focus
-traversal from its stable tree anchor.
+The common `ControlBase.OnAccessKey(Rune)` default first calls
+`TryDescendantAccessKey(Rune)`, which walks ancestors nearest first offering
+each one `OnDescendantAccessKey(ControlBase, Rune)` a chance to claim the match
+on the matched control's behalf. When no ancestor claims it, the default falls
+back to focusing an eligible captioned control; a non-focusable captioned scope
+focuses its first eligible descendant in hierarchical tab order, and a
+label-like leaf advances through the same focus traversal from its stable tree
+anchor. `ItemsControl` wires this ancestor hook into
+`OnItemAccessKey(ControlBase, Rune)`, resolving the nearest realized item
+control through `FindItemControl` the same way `OnDescendantFocused` does for
+focus; `NavigationView`, which is not an `ItemsControl`, overrides the ancestor
+hook directly. Once an ancestor resolves the matched control to one of its own
+items, the ancestor's own result becomes the item's result, so the item's local
+fallback described below never also runs while a declined match still lets the
+next duplicate candidate handle the key. See
+[Control base APIs](../controls/control.md#access-key-extension-points) and
+[ItemsControl](../controls/items-control.md#overview).
 
 Built-in action controls specialize that default without inventing a second
 state path:

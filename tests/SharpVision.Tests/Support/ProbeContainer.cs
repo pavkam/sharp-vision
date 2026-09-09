@@ -124,4 +124,45 @@ internal sealed class ProbeContainer: Container
     /// <param name="resolvedAxes">Axes already resolved by this parent.</param>
     internal void ArrangeOwned(ControlBase child, Rect slot, ResolvedAxes resolvedAxes) =>
         ArrangeChild(child, slot, resolvedAxes);
+
+    /// <summary>Gets the descendants reported through the protected
+    /// <see cref="ControlBase.OnDescendantFocused"/> ancestor hook, in call order.</summary>
+    internal List<ControlBase> DescendantFocusedCalls { get; } = [];
+
+    /// <inheritdoc/>
+    protected internal override void OnDescendantFocused(ControlBase descendant)
+    {
+        base.OnDescendantFocused(descendant);
+        DescendantFocusedCalls.Add(descendant);
+    }
+
+    /// <summary>Gets the descendants reported through the protected
+    /// <see cref="ControlBase.OnDescendantAccessKey"/> ancestor hook, in call order.</summary>
+    internal List<ControlBase> DescendantAccessKeyCalls { get; } = [];
+
+    /// <summary>Gets or sets whether this probe claims every descendant access key reported to
+    /// it, instead of deferring to the inherited default.</summary>
+    internal bool ClaimsDescendantAccessKey { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override bool? OnDescendantAccessKey(ControlBase descendant, Rune key)
+    {
+        DescendantAccessKeyCalls.Add(descendant);
+        return ClaimsDescendantAccessKey ? true : base.OnDescendantAccessKey(descendant, key);
+    }
+
+    /// <summary>Gets the descendants reported through the protected
+    /// <see cref="ControlBase.OnDescendantDisposalRequested"/> ancestor hook, in call order.</summary>
+    internal List<ControlBase> DescendantDisposalRequests { get; } = [];
+
+    /// <summary>Gets or sets whether this probe claims every descendant disposal request
+    /// reported to it, instead of deferring to the inherited default.</summary>
+    internal bool ClaimsDescendantDisposal { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override bool OnDescendantDisposalRequested(ControlBase descendant)
+    {
+        DescendantDisposalRequests.Add(descendant);
+        return ClaimsDescendantDisposal || base.OnDescendantDisposalRequested(descendant);
+    }
 }

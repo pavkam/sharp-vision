@@ -2922,15 +2922,80 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <param name="key">The invariant-matched Unicode scalar declared by this control's caption.</param>
     /// <returns>True when the control accepted the access-key action.</returns>
     /// <remarks>
-    /// The default focuses this control, its first eligible descendant, or the next tab stop for a
-    /// label-like leaf. Action controls override this method and reuse their ordinary keyboard path.
+    /// The default first walks ancestors nearest first, offering each one
+    /// <see cref="OnDescendantAccessKey(ControlBase, Rune)"/> to claim the match on this control's
+    /// behalf. This is the mechanism an owning collection - a menu, a command bar, a breadcrumb
+    /// path, or a similar selection surface - uses to route an access key matched on one of its
+    /// items through its own selection and activation path without that item overriding this
+    /// method itself; the ancestor's own result is then this control's result, so a declined
+    /// match lets the next duplicate candidate handle the key. When no ancestor claims the match,
+    /// the default falls back to focusing this control, its first eligible descendant, or the next
+    /// tab stop for a label-like leaf. Action controls override this method and reuse their
+    /// ordinary keyboard path.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached control is accessed off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
-    protected virtual bool OnAccessKey(Rune key)
+    protected virtual bool OnAccessKey(Rune key) =>
+        TryDescendantAccessKey(key, out var handled) ? handled : FocusAccessKeyTarget();
+
+    /// <summary>Walks ancestors nearest first, offering each one
+    /// <see cref="OnDescendantAccessKey(ControlBase, Rune)"/> a chance to claim <paramref name="key"/>
+    /// on this control's behalf.</summary>
+    /// <param name="key">The matched Unicode scalar.</param>
+    /// <param name="handled">
+    /// The claiming ancestor's result - true when it acted on the match, false when it declined
+    /// it - or false when no ancestor claimed it.
+    /// </param>
+    /// <returns>True when an ancestor claimed the match.</returns>
+    /// <remarks>
+    /// <see cref="OnAccessKey"/> calls this before its own default fallback and returns
+    /// <paramref name="handled"/> as its own result when an ancestor claimed the match. A derived
+    /// <c>OnAccessKey</c> override that replaces the default fallback with its own local behavior -
+    /// <see cref="InputBase.OnAccessKey"/> does this for a captioned control - calls this first for
+    /// the same reason: an owning collection must still get the chance to route the match through
+    /// its own selection and activation path before the override's local behavior runs.
+    /// </remarks>
+    protected bool TryDescendantAccessKey(Rune key, out bool handled)
     {
+        for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            if (ancestor.OnDescendantAccessKey(this, key) is { } result)
+            {
+                handled = result;
+                return true;
+            }
+        }
+
+        handled = false;
+        return false;
+    }
+
+    /// <summary>Gives an ancestor the chance to claim a matched access key on behalf of one of its
+    /// descendants before that descendant's own default handling runs.</summary>
+    /// <param name="descendant">
+    /// The control whose declared access key matched, walking from its own
+    /// <see cref="OnAccessKey"/> outward through successive <see cref="Parent"/> links. Never this
+    /// control itself.
+    /// </param>
+    /// <param name="key">The matched Unicode scalar.</param>
+    /// <returns>
+    /// Null when this ancestor does not claim the match; otherwise the result the claim produced -
+    /// true when this ancestor acted on the match, false when it declined it, for example because
+    /// the matched item is not currently available. A non-null result stops the walk and becomes
+    /// <paramref name="descendant"/>'s own <see cref="OnAccessKey"/> result, so its default
+    /// fallback never runs and a declined match still lets the next duplicate candidate handle
+    /// the key. The default implementation claims nothing.
+    /// </returns>
+    /// <remarks>
+    /// An owning collection overrides this to select and activate the matched descendant through
+    /// its own ordinary path instead of every item re-implementing the same
+    /// <c>FindAncestor&lt;TOwner&gt;()</c>-and-relay boilerplate.
+    /// </remarks>
+    protected internal virtual bool? OnDescendantAccessKey(ControlBase descendant, Rune key)
+    {
+        _ = descendant;
         _ = key;
-        return FocusAccessKeyTarget();
+        return null;
     }
 
     /// <summary>Focuses the semantic target associated with this caption.</summary>
@@ -3014,6 +3079,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                     observer.OnOwnedChildDisposalRequested(this);
                 }
 
+                for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+                {
+                    if (ancestor.OnDescendantDisposalRequested(this))
+                    {
+                        break;
+                    }
+                }
+
                 OnDirectDisposalRequested();
 
                 if (IsDisposed || IsDisposing)
@@ -3061,6 +3134,29 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </remarks>
     protected internal virtual void OnDirectDisposalRequested()
     {
+    }
+
+    /// <summary>Gives an ancestor the chance to reconcile semantic state before one of its
+    /// descendants' disposal publication begins.</summary>
+    /// <param name="descendant">The control whose direct disposal was requested.</param>
+    /// <returns>
+    /// True when this ancestor handled the request. A true result stops the walk before any
+    /// farther ancestor is asked. The default implementation handles nothing.
+    /// </returns>
+    /// <remarks>
+    /// Walked nearest first from <see cref="Dispose"/>, after the direct parent's
+    /// <see cref="IOwnedChildDisposalObserver"/> callback (if any) and before
+    /// <paramref name="descendant"/>'s own <see cref="OnDirectDisposalRequested"/> runs. Unlike
+    /// that direct-parent-only observer, this walk reaches every ancestor, so an owner whose items
+    /// live under a private presentation host - a grandparent of the item, not its direct parent -
+    /// can still detach a directly disposed item through its own removal path. An override must not
+    /// throw, for the same reason <see cref="OnDirectDisposalRequested"/> must not: disposal
+    /// continues unconditionally regardless of this hook's result.
+    /// </remarks>
+    protected internal virtual bool OnDescendantDisposalRequested(ControlBase descendant)
+    {
+        _ = descendant;
+        return false;
     }
 
     /// <summary>Disposes a child while its owner already holds structural publication.</summary>
@@ -4087,6 +4183,20 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         _ = focused;
         Debug.Assert(!IsDisposed, "A disposed control cannot change focus state.");
     }
+
+    /// <summary>Notifies an ancestor that one of its descendants just committed keyboard focus.</summary>
+    /// <param name="descendant">The control that just committed focus.</param>
+    /// <remarks>
+    /// Called by the owning <see cref="FocusManager"/> on every ancestor of
+    /// <paramref name="descendant"/>, nearest first, from the same focus-commit transaction that
+    /// publishes <see cref="FocusEntered"/>. Unlike <see cref="FocusEntered"/>, which fires only on
+    /// the ancestors focus newly entered, this runs on every ancestor on the current path each time
+    /// focus changes - including a move between two descendants an ancestor already contained -
+    /// so a collection can track which of its own items currently holds focus without every item
+    /// re-implementing the same <c>OnFocusChanged</c>-and-relay boilerplate. The default
+    /// implementation does nothing.
+    /// </remarks>
+    protected internal virtual void OnDescendantFocused(ControlBase descendant) => _ = descendant;
 
     /// <summary>Responds after this control's physical pointer-over state commits.</summary>
     /// <param name="isPointerOver">Whether the physical pointer is over this control or one of its descendants.</param>

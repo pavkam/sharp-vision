@@ -118,10 +118,6 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
     }
 
     /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key) =>
-        FindBreadcrumb() is { } owner ? owner.ActivateAccessKey(this, key) : base.OnAccessKey(key);
-
-    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint) => MeasureCaption(constraint);
 
     /// <inheritdoc/>
@@ -136,13 +132,6 @@ public sealed class BreadcrumbItem: InputBase, IStyled<BreadcrumbItemStyle>
         {
             Invoked = null;
         }
-    }
-
-    /// <inheritdoc/>
-    protected internal override void OnDirectDisposalRequested()
-    {
-        FindBreadcrumb()?.RemoveItemForDisposal(this);
-        base.OnDirectDisposalRequested();
     }
 
     /// <summary>Gets the live semantic owner, or null while detached.</summary>

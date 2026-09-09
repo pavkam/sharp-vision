@@ -1522,14 +1522,13 @@ public sealed class ListView: ScrollableItemsControl, IStyled<ListViewStyle>
         }
     }
 
-    /// <summary>Tracks the item that received focus without mutating selection.</summary>
-    internal void NotifyItemFocused(ListItem item)
+    /// <inheritdoc/>
+    /// <remarks>Tracks the item that received focus without mutating selection.</remarks>
+    protected override void OnItemFocused(ControlBase item)
     {
-        ArgumentNullException.ThrowIfNull(item);
-        Debug.Assert(IndexOfItemControl(item) >= 0, "A focused ListItem is a realized child of this ListView.");
-
-        SetActiveIndex(item.Index);
-        _ = _stack.BringIntoView(item);
+        var listItem = (ListItem) item;
+        SetActiveIndex(listItem.Index);
+        _ = _stack.BringIntoView(listItem);
     }
 
     /// <summary>Moves the owned current item for a selector-level navigation key.</summary>

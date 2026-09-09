@@ -204,6 +204,12 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
     protected override string? AccessKeyText => _textSlot is not null ? TextControl?.Content : base.AccessKeyText;
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// A captioned control still gives an ancestor first refusal through
+    /// <see cref="ControlBase.TryDescendantAccessKey"/> - the mechanism an owning collection uses
+    /// to route the match through its own selection and activation path - before falling back to
+    /// this control's own local focus-then-activate default.
+    /// </remarks>
     protected override bool OnAccessKey(Rune key)
     {
         if (_textSlot is null)
@@ -211,7 +217,10 @@ public abstract class InputBase: ControlBase, IAccessKeyCaptionOwner
             return base.OnAccessKey(key);
         }
 
-        _ = key;
+        if (TryDescendantAccessKey(key, out var handled))
+        {
+            return handled;
+        }
 
         if (!EffectiveIsEnabled || !EffectiveIsVisible)
         {

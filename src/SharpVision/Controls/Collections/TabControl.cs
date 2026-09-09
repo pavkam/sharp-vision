@@ -424,16 +424,19 @@ public sealed class TabControl: ItemsControl, IStyled<TabControlStyle>
         return true;
     }
 
-    /// <summary>Detaches an owned page before its caller-initiated disposal publication begins.</summary>
-    /// <param name="item">The page whose direct disposal was requested.</param>
-    internal void RemoveItemForDisposal(TabItem item)
+    /// <inheritdoc/>
+    /// <remarks>Detaches an owned page before its caller-initiated disposal publication begins.</remarks>
+    protected override bool OnItemDisposalRequested(ControlBase item)
     {
         var index = IndexOfItemControl(item);
 
-        if (index >= 0)
+        if (index < 0)
         {
-            RemoveItemAtCore(index, restorePresentation: false);
+            return false;
         }
+
+        RemoveItemAtCore(index, restorePresentation: false);
+        return true;
     }
 
     internal void RemoveItemAt(int index)

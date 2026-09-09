@@ -368,4 +368,10 @@ internal sealed class ProbeControl: ChromeProbe
         var length = value.EncodeToUtf16(buffer);
         _ = canvas.Draw(buffer[..length], new Point(Bounds.X, Bounds.Y), ResolvedStyle);
     }
+
+    /// <summary>Gets or sets the caption returned by the protected access-key text seam.</summary>
+    internal string? AccessKeyCaption { get; set; }
+
+    /// <inheritdoc/>
+    protected override string? AccessKeyText => AccessKeyCaption;
 }

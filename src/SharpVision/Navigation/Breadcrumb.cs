@@ -189,6 +189,13 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     internal void RemoveItemForDisposal(BreadcrumbItem item) =>
         _ = RemoveItemCore(item, restorePresentation: false);
 
+    /// <inheritdoc/>
+    protected override bool OnItemDisposalRequested(ControlBase item)
+    {
+        RemoveItemForDisposal((BreadcrumbItem) item);
+        return true;
+    }
+
     private bool RemoveItemCore(BreadcrumbItem item, bool restorePresentation)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -334,7 +341,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         ArgumentNullException.ThrowIfNull(item);
         ArgumentOutOfRangeException.ThrowIfNotDefined(cause);
 
-        if (!IsAvailableOwned(item))
+        if (!IsAvailableItemControl(item))
         {
             return false;
         }
@@ -344,7 +351,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return false;
         }
 
-        if (!IsAvailableOwned(item) || !ReferenceEquals(_currentItem, item))
+        if (!IsAvailableItemControl(item) || !ReferenceEquals(_currentItem, item))
         {
             return false;
         }
@@ -358,7 +365,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (collectionGeneration == CollectionGeneration &&
             currentGeneration == _currentGeneration &&
-            IsAvailableOwned(item) &&
+            IsAvailableItemControl(item) &&
             ReferenceEquals(_currentItem, item))
         {
             CaptureFailure(command.ExecuteIfAny, ref failure);
@@ -378,6 +385,10 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         overflowGeneration == OverflowGeneration &&
         TryActivateItem(item, cause, item.CaptureCommandForOwner());
 
+    /// <inheritdoc/>
+    protected override bool OnItemAccessKey(ControlBase item, Rune key) =>
+        ActivateAccessKey((BreadcrumbItem) item, key);
+
     /// <summary>Focuses this breadcrumb and activates a mnemonic-selected primary item.</summary>
     internal bool ActivateAccessKey(BreadcrumbItem item, Rune key)
     {
@@ -386,9 +397,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         var entry = Layout.EntryFor(item);
         return entry.IsPrimary &&
                entry.Bounds.Width > 0 &&
-               IsAvailableOwned(item) &&
+               IsAvailableItemControl(item) &&
                Focus() &&
-               IsAvailableOwned(item) &&
+               IsAvailableItemControl(item) &&
                TryActivateItem(item, ActivationCause.Keyboard, item.CaptureCommandForOwner());
     }
 
@@ -411,7 +422,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         CollectionGeneration++;
         RepairActive(selectFinal: false);
 
-        if (selectFinal || _currentItem is null || !IsAvailableOwned(_currentItem))
+        if (selectFinal || _currentItem is null || !IsAvailableItemControl(_currentItem))
         {
             _ = SetCurrent(FinalAvailableItem());
             return;
@@ -435,12 +446,12 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         CollectionGeneration++;
 
-        if (IsPressedItem(item) && !IsAvailableOwned(item))
+        if (IsPressedItem(item) && !IsAvailableItemControl(item))
         {
             CancelPressActivation(releaseCapture: true);
         }
 
-        if ((ReferenceEquals(_currentItem, item) && !IsAvailableOwned(item)) || _currentItem is null)
+        if ((ReferenceEquals(_currentItem, item) && !IsAvailableItemControl(item)) || _currentItem is null)
         {
             _ = SetCurrent(FinalAvailableItem());
         }
@@ -590,7 +601,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     {
         VerifyMutable();
 
-        if (item is not null && !IsAvailableOwned(item))
+        if (item is not null && !IsAvailableItemControl(item))
         {
             throw new InvalidOperationException("The current breadcrumb item must be visible and enabled.");
         }
@@ -655,7 +666,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         {
             var item = ItemAt(index);
 
-            if (IsAvailableOwned(item))
+            if (IsAvailableItemControl(item))
             {
                 return item;
             }
@@ -664,17 +675,8 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         return null;
     }
 
-    [Pure]
-    private bool IsAvailableOwned(BreadcrumbItem item) =>
-        !item.IsDisposed &&
-        !item.IsDisposing &&
-        IndexOfItem(item) >= 0 &&
-        item.Visibility == Visibility.Visible &&
-        item.EffectiveIsVisible &&
-        item.EffectiveIsEnabled;
-
     /// <summary>Gets whether an owned item is currently eligible for semantic presentation.</summary>
-    internal bool IsAvailableItem(BreadcrumbItem item) => IsAvailableOwned(item);
+    internal bool IsAvailableItem(BreadcrumbItem item) => IsAvailableItemControl(item);
 
     private List<ControlBase> CollectNavigableItems()
     {
@@ -682,7 +684,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         foreach (var item in Layout.PrimaryItems)
         {
-            if (IsAvailableOwned(item) && Layout.EntryFor(item).Bounds.Width > 0)
+            if (IsAvailableItemControl(item) && Layout.EntryFor(item).Bounds.Width > 0)
             {
                 result.Add(item);
             }
@@ -697,7 +699,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         {
             var item = ItemAt(index);
 
-            if (IsAvailableOwned(item))
+            if (IsAvailableItemControl(item))
             {
                 result.Add(item);
             }
@@ -708,7 +710,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
     private void RepairActive(bool selectFinal)
     {
-        if (selectFinal || _navigator.Current is not BreadcrumbItem current || !IsAvailableOwned(current))
+        if (selectFinal || _navigator.Current is not BreadcrumbItem current || !IsAvailableItemControl(current))
         {
             _ = _navigator.SetCurrent(FinalAvailableItem());
         }
@@ -791,7 +793,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     {
         foreach (var item in Layout.PrimaryItems)
         {
-            if (IsAvailableOwned(item) && item.Bounds.Contains(cells))
+            if (IsAvailableItemControl(item) && item.Bounds.Contains(cells))
             {
                 return item;
             }
@@ -825,7 +827,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     [Pure]
     private bool IsPressTargetCurrent(BreadcrumbPressTarget target) =>
         target.LayoutGeneration == Layout.Generation &&
-        (target.IsOverflow ? _overflowButton.HasItems : IsAvailableOwned(target.Item!));
+        (target.IsOverflow ? _overflowButton.HasItems : IsAvailableItemControl(target.Item!));
 
     private void SetPressTargetPressed(BreadcrumbPressTarget target, bool pressed)
     {

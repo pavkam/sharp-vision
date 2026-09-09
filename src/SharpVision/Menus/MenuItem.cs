@@ -258,13 +258,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         Shortcut is { } gesture &&
         gesture.Matches(stroke);
 
-    /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key)
-    {
-        _ = key;
-        return FindAncestor<Menu>()?.InvokeAccessKey(this) ?? base.OnAccessKey(key);
-    }
-
     /// <summary>Gets or sets the command, check, or radio behavior.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is unknown.</exception>
     /// <exception cref="InvalidOperationException">The attached item is mutated off-dispatcher.</exception>
@@ -653,19 +646,6 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         _shortcutCountDispatcher?.DecrementLiveShortcutCount();
         _shortcutCountDispatcher = desired;
         _shortcutCountDispatcher?.IncrementLiveShortcutCount();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (focused)
-        {
-            var menu = FindAncestor<Menu>();
-            Debug.Assert(menu is not null, "A focused MenuItem belongs to a Menu.");
-            menu.NotifyItemFocused(this);
-        }
     }
 
     /// <inheritdoc/>

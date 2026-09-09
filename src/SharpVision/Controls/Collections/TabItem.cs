@@ -51,10 +51,4 @@ public sealed class TabItem: ContentControl
         }
     }
 
-    /// <inheritdoc/>
-    protected internal override void OnDirectDisposalRequested()
-    {
-        FindAncestor<TabControl>()?.RemoveItemForDisposal(this);
-        base.OnDirectDisposalRequested();
-    }
 }

@@ -623,6 +623,17 @@ public sealed class FocusManager: IDisposable
                             currentPath[index].PublishFocusEntered();
                         }
 
+                        // Every ancestor on the current path is notified here, nearest first, not
+                        // only the ones focus newly entered (that is the loop above): a move
+                        // between two items of the same list must still notify the list, even
+                        // though the list itself was already on both the previous and current path.
+                        for (var index = currentPath.Count - 2;
+                            index >= 0 && IsCommittedTargetValid(control);
+                            index--)
+                        {
+                            currentPath[index].OnDescendantFocused(control);
+                        }
+
                         if (IsCommittedTargetValid(control))
                         {
                             control.PublishGotFocus();

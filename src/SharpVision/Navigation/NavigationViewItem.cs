@@ -202,26 +202,6 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
     }
 
     /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key)
-    {
-        _ = key;
-        return FindNavigationView()?.InvokeAccessKey(this) == true;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (focused)
-        {
-            var view = FindNavigationView();
-            Debug.Assert(view is not null, "A focused NavigationViewItem belongs to a NavigationView.");
-            view.NotifyItemFocused(this);
-        }
-    }
-
-    /// <inheritdoc/>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
@@ -241,19 +221,4 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
 
     [Pure]
     internal NavigationView? FindNavigationView() => FindAncestor<NavigationView>();
-
-    /// <inheritdoc/>
-    protected internal override void OnDirectDisposalRequested()
-    {
-        if (FindAncestor<NavigationViewGroup>() is { } group)
-        {
-            group.RemoveItemForDisposal(this);
-        }
-        else
-        {
-            FindNavigationView()?.RemoveEntryForDisposal(this);
-        }
-
-        base.OnDirectDisposalRequested();
-    }
 }

@@ -93,6 +93,19 @@ focus-within throughout the transition. When there is no previous control or no
 new control (a release or the initial focus), the corresponding lifelines are
 simply omitted.
 
+Immediately after the `FocusEntered` lifeline above, `FocusManager` also calls
+`ControlBase.OnDescendantFocused(ControlBase)` on every ancestor of the new
+control, nearest first - including the common ancestor, which `FocusEntered`
+skips. Unlike `FocusEntered`, this runs on the complete current path every time
+focus commits, so a move between two descendants an ancestor already contained
+still notifies that ancestor. `ItemsControl` wires this into
+`OnItemFocused(ControlBase)`, resolving the nearest realized item control
+through `FindItemControl`; `ListView`, `Menu`, `CommandBar`, and `Breadcrumb`
+all use it to track which of their own realized items currently holds focus
+without each item relaying its own `OnFocusChanged` up to its owner. See
+[Control base APIs](../controls/control.md#lifecycle-and-events) and
+[ItemsControl](../controls/items-control.md#overview).
+
 ## Navigation
 
 `MoveNext()` and `MoveNext(reverse: true)` walk a deterministic tab order, and

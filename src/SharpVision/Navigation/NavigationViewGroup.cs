@@ -182,6 +182,23 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     internal void RemoveItemForDisposal(NavigationViewItem item) =>
         _ = RemoveItemCore(item, restorePresentation: false);
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Claims disposal of one of this group's own items before the walk can reach the owning
+    /// <see cref="NavigationView"/>, so a grouped item is detached through this group's own
+    /// removal path instead of the view's top-level entry path.
+    /// </remarks>
+    protected internal override bool OnDescendantDisposalRequested(ControlBase descendant)
+    {
+        if (descendant is NavigationViewItem item && _stack.Children.Contains(item))
+        {
+            RemoveItemForDisposal(item);
+            return true;
+        }
+
+        return base.OnDescendantDisposalRequested(descendant);
+    }
+
     /// <summary>Clears all sub-items.</summary>
     internal void ClearItemsCore()
     {
@@ -333,13 +350,6 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     }
 
     /// <inheritdoc/>
-    protected override bool OnAccessKey(Rune key)
-    {
-        _ = key;
-        return FindNavigationView()?.InvokeAccessKey(this) == true;
-    }
-
-    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
@@ -378,7 +388,6 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <inheritdoc/>
     protected internal override void OnDirectDisposalRequested()
     {
-        FindNavigationView()?.RemoveEntryForDisposal(this);
         _propertyOverrides.Dispose();
         base.OnDirectDisposalRequested();
     }

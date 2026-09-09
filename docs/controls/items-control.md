@@ -39,6 +39,33 @@ facts for selection and current-item repair instead of reconstructing the
 mutation from the final list; a consumer-derived owner has the same seam
 available for the same purpose.
 
+Beyond structural change notification, `ItemsControl` also wires three
+`ControlBase` ancestor hooks - `OnDescendantFocused`, `OnDescendantAccessKey`,
+and `OnDescendantDisposalRequested` - into item-scoped counterparts, so a
+derived owner reacts to what happened to one specific realized item instead of
+re-deriving that item from the wider descendant `ControlBase` reports.
+`FindItemControl(ControlBase descendant)` resolves the direct realized item
+control that owns a descendant: the descendant itself when it is already a
+realized item, or the ancestor whose own direct parent is the private host when
+the descendant is some control nested inside one. `OnItemFocused` and
+`OnItemAccessKey` fire through that resolution, so a caption or nested control
+gaining focus or matching an access key deep inside a realized item still
+reports the enclosing item. `OnItemDisposalRequested` fires only when the
+requesting control is itself a realized item - not merely owned by one - because
+it exists to let the owner detach the item being disposed through its own
+removal path, not to react to disposal somewhere inside an item's own content.
+Once `FindItemControl` resolves a descendant to one of this owner's items,
+`OnDescendantAccessKey` claims the match and reports what `OnItemAccessKey`
+returns, so the item's own local focus-then-activate fallback never also runs
+while a declined match still lets the next duplicate candidate handle the key.
+`ListView`, `Menu`, `CommandBar`, `Breadcrumb`, and `TabControl` all replace
+what used to be a `FindAncestor<TOwner>()`-and-relay override on every item type
+with one of these owner-side hooks instead.
+`IsAvailableItemControl(ControlBase item)` is the shared realized-item
+eligibility predicate - not disposed or disposing, still realized by this owner,
+and directly and effectively both visible and enabled - so a derived owner does
+not re-declare the same five-condition check for its own availability gates.
+
 An item owner whose realized items act together as one collective tab stop - a
 menu, a command bar, a breadcrumb path, or a similar roving-selection
 collection - calls `EnableOwnerFocusModel()` once, typically from its own
@@ -104,6 +131,11 @@ classDiagram
 | `MoveItemControl(int oldIndex, int newIndex)`                                                                                    | `void`                                              | —       | Protected internal; atomically reorders one realized control without detaching it.                                     |
 | `OnItemControlsChanged()`                                                                                                        | `void`                                              | —       | Protected virtual; responds after one complete realized-control snapshot is committed.                                 |
 | `OnItemControlsChanged(OwnedControlChange change)`                                                                               | `void`                                              | —       | Protected virtual; responds with the immutable committed delta; forwards to the parameterless overload by default.     |
+| `FindItemControl(ControlBase descendant)`                                                                                        | `ControlBase?`                                      | —       | Protected; resolves the direct realized item control that owns a descendant, or null when it owns none.                |
+| `OnItemFocused(ControlBase item)`                                                                                                | `void`                                              | No-op   | Protected virtual; wired from `OnDescendantFocused` through `FindItemControl`.                                         |
+| `OnItemAccessKey(ControlBase item, Rune key)`                                                                                    | `bool`                                              | `false` | Protected virtual; wired from `OnDescendantAccessKey` through `FindItemControl`.                                       |
+| `OnItemDisposalRequested(ControlBase item)`                                                                                      | `bool`                                              | `false` | Protected virtual; wired from `OnDescendantDisposalRequested`, only for a directly disposing realized item.            |
+| `IsAvailableItemControl(ControlBase item)`                                                                                       | `bool`                                              | —       | Protected; the shared realized-item eligibility predicate: not disposed or disposing, realized, visible, and enabled.  |
 | `EnableSelectedItemPressActivation(getSelectedTarget, isTargetAvailable, setTargetPressed, activateTarget, consumeWhenNoTarget)` | `void`                                              | —       | Protected; opts a one-focus item owner into the shared selected-face Space activation gesture.                         |
 | `HandleSelectedItemPressActivation(KeyEventArgs eventArgs)`                                                                      | `void`                                              | —       | Protected; routes one key event through selected-face Space activation when enabled.                                   |
 | `CancelSelectedItemPressActivation()`                                                                                            | `void`                                              | —       | Protected; cancels a held selected-face Space interaction without activation.                                          |

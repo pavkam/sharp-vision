@@ -136,19 +136,6 @@ internal sealed class ListItem: ContentControl, IOwnedChildDisposalObserver
     }
 
     /// <inheritdoc/>
-    protected override void OnFocusChanged(bool focused)
-    {
-        base.OnFocusChanged(focused);
-
-        if (focused)
-        {
-            var list = FindList();
-            Debug.Assert(list is not null, "A focused ListItem belongs to a ListView.");
-            list.NotifyItemFocused(this);
-        }
-    }
-
-    /// <inheritdoc/>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         if (eventArgs is KeyEventArgs { IsInitialKeyDown: true } key)

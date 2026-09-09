@@ -483,30 +483,28 @@ public sealed class CommandBar: ItemsControl, IStyled<CommandBarStyle>
         InvokeItem(item, cause);
     }
 
-    /// <summary>Focuses, selects, and routes a matched caption through its current plane.</summary>
-    /// <param name="item">The caption owner matched by access-key discovery.</param>
-    /// <param name="key">The matched scalar.</param>
-    /// <returns>True when the current owned item accepted the match.</returns>
-    internal bool InvokeAccessKey(CommandBarItem item, Rune key)
+    /// <inheritdoc/>
+    /// <remarks>Focuses, selects, and routes a matched caption through its current plane.</remarks>
+    protected override bool OnItemAccessKey(ControlBase item, Rune key)
     {
-        ArgumentNullException.ThrowIfNull(item);
         _ = key;
+        var commandBarItem = (CommandBarItem) item;
 
-        if (!IsAvailableItem(item))
+        if (!IsAvailableItem(commandBarItem))
         {
             return false;
         }
 
         _ = RequestFocus();
-        Select(item);
+        Select(commandBarItem);
 
-        if (!item.IsOverflowed)
+        if (!commandBarItem.IsOverflowed)
         {
-            item.InvokeFromProjection(ActivationCause.Keyboard);
+            commandBarItem.InvokeFromProjection(ActivationCause.Keyboard);
             return true;
         }
 
-        return OpenOverflow(item);
+        return OpenOverflow(commandBarItem);
     }
 
     /// <summary>Selects and focuses a semantic item when its primary pointer face is pressed.</summary>

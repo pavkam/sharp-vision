@@ -271,6 +271,53 @@ public abstract class ItemsControl: ControlBase
         return GetItemsHost().Children.IndexOf(control);
     }
 
+    /// <summary>Gets the direct realized item control that owns a descendant.</summary>
+    /// <param name="descendant">The non-null control to resolve, which may be a realized item
+    /// control itself or any of its own descendants.</param>
+    /// <returns>
+    /// The realized item control whose direct <see cref="ControlBase.Parent"/> is the private
+    /// presentation host and which is <paramref name="descendant"/> or one of its ancestors, or
+    /// null when <paramref name="descendant"/> is not, and is not owned by, a realized item
+    /// control - for example while it is still an ancestor search away from the host, or already
+    /// detached.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="descendant"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
+    protected ControlBase? FindItemControl(ControlBase descendant)
+    {
+        ArgumentNullException.ThrowIfNull(descendant);
+        var host = GetItemsHost();
+
+        for (var current = descendant; current is not null; current = current.Parent)
+        {
+            if (ReferenceEquals(current.Parent, host))
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Gets whether one realized item control remains fully eligible for interaction.</summary>
+    /// <param name="item">The non-null candidate, expected to be a realized item control.</param>
+    /// <returns>
+    /// True when <paramref name="item"/> is neither disposed nor disposing, remains realized by
+    /// this owner, and is directly and effectively both visible and enabled.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The presentation host is not available.</exception>
+    protected bool IsAvailableItemControl(ControlBase item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return !item.IsDisposed &&
+            !item.IsDisposing &&
+            IndexOfItemControl(item) >= 0 &&
+            item.Visibility == Visibility.Visible &&
+            item.EffectiveIsVisible &&
+            item.EffectiveIsEnabled;
+    }
+
     /// <summary>Inserts one detached realized control at a validated position.</summary>
     /// <param name="index">The insertion position from zero through <see cref="ItemControlCount"/>.</param>
     /// <param name="control">The non-null detached control.</param>
@@ -383,6 +430,82 @@ public abstract class ItemsControl: ControlBase
     /// </remarks>
     protected virtual void OnItemControlsChanged()
     {
+    }
+
+    /// <summary>Responds after one realized item control, or a descendant of one, committed
+    /// keyboard focus.</summary>
+    /// <param name="item">The realized item control that gained focus, or that owns the
+    /// descendant that did.</param>
+    /// <remarks>
+    /// Wired from <see cref="ControlBase.OnDescendantFocused"/> through <see cref="FindItemControl"/>,
+    /// replacing the per-item <c>FindAncestor&lt;TOwner&gt;()</c>-and-relay boilerplate a hand-rolled
+    /// item type would otherwise need for the same notification. The default implementation does
+    /// nothing.
+    /// </remarks>
+    protected virtual void OnItemFocused(ControlBase item) => _ = item;
+
+    /// <summary>Responds to a matched access key on one realized item control, or a descendant of
+    /// one.</summary>
+    /// <param name="item">The realized item control whose access key matched, or that owns the
+    /// descendant whose access key did.</param>
+    /// <param name="key">The matched Unicode scalar.</param>
+    /// <returns>
+    /// Whether this owner's own attempt to act on the match succeeded. This value is informational
+    /// only: <see cref="ControlBase.OnDescendantAccessKey"/> reports the access key handled the
+    /// moment it resolves <paramref name="item"/> at all, regardless of what this method returns,
+    /// because once an item is known to belong to this owner, this owner alone decides what
+    /// happens to it - the item's own default focus-then-activate fallback must never also run.
+    /// The default claims nothing and returns false.
+    /// </returns>
+    /// <remarks>
+    /// Wired from <see cref="ControlBase.OnDescendantAccessKey"/> through <see cref="FindItemControl"/>.
+    /// </remarks>
+    protected virtual bool OnItemAccessKey(ControlBase item, Rune key)
+    {
+        _ = item;
+        _ = key;
+        return false;
+    }
+
+    /// <summary>Responds to one realized item control's own direct disposal request.</summary>
+    /// <param name="item">The realized item control whose direct disposal was requested.</param>
+    /// <returns>True when this owner handled the request. The default handles nothing.</returns>
+    /// <remarks>
+    /// Wired from <see cref="ControlBase.OnDescendantDisposalRequested"/>, but only when the
+    /// requesting control is itself a realized item control - not merely owned by one - because
+    /// this notification exists to let the owner detach the item being disposed, not to react to
+    /// disposal happening somewhere inside an item's own content.
+    /// </remarks>
+    protected virtual bool OnItemDisposalRequested(ControlBase item)
+    {
+        _ = item;
+        return false;
+    }
+
+    /// <inheritdoc/>
+    protected internal override void OnDescendantFocused(ControlBase descendant)
+    {
+        if (FindItemControl(descendant) is { } item)
+        {
+            OnItemFocused(item);
+        }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Once <see cref="FindItemControl"/> resolves <paramref name="descendant"/> to one of this
+    /// owner's realized items, this claims the match and reports <see cref="OnItemAccessKey"/>'s
+    /// own result, so the item's default focus-then-activate fallback never also runs while a
+    /// declined match still lets the next duplicate candidate handle the key.
+    /// </remarks>
+    protected internal override bool? OnDescendantAccessKey(ControlBase descendant, Rune key) =>
+        FindItemControl(descendant) is { } item ? OnItemAccessKey(item, key) : null;
+
+    /// <inheritdoc/>
+    protected internal override bool OnDescendantDisposalRequested(ControlBase descendant)
+    {
+        ArgumentNullException.ThrowIfNull(descendant);
+        return ReferenceEquals(descendant.Parent, GetItemsHost()) && OnItemDisposalRequested(descendant);
     }
 
     /// <inheritdoc/>
