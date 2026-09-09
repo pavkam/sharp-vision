@@ -420,6 +420,87 @@ public sealed class ControlBaseSurfaceTests
         probe.IsPressed.ShouldBeFalse();
     }
 
+    /// <summary>Verifies a primary press-and-release inside the same sub-target activates that
+    /// target, on a control that composes targeted press activation over two disjoint
+    /// rectangles.</summary>
+    [Fact]
+    public async Task EnableTargetedPressActivation_WhenPressedInsideTargetAndReleasedInside_ActivatesThatTargetAsync()
+    {
+        // Arrange
+        var probe = new TargetedPressActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(probe, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.ActivatedTargets.ShouldBe([0]);
+        probe.LastActivationCause.ShouldBe(ActivationCause.Pointer);
+        probe.PressedTargets.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a primary press inside one sub-target that is released outside every
+    /// sub-target neither activates nor leaves the pressed visual committed.</summary>
+    [Fact]
+    public async Task EnableTargetedPressActivation_WhenReleasedOutside_DoesNotActivateAsync()
+    {
+        // Arrange
+        var probe = new TargetedPressActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(probe, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(probe, new Point(0, 1));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.ActivatedTargets.ShouldBeEmpty();
+        probe.LastActivationCause.ShouldBeNull();
+        probe.PressedTargets.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a target that stops reporting itself current while held - for example
+    /// because the owner's layout regenerated under the press - never activates on release,
+    /// mirroring the re-validation a targeted owner such as Breadcrumb relies on after a press
+    /// requests focus.</summary>
+    [Fact]
+    public async Task EnableTargetedPressActivation_WhenTargetStopsBeingCurrent_CancelsWithoutActivatingAsync()
+    {
+        // Arrange
+        var probe = new TargetedPressActivationProbe();
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(4, 2),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.MoveToAsync(probe, new Point(0, 0));
+        await surface.Pointer.PressAsync();
+
+        // Act
+        probe.IsTargetCurrentOverride = false;
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        probe.ActivatedTargets.ShouldBeEmpty();
+        probe.LastActivationCause.ShouldBeNull();
+    }
+
+    /// <summary>Verifies enabling targeted press activation after whole-control press activation
+    /// is already enabled throws, since the two capabilities share one composed state machine and
+    /// are mutually exclusive.</summary>
+    [Fact]
+    public void EnableTargetedPressActivation_WhenPressActivationAlreadyEnabled_Throws() =>
+        Should.Throw<InvalidOperationException>(
+            () => _ = new TargetedPressActivationProbe(enableWholeControlPressFirst: true));
+
     /// <summary>Verifies a primary press inside bounds starts a drag that stays reported until the
     /// matching release, on a control that composes drag directly.</summary>
     [Fact]

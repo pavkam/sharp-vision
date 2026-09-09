@@ -18,12 +18,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     private readonly BreadcrumbOverflowButton _overflowButton;
     private readonly StyleSlot<BreadcrumbStyle> _style;
     private BreadcrumbItem? _currentItem;
-    private BreadcrumbItem? _pressedItem;
     private long _currentGeneration;
     private long _layoutGeneration;
-    private long _pressedLayoutGeneration;
     private long _projectedCollectionGeneration = -1;
-    private bool _pressedOverflow;
 
     #region Construction and public state
 
@@ -48,6 +45,12 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         _navigator = new CurrentItemNavigator(CollectNavigableItems);
         Items = new BreadcrumbItemCollection(this);
         EnableOwnerFocusModel();
+        EnableTargetedPressActivation<BreadcrumbPressTarget>(
+            hitTarget: TryHitPressTarget,
+            targetBounds: PressTargetBounds,
+            isTargetCurrent: IsPressTargetCurrent,
+            setTargetPressed: SetPressTargetPressed,
+            activateTarget: ActivatePressTarget);
         _ = AddHandler(Events.Key, OnKeyRouted);
         _ = AddHandler(Events.Pointer, OnPointerRouted);
     }
@@ -165,9 +168,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
-        if (ReferenceEquals(_pressedItem, previous))
+        if (IsPressedItem(previous))
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
         }
 
         // The enabled owner focus model restores the outgoing item's IsFocusable/IsTabStop and
@@ -197,9 +200,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return false;
         }
 
-        if (ReferenceEquals(_pressedItem, item))
+        if (IsPressedItem(item))
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
         }
 
         if (!restorePresentation)
@@ -267,7 +270,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (!disposing)
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
         }
 
         var items = Items.ToArray();
@@ -432,9 +435,9 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         CollectionGeneration++;
 
-        if (ReferenceEquals(_pressedItem, item) && !IsAvailableOwned(item))
+        if (IsPressedItem(item) && !IsAvailableOwned(item))
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
         }
 
         if ((ReferenceEquals(_currentItem, item) && !IsAvailableOwned(item)) || _currentItem is null)
@@ -475,7 +478,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (windowChanged)
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
             Layout = candidate;
             // The host's outer slot can stay unchanged while the projected item window moves.
             // Force its containing arrange pass to apply the new per-item bounds instead of
@@ -780,92 +783,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
             return;
         }
 
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Action == PointerAction.Leave)
-        {
-            if (_pressedItem is not null || _pressedOverflow)
-            {
-                eventArgs.IsHandled = true;
-                CancelPointerPress();
-            }
-
-            return;
-        }
-
-        if (pointer.Cells is not { } cells)
-        {
-            return;
-        }
-
-        if (pointer.Action == PointerAction.Press && (pointer.Buttons & Buttons.Primary) != 0)
-        {
-            var item = HitPrimaryItem(cells);
-            var overflow = _overflowButton.Bounds.Contains(cells) && _overflowButton.HasItems;
-            var layoutGeneration = Layout.Generation;
-
-            if ((item is null && !overflow) || !Focus())
-            {
-                return;
-            }
-
-            item = item is not null &&
-                   layoutGeneration == Layout.Generation &&
-                   IsAvailableOwned(item) &&
-                   item.Bounds.Contains(cells)
-                ? item
-                : null;
-            overflow = overflow &&
-                       layoutGeneration == Layout.Generation &&
-                       _overflowButton.Bounds.Contains(cells) &&
-                       _overflowButton.HasItems;
-
-            if ((item is null && !overflow) || !CapturePointer())
-            {
-                return;
-            }
-
-            _pressedItem = item;
-            _pressedOverflow = overflow;
-            _pressedLayoutGeneration = layoutGeneration;
-            item?.SetPressed(true);
-            _overflowButton.SetPressed(overflow);
-            eventArgs.IsHandled = true;
-            return;
-        }
-
-        if (_pressedItem is null && !_pressedOverflow)
-        {
-            return;
-        }
-
-        eventArgs.IsHandled = true;
-        var sameGeneration = _pressedLayoutGeneration == Layout.Generation;
-        var itemInside = sameGeneration && _pressedItem is { } pressed && pressed.Bounds.Contains(cells);
-        var overflowInside = sameGeneration && _pressedOverflow && _overflowButton.Bounds.Contains(cells);
-        _pressedItem?.SetPressed(itemInside);
-        _overflowButton.SetPressed(overflowInside);
-
-        if (!PointerButtonTransition.IsPrimaryRelease(pointer))
-        {
-            return;
-        }
-
-        var activationItem = itemInside ? _pressedItem : null;
-        var activateOverflow = overflowInside;
-        CancelPointerPress();
-
-        if (activationItem is not null)
-        {
-            _ = TryActivateItem(
-                activationItem,
-                ActivationCause.Pointer,
-                activationItem.CaptureCommandForOwner());
-        }
-        else if (activateOverflow)
-        {
-            _overflowButton.Open();
-        }
+        HandlePressActivation(eventArgs);
     }
 
     [Pure]
@@ -882,29 +800,71 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
         return null;
     }
 
-    private void CancelPointerPress()
+    private bool TryHitPressTarget(Point cells, out BreadcrumbPressTarget target)
     {
-        var pressedItem = _pressedItem;
-        _pressedItem = null;
-        _pressedOverflow = false;
-
-        if (pressedItem is { IsDisposed: false, IsDisposing: false, TerminalDisposalStarted: false })
+        if (HitPrimaryItem(cells) is { } item)
         {
-            pressedItem.SetPressed(false);
+            target = new BreadcrumbPressTarget(item, isOverflow: false, Layout.Generation);
+            return true;
         }
 
-        if (!_overflowButton.IsDisposed &&
-            !_overflowButton.IsDisposing &&
-            !_overflowButton.TerminalDisposalStarted)
+        if (_overflowButton.Bounds.Contains(cells) && _overflowButton.HasItems)
         {
-            _overflowButton.SetPressed(false);
+            target = new BreadcrumbPressTarget(item: null, isOverflow: true, Layout.Generation);
+            return true;
         }
 
-        if (HasPointerCapture && !IsDisposed && !IsDisposing && !TerminalDisposalStarted)
+        target = default;
+        return false;
+    }
+
+    [Pure]
+    private Rect PressTargetBounds(BreadcrumbPressTarget target) =>
+        target.IsOverflow ? _overflowButton.Bounds : target.Item!.Bounds;
+
+    [Pure]
+    private bool IsPressTargetCurrent(BreadcrumbPressTarget target) =>
+        target.LayoutGeneration == Layout.Generation &&
+        (target.IsOverflow ? _overflowButton.HasItems : IsAvailableOwned(target.Item!));
+
+    private void SetPressTargetPressed(BreadcrumbPressTarget target, bool pressed)
+    {
+        if (target.IsOverflow)
         {
-            ReleasePointerCapture();
+            if (!_overflowButton.IsDisposed &&
+                !_overflowButton.IsDisposing &&
+                !_overflowButton.TerminalDisposalStarted)
+            {
+                _overflowButton.SetPressed(pressed);
+            }
+
+            return;
+        }
+
+        var item = target.Item;
+
+        if (item is { IsDisposed: false, IsDisposing: false, TerminalDisposalStarted: false })
+        {
+            item.SetPressed(pressed);
         }
     }
+
+    private void ActivatePressTarget(BreadcrumbPressTarget target, ActivationCause cause)
+    {
+        if (target.IsOverflow)
+        {
+            _overflowButton.Open();
+            return;
+        }
+
+        var item = target.Item!;
+        _ = TryActivateItem(item, cause, item.CaptureCommandForOwner());
+    }
+
+    [Pure]
+    private bool IsPressedItem(BreadcrumbItem item) =>
+        PressedTarget is BreadcrumbPressTarget { IsOverflow: false } target &&
+        ReferenceEquals(target.Item, item);
 
     /// <inheritdoc/>
     protected override void OnFocusChanged(bool focused)
@@ -913,7 +873,7 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
 
         if (!focused)
         {
-            CancelPointerPress();
+            CancelPressActivation(releaseCapture: true);
         }
     }
 
@@ -921,20 +881,20 @@ public sealed class Breadcrumb: ItemsControl, IStyled<BreadcrumbStyle>
     protected override void OnUnavailable(ReleaseReason reason)
     {
         base.OnUnavailable(reason);
-        CancelPointerPress();
+        CancelPressActivation(releaseCapture: true);
     }
 
     /// <inheritdoc/>
     protected override void OnLostPointerCapture(PointerCaptureLossReason reason)
     {
         base.OnLostPointerCapture(reason);
-        CancelPointerPress();
+        CancelPressActivation(releaseCapture: true);
     }
 
     /// <inheritdoc/>
     private protected override void OnItemsControlDisposing()
     {
-        CancelPointerPress();
+        CancelPressActivation(releaseCapture: true);
 
         if (ItemControlCount > 0)
         {

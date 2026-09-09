@@ -15,19 +15,19 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     private int _pageIndex = -1;
     private ulong _layoutGeneration;
     private readonly CallbackTransitionStream _pageTransitions = new();
-    private PagerLayoutTarget? _pressedTarget;
-    private ulong _pressedLayoutGeneration;
     private readonly StyleSlot<PagerStyle> _style;
 
     /// <summary>Initializes an empty, focusable Pager outside the Tab sequence.</summary>
     public Pager()
     {
         _style = InitializeStyle(PagerStyle.Definition);
-        EnablePressActivation(
-            bounds: () => _pressedTarget?.Bounds ?? default,
-            activate: ActivatePressedTarget,
-            isAvailable: IsPressedTargetCurrent,
-            canCompleteSpace: IsPressedTargetCurrent);
+        EnableTargetedPressActivation<PagerLayoutTarget>(
+            hitTarget: TryGetInteractiveTarget,
+            targetBounds: static target => target.Bounds,
+            isTargetCurrent: IsTargetCurrent,
+            setTargetPressed: (_, pressed) => SetPressed(pressed),
+            activateTarget: (target, cause) => _ = CommitPageIndex(target.PageIndex, cause),
+            isAvailable: () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible && PageCount > 1);
         IsFocusable = true;
         IsTabStop = true;
         TabNavigation = TabNavigation.None;
@@ -79,7 +79,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
             if (previous != field && !IsDisposed)
             {
-                CaptureFailure(CancelPointerInteraction, ref failure);
+                CaptureFailure(() => CancelPressActivation(releaseCapture: true), ref failure);
             }
 
             failure?.Throw();
@@ -100,7 +100,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
 
             if (!Equals(previous, _style.Local))
             {
-                CaptureFailure(CancelPointerInteraction, ref failure);
+                CaptureFailure(() => CancelPressActivation(releaseCapture: true), ref failure);
             }
 
             failure?.Throw();
@@ -155,7 +155,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     /// <inheritdoc/>
     protected override void ArrangeOverride(Rect bounds)
     {
-        CancelPointerInteraction();
+        CancelPressActivation(releaseCapture: true);
         _layoutGeneration++;
         LayoutSnapshot = CreateLayout(bounds.Width, bounds, _layoutGeneration);
     }
@@ -206,9 +206,9 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             {
                 HandleKey(key);
             }
-            else if (eventArgs is PointerEventArgs pointer)
+            else if (eventArgs is PointerEventArgs)
             {
-                HandlePointer(pointer);
+                HandlePressActivation(eventArgs);
             }
         }
 
@@ -230,8 +230,6 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     {
         _ = _pageTransitions.Commit(this);
         base.OnUnavailable(reason);
-        _pressedTarget = null;
-        _pressedLayoutGeneration = 0;
 
         if (reason == ReleaseReason.Disposed)
         {
@@ -248,7 +246,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
             return;
         }
 
-        CancelPointerInteraction();
+        CancelPressActivation(releaseCapture: true);
         var previousPageIndex = _pageIndex;
         var previousCanTabStop = CanTabStop;
         var pageIndex = pageCount == 0
@@ -298,7 +296,7 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     private bool CommitPageIndex(int pageIndex, ActivationCause cause)
     {
         VerifyMutable();
-        CancelPointerInteraction();
+        CancelPressActivation(releaseCapture: true);
         var previousPageIndex = _pageIndex;
 
         if (!SetTransitionProperty(
@@ -366,32 +364,6 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         }
     }
 
-    private void HandlePointer(PointerEventArgs eventArgs)
-    {
-        var pointer = eventArgs.Pointer;
-
-        if (pointer.Action == PointerAction.Press)
-        {
-            if ((pointer.Buttons & Buttons.Primary) == 0 ||
-                pointer.Cells is not { } cells ||
-                !TryGetInteractiveTarget(cells, out var target))
-            {
-                return;
-            }
-
-            _pressedTarget = target;
-            _pressedLayoutGeneration = LayoutSnapshot.Generation;
-        }
-
-        HandlePressActivation(eventArgs);
-
-        if (pointer.Action is PointerAction.Release or PointerAction.Leave)
-        {
-            _pressedTarget = null;
-            _pressedLayoutGeneration = 0;
-        }
-    }
-
     private bool TryGetInteractiveTarget(Point cells, out PagerLayoutTarget target)
     {
         if (!IsLayoutSnapshotCurrent())
@@ -413,19 +385,13 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
         return false;
     }
 
-    private bool IsPressedTargetCurrent() =>
-        !IsDisposed &&
-        EffectiveIsEnabled &&
-        EffectiveIsVisible &&
-        PageCount > 1 &&
+    private bool IsTargetCurrent(PagerLayoutTarget target) =>
         IsLayoutSnapshotCurrent() &&
-        _pressedTarget is { } pressed &&
-        _pressedLayoutGeneration == LayoutSnapshot.Generation &&
         LayoutSnapshot.Targets.Any(candidate =>
             candidate.IsEnabled &&
-            candidate.Kind == pressed.Kind &&
-            candidate.PageIndex == pressed.PageIndex &&
-            candidate.Bounds == pressed.Bounds);
+            candidate.Kind == target.Kind &&
+            candidate.PageIndex == target.PageIndex &&
+            candidate.Bounds == target.Bounds);
 
     // Page and geometry-affecting style commits mark measure/arrange dirty before publishing
     // callbacks. Treat that pending phase as an immediate identity boundary so reentrant input
@@ -433,28 +399,6 @@ public sealed class Pager: ControlBase, IStyled<PagerStyle>
     private bool IsLayoutSnapshotCurrent() =>
         LayoutSnapshot.Generation == _layoutGeneration &&
         (Pending & (Invalidation.Measure | Invalidation.Arrange)) == Invalidation.None;
-
-    private void ActivatePressedTarget(ActivationCause cause)
-    {
-        if (_pressedTarget is not { } target || !IsPressedTargetCurrent())
-        {
-            return;
-        }
-
-        _ = CommitPageIndex(target.PageIndex, cause);
-    }
-
-    private void CancelPointerInteraction()
-    {
-        if (_pressedTarget is null)
-        {
-            return;
-        }
-
-        CancelPressActivation(releaseCapture: true);
-        _pressedTarget = null;
-        _pressedLayoutGeneration = 0;
-    }
 
     private PagerLayout CreateLayout(int? availableWidth, Rect bounds, ulong generation)
     {

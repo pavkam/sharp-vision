@@ -28,8 +28,12 @@ own popups. The internal `ListItem` is one such control: it calls
 `EnablePressActivation` while keeping
 [`ContentControl`](content-control.md#overview)'s replaceable `Content` edge for
 realized template output, since it already derives from `ContentControl` for
-that reason. `Expander`, `Pager`, the internal `InfoBarDismissButton`, and
+that reason. `Expander`, the internal `InfoBarDismissButton`, and
 `NavigationViewGroup` do the same, each for its own non-`InputBase` public base.
+`Pager` composes the targeted variant,
+[`EnableTargetedPressActivation<TTarget>`](control.md#api), instead: its face
+renders several independently pressable page slots rather than one whole-control
+target.
 
 Concrete controls implement `Activate(ActivationCause)`. `Button`, `CheckBox`,
 `RadioButton`, `HyperlinkButton`, and `MenuItem` call `EnablePressActivation`,
@@ -152,10 +156,14 @@ every control described on this page as well as `ComboBox`, `DateInput`, and
 `DateTimeInput`, each of which enables it directly. `EnablePressActivation`
 lives on `ControlBase`, not `InputBase`, precisely so a control whose whole face
 activates on press can call it without deriving `InputBase` at all: `Expander`,
-`ListItem`, `Pager`, the internal `InfoBarDismissButton`, and
-`NavigationViewGroup` do exactly that, each from a different public base
-(`HeaderedContentControl`, `ContentControl`, `ControlBase`, `ControlBase`, and
-`ControlBase` respectively) for its own authoring role. In every case the
+`ListItem`, the internal `InfoBarDismissButton`, and `NavigationViewGroup` do
+exactly that, each from a different public base (`HeaderedContentControl`,
+`ContentControl`, `ControlBase`, and `ControlBase` respectively) for its own
+authoring role. `Pager` composes the same underlying state machine through
+[`EnableTargetedPressActivation<TTarget>`](control.md#api) instead, since its
+face renders several independently pressable page slots rather than one
+whole-control target; see [Breadcrumb](navigation/breadcrumb.md) and
+[Pager](navigation/pager.md) for that variant's own contract. In every case the
 behavior owns no control-tree state and operates only through the protected
 focus and capture boundaries, keeping the public inheritance role about
 replaceable content, rather than using inheritance merely to reuse event

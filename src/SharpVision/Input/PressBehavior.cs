@@ -7,7 +7,7 @@ using SharpVision.Terminal.Input;
 
 /// <summary>Composes press semantics into a control without imposing a control inheritance role.</summary>
 /// <remarks>Consumers compose it; raw pointer routing never owns semantic pressed state.</remarks>
-internal sealed class PressBehavior: IControlLifecycleParticipant
+internal sealed class PressBehavior: IPressActivationBehavior
 {
     private readonly Func<Rect> _bounds;
     private readonly Func<bool> _isAvailable;
@@ -97,6 +97,9 @@ internal sealed class PressBehavior: IControlLifecycleParticipant
     public void CaptureLost() => Cancel(releaseCapture: false);
 
     public void Unavailable() => Cancel(releaseCapture: false);
+
+    /// <inheritdoc/>
+    public object? PressedTarget => null;
 
     void IControlLifecycleParticipant.CaptureLost(PointerCaptureLossReason reason)
     {

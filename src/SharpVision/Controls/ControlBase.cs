@@ -8066,7 +8066,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
 
     #region Press and drag activation
 
-    private PressBehavior? _press;
+    private IPressActivationBehavior? _press;
     private DragBehavior? _drag;
 
     /// <summary>Gets the rectangle press interaction (pointer press/drag/release and hit testing
@@ -8104,8 +8104,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <see cref="SetPressed"/>; supply this only when a concrete control's pressed visual differs
     /// from the whole-control pressed state, such as a composed affordance that presses only part
     /// of its owner's face.</param>
-    /// <exception cref="InvalidOperationException">Press activation is already enabled, or the
-    /// attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="InvalidOperationException">Press activation - this method or
+    /// <see cref="EnableTargetedPressActivation{TTarget}"/> - is already enabled, or the attached
+    /// control is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
     protected void EnablePressActivation(
         Func<Rect>? bounds = null,
@@ -8136,6 +8137,69 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         RegisterLifecycleParticipant(_press);
     }
 
+    /// <summary>Opts into the shared pointer-press interaction for an owner whose face renders
+    /// several independently pressable sub-targets - a breadcrumb path's items and overflow
+    /// trigger, or a pager's page slots - instead of a single whole-control target.</summary>
+    /// <typeparam name="TTarget">The pressable target type. A reference type or a value type.</typeparam>
+    /// <param name="hitTarget">Resolves the target at a pointer location in absolute cells,
+    /// following the <c>TryGetValue</c> shape so one delegate type serves a reference-typed or
+    /// value-typed <typeparamref name="TTarget"/> alike. Evaluated once per primary pointer press;
+    /// the resolved target - or its absence - is retained for the rest of that press gesture.</param>
+    /// <param name="targetBounds">Resolves the rectangle a resolved target is pressed and released
+    /// against.</param>
+    /// <param name="isTargetCurrent">Reports whether a previously resolved target is still a valid
+    /// press target, for example because the owner's layout has not since regenerated in a way
+    /// that invalidates it.</param>
+    /// <param name="setTargetPressed">Commits the pressed appearance for a resolved target.</param>
+    /// <param name="activateTarget">Runs the completed activation for a resolved target.</param>
+    /// <param name="requestFocus">Requests focus for the interaction. Defaults to
+    /// <see cref="RequestFocus"/>; supply this only when a concrete control's press must focus a
+    /// different owner than itself.</param>
+    /// <param name="isAvailable">Reports whether press interaction can currently start or continue,
+    /// independent of any resolved target. Defaults to <c>!IsDisposed &amp;&amp;
+    /// EffectiveIsEnabled &amp;&amp; EffectiveIsVisible</c>; supply this only when a concrete
+    /// control's availability adds further conditions beyond that default.</param>
+    /// <remarks>
+    /// Keyboard activation stays the owning control's own responsibility: this capability only
+    /// resolves and tracks a pointer-pressed target, so a concrete control that also activates a
+    /// target from Enter or Space continues to route those keys itself instead of through
+    /// <see cref="HandlePressActivation"/>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException"><see cref="EnablePressActivation"/> or this
+    /// method is already enabled, or the attached control is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The control is disposed.</exception>
+    protected void EnableTargetedPressActivation<TTarget>(
+        TargetHitTest<TTarget> hitTarget,
+        Func<TTarget, Rect> targetBounds,
+        Func<TTarget, bool> isTargetCurrent,
+        Action<TTarget, bool> setTargetPressed,
+        Action<TTarget, ActivationCause> activateTarget,
+        Func<bool>? requestFocus = null,
+        Func<bool>? isAvailable = null)
+        where TTarget : notnull
+    {
+        VerifyMutable();
+
+        if (_press is not null)
+        {
+            throw new InvalidOperationException("Press activation is already enabled.");
+        }
+
+        _press = new TargetedPressBehavior<TTarget>(
+            hitTarget,
+            targetBounds,
+            isTargetCurrent,
+            setTargetPressed,
+            activateTarget,
+            isAvailable ?? (() => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible),
+            requestFocus ?? RequestFocus,
+            CapturePointer,
+            () => HasPointerCapture,
+            ReleasePointerCapture,
+            () => Capabilities.KeyReleaseEvents.Authoritative);
+        RegisterLifecycleParticipant(_press);
+    }
+
     /// <summary>Routes one event through the press-activation state machine, if enabled.</summary>
     /// <param name="e">The event to evaluate.</param>
     protected void HandlePressActivation(RoutedEventArgs e) => _press?.Handle(e);
@@ -8161,6 +8225,20 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             _press?.Unavailable();
         }
     }
+
+    /// <summary>Gets the sub-target currently pressed through
+    /// <see cref="EnableTargetedPressActivation{TTarget}"/>, boxed as its declared
+    /// <c>TTarget</c>; null when targeted press activation is not enabled, when whole-control
+    /// <see cref="EnablePressActivation"/> is enabled instead, or when no press is currently
+    /// held.</summary>
+    /// <remarks>
+    /// A concrete control that composes several pressable sub-targets reads this only when it
+    /// needs the currently pressed target from outside the <c>setTargetPressed</c> or
+    /// <c>activateTarget</c> callbacks supplied to <see cref="EnableTargetedPressActivation{TTarget}"/>
+    /// - for example, to decide whether a structural mutation elsewhere in its owned collection
+    /// affects the specific target a user is mid-press on, as opposed to some other target.
+    /// </remarks>
+    protected object? PressedTarget => _press?.PressedTarget;
 
     /// <summary>Completes one validated activation in a concrete control that enabled press
     /// activation.</summary>

@@ -464,6 +464,7 @@ namespace SharpVision.Controls
         protected virtual string PopupOpenPropertyName { get; }
         protected ulong PopupSessionGeneration { get; }
         protected ulong PopupTransitionVersion { get; }
+        protected object? PressedTarget { get; }
         protected virtual bool ProvidesContinuousBackground { get; }
         protected virtual bool ReceivesInheritedSelectionState { get; }
         protected virtual bool RequiresCompleteRender { get; }
@@ -558,6 +559,8 @@ namespace SharpVision.Controls
                     bool markEnterHandledWithoutAcceptance = false,
                     bool enterRequiresActivationEligibleModifiers = false) { }
         protected void EnablePressActivation(System.Func<SharpVision.Terminal.Geometry.Rect>? bounds = null, System.Action<SharpVision.Input.ActivationCause>? activate = null, System.Func<bool>? isAvailable = null, System.Func<bool>? canCompleteSpace = null, System.Func<bool>? requestFocus = null, System.Action<bool>? setPressed = null) { }
+        protected void EnableTargetedPressActivation<TTarget>(SharpVision.Input.TargetHitTest<TTarget> hitTarget, System.Func<TTarget, SharpVision.Terminal.Geometry.Rect> targetBounds, System.Func<TTarget, bool> isTargetCurrent, System.Action<TTarget, bool> setTargetPressed, System.Action<TTarget, SharpVision.Input.ActivationCause> activateTarget, System.Func<bool>? requestFocus = null, System.Func<bool>? isAvailable = null)
+            where TTarget :  notnull { }
         protected SharpVision.Input.ModalScope? EnterOwnedModal(SharpVision.Input.ModalSession session, SharpVision.Input.OutsideInteraction outsideInteraction, SharpVision.Controls.ControlBase? initialFocus, System.Func<bool>? isCurrent = null, System.Action? rollback = null) { }
         protected void EstablishTextSelectionCaret() { }
         protected T? FindAncestor<T>()
@@ -3809,6 +3812,7 @@ namespace SharpVision.Input
         Cycle = 2,
         None = 3,
     }
+    public delegate bool TargetHitTest<TTarget>(SharpVision.Terminal.Geometry.Point cells, out TTarget target);
     public enum TemporalSegmentKind
     {
         Month = 0,
