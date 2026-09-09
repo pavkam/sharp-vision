@@ -293,7 +293,8 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
 
     #endregion
 
-    private protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
+    /// <inheritdoc/>
+    protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
 
     /// <inheritdoc/>
     protected override WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
@@ -404,7 +405,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     protected override void OnListSelectionChanged() => PopulateFileNameFromSelection();
 
     /// <inheritdoc/>
-    private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
+    protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
     {
         _ = cause;
         TrySetFileName(entry.Name);
@@ -613,7 +614,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     #region Loading lifecycle
 
     /// <inheritdoc/>
-    private protected override void OnLoadCommitted(FilePickerEntry[] entries)
+    protected override void OnLoadCommitted(FilePickerEntry[] entries)
     {
     }
 

@@ -3208,6 +3208,7 @@ namespace SharpVision.Dialogs
     public abstract class FileDialogBase<TResult> : SharpVision.Dialogs.Dialog<TResult>
         where TResult :  class
     {
+        protected FileDialogBase(SharpVision.Dialogs.IFilePickerFileSystem fileSystem, string title, string initialDirectory, bool showHidden, int filterIndex, int maxVisibleRows, int nonListWindowRows, System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerFilter> filters, SharpVision.Controls.Collections.ListSelectionMode selectionMode, TResult cancelledResult) { }
         public SharpVision.Controls.Input.ButtonStyle ActualCancelButtonStyle { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFileListScrollBarStyle { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFilterScrollBarStyle { get; }
@@ -3220,6 +3221,7 @@ namespace SharpVision.Dialogs
         protected SharpVision.Controls.Collections.ListView FileList { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? FileListScrollBarStyle { get; set; }
         protected SharpVision.Controls.Layout.Dock FileListSurface { get; }
+        protected SharpVision.Dialogs.IFilePickerFileSystem FileSystem { get; }
         public int FilterIndex { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle? FilterScrollBarStyle { get; set; }
         protected SharpVision.Controls.Input.CheckBox HiddenToggle { get; }
@@ -3235,8 +3237,10 @@ namespace SharpVision.Dialogs
         public string Status { get; }
         protected SharpVision.Controls.Display.Text StatusText { get; }
         protected abstract SharpVision.Controls.Layout.Grid CreateContent();
+        protected SharpVision.Controls.Layout.Grid CreateFileListArea() { }
         protected SharpVision.Controls.Layout.Grid CreateFooter(SharpVision.Controls.Input.Button acceptButton) { }
         protected SharpVision.Controls.Layout.Grid CreateLocationBar() { }
+        protected SharpVision.Controls.Layout.Grid CreateMetadata() { }
         protected abstract SharpVision.Controls.ControlBase GetInitialLoadFocusTarget();
         protected abstract SharpVision.Controls.ControlBase GetModalFocusTarget();
         protected void Initialize() { }
@@ -3244,8 +3248,12 @@ namespace SharpVision.Dialogs
         protected override void OnAttached() { }
         protected override void OnDetached() { }
         protected override void OnDisposing() { }
+        protected abstract void OnFileItemInvoked(SharpVision.Dialogs.FilePickerEntry entry, SharpVision.Input.ActivationCause cause);
         protected abstract void OnListSelectionChanged();
+        protected abstract void OnLoadCommitted(SharpVision.Dialogs.FilePickerEntry[] entries);
+        protected abstract SharpVision.Dialogs.FileDialogStyle ResolveDialogStyle();
         protected void SetStatus(string value) { }
+        protected virtual bool TryAcceptTypedDirectory(string canonicalDirectory) { }
         protected abstract void WireAcceptInteraction();
     }
     public abstract class FileDialogStyle : SharpVision.Styling.WindowStyle, System.IEquatable<SharpVision.Dialogs.FileDialogStyle>
@@ -3271,8 +3279,12 @@ namespace SharpVision.Dialogs
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
         protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
         protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
+        protected override void OnFileItemInvoked(SharpVision.Dialogs.FilePickerEntry entry, SharpVision.Input.ActivationCause cause) { }
         protected override void OnListSelectionChanged() { }
+        protected override void OnLoadCommitted(SharpVision.Dialogs.FilePickerEntry[] entries) { }
+        protected override SharpVision.Dialogs.FileDialogStyle ResolveDialogStyle() { }
         protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
+        protected override bool TryAcceptTypedDirectory(string canonicalDirectory) { }
         protected override void WireAcceptInteraction() { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.FilePickerResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.FilePickerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
@@ -3280,6 +3292,15 @@ namespace SharpVision.Dialogs
     {
         public FilePickerDialogStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness rootPadding, int contentSpacing, SharpVision.Styling.Border fileListBorder) { }
         public new static SharpVision.Dialogs.FilePickerDialogStyle Default { get; }
+    }
+    public sealed class FilePickerEntry
+    {
+        public string FullPath { get; }
+        public bool IsDirectory { get; }
+        public bool IsHidden { get; }
+        public string Name { get; }
+        public override bool Equals(object? obj) { }
+        public override int GetHashCode() { }
     }
     public sealed class FilePickerFilter
     {
@@ -3335,6 +3356,14 @@ namespace SharpVision.Dialogs
         Files = 0,
         Directories = 1,
         FilesAndDirectories = 2,
+    }
+    public interface IFilePickerFileSystem
+    {
+        bool DirectoryExists(string path);
+        bool FileExists(string path);
+        System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerEntry>> GetEntriesAsync(string directory, SharpVision.Dialogs.FilePickerFilter filter, bool showHidden, System.Threading.CancellationToken cancellationToken);
+        string GetFullPath(string path);
+        string? GetParent(string path);
     }
     public sealed class MessageBox : SharpVision.Dialogs.Dialog<SharpVision.Dialogs.MessageBoxResult>, SharpVision.Controls.IStyled<SharpVision.Dialogs.MessageBoxStyle>
     {
@@ -3414,7 +3443,10 @@ namespace SharpVision.Dialogs
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
         protected override SharpVision.Controls.ControlBase GetInitialLoadFocusTarget() { }
         protected override SharpVision.Controls.ControlBase GetModalFocusTarget() { }
+        protected override void OnFileItemInvoked(SharpVision.Dialogs.FilePickerEntry entry, SharpVision.Input.ActivationCause cause) { }
         protected override void OnListSelectionChanged() { }
+        protected override void OnLoadCommitted(SharpVision.Dialogs.FilePickerEntry[] entries) { }
+        protected override SharpVision.Dialogs.FileDialogStyle ResolveDialogStyle() { }
         protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
         protected override void WireAcceptInteraction() { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.SaveFileResult> ShowAsync(SharpVision.Controls.ControlBase owner, SharpVision.Dialogs.SaveFileOptions? options = null, System.Threading.CancellationToken cancellationToken = default) { }

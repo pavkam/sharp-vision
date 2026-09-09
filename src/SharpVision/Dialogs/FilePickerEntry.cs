@@ -7,8 +7,14 @@ namespace SharpVision.Dialogs;
 /// Two entries are the same identity only when <see cref="FullPath"/> matches under full ordinal
 /// comparison: paths differing only by case are different entries, so that case-variant siblings
 /// (e.g. "readme.txt" and "Readme.txt") can coexist on case-sensitive filesystems without colliding
-/// under selection-preserving reload remapping.</summary>
-internal sealed class FilePickerEntry
+/// under selection-preserving reload remapping. <see cref="FileDialogBase{TResult}"/> passes these
+/// through <see cref="FileDialogBase{TResult}.OnLoadCommitted(FilePickerEntry[])"/> and
+/// <see cref="FileDialogBase{TResult}.OnFileItemInvoked(FilePickerEntry, ActivationCause)"/>,
+/// so a derivative outside this assembly needs the type and its properties, but never constructs
+/// one itself: only <see cref="IFilePickerFileSystem.GetEntriesAsync"/> implementations do, which is
+/// why the constructor stays internal to this assembly and its test friends.</summary>
+[PublicAPI]
+public sealed class FilePickerEntry
 {
     /// <summary>Initializes one canonical directory or file entry.</summary>
     /// <param name="name">The non-null, non-blank basename.</param>
@@ -17,7 +23,7 @@ internal sealed class FilePickerEntry
     /// <param name="isHidden">Whether the entry follows hidden-name or hidden-attribute policy.</param>
     /// <exception cref="ArgumentNullException">A string argument is null.</exception>
     /// <exception cref="ArgumentException">The name is blank or the path is blank or not fully qualified.</exception>
-    public FilePickerEntry(string name, string fullPath, bool isDirectory, bool isHidden)
+    internal FilePickerEntry(string name, string fullPath, bool isDirectory, bool isHidden)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(fullPath);

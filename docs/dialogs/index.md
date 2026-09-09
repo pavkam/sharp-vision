@@ -13,6 +13,13 @@ contracts as the surfaces your application builds itself.
 | [SaveFileDialog](save-file-dialog.md#overview)     | Choose one canonical path for a later save, with optional overwrite consent. |
 | [MessageBox](message-box.md#overview)              | Present a short modal decision and return a typed semantic result.           |
 
+`FilePickerDialog` and `SaveFileDialog` both derive from
+[`FileDialogBase<TResult>`](file-dialog-base.md#overview), the shared abstract
+base for a modal dialog that browses one directory at a time: it owns the
+location bar, the bordered file list, filtering, hidden entries, and the guarded
+asynchronous directory-load pipeline, so a third-party file dialog can derive
+from it directly instead of re-deriving that lifecycle from `Dialog<TResult>`.
+
 `Dialog<TResult>` derives directly from `Window`, so the dialog object you
 construct is the same object that is retained, drawn, made modal, and disposed.
 Each dialog's asynchronous helper first publishes `CloseRequested`; an unvetoed
@@ -60,8 +67,9 @@ dialog retains control of its own Button alignment and semantics. A dialog type
 defined outside this assembly builds the identical action bar through the
 protected static
 `CreateActionBar(ControlBase actions, Button[] buttons, out Separator separator)`,
-the same way `FileDialogBase` and `MessageBox` do; the internal action-host type
-it composes internally never appears in the signature.
+the same way [`FileDialogBase`](file-dialog-base.md#overview) and `MessageBox`
+do; the internal action-host type it composes internally never appears in the
+signature.
 
 Dialog types defined outside this assembly reach this same lifecycle through a
 `protected` `PresentAsync` overload:

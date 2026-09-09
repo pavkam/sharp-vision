@@ -50,7 +50,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <param name="filters">The owned filter snapshot.</param>
     /// <param name="selectionMode">The list selection mode.</param>
     /// <param name="cancelledResult">The result instance representing cancellation.</param>
-    private protected FileDialogBase(
+    /// <remarks>
+    /// A derivative calls this constructor first, then creates its own dialog-specific controls
+    /// (an accept Button, a filename input, or whatever else its own layout needs), then calls
+    /// <see cref="Initialize"/> exactly once to retain the composed content and wire the shared
+    /// interaction handlers. Everything this constructor allocates - the up Button, <see
+    /// cref="PathInput"/>, <see cref="FileList"/>, <see cref="FileListSurface"/>, the filter
+    /// ComboBox, <see cref="HiddenToggle"/>, <see cref="StatusText"/>, and the Cancel Button - is
+    /// available to read and compose immediately after the call returns; only <see
+    /// cref="Initialize"/> actually attaches any of it to <see cref="ContentControl.Content"/>.
+    /// </remarks>
+    protected FileDialogBase(
         IFilePickerFileSystem fileSystem,
         string title,
         string initialDirectory,
@@ -309,8 +319,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <summary>Gets the shared directory path input control.</summary>
     protected TextInput PathInput { get; }
 
-    /// <summary>Gets the filesystem abstraction.</summary>
-    private protected IFilePickerFileSystem FileSystem { get; }
+    /// <summary>Gets the canonical path and enumeration source every navigation, typed-path, and
+    /// directory-load operation in this base runs through. A derivative reaches the same source
+    /// (for example, to canonicalize or test a path before completing) instead of calling
+    /// <see cref="System.IO"/> directly, which would bypass the deterministic fake a test
+    /// substitutes through the constructor's <c>fileSystem</c> parameter.</summary>
+    protected IFilePickerFileSystem FileSystem { get; }
 
     /// <summary>Gets the status text last committed by a successful directory load.</summary>
     protected string SnapshotStatus { get; private set; }
@@ -392,8 +406,12 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <summary>Resolves the concrete dialog's own complete resolved aggregate style. Called by the
     /// shared base to apply the frame-adjacent structural presentation every layout pass, since a
     /// concrete style type (<c>FilePickerDialogStyle</c>/<c>SaveFileDialogStyle</c>) is owned by the
-    /// derived dialog, not this generic base.</summary>
-    private protected abstract FileDialogStyle ResolveDialogStyle();
+    /// derived dialog, not this generic base. The base calls this once from <see cref="Initialize"/>
+    /// and again from every <see cref="MeasureOverride(Constraint)"/> pass, so a derivative's
+    /// implementation must be cheap and side-effect free - typically a single resolved-style
+    /// property read, exactly as <c>FilePickerDialog</c> and <c>SaveFileDialog</c> both implement
+    /// it.</summary>
+    protected abstract FileDialogStyle ResolveDialogStyle();
 
     private void ApplyDialogStyle(FileDialogStyle style)
     {
@@ -430,9 +448,13 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         return location;
     }
 
-    /// <summary>Creates the shared metadata row containing the filter picker and trailing status.</summary>
+    /// <summary>Creates the shared metadata row containing the filter picker and trailing status.
+    /// A derivative never needs to call this directly - <see cref="CreateFileListArea"/> already
+    /// composes it directly below the bordered file list - but it stays available on its own for a
+    /// derivative that wants the filter/status row without <see cref="CreateFileListArea"/>'s
+    /// bordered list above it.</summary>
     /// <returns>The non-null full-width metadata grid.</returns>
-    private protected Grid CreateMetadata()
+    protected Grid CreateMetadata()
     {
         var metadata = new Grid
         {
@@ -453,9 +475,13 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
         return metadata;
     }
 
-    /// <summary>Creates the bordered file list followed immediately by its filter and status row.</summary>
+    /// <summary>Creates the bordered file list followed immediately by its filter and status row.
+    /// Both <c>FilePickerDialog</c> and <c>SaveFileDialog</c> place this directly below their own
+    /// <see cref="CreateLocationBar"/> row and above their own dialog-specific rows (a filename
+    /// input, in <c>SaveFileDialog</c>'s case), so a derivative typically calls this once from its
+    /// own <see cref="CreateContent"/> implementation the same way.</summary>
     /// <returns>The non-null full-width file-list area.</returns>
-    private protected Grid CreateFileListArea()
+    protected Grid CreateFileListArea()
     {
         var metadata = CreateMetadata();
         var listArea = new Grid
@@ -538,10 +564,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// <summary>Called when the list selection changes.</summary>
     protected abstract void OnListSelectionChanged();
 
-    /// <summary>Called when a file (non-directory) entry is invoked in the list.</summary>
+    /// <summary>Called when a file (non-directory) entry is invoked in the list - by Enter, a
+    /// double-click, or whatever <see cref="UiListView.ItemInvocation"/> the shared <see
+    /// cref="FileList"/> is configured with. A directory entry never reaches this hook: the base
+    /// always treats it as a navigation target and calls <see cref="Navigate"/> instead, so a
+    /// derivative implementing this hook can assume <paramref name="entry"/>.<see
+    /// cref="FilePickerEntry.IsDirectory"/> is always false. <c>FilePickerDialog</c> completes the
+    /// dialog with the current selection; <c>SaveFileDialog</c> populates its filename input from
+    /// the entry and completes asynchronously after any overwrite confirmation.</summary>
     /// <param name="entry">The invoked file entry.</param>
     /// <param name="cause">The activation cause (keyboard or pointer).</param>
-    private protected abstract void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause);
+    protected abstract void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause);
 
     /// <summary>Called when a submitted location-input path canonicalizes to an existing directory,
     /// before that directory would otherwise be treated as a navigation target. A dialog that
@@ -552,7 +585,7 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
     /// directory-selection concept.</summary>
     /// <param name="canonicalDirectory">The canonical directory path the submitted text resolved to.</param>
     /// <returns>true if the directory was accepted as a selection; false to navigate into it as usual.</returns>
-    private protected virtual bool TryAcceptTypedDirectory(string canonicalDirectory)
+    protected virtual bool TryAcceptTypedDirectory(string canonicalDirectory)
     {
         _ = canonicalDirectory;
         return false;
@@ -718,9 +751,17 @@ public abstract class FileDialogBase<TResult>: Dialog<TResult>
 
     #region IsLoading lifecycle
 
-    /// <summary>Called after a successful directory load commits entries to the list.</summary>
+    /// <summary>Called after a successful directory load commits entries to the list. By the time
+    /// this runs, <see cref="FileList"/>.Items already holds the ordered <paramref name="entries"/>
+    /// snapshot and <see cref="CurrentDirectory"/> already reflects the new directory, but <see
+    /// cref="IsLoading"/> is still true. A status message set here is superseded immediately
+    /// afterward: the base always follows this call by computing and publishing its own
+    /// folder/file-count <see cref="Status"/> text, so this hook exists to refresh
+    /// selection-dependent state rather than to own the status line. <c>FilePickerDialog</c>
+    /// republishes its selection membership against the fresh entries; <c>SaveFileDialog</c> has no
+    /// selection-dependent state and implements this as a no-op.</summary>
     /// <param name="entries">The committed entry snapshot.</param>
-    private protected abstract void OnLoadCommitted(FilePickerEntry[] entries);
+    protected abstract void OnLoadCommitted(FilePickerEntry[] entries);
 
     /// <inheritdoc/>
     protected override void OnAttached()

@@ -181,7 +181,8 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
 
     #endregion
 
-    private protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
+    /// <inheritdoc/>
+    protected override FileDialogStyle ResolveDialogStyle() => ActualStyle;
 
     /// <inheritdoc/>
     protected override WindowStyle ResolveInteractionChromeStyle(Theme? theme) =>
@@ -280,7 +281,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     protected override void OnListSelectionChanged() => PublishSelection();
 
     /// <inheritdoc/>
-    private protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
+    protected override void OnFileItemInvoked(FilePickerEntry entry, ActivationCause cause)
     {
         _ = cause;
         CompleteAccepted();
@@ -298,7 +299,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     }
 
     /// <inheritdoc/>
-    private protected override bool TryAcceptTypedDirectory(string canonicalDirectory)
+    protected override bool TryAcceptTypedDirectory(string canonicalDirectory)
     {
         if (_selectionMode == FileSelectionMode.Files)
         {
@@ -351,7 +352,7 @@ public sealed class FilePickerDialog: FileDialogBase<FilePickerResult>, IStyled<
     #region Loading lifecycle
 
     /// <inheritdoc/>
-    private protected override void OnLoadCommitted(FilePickerEntry[] entries)
+    protected override void OnLoadCommitted(FilePickerEntry[] entries)
     {
         _ = entries;
         PublishSelection();

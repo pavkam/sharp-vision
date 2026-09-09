@@ -3,8 +3,14 @@
 
 namespace SharpVision.Dialogs;
 
-/// <summary>Abstracts canonical path handling and bounded immediate-child enumeration for a file picker.</summary>
-internal interface IFilePickerFileSystem
+/// <summary>Abstracts canonical path handling and bounded immediate-child enumeration for a file
+/// picker. <see cref="FileDialogBase{TResult}"/> reaches every filesystem operation only through
+/// this seam - exposed on its own <see cref="FileDialogBase{TResult}.FileSystem"/> property - so a
+/// derivative outside this assembly can substitute a deterministic fake in a test the same way this
+/// assembly's own dialogs do, instead of the base hard-coding <see cref="System.IO"/> calls a test
+/// cannot intercept.</summary>
+[PublicAPI]
+public interface IFilePickerFileSystem
 {
     /// <summary>Canonicalizes one non-null, non-blank path.</summary>
     /// <param name="path">The path to canonicalize.</param>

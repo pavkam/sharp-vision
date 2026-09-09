@@ -363,6 +363,41 @@ test("validateControlImageCoverage_WhenAnExcludedAbstractPageHasAMatchingCatalog
   }
 });
 
+test("validateControlImageCoverage_WhenAnExcludedAbstractDialogPageExists_IsStillSkipped", async () => {
+  const root = await mkdtemp(join(tmpdir(), "control-image-coverage-"));
+
+  try {
+    await mkdir(join(root, "examples", "Showcase"), { recursive: true });
+    await writeFile(
+      join(root, "examples", "Showcase", "Gallery.cs"),
+      `
+      private static readonly (string Group, string Name, Func<CompositeControlBase> Create)[] _catalog =
+      [
+          ("Dialogs", MessageBoxPane.Title, static () => new MessageBoxPane()),
+      ];`,
+    );
+
+    await mkdir(join(root, "scripts"), { recursive: true });
+    await writeFile(
+      join(root, "scripts", "control-image-manifest.mjs"),
+      "export const controls = [];",
+    );
+
+    await mkdir(join(root, "docs", "controls"), { recursive: true });
+    await mkdir(join(root, "docs", "dialogs"), { recursive: true });
+    await writeFile(
+      join(root, "docs", "dialogs", "file-dialog-base.md"),
+      "# FileDialogBase\n\n## Overview\n",
+    );
+
+    await mkdir(join(root, "docs", "images", "controls"), { recursive: true });
+
+    assert.deepEqual(await validateControlImageCoverage(root), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("validateControlImageCoverage_WhenPrimaryPagesOwnHelperAndDialogDocs_ValidatesBothFullPaths", async () => {
   const root = await mkdtemp(join(tmpdir(), "control-image-coverage-"));
 
@@ -426,6 +461,7 @@ test("excludedAbstractDocSlugs_MatchesTheReviewedAuthoringRolePages", () => {
       "composite-control",
       "container",
       "content-control",
+      "file-dialog-base",
       "headered-content-control",
       "input-base",
       "items-control",

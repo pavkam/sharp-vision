@@ -4,16 +4,20 @@ import { access, readFile, readdir } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Pages that document an abstract authoring role rather than a concrete, instantiable control.
-// Nothing in the Showcase gallery ever renders one on its own, so they carry no image and never
-// will. This list is reviewed by hand: a page only leaves it once a concrete control replaces or
-// wraps it with its own dedicated Gallery pane.
+// Pages that document an abstract authoring role rather than a concrete, instantiable control or
+// dialog. Nothing in the Showcase gallery ever renders one on its own, so they carry no image and
+// never will. This list is reviewed by hand: a page only leaves it once a concrete control or
+// dialog replaces or wraps it with its own dedicated Gallery pane. Applies under both
+// `docs/controls` and `docs/dialogs` - see the exclusion check below - since an abstract authoring
+// base can live in either tree (`file-dialog-base` documents `FileDialogBase<TResult>`, the shared
+// base under `docs/dialogs` that `FilePickerDialog` and `SaveFileDialog` both derive from).
 export const excludedAbstractDocSlugs = new Set([
   "animated-indicator-base",
   "cartesian-chart-control-base",
   "composite-control",
   "container",
   "content-control",
+  "file-dialog-base",
   "headered-content-control",
   "input-base",
   "items-control",
@@ -165,10 +169,12 @@ export async function validateControlImageCoverage(root) {
   );
 
   const docsRoot = join(root, "docs");
-  const controlDocs = (await findMarkdownFiles(join(docsRoot, "controls"))).filter(
+  const controlsRoot = join(docsRoot, "controls");
+  const dialogsRoot = join(docsRoot, "dialogs");
+  const controlDocs = (await findMarkdownFiles(controlsRoot)).filter(
     (path) => basename(path) !== "index.md",
   );
-  const dialogDocs = (await findMarkdownFiles(join(docsRoot, "dialogs"))).filter(
+  const dialogDocs = (await findMarkdownFiles(dialogsRoot)).filter(
     (path) => basename(path) !== "index.md",
   );
   const docFiles = [...controlDocs, ...dialogDocs];
@@ -179,7 +185,7 @@ export async function validateControlImageCoverage(root) {
     const slug = basename(docPath, ".md");
 
     if (
-      docPath.startsWith(join(docsRoot, "controls")) &&
+      (docPath.startsWith(controlsRoot) || docPath.startsWith(dialogsRoot)) &&
       excludedAbstractDocSlugs.has(slug)
     ) {
       continue;

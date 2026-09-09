@@ -3,8 +3,12 @@
 ## Overview
 
 `SharpVision.Dialogs.FilePickerDialog` is a sealed
-`FileDialogBase<FilePickerResult>` specialization for choosing existing local
-files or directories. It is a single responsive
+[`FileDialogBase<FilePickerResult>`](file-dialog-base.md#overview)
+specialization for choosing existing local files or directories. It shares the
+complete directory-browsing, navigation, filtering, hidden-entry, and
+guarded-load lifecycle with [`SaveFileDialog`](save-file-dialog.md#overview)
+through that base; this page documents only the seams and asymmetries specific
+to `FilePickerDialog`. It is a single responsive
 [`Window`](../controls/windows/window.md#overview) surface that contains a
 location bar, a scrolling `ListView`, a filter selector, a hidden-entry toggle,
 status text, and Open and Cancel actions. A directory is always a

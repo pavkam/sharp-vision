@@ -5,7 +5,10 @@ namespace SharpVision.Tests.Dialogs;
 
 /// <summary>Proves file dialog navigation, recoverable load failures, ready-text authoring,
 /// whitespace and directory-collision file names, superseded overwrite confirmations, initial
-/// focus, and external cancellation over the fake file system.</summary>
+/// focus, external cancellation over the fake file system, and - through the cross-assembly
+/// <see cref="FileDialogProbe"/> - that FileDialogBase's own protected authoring seams are reachable
+/// by a third-party derivative, not merely usable in-assembly by FilePickerDialog and
+/// SaveFileDialog.</summary>
 public sealed class FileDialogInteractionTests
 {
     #region Status and load failures
@@ -410,6 +413,67 @@ public sealed class FileDialogInteractionTests
         dialog.IsDisposed.ShouldBeTrue();
         surface.Application.Modality.Active.ShouldBeNull();
         opener.IsFocused.ShouldBeTrue();
+    }
+
+    #endregion
+
+    #region Base authoring seam
+
+    /// <summary>Verifies FileDialogBase's protected <c>OnLoadCommitted</c> hook is reachable and
+    /// invoked on a dialog defined outside the SharpVision assembly, delivering the exact committed
+    /// entry snapshot - proving the hook is real, external base-class API rather than a detail only
+    /// FilePickerDialog and SaveFileDialog inside this assembly can reach.</summary>
+    [Fact]
+    public async Task OnLoadCommitted_WhenDirectoryLoads_ReceivesEntriesAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "probe-load-committed"));
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        var probe = new FileDialogProbe(source, directory);
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, probe, () => !probe.IsLoading);
+
+        // Assert
+        var committed = probe.LastCommittedEntries.ShouldNotBeNull();
+        committed.ShouldHaveSingleItem().FullPath.ShouldBe(file);
+    }
+
+    /// <summary>Verifies FileDialogBase's protected <c>OnFileItemInvoked</c> hook is reachable and
+    /// invoked on a dialog defined outside the SharpVision assembly, delivering both the invoked
+    /// file entry and the pointer activation cause - proving the hook is real, external base-class
+    /// API rather than a detail only FilePickerDialog and SaveFileDialog inside this assembly can
+    /// reach.</summary>
+    [Fact]
+    public async Task OnFileItemInvoked_WhenEntryActivated_ReceivesEntryAndCauseAsync()
+    {
+        // Arrange
+        var directory = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "probe-file-invoked"));
+        var file = Path.Combine(directory, "notes.txt");
+        var source = new FakeFilePickerFileSystem();
+        source.AddDirectory(directory, new FilePickerEntry("notes.txt", file, isDirectory: false, isHidden: false));
+        var probe = new FileDialogProbe(source, directory);
+        await using var surface = await ComponentSurface.MountAsync(
+            probe,
+            new Size(80, 24),
+            TestContext.Current.CancellationToken);
+        await DialogWait.UntilAsync(surface, probe, () => !probe.IsLoading);
+        var list = OwnedTree.Find<UiListView>(probe).ShouldNotBeNull();
+
+        // Act - a double pointer click activates the current row exactly like a real file open.
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+        await surface.Pointer.ClickAsync(list, new Point(1, 0));
+
+        // Assert
+        var invoked = probe.LastInvokedEntry.ShouldNotBeNull();
+        invoked.FullPath.ShouldBe(file);
+        probe.LastInvokedCause.ShouldBe(ActivationCause.Pointer);
     }
 
     #endregion

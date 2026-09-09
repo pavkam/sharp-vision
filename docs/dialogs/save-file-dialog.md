@@ -3,8 +3,12 @@
 ## Overview
 
 `SharpVision.Dialogs.SaveFileDialog` is a sealed
-`FileDialogBase<SaveFileResult>` specialization for choosing one canonical file
-path for a later save. It combines the shared directory browser with a filename
+[`FileDialogBase<SaveFileResult>`](file-dialog-base.md#overview) specialization
+for choosing one canonical file path for a later save. It shares the complete
+directory-browsing, navigation, filtering, hidden-entry, and guarded-load
+lifecycle with [`FilePickerDialog`](file-picker-dialog.md#overview) through that
+base; this page documents only the seams and asymmetries specific to
+`SaveFileDialog`. It combines the shared directory browser with a filename
 input, a Save action, and an optional overwrite confirmation. The dialog never
 creates, truncates, locks, or writes the selected file; after a confirmed
 result, the actual save belongs to the caller.
