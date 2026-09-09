@@ -49,19 +49,12 @@ public sealed class Overlay: Container
     /// Deliberately bypasses <see cref="GetChildOrder"/>: default focus navigation stays in
     /// collection order regardless of z-order, matching every documented navigation contract and
     /// the pinned <c>MoveNext_WhenZOrderDiffers_UsesCollectionOrderAsync</c> regression. Only hit
-    /// testing and rendering honor z-order.
+    /// testing and rendering honor z-order. The lookup still walks every navigation-eligible owned
+    /// slot in registration order - the overlay's own <see cref="ControlBase.ContextMenu"/> slot and
+    /// any framework popup slot included - because the inherited <see cref="ControlBase.NavigationCount"/>
+    /// counts those same slots, and a count that outruns the lookup would fault Tab traversal.
     /// </remarks>
-    protected internal override ControlBase NavigationAt(int index)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(index);
-
-        return index < Children.Count
-            ? Children[index]
-            : throw new ArgumentOutOfRangeException(
-                nameof(index),
-                index,
-                "The navigation position is outside the eligible controls.");
-    }
+    protected internal override ControlBase NavigationAt(int index) => OwnedControls.NavigationAt(index);
 
     /// <inheritdoc/>
     /// <remarks>Deliberately bypasses <see cref="GetChildOrder"/> for the same reason as <see

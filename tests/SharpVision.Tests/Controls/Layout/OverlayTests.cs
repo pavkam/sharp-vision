@@ -562,4 +562,48 @@ public sealed class OverlayTests
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
 
+    /// <summary>Verifies an Overlay that owns an open ContextMenu keeps its navigation count and
+    /// position lookup paired: the inherited count sums every navigation-eligible owned slot, the
+    /// context-menu slot included, so the collection-order lookup must walk those same slots
+    /// instead of only <see cref="Container.Children"/> - otherwise Tab traversal into the overlay
+    /// faults on the first position past its children.</summary>
+    [Fact]
+    public async Task Keyboard_WhenOverlayOwnsAnOpenContextMenu_TabTraversalWalksEveryNavigationSlotAsync()
+    {
+        // Arrange
+        var child = new ProbeControl(new Size(1, 1)) { IsFocusable = true, Content = "C".AsMemory() };
+        var menu = new ContextMenu(
+            MenuBuilder.Vertical()
+                .Item("Inspect", onInvoke: static () => { })
+                .Build());
+        var overlay = new Overlay
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            ContextMenu = menu,
+            Children = { child }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            overlay,
+            new Size(30, 10),
+            TestContext.Current.CancellationToken);
+        await surface.Pointer.RightClickAsync(overlay);
+        menu.IsOpen.ShouldBeTrue();
+
+        // Act - every counted navigation position resolves, and a real Tab press routes through them
+        var count = overlay.NavigationCount;
+        var positions = new List<ControlBase>();
+
+        for (var index = 0; index < count; index++)
+        {
+            positions.Add(overlay.NavigationAt(index));
+        }
+
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        count.ShouldBeGreaterThan(overlay.Children.Count);
+        positions[0].ShouldBeSameAs(child);
+        positions.ShouldContain(menu.Presentation);
+    }
 }
