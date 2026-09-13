@@ -4,16 +4,12 @@ SharpVision is a retained-mode terminal user interface library for .NET 10. It
 provides mutable controls, deterministic layout and input routing, styling,
 Unicode-aware rendering, menus, popups, windows, and application hosting.
 
-This project is an alpha prerelease at version `0.5.0-alpha.1`.
+This project is a prerelease at version `1.6.0-beta.1` and may change before the
+stable API.
 
 The package depends on `SharpVision.Terminal`, which supplies the terminal
-protocol, cell-geometry, buffer, input, and rendering foundation.
-
-> [!IMPORTANT]
->
-> The matching terminal package is not currently published, so the UI package's
-> exact dependency cannot resolve, so it is not currently installable. Use
-> repository project references until the terminal package is available.
+protocol, cell-geometry, buffer, input, and rendering foundation, and installs
+it transitively.
 
 See the
 [documentation](https://github.com/pavkam/sharp-vision/blob/main/docs/index.md)

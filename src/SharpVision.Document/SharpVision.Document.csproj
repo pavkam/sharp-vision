@@ -12,7 +12,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;document;markdown;commonmark</PackageTags>
     <Description>Rich flowing documents, interactive forms, and Markdown for SharpVision.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.Document 1.5.0-beta.1 prerelease: version-aligned with the other SharpVision packages; the only change since 1.4.0-beta.1 is the internal reference update from the Document control naming and visibility unification (SharpVision.Controls.Documents renamed to SharpVision.Controls.Document).</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.Document 1.6.0-beta.1 prerelease: version-aligned with the other SharpVision packages. The Document control now derives from the core ScrollableCompositeControlBase and uses the shared ProjectionSurface, scroll-bridge, glyph-resolution, and style-span merging seams introduced in SharpVision 1.6.0-beta.1, replacing its own DocumentSurface and hand-rolled copies; no public behavior change.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
