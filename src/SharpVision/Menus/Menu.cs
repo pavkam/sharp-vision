@@ -39,6 +39,17 @@ public sealed class Menu: ItemsControl
     private int _submenuSurfaceCloseDepth;
     private int _submenuTransitionDepth;
 
+    /// <summary>The control that owned focus before a pointer press, access key, or programmatic
+    /// request moved it into this session-owning menu, retained so the session can hand focus back
+    /// once the chain closes. Null while focus is outside this menu or arrived by Tab traversal or
+    /// restoration, which are deliberate moves the menu must not undo.</summary>
+    private ControlBase? _focusBeforeEntry;
+
+    /// <summary>Whether the navigation cursor is retained but not painted. Set when a submenu
+    /// opens from armed pointer movement over its parent row, so the parent path is the only
+    /// selected-looking thing until the pointer or keyboard picks a row inside this menu.</summary>
+    private bool _isCursorHidden;
+
     /// <summary>Initializes an empty horizontal menu with typed managed items and a 15-cell minimum width.</summary>
     public Menu()
     {
@@ -154,6 +165,10 @@ public sealed class Menu: ItemsControl
                 throw new ArgumentException("A separator cannot become selected.", nameof(value));
             }
 
+            // An explicit selection is as deliberate as a keystroke: a cursor a hover-opened
+            // submenu was still hiding becomes visible where the caller put it.
+            VerifyMutable();
+            RevealCursor();
             Select(value, focus: false);
         }
     }
@@ -329,11 +344,32 @@ public sealed class Menu: ItemsControl
 
         if (target >= 0)
         {
-            SelectFromInput(
-                target,
-                focus: true,
-                switchSubmenu: true,
-                openedFromPointerSelection: false);
+            // A hidden cursor sits on the first row already; the first navigation key only makes
+            // it visible there, so Down from a hover-opened drop-down lands on its first row
+            // exactly as it would in a freshly opened one, instead of silently skipping it.
+            if (_isCursorHidden)
+            {
+                RevealCursor();
+            }
+            else
+            {
+                SelectFromKeyboard(target);
+            }
+
+            eventArgs.IsHandled = true;
+            return;
+        }
+
+        // A submenu opened by pointer hover keeps its cursor hidden. Enter or Space must not fire
+        // an item the user cannot see as selected; the first such press only reveals the cursor,
+        // exactly like the first Up or Down would, and the next press activates it.
+        if (key.IsInitialKeyDown &&
+            _isCursorHidden &&
+            key.Stroke.Modifiers.IsActivationEligible() &&
+            (key.Stroke.Code == Code.Enter ||
+                (key.Stroke.Code == Code.Character && key.Stroke.Character == new Rune(' '))))
+        {
+            RevealCursor();
             eventArgs.IsHandled = true;
             return;
         }
@@ -348,6 +384,41 @@ public sealed class Menu: ItemsControl
         }
 
         HandleSelectedItemPressActivation(key);
+    }
+
+    /// <summary>Moves the cursor for one keyboard navigation key.</summary>
+    /// <param name="index">The available target index.</param>
+    /// <remarks>
+    /// A horizontal bar with an armed session switches drop-downs as the cursor moves, so Left and
+    /// Right walk the open menus the way every desktop menu bar does. A vertical menu never opens a
+    /// child on Up or Down: the row only becomes the cursor, and Right or Enter opens it. Walking
+    /// past a submenu row would otherwise open it, move focus into it, and trap the next Down
+    /// inside the child. Any branch that was open under this menu closes, because the cursor has
+    /// left the row that owned it.
+    /// </remarks>
+    private void SelectFromKeyboard(int index)
+    {
+        if (Orientation == Orientation.Horizontal)
+        {
+            SelectFromInput(
+                index,
+                focus: true,
+                switchSubmenu: true,
+                openedFromPointerSelection: false);
+            return;
+        }
+
+        SelectFromInput(
+            index,
+            focus: true,
+            switchSubmenu: false,
+            openedFromPointerSelection: false);
+
+        if (_selectedIndex == index && HasOpenSubmenu())
+        {
+            var owner = FindSessionOwner();
+            owner.ExecuteSubmenuTransition(() => CloseSiblingSubmenus(this, null));
+        }
     }
 
     /// <summary>Selects one radio item and clears matching siblings.</summary>
@@ -1167,8 +1238,16 @@ public sealed class Menu: ItemsControl
             return false;
         }
 
-        var scope = EnterOwnedModal(_modalSession, OutsideInteraction.Dismiss, initialFocus: null);
-        return scope is null || (scope.IsActive && ReferenceEquals(_modalSession.Current, scope));
+        // The press or access key that armed this session already focused the menu, so the
+        // manager's own entry-time snapshot would only ever hand focus back to the bar. Restore to
+        // the control that owned focus before the menu was entered instead; the manager still
+        // validates that target at exit and falls back when it has since become unavailable.
+        var modality = ModalityOwner;
+        var previousFocus = _focusBeforeEntry ?? FocusOwner?.Focused;
+        var scope = _modalSession.Enter(
+            () => modality.EnterRestoringFocusTo(this, OutsideInteraction.Dismiss, initialFocus: null, previousFocus),
+            () => !IsDisposed && EffectiveIsEnabled && EffectiveIsVisible && ReferenceEquals(ModalityOwner, modality));
+        return scope.IsActive && ReferenceEquals(_modalSession.Current, scope);
     }
 
     private void OnModalDismissRequested(ModalScope scope)
@@ -1233,7 +1312,44 @@ public sealed class Menu: ItemsControl
             DiscardPendingSubmenuTransition();
         }
 
+        if (failure is null && !IsSessionArmed && _pendingSubmenuOpen is null)
+        {
+            CaptureFailure(RestoreFocusBeforeEntry, ref failure);
+        }
+
         failure?.Throw();
+    }
+
+    /// <summary>Hands focus back to the control that owned it before this menu was entered, when
+    /// the interaction ended with focus still inside the menu.</summary>
+    /// <remarks>
+    /// An armed session normally does this through its modal scope's exit restoration. This covers
+    /// the interaction that never arms a scope - a top-level command item invoked directly from
+    /// the bar - and any exit whose scope restoration was suppressed, so a click on the bar never
+    /// strands focus there once the menu is done.
+    /// </remarks>
+    private void RestoreFocusBeforeEntry()
+    {
+        var target = _focusBeforeEntry;
+
+        if (target is null || !(IsFocused || ContainsFocus) || FocusOwner is not { } owner)
+        {
+            return;
+        }
+
+        _focusBeforeEntry = null;
+
+        if (target.IsDisposed ||
+            target.Dispatcher is null ||
+            !ReferenceEquals(target.Dispatcher, Dispatcher) ||
+            !target.EffectiveIsVisible ||
+            !target.EffectiveIsEnabled ||
+            ModalityOwner?.Allows(target) == false)
+        {
+            return;
+        }
+
+        _ = owner.Focus(target, FocusReason.Restore, cancellable: false);
     }
 
     private void ExecuteSubmenuTransition(Action action)
@@ -1276,15 +1392,28 @@ public sealed class Menu: ItemsControl
         failure?.Throw();
     }
 
-    private static void CloseSiblingSubmenus(Menu menu, MenuItem selected)
+    /// <summary>Closes every open branch under <paramref name="menu"/> except the one owned by
+    /// <paramref name="selected"/>, each branch leaf-first.</summary>
+    /// <param name="menu">The menu whose sibling branches close.</param>
+    /// <param name="selected">The item whose own branch survives, or null to close them all.</param>
+    /// <remarks>
+    /// Leaf-first matters: closing only the sibling's own popup would collapse its content while a
+    /// nested popup deeper in that branch stayed logically open, and the next time the sibling
+    /// reopened, that nested popup would present itself again as if the user had never left.
+    /// </remarks>
+    private static void CloseSiblingSubmenus(Menu menu, MenuItem? selected)
     {
+        ExceptionDispatchInfo? failure = null;
+
         for (var index = 0; index < menu.ItemControlCount; index++)
         {
-            if (menu.ItemAt(index) is MenuItem sibling && !ReferenceEquals(sibling, selected))
+            if (menu.ItemAt(index) is MenuItem { IsSubmenuOpen: true } sibling && !ReferenceEquals(sibling, selected))
             {
-                sibling.CloseSubmenu();
+                CaptureFailure(() => CloseSubmenuBranch(sibling), ref failure);
             }
         }
+
+        failure?.Throw();
     }
 
     private static void CloseSubmenuBranch(MenuItem item)
@@ -1362,7 +1491,7 @@ public sealed class Menu: ItemsControl
         if (index >= 0)
         {
             var item = (MenuItem) ItemAt(index);
-            item.SetSelectedState(ContainsFocus);
+            item.SetSelectedState(ContainsFocus && !_isCursorHidden);
 
             if (focus)
             {
@@ -1372,6 +1501,70 @@ public sealed class Menu: ItemsControl
 
         NotifyPropertyChanged(nameof(SelectedIndex), InvalidationImpact.Render);
         NotifyPropertyChanged(nameof(SelectedItem), InvalidationImpact.Render);
+    }
+
+    /// <summary>Retains the cursor but stops painting it until pointer or keyboard input selects a
+    /// row inside this menu.</summary>
+    internal void HideCursorUntilInteraction()
+    {
+        if (_isCursorHidden)
+        {
+            return;
+        }
+
+        _isCursorHidden = true;
+        CommitSelectionPresentation(false);
+    }
+
+    /// <summary>Paints the retained cursor again after <see cref="HideCursorUntilInteraction"/>.</summary>
+    private void RevealCursor()
+    {
+        if (!_isCursorHidden)
+        {
+            return;
+        }
+
+        _isCursorHidden = false;
+        CommitSelectionPresentation(ContainsFocus);
+    }
+
+    /// <summary>Returns the cursor to the first available row and clears the hidden-cursor state,
+    /// so the next time this menu opens it starts fresh instead of resurrecting the row the user
+    /// last hovered or the nested branch that row had opened.</summary>
+    internal void ResetCursorForNextOpen()
+    {
+        _isCursorHidden = false;
+
+        // The item's own state decides, not the effective one: this runs while the closed popup
+        // still holds the menu collapsed, so every row is effectively invisible right now, yet the
+        // cursor must already sit on the row the keyboard can reach once the menu shows again.
+        var first = SingleSelectionIndex.FindLinear(
+            0,
+            1,
+            ItemControlCount,
+            index => ItemAt(index) is MenuItem { IsEnabled: true, Visibility: Visibility.Visible });
+        Select(first, focus: false);
+    }
+
+    /// <inheritdoc/>
+    internal override void OnFocusEnteredFrom(ControlBase? previous, FocusReason reason)
+    {
+        // Only the session owner hands focus back, and only for the transient ways into a menu:
+        // a pointer press on a heading, an access key, or a programmatic request such as an
+        // application's own menu-activation key. Tab traversal and modal restoration are
+        // deliberate moves onto this menu that it must not undo.
+        // A menu presented by an owning surface (a ContextMenu's popup) leaves restoration to
+        // that surface, which already snapshots the focus it opened from. An ancestor that held
+        // focus - a focusable host or screen - is not a place the user was working either; handing
+        // focus back up the tree would only repeat what the focus manager's own fallback does.
+        if (previous is not null &&
+            reason is FocusReason.Pointer or FocusReason.Programmatic &&
+            !UsesExternalModalSession &&
+            !ModalityManager.IsWithin(this, previous) &&
+            ReferenceEquals(FindSessionOwner(), this))
+        {
+            _focusBeforeEntry = previous;
+        }
     }
 
     [Pure]
@@ -1399,6 +1592,7 @@ public sealed class Menu: ItemsControl
     {
         _ = sender;
         _ = eventArgs;
+        _focusBeforeEntry = null;
         CommitSelectionPresentation(false);
     }
 
@@ -1406,7 +1600,7 @@ public sealed class Menu: ItemsControl
     {
         if (_selectedIndex >= 0 && _selectedIndex < ItemControlCount && ItemAt(_selectedIndex) is MenuItem outgoing)
         {
-            outgoing.SetSelectedState(value);
+            outgoing.SetSelectedState(value && !_isCursorHidden);
         }
     }
 
@@ -1536,6 +1730,7 @@ public sealed class Menu: ItemsControl
         var dispatcher = Dispatcher;
         var attachment = dispatcher is null ? null : CaptureAttachment();
         switchSubmenu &= HasOpenSubmenu() || owner.IsSessionArmed;
+        RevealCursor();
         Select(index, focus);
 
         if (!switchSubmenu ||

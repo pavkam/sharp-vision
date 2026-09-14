@@ -97,6 +97,21 @@ stateDiagram-v2
     Selecting --> Idle: release (commit range) / leave / fingerprint changed / capture lost / focus lost / disable / detach / dispose
 ```
 
+## One selection per application
+
+An application holds at most one non-empty text selection at a time, exactly as
+the widgets of one desktop window do. The dispatcher owns a single arbiter; an
+owner claims it the moment it commits a non-empty range - from a drag, a Shift
+navigation, Ctrl+A, or `SetTextSelection`/`Select`/`SelectAll` from code - and
+the previous owner collapses its own range at its caret through its ordinary
+`ClearTextSelection` path, raising its own `TextSelectionChanged` (and any
+component compatibility event such as `TextInput.SelectionChanged`) before the
+claiming owner's observers run. A collapsed or caret-only commit only releases
+the committing owner's claim: moving the caret in one input never disturbs a
+range another input still holds. Detaching or disposing an owner releases its
+claim as well, while the detached control keeps its retained range and simply
+claims again on its next non-empty commit after reattachment.
+
 ## Rendering and clipboard
 
 The common owner paints selection as a final subtree adornment using
@@ -149,4 +164,7 @@ raises `TextSelectionChanged` synchronously after state and invalidation commit.
   nearest enabled selection owner (falling back to another
   `IClipboardCopySource`), calls its pure copy method exactly once, and treats
   an empty result as authoritative.
+- Committing a non-empty range in any owner collapses the non-empty range every
+  other owner under the same application held; a caret-only commit, detachment,
+  or disposal only releases the committing owner's own claim.
 - Attached access and mutation are dispatcher-affine.

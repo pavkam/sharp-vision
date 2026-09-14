@@ -763,6 +763,16 @@ public sealed class Dispatcher: IAsyncDisposable
         _liveShortcutCount--;
     }
 
+    /// <summary>Gets the arbiter that keeps at most one non-empty text selection alive across
+    /// every control attached under this dispatcher.</summary>
+    /// <remarks>
+    /// Lives here for the same reason the shortcut count does: a dispatcher is the one object every
+    /// attached control can reach and that spans the whole application, and selection ownership is
+    /// an application-wide fact. Only ever touched from attach, detach, and selection-commit paths
+    /// on this dispatcher's own thread.
+    /// </remarks>
+    internal Text.TextSelectionArbiter TextSelectionArbiter { get; } = new();
+
     private void ThrowIfStopping() =>
         ObjectDisposedException.ThrowIf(_stopping || Volatile.Read(ref _disposed) != 0, this);
 }

@@ -30,17 +30,17 @@ classDiagram
 
 ## Keyboard
 
-| Key                 | Behavior                                                                      |
-| ------------------- | ----------------------------------------------------------------------------- |
-| Left                | Moves through a horizontal menu; closes a nested vertical branch or bubbles.  |
-| Right               | Moves through a horizontal menu; opens a vertical child menu or bubbles.      |
-| Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries.     |
-| Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.            |
-| Home / End          | Selects the first or last available entry without wrapping.                   |
-| Enter               | Activates the selected item.                                                  |
-| Space               | Activates on release when available, or immediately on a press-only terminal. |
-| Escape              | Closes the active menu chain.                                                 |
-| Alt+item access key | Selects and activates the matching item.                                      |
+| Key                 | Behavior                                                                                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Left                | Moves through a horizontal menu; closes a nested vertical branch or bubbles.                                                                       |
+| Right               | Moves through a horizontal menu; opens a vertical child menu or bubbles.                                                                           |
+| Up / Down           | Moves through a vertical menu, wrapping and skipping unavailable entries, and closes any branch open under it without opening the row it lands on. |
+| Tab / Shift+Tab     | Moves to the next or previous menu item regardless of orientation.                                                                                 |
+| Home / End          | Selects the first or last available entry without wrapping.                                                                                        |
+| Enter               | Activates the selected item.                                                                                                                       |
+| Space               | Activates on release when available, or immediately on a press-only terminal.                                                                      |
+| Escape              | Closes the active menu chain.                                                                                                                      |
+| Alt+item access key | Selects and activates the matching item.                                                                                                           |
 
 ## Behavior
 
@@ -66,7 +66,11 @@ classDiagram
 - `SelectedIndex` tracks the active `MenuItem` navigation cursor. Setting `-1`
   clears it, and a separator index is rejected. The cursor paints with selection
   colors only while focus remains within the menu or one of its retained
-  submenus.
+  submenus, and - for a submenu that armed pointer movement over its parent row
+  opened - only once the pointer or keyboard first selects a row inside it, or
+  code sets `SelectedIndex`. A retained submenu that closes returns its cursor
+  to its first available row, so reopening it never shows the row the user last
+  hovered or reopens a nested branch that row had opened.
 - `ItemInvoked` reports the item and the activation cause after the item's own
   `Invoked` subscribers complete.
 
@@ -74,17 +78,22 @@ classDiagram
 
 Arrow keys follow `Orientation`, while Right opens the selected child submenu
 from a vertical menu and Left closes one nested vertical branch before restoring
-focus to its owning menu. Tab and Shift+Tab move forward and backward regardless
-of orientation; Caps Lock and Num Lock are incidental, while Shift and
-application-command-modified arrows and command-modified Tab remain unhandled.
-All navigation keys repeat while held. Navigation wraps, skips separators and
-unavailable items, updates `SelectedIndex`, and keeps focus on the menu. Enter,
-or a completed Space gesture, activates the selected private item with a
-keyboard cause, once per key hold and only with activation-eligible modifiers.
-Terminals with authoritative releases show the pressed state until release;
-press-only terminals pulse and complete immediately instead of leaving the item
-latched. A primary pointer click invokes through the shared
-[press-activation](../pressable.md#overview) contract.
+focus to its owning menu. Up and Down in a vertical menu only move the cursor:
+landing on a submenu-bearing row never opens it, and leaving a row whose branch
+was open closes that branch, so walking through a drop-down never transfers
+focus into a child. A submenu opened by Right, Enter, or a top-level Left/Right
+switch starts with its cursor visible on its first row. Tab and Shift+Tab move
+forward and backward regardless of orientation; Caps Lock and Num Lock are
+incidental, while Shift and application-command-modified arrows and
+command-modified Tab remain unhandled. All navigation keys repeat while held.
+Navigation wraps, skips separators and unavailable items, updates
+`SelectedIndex`, and keeps focus on the menu. Enter, or a completed Space
+gesture, activates the selected private item with a keyboard cause, once per key
+hold and only with activation-eligible modifiers. Terminals with authoritative
+releases show the pressed state until release; press-only terminals pulse and
+complete immediately instead of leaving the item latched. A primary pointer
+click invokes through the shared [press-activation](../pressable.md#overview)
+contract.
 
 An ampersand
 [access key](../../concepts/access-keys.md#focus-and-semantic-actions) on an
@@ -96,10 +105,14 @@ Moving the pointer over an available item selects it and changes the row
 foreground without replacing the containing menu background. Physical hover
 styling is independent of the focus-scoped selected appearance, so an unfocused,
 inactive menu does not paint its retained navigation cursor. Hover does not open
-a dormant menu. Once one sibling submenu is open, moving or keyboard-navigating
-to another item closes the previous sibling and opens the new item's submenu.
-Moving to an item without a submenu closes the previous submenu without invoking
-the command.
+a dormant menu. Once one sibling submenu is open, moving to another item closes
+the previous sibling, leaf-first, and opens the new item's submenu; a horizontal
+bar does the same for Left and Right. A submenu opened this way keeps its cursor
+hidden while the pointer is still on the parent row - only the parent path reads
+as selected - until the pointer or keyboard picks a row inside it. The first
+navigation key, Enter, or Space in such a submenu only reveals the cursor on its
+first row; the next press acts on it. Moving to an item without a submenu closes
+the previous submenu without invoking the command.
 
 The menu, its normal item and separator faces, and unoccupied host cells use the
 theme's `SemanticColor.Bar` background. Explicitly authored focus, selection,
@@ -108,7 +121,11 @@ foreground and other authored state members while restoring the Bar background.
 A complete local item style bypasses those theme overlays and remains
 authoritative. A submenu Popup starts a new inherited-selection boundary:
 selecting the owning heading does not select the submenu surface or all of its
-rows; the submenu's own `SelectedIndex` controls its one active row.
+rows; the submenu's own `SelectedIndex` controls its one active row. The popup
+is also an appearance boundary for the bar's continuous background plane: it
+paints its own popup face and frame, and the vertical menu inside it paints its
+own Bar plane, so a drop-down hanging off a bar hosted above differently colored
+content never shows that content through its rows, separators, or frame.
 
 Selection callbacks may synchronously mutate or detach the menu. A pending
 submenu transition retains the selected item's identity and continues only if
@@ -120,14 +137,25 @@ stale transition; it never indexes replacement state or opens another item.
 
 Opening the first submenu arms one top-menu-rooted
 [modal plane](../../concepts/modality.md#menu-planes) with
-`OutsideInteraction.Dismiss`, entered through
-[`ControlBase.EnterOwnedModal`](../control.md#modal-sessions) the same way every
-other owned modal scope in the framework is. Sibling switches, command rows,
+`OutsideInteraction.Dismiss`, entered through the same modality manager path as
+every other owned modal scope in the framework. Sibling switches, command rows,
 retained popup surfaces, and arbitrarily deep submenus reuse that exact scope.
 Escape closes the deepest branch before ending the root session; invoking a leaf
 item or dismissing from outside closes the complete chain. A top menu inside a
 modal Window becomes a temporary younger scope and restores the Window plane
 when it closes.
+
+When the chain closes, focus returns to the control that owned it before the
+menu was entered. The pointer press or access key that enters a menu bar already
+moves focus onto the bar before the scope arms, so the session-owning menu
+remembers the control focus came from - for a pointer or programmatic entry,
+never for Tab traversal or modal restoration onto the menu, and never when an
+ancestor held focus - and hands the scope that control as its restore target.
+The same return happens without a scope: clicking a top-level command item that
+has no submenu invokes it and gives focus straight back. A menu that nothing
+focusable preceded, or whose previous owner became unavailable meanwhile, keeps
+focus itself or falls back through the ordinary restore policy. A `ContextMenu`
+leaves restoration to its owning popup.
 
 A horizontal menu opens item submenus below the anchor. A vertical menu opens
 nested submenus to the right; pressing Right on its selected submenu-bearing row

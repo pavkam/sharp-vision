@@ -1020,7 +1020,9 @@ internal sealed class OwnedControlRegistry
                         owner.InheritedTheme,
                         previousAppearance,
                         ownerAmbientFace,
-                        AppearanceSnapshot.ResolveContinuousBackground(owner),
+                        AppearanceSnapshot.ContinuesBackgroundPlane(
+                            control,
+                            owner.ProvidesContinuousBackground || AppearanceSnapshot.ResolveContinuousBackground(owner)),
                         propagateContext: true));
                 }
             }

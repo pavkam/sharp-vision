@@ -285,10 +285,10 @@ internal sealed class MenuPane: CompositeControlBase
             new DocSection(
                 "📑",
                 "Menu bar with submenus",
-                "The top menu owns one <info>Dismiss</info> plane for its complete popup chain. Submenus default to a 15-cell minimum; Open Recent demonstrates direct <info>MinWidth</info>/<info>MaxWidth</info> bounds. Hover or arrows switch an open sibling inside that plane, and <reverse>Escape</reverse> restores the owning menu.",
+                "The top menu owns one <info>Dismiss</info> plane for its complete popup chain. Submenus default to a 15-cell minimum; Open Recent demonstrates direct <info>MinWidth</info>/<info>MaxWidth</info> bounds. Hover or Left/Right switch an open sibling inside that plane, a hover-opened submenu shows no cursor until you move into it, and closing the chain returns focus to the control you came from.",
                 new DocExample(
                     "Application menu bar",
-                    "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection, the vertical divider is skipped, <reverse>Right</reverse> opens a row marked with ▶, and <reverse>Left</reverse> returns one submenu level.",
+                    "Click or press <reverse>Enter</reverse> on File, Edit, View, or Help, then hover another heading to switch without leaving the menu plane. <reverse>Tab</reverse> and arrows move selection, the vertical divider is skipped, <reverse>Up</reverse>/<reverse>Down</reverse> pass a row marked with ▶ without opening it, <reverse>Right</reverse> opens it, and <reverse>Left</reverse> returns one submenu level.",
                     new DocColumn(barFrame, barStatus),
                     "var file = new MenuItem { Text = \"&File\" };\nvar openRecentMenu = new Menu\n{\n    Orientation = Orientation.Vertical,\n    MinWidth = Length.Cells(15),\n    MaxWidth = Length.Percent(75),\n};\nopenRecentMenu.Items.Add(new MenuItem { Text = \"To&day\" });\nvar openRecent = new MenuItem { Text = \"O&pen Recent\", Submenu = openRecentMenu };\nvar fileMenu = new Menu { Orientation = Orientation.Vertical };\nfileMenu.Items.Add(new MenuItem { Text = \"Ne&w\" });\nfileMenu.Items.Add(openRecent);\nfile.Submenu = fileMenu;")),
             new DocSection(

@@ -620,7 +620,7 @@ public sealed class FocusManager: IDisposable
                             index < currentPath.Count && IsCommittedTargetValid(control);
                             index++)
                         {
-                            currentPath[index].PublishFocusEntered();
+                            currentPath[index].PublishFocusEntered(previous, reason);
                         }
 
                         // Every ancestor on the current path is notified here, nearest first, not

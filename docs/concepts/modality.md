@@ -325,6 +325,13 @@ the scope. Moving to a command item may close the visible sibling while keeping
 the plane armed. A top menu inside a modal window temporarily becomes a younger
 child scope, and closing it restores the parent dialog plane.
 
+The scope's restore target is the control that owned focus before the menu was
+entered, not the menu itself. The pointer press or access key that arms the
+plane has already focused the menu by the time the scope is entered, so the menu
+supplies the earlier owner it recorded when focus entered it; ordinary restore
+validation still applies, and an unavailable or disallowed target falls back
+through the usual policy.
+
 ## Rendering and layout
 
 Modality adds no wrapper, scrim, reparenting, or visual z-order change. Existing

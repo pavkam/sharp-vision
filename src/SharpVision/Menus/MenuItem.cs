@@ -814,6 +814,16 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         var wasOpen = _submenuPopup.IsOpen;
         ConfigureSubmenuPlacement();
+
+        // Armed pointer movement over this row opens the child provisionally: the pointer is
+        // still here, so the child must not paint a cursor of its own until the pointer or the
+        // keyboard actually picks one of its rows. Decided before the popup opens, because opening
+        // focuses the child menu, and that focus entry is what would otherwise paint its cursor.
+        if (!wasOpen && openedFromPointerSelection)
+        {
+            _submenu?.HideCursorUntilInteraction();
+        }
+
         _submenuPopup.IsOpen = true;
 
         if (!wasOpen && _submenuPopup.IsOpen)
@@ -915,6 +925,16 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         _ = sender;
         _ = eventArgs;
         _submenuOpenedFromPointerSelection = false;
+
+        // A closed branch forgets where its cursor was. Reopening it must start at the first row
+        // like a freshly built menu, not resurrect the row the user last hovered - and, since a
+        // nested row's own branch closes leaf-first before this one, not reopen that nested branch
+        // either.
+        if (_submenu is { IsDisposed: false } submenu)
+        {
+            submenu.ResetCursorForNextOpen();
+        }
+
         var closeOwner = _submenuCloseOwner;
         _submenuCloseOwner = null;
         closeOwner?.EndSubmenuSurfaceClose(this);

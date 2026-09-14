@@ -242,18 +242,24 @@ save.Invoked += (_, _) => SaveDocument();
 ## Submenus
 
 `Submenu` gives the item one retained popup that it owns. Activating the item
-toggles the submenu, and an armed owning menu may also open it while moving
-selection. The popup uses a light square frame around the semantic Bar
-background so it reads as part of the menu system. It prefers to open below the
-item in a horizontal menu and to the right of the item in a vertical menu.
-Generic popup fallback, promotion, light dismissal, and ancestor-chain
-preservation are unchanged. Closing the submenu restores focus to the owning
-menu. Every retained popup and nested Menu participates as a descendant of the
-top owner's [single menu plane](../../concepts/modality.md#menu-planes), so
-opening a nested item never creates one modal scope per submenu and never closes
-an unrelated owner-managed Popup elsewhere in the tree. Directly disposing the
-retained `Submenu` clears the relationship and retires its popup immediately,
-whether the submenu is closed, open, or part of an active nested menu chain.
+toggles the submenu, and an armed owning menu may also open it while moving the
+pointer over the item; keyboard Up and Down in a vertical owning menu only move
+the cursor onto the item and never open it. The popup uses a light square frame
+around the semantic Bar background so it reads as part of the menu system, and
+it starts a fresh appearance plane, so neither the owning bar's continuous
+background nor the content behind the popup shows through its rows or frame. It
+prefers to open below the item in a horizontal menu and to the right of the item
+in a vertical menu. Generic popup fallback, promotion, light dismissal, and
+ancestor-chain preservation are unchanged. Closing the submenu restores focus to
+the owning menu and returns the submenu's cursor to its first available row; a
+submenu opened by armed pointer movement keeps that cursor hidden until the
+pointer or keyboard selects a row inside it. Every retained popup and nested
+Menu participates as a descendant of the top owner's
+[single menu plane](../../concepts/modality.md#menu-planes), so opening a nested
+item never creates one modal scope per submenu and never closes an unrelated
+owner-managed Popup elsewhere in the tree. Directly disposing the retained
+`Submenu` clears the relationship and retires its popup immediately, whether the
+submenu is closed, open, or part of an active nested menu chain.
 
 ## MenuSeparator
 

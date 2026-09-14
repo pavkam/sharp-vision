@@ -2138,7 +2138,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 null,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
-                AppearanceSnapshot.ResolveContinuousBackground(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(this),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -3358,6 +3358,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         finally
         {
+            Dispatcher?.TextSelectionArbiter.Release(this);
             Dispatcher = null;
             Pending = Invalidation.None;
             IsDisposed = true;
@@ -4004,7 +4005,26 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Publishes one already-committed focus-within entry.</summary>
-    internal void PublishFocusEntered() => FocusEntered?.Invoke(this, EventArgs.Empty);
+    /// <param name="previous">The control that owned focus before this commit, or null.</param>
+    /// <param name="reason">The reason the focus manager committed this change.</param>
+    internal void PublishFocusEntered(ControlBase? previous, FocusReason reason)
+    {
+        OnFocusEnteredFrom(previous, reason);
+        FocusEntered?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Responds to focus newly entering this control's subtree, with the control that
+    /// owned focus immediately before, from the same commit that publishes <see cref="FocusEntered"/>.</summary>
+    /// <param name="previous">The previously focused control, or null when nothing was focused.</param>
+    /// <param name="reason">The reason the focus manager committed this change.</param>
+    /// <remarks>
+    /// Runs only on the ancestors focus newly entered, exactly like <see cref="FocusEntered"/>, and
+    /// before that event is raised. It exists for a transient interaction surface such as a menu
+    /// bar, which must hand focus back to <paramref name="previous"/> once its interaction ends
+    /// even though the pointer press or access key that entered it already moved focus before any
+    /// modal scope could snapshot the earlier owner. The default implementation does nothing.
+    /// </remarks>
+    internal virtual void OnFocusEnteredFrom(ControlBase? previous, FocusReason reason) => _ = (previous, reason);
 
     /// <summary>Publishes one already-committed focus-within exit.</summary>
     internal void PublishFocusLeft() => FocusLeft?.Invoke(this, EventArgs.Empty);
@@ -6578,6 +6598,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             if (!ReferenceEquals(Dispatcher, transition.Dispatcher))
             {
                 InvalidateAttachmentIdentity();
+
+                // A control leaving its application must not keep being that application's one
+                // text selection: a later selection elsewhere would otherwise reach back into a
+                // detached control to collapse it. The retained range itself survives detachment
+                // and simply claims again on its next non-empty commit.
+                Dispatcher?.TextSelectionArbiter.Release(this);
             }
 
             Dispatcher = transition.Dispatcher;
@@ -6776,7 +6802,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
-                AppearanceSnapshot.ResolveContinuousBackground(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(this),
                 propagateContext: true);
             plan.Commit();
             configure?.Invoke();
@@ -7339,7 +7365,14 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         return slots;
     }
 
-    /// <summary>Gets or sets whether this control stops ambient text appearance inheritance.</summary>
+    /// <summary>Gets or sets whether this control stops ambient text appearance inheritance and
+    /// an ancestor's continuous background plane from reaching it and its descendants.</summary>
+    /// <remarks>
+    /// Floating surfaces (<see cref="Popup"/>, <see cref="Windows.Window"/>) set this so a
+    /// submenu or dialog whose logical parent sits inside a <see cref="Menu"/> or
+    /// <see cref="Display.StatusBar"/> paints its own opaque face instead of inheriting that bar's
+    /// plane as transparency over whatever content lies behind the surface.
+    /// </remarks>
     public bool IsAppearanceBoundary
     {
         get;
@@ -7468,7 +7501,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             theme,
             previousAppearance,
             AppearanceSnapshot.ResolveParentAmbient(Parent),
-            AppearanceSnapshot.ResolveContinuousBackground(Parent),
+            AppearanceSnapshot.ResolveContinuousBackground(this),
             propagateContext: false);
         plan.Commit();
         var appearanceChanges = AppearanceChange.CreateChanges(
@@ -7498,7 +7531,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
                 theme,
                 previousAppearance,
                 AppearanceSnapshot.ResolveParentAmbient(Parent),
-                AppearanceSnapshot.ResolveContinuousBackground(Parent),
+                AppearanceSnapshot.ResolveContinuousBackground(this),
                 propagateContext: true);
             plan.Commit();
             var appearanceChanges = AppearanceChange.CreateChanges(
@@ -7575,7 +7608,12 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     }
 
     /// <summary>Gets whether any ancestor establishes a continuous background plane for this control.</summary>
-    internal bool UsesContinuousBackground => AppearanceSnapshot.ResolveContinuousBackground(Parent);
+    /// <remarks>
+    /// False for an <see cref="IsAppearanceBoundary"/> control and for everything below one: a
+    /// floating surface starts a fresh plane even though its logical parent chain continues into
+    /// the surface that owns it.
+    /// </remarks>
+    internal bool UsesContinuousBackground => AppearanceSnapshot.ResolveContinuousBackground(this);
 
     /// <inheritdoc/>
     protected internal TerminalStyle GetResolvedStyle(VisualState state) => GetResolvedAppearance(state).Style;
@@ -9049,6 +9087,27 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         }
         var transitionVersion = TextSelectionTransitionVersion;
         Invalidate(Invalidation.Render);
+
+        // One application, one selection: a non-empty range here collapses whichever other owner
+        // held one, before this owner's observers run, so by the time they see this transition
+        // the invariant already holds. A collapse only drops this owner's own claim.
+        if (Dispatcher is { } dispatcher)
+        {
+            if (selection.IsEmpty)
+            {
+                dispatcher.TextSelectionArbiter.Release(this);
+            }
+            else
+            {
+                dispatcher.TextSelectionArbiter.Claim(this);
+            }
+        }
+
+        if (TextSelectionTransitionVersion != transitionVersion)
+        {
+            return true;
+        }
+
         var eventArgs = new TextSelectionChangedEventArgs(previous, selection);
         OnTextSelectionStateChanged(eventArgs);
 

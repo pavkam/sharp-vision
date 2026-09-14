@@ -254,6 +254,77 @@ public sealed class MenuSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth));
     }
 
+    /// <summary>Verifies a drop-down opened from a menu bar hosted above differently colored
+    /// content paints its own Bar plane and popup frame instead of inheriting the bar's continuous
+    /// background as transparency. The bar is a continuous-background plane for its own rows only;
+    /// the submenu popup is an appearance boundary that starts a fresh plane, so its unselected rows
+    /// and separators must be Bar-colored and its frame must be the popup face, never the content
+    /// behind them.</summary>
+    [Fact]
+    public async Task Submenu_WhenBarIsHostedAboveOtherContent_PaintsOwnBarPlaneAndPopupFrameAsync()
+    {
+        // Arrange
+        var first = new MenuItem { Text = "New" };
+        var second = new MenuItem { Text = "Open" };
+        var submenu = new Menu { Orientation = Orientation.Vertical };
+        submenu.Items.Add(first);
+        submenu.Items.Add(new MenuSeparator());
+        submenu.Items.Add(second);
+        var file = new MenuItem { Text = "File", Submenu = submenu };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        var bodyBackground = Color.Rgb(0x12, 0x34, 0x56);
+        var body = new Stack
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        body.Face = new Face(
+            body.Face.Foreground,
+            bodyBackground,
+            body.Face.Attributes,
+            body.Face.Underline,
+            body.Face.UnderlineColor);
+        var root = new Dock
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        Dock.SetSide(menu, DockSide.Top);
+        root.Children.Add(menu);
+        root.Children.Add(body);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(30, 10),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var expectedBar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+        var expectedBody = TerminalPalette.Project(bodyBackground, colorDepth);
+        var popup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(file);
+
+        // Assert
+        popup.IsOpen.ShouldBeTrue();
+        var separator = submenu.Items[1];
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(second.Bounds.Right - 1, second.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        surface.Cell(new Point(separator.Bounds.X, separator.Bounds.Y)).Style.Background.ShouldBe(expectedBar);
+        var frameCorner = surface.Cell(new Point(popup.SurfaceBounds.X, popup.SurfaceBounds.Y)).Style.Background;
+        var frameSide = surface.Cell(new Point(popup.SurfaceBounds.X, second.Bounds.Y)).Style.Background;
+        frameCorner.ShouldNotBe(expectedBody);
+        frameSide.ShouldNotBe(expectedBody);
+        frameSide.ShouldBe(frameCorner);
+        surface.Cell(new Point(popup.SurfaceBounds.Right + 1, second.Bounds.Y)).Style.Background.ShouldBe(expectedBody);
+    }
+
     /// <summary>Verifies SubmenuChrome's border override reaches the rendered open submenu frame,
     /// not just the property value.</summary>
     [Fact]
@@ -1456,4 +1527,424 @@ public sealed class MenuSurfaceTests
         surface.Cell(new Point(5, 1)).Text.ShouldBe("p");
         withAffix.TextControl!.Bounds.X.ShouldBe(plain.TextControl!.Bounds.X);
     }
+
+    // The application-shaped contract a menu bar hosted above ordinary content relies on: focus
+    // returns to the control that owned it before the menu was entered, keyboard navigation inside
+    // a drop-down never opens a nested submenu on its own, a submenu opened by pointer hover shows
+    // no cursor until something inside it is selected, and a closed submenu forgets its cursor so
+    // reopening it never resurrects a stale highlight or a nested branch.
+
+    private static readonly Size _sessionSurfaceSize = new(40, 14);
+
+    #region Session focus return
+
+    /// <summary>Verifies Escape from a chain opened by clicking a bar item first peels the
+    /// drop-down while the bar stays armed, and the second Escape ends the session and returns
+    /// focus to the editor that owned it before the click, not to the bar the click itself focused.</summary>
+    [Fact]
+    public async Task Escape_WhenChainWasOpenedByPointerFromEditor_ReturnsFocusToEditorAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        surface.ShouldHaveFocus(fixture.Editor);
+
+        // Act
+        await surface.Pointer.ClickAsync(fixture.File);
+        fixture.FilePopup.IsOpen.ShouldBeTrue();
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert - the drop-down is gone but the bar is still the armed session owner.
+        fixture.FilePopup.IsOpen.ShouldBeFalse();
+        _ = surface.Application.Modality.Active.ShouldNotBeNull();
+        surface.ShouldHaveFocus(fixture.Bar);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        surface.Application.Modality.Active.ShouldBeNull();
+        surface.ShouldHaveFocus(fixture.Editor);
+        fixture.Bar.ContainsFocus.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies invoking a leaf command through the keyboard returns focus to the
+    /// pre-menu editor once the chain closes.</summary>
+    [Fact]
+    public async Task LeafInvocation_WhenChainWasOpenedByAccessKey_ReturnsFocusToEditorAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        var invoked = new List<string>();
+        fixture.Bar.ItemInvoked += (_, e) => invoked.Add(e.Item.Text);
+
+        // Act - Alt+F through the Kitty keyboard protocol, then Enter on the first row.
+        await surface.SendAsync("\x1b[102;3:1u"u8.ToArray(), "Alt+F");
+        fixture.FilePopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(fixture.FileMenu);
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        invoked.ShouldBe(["New"]);
+        fixture.FilePopup.IsOpen.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+        surface.ShouldHaveFocus(fixture.Editor);
+    }
+
+    /// <summary>Verifies clicking a top-level command item that has no submenu, which never arms a
+    /// modal session, still hands focus back to the editor after the command runs.</summary>
+    [Fact]
+    public async Task TopLevelCommand_WhenClickedFromEditor_ReturnsFocusToEditorAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        var invoked = new List<string>();
+        fixture.Bar.ItemInvoked += (_, e) => invoked.Add(e.Item.Text);
+
+        // Act
+        await surface.Pointer.ClickAsync(fixture.Direct);
+
+        // Assert
+        invoked.ShouldBe(["&Direct"]);
+        surface.ShouldHaveFocus(fixture.Editor);
+    }
+
+    /// <summary>Verifies a bar mounted with nothing focused before it keeps focus itself after the
+    /// chain closes, so a menu that is the only focusable content does not lose focus to nowhere.</summary>
+    [Fact]
+    public async Task Escape_WhenNothingOwnedFocusBeforeTheBar_KeepsFocusOnBarAsync()
+    {
+        // Arrange
+        var fileMenu = new Menu { Orientation = Orientation.Vertical };
+        fileMenu.Items.Add(new MenuItem { Text = "New" });
+        var file = new MenuItem { Text = "File", Submenu = fileMenu };
+        var bar = new Menu();
+        bar.Items.Add(file);
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        var popup = OwnedTree.Find<Popup>(file).ShouldNotBeNull();
+
+        // Act
+        await surface.Pointer.ClickAsync(file);
+        popup.IsOpen.ShouldBeTrue();
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        popup.IsOpen.ShouldBeFalse();
+        surface.ShouldHaveFocus(bar);
+    }
+
+    /// <summary>Verifies a pre-menu focus owner that became unavailable while the chain was open
+    /// is skipped: focus stays somewhere valid instead of being forced onto a disabled control.</summary>
+    [Fact]
+    public async Task Escape_WhenPreviousFocusOwnerWasDisabledMeanwhile_DoesNotFocusItAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+
+        // Act
+        await surface.Pointer.ClickAsync(fixture.File);
+        await surface.UpdateAsync(() => fixture.Editor.IsEnabled = false, "disable editor while menu is open");
+        await surface.Keyboard.PressAsync(Code.Escape);
+        await surface.Keyboard.PressAsync(Code.Escape);
+
+        // Assert
+        fixture.FilePopup.IsOpen.ShouldBeFalse();
+        surface.Application.Modality.Active.ShouldBeNull();
+        fixture.Editor.IsFocused.ShouldBeFalse();
+    }
+
+    #endregion
+
+    #region Session keyboard navigation inside a drop-down
+
+    /// <summary>Verifies Down through a drop-down highlights a submenu-bearing row without opening
+    /// it, and a further Down keeps walking the same menu instead of entering the child.</summary>
+    [Fact]
+    public async Task Down_WhenPassingASubmenuRow_DoesNotOpenTheSubmenuAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.SendAsync("\x1b[102;3:1u"u8.ToArray(), "Alt+F");
+        fixture.FileMenu.SelectedItem.ShouldBeSameAs(fixture.New);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert - the cursor sits on the submenu row, nothing opened, focus stayed here.
+        fixture.FileMenu.SelectedItem.ShouldBeSameAs(fixture.Recent);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+        surface.ShouldHaveFocus(fixture.FileMenu);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        fixture.FileMenu.SelectedItem.ShouldBeSameAs(fixture.Save);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+        surface.ShouldHaveFocus(fixture.FileMenu);
+    }
+
+    /// <summary>Verifies Right on a submenu row opens it with the cursor on its first row, and Up
+    /// or Down back in the parent (after Left) closes that branch instead of leaving it open.</summary>
+    [Fact]
+    public async Task RightThenLeftThenDown_WhenOnASubmenuRow_OpensAndClosesTheBranchAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.SendAsync("\x1b[102;3:1u"u8.ToArray(), "Alt+F");
+        await surface.Keyboard.PressAsync(Code.Down);
+        fixture.FileMenu.SelectedItem.ShouldBeSameAs(fixture.Recent);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(fixture.RecentMenu);
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Today);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background
+            .ShouldBe(fixture.SelectionBackground(surface));
+
+        // Act - Left returns to the parent row, Down leaves the branch closed.
+        await surface.Keyboard.PressAsync(Code.Left);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+        surface.ShouldHaveFocus(fixture.FileMenu);
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        fixture.FileMenu.SelectedItem.ShouldBeSameAs(fixture.Save);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Left and Right on the bar still switch top-level drop-downs and open the
+    /// new one with a visible cursor on its first row.</summary>
+    [Fact]
+    public async Task Right_WhenOnTheBarWithADropDownOpen_SwitchesToNextDropDownWithCursorAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.SendAsync("\x1b[102;3:1u"u8.ToArray(), "Alt+F");
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        // Assert
+        fixture.FilePopup.IsOpen.ShouldBeFalse();
+        fixture.EditPopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(fixture.EditMenu);
+        fixture.EditMenu.SelectedItem.ShouldBeSameAs(fixture.Undo);
+        surface.Cell(new Point(fixture.Undo.Bounds.X, fixture.Undo.Bounds.Y)).Style.Background
+            .ShouldBe(fixture.SelectionBackground(surface));
+    }
+
+    #endregion
+
+    #region Session pointer-opened submenu cursor
+
+    /// <summary>Verifies a submenu opened by hovering its parent row paints no cursor of its own
+    /// while the pointer is still on the parent, so only the parent path reads as selected.</summary>
+    [Fact]
+    public async Task Hover_WhenItOpensASubmenu_LeavesTheSubmenuCursorHiddenUntilARowIsHoveredAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.Pointer.ClickAsync(fixture.File);
+        var selection = fixture.SelectionBackground(surface);
+
+        // Act
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+
+        // Assert - branch open, parent row selected, child cursor not painted.
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        surface.Cell(new Point(fixture.Recent.Bounds.X, fixture.Recent.Bounds.Y)).Style.Background.ShouldBe(selection);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+        surface.Cell(new Point(fixture.Yesterday.Bounds.X, fixture.Yesterday.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+
+        // Act
+        await surface.Pointer.MoveToAsync(fixture.Yesterday);
+
+        // Assert - hovering a child row reveals the cursor there.
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Yesterday);
+        surface.Cell(new Point(fixture.Yesterday.Bounds.X, fixture.Yesterday.Bounds.Y)).Style.Background.ShouldBe(selection);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+    }
+
+    /// <summary>Verifies a keyboard move inside a hover-opened submenu reveals its cursor at the
+    /// first row rather than activating an invisible cursor.</summary>
+    [Fact]
+    public async Task Enter_WhenSubmenuCursorIsHidden_RevealsInsteadOfActivatingAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        var invoked = new List<string>();
+        fixture.Bar.ItemInvoked += (_, e) => invoked.Add(e.Item.Text);
+        await surface.Pointer.ClickAsync(fixture.File);
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        var selection = fixture.SelectionBackground(surface);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        invoked.ShouldBeEmpty();
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Today);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background.ShouldBe(selection);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert
+        invoked.ShouldBe(["Today"]);
+    }
+
+    /// <summary>Verifies hovering across the bar while armed opens the next drop-down without a
+    /// painted cursor, and Down then reveals it on the first row.</summary>
+    [Fact]
+    public async Task Hover_WhenSwitchingBarDropDowns_OpensNextWithoutCursorUntilKeyboardAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.Pointer.ClickAsync(fixture.File);
+        var selection = fixture.SelectionBackground(surface);
+
+        // Act
+        await surface.Pointer.MoveToAsync(fixture.Edit);
+
+        // Assert
+        fixture.EditPopup.IsOpen.ShouldBeTrue();
+        surface.ShouldHaveFocus(fixture.EditMenu);
+        surface.Cell(new Point(fixture.Undo.Bounds.X, fixture.Undo.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        fixture.EditMenu.SelectedItem.ShouldBeSameAs(fixture.Undo);
+        surface.Cell(new Point(fixture.Undo.Bounds.X, fixture.Undo.Bounds.Y)).Style.Background.ShouldBe(selection);
+    }
+
+    #endregion
+
+    #region Session cursor reset on close
+
+    /// <summary>Verifies a closed submenu forgets its moved cursor: reopening it by hover paints no
+    /// stale row, and reopening it by keyboard starts again at the first row.</summary>
+    [Fact]
+    public async Task Reopen_WhenSubmenuCursorHadMoved_StartsFromTheFirstRowAgainAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.Pointer.ClickAsync(fixture.File);
+        var selection = fixture.SelectionBackground(surface);
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+        await surface.Pointer.MoveToAsync(fixture.Yesterday);
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Yesterday);
+
+        // Act - leave the branch, then hover the parent row again.
+        await surface.Pointer.MoveToAsync(fixture.Save);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+
+        // Assert
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        surface.Cell(new Point(fixture.Yesterday.Bounds.X, fixture.Yesterday.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background.ShouldNotBe(selection);
+
+        // Act - keyboard reveal lands on the first row, not the stale one.
+        await surface.Keyboard.PressAsync(Code.Down);
+
+        // Assert
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Today);
+        surface.Cell(new Point(fixture.Today.Bounds.X, fixture.Today.Bounds.Y)).Style.Background.ShouldBe(selection);
+    }
+
+    /// <summary>Verifies closing a branch whose nested submenu was open does not cascade that
+    /// nested branch back open the next time the parent row is hovered.</summary>
+    [Fact]
+    public async Task Reopen_WhenANestedBranchHadBeenOpen_DoesNotReopenTheNestedBranchAsync()
+    {
+        // Arrange
+        var fixture = MenuBarFixture.Create();
+        await using var surface = await ComponentSurface.MountAsync(
+            fixture.Root,
+            _sessionSurfaceSize,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => _ = surface.Application.Focus.Focus(fixture.Editor), "focus editor");
+        await surface.Pointer.ClickAsync(fixture.File);
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+        await surface.Pointer.MoveToAsync(fixture.Archive);
+        fixture.ArchivePopup.IsOpen.ShouldBeTrue();
+
+        // Act
+        await surface.Pointer.MoveToAsync(fixture.Save);
+        fixture.RecentPopup.IsOpen.ShouldBeFalse();
+        fixture.ArchivePopup.IsOpen.ShouldBeFalse();
+        await surface.Pointer.MoveToAsync(fixture.Recent);
+
+        // Assert
+        fixture.RecentPopup.IsOpen.ShouldBeTrue();
+        fixture.ArchivePopup.IsOpen.ShouldBeFalse();
+        fixture.RecentMenu.SelectedItem.ShouldBeSameAs(fixture.Today);
+    }
+
+    #endregion
 }

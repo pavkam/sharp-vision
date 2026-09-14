@@ -56,7 +56,7 @@ internal readonly struct AppearanceSnapshot
         stack.Push((
             root,
             ResolveParentAmbient(root.Parent),
-            ResolveContinuousBackground(root.Parent)));
+            ResolveContinuousBackground(root)));
 
         while (stack.TryPop(out var entry))
         {
@@ -82,29 +82,57 @@ internal readonly struct AppearanceSnapshot
 
             for (var index = entry.Control.OwnedControlCount - 1; index >= 0; index--)
             {
+                var child = entry.Control.OwnedControlAt(index);
                 stack.Push((
-                    entry.Control.OwnedControlAt(index),
+                    child,
                     ambientFace,
-                    entry.ContinuousBackground || entry.Control.ProvidesContinuousBackground));
+                    ContinuesBackgroundPlane(
+                        child,
+                        entry.ContinuousBackground || entry.Control.ProvidesContinuousBackground)));
             }
         }
     }
 
     /// <summary>Resolves whether an external parent chain establishes a continuous background plane.</summary>
-    /// <param name="parent">The nearest parent, or null for a root.</param>
-    /// <returns>True when the control below <paramref name="parent"/> must leave the plane visible.</returns>
-    internal static bool ResolveContinuousBackground(ControlBase? parent)
+    /// <param name="control">The control whose plane membership is resolved.</param>
+    /// <returns>True when <paramref name="control"/> must leave an ancestor's plane visible.</returns>
+    /// <remarks>
+    /// The walk stops at the first <see cref="ControlBase.IsAppearanceBoundary"/> control, including
+    /// <paramref name="control"/> itself: a floating surface such as a submenu popup is logically
+    /// owned by a menu item, so its <see cref="ControlBase.Parent"/> chain runs straight into the
+    /// menu bar's plane, but visually it is a separate surface drawn over arbitrary content. Letting
+    /// the bar's plane reach through it would make the popup frame, the nested menu, and every
+    /// unselected row transparent onto whatever happens to be behind the popup.
+    /// </remarks>
+    internal static bool ResolveContinuousBackground(ControlBase control)
     {
-        for (var current = parent; current is not null; current = current.Parent)
+        if (control.IsAppearanceBoundary)
+        {
+            return false;
+        }
+
+        for (var current = control.Parent; current is not null; current = current.Parent)
         {
             if (current.ProvidesContinuousBackground)
             {
                 return true;
             }
+
+            if (current.IsAppearanceBoundary)
+            {
+                return false;
+            }
         }
 
         return false;
     }
+
+    /// <summary>Gates one inherited continuous-plane flag on the receiving control's own boundary.</summary>
+    /// <param name="control">The control about to inherit the plane.</param>
+    /// <param name="inheritedPlane">Whether the parent chain offers a continuous plane.</param>
+    /// <returns>False when <paramref name="control"/> starts a fresh surface; otherwise <paramref name="inheritedPlane"/>.</returns>
+    internal static bool ContinuesBackgroundPlane(ControlBase control, bool inheritedPlane) =>
+        inheritedPlane && !control.IsAppearanceBoundary;
 
     /// <summary>Resolves one external parent chain top-down without reading or populating caches.</summary>
     /// <param name="parent">The nearest parent, or null for no ambient source.</param>

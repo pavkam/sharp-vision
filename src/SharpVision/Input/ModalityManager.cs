@@ -133,6 +133,46 @@ public sealed class ModalityManager: IDisposable
         ControlBase? initialFocus = null)
     {
         ArgumentNullException.ThrowIfNull(root);
+        return EnterRestoringFocusTo(root, outsideInteraction, initialFocus, _focus.Focused);
+    }
+
+    /// <summary>Enters one modal plane exactly like <see cref="Enter"/>, but records
+    /// <paramref name="previousFocus"/> as the control the scope restores focus to on exit instead
+    /// of whichever control happens to be focused at entry.</summary>
+    /// <param name="root">The non-null attached and available primary plane root.</param>
+    /// <param name="outsideInteraction">The defined outside-interaction policy.</param>
+    /// <param name="initialFocus">An optional eligible focus target inside the primary root.</param>
+    /// <param name="previousFocus">
+    /// The control to restore focus to on exit, or null to fall back to the resolver's default
+    /// target. Ordinary restore validation still applies: a target that is disposed, detached,
+    /// unavailable, or disallowed by the remaining modal plane is skipped exactly as a stale
+    /// entry-time snapshot would be.
+    /// </param>
+    /// <returns>The active disposable modal lifetime.</returns>
+    /// <remarks>
+    /// A transient interaction surface such as a menu bar receives focus from the very pointer
+    /// press or access key that then arms its scope, so by the time <see cref="Enter"/> snapshots
+    /// <see cref="FocusManager.Focused"/> the interesting owner - the editor the user was typing in
+    /// - is already gone. The surface captures that owner itself and hands it in here.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="root"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="outsideInteraction"/> is undefined.</exception>
+    /// <exception cref="ArgumentException">
+    /// A root or initial-focus target is foreign, unavailable, ineligible, disposed, or an exact active duplicate.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The caller is off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The manager or supplied control is disposed.</exception>
+    /// <exception cref="Exception">
+    /// Pointer cleanup, focus publication, or transactional rollback notification fails after committed cleanup.
+    /// </exception>
+    [MustDisposeResource]
+    internal ModalScope EnterRestoringFocusTo(
+        ControlBase root,
+        OutsideInteraction outsideInteraction,
+        ControlBase? initialFocus,
+        ControlBase? previousFocus)
+    {
+        ArgumentNullException.ThrowIfNull(root);
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(outsideInteraction, nameof(outsideInteraction), "The outside-interaction policy is unknown.");
 
@@ -145,7 +185,10 @@ public sealed class ModalityManager: IDisposable
             ValidateInitialFocus(initialFocus, root, nameof(initialFocus));
         }
 
-        var previousFocus = _focus.Focused;
+        // The scope remembers the caller's restore target, but a failed entry rolls back to the
+        // focus that actually existed a moment ago - an entry that never took must not move focus
+        // anywhere the user did not already have it.
+        var entryFocus = _focus.Focused;
         var scope = new ModalScope(
             this,
             root,
@@ -165,7 +208,7 @@ public sealed class ModalityManager: IDisposable
                 FocusReason.Programmatic,
                 excludedSubtrees: null,
                 scope,
-                previousFocus);
+                entryFocus);
 
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             return scope;
@@ -178,7 +221,7 @@ public sealed class ModalityManager: IDisposable
                 {
                     RollbackEntry(
                         scope,
-                        previousFocus,
+                        entryFocus,
                         ExceptionDispatchInfo.Capture(exception));
                 }
                 catch

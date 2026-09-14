@@ -125,10 +125,13 @@ internal sealed class ContextTransitionPlan
 
             for (var index = control.OwnedControlCount - 1; index >= 0; index--)
             {
+                var child = control.OwnedControlAt(index);
                 stack.Push((
-                    control.OwnedControlAt(index),
+                    child,
                     ambientFace,
-                    entry.ContinuousBackground || control.ProvidesContinuousBackground,
+                    AppearanceSnapshot.ContinuesBackgroundPlane(
+                        child,
+                        entry.ContinuousBackground || control.ProvidesContinuousBackground),
                     false));
             }
         }
