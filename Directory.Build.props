@@ -6,11 +6,11 @@
          lockstep. These five properties are the single source of truth for their respective
          package's version; every other version-derived property below selects the matching one
          by project name. -->
-    <SharpVisionTerminalVersion>1.6.0-beta.4</SharpVisionTerminalVersion>
-    <SharpVisionVersion>1.6.0-beta.4</SharpVisionVersion>
-    <SharpVisionDocumentVersion>1.6.0-beta.4</SharpVisionDocumentVersion>
-    <SharpVisionFigletFontsVersion>1.6.0-beta.4</SharpVisionFigletFontsVersion>
-    <SharpVisionSyntaxHighlightingVersion>1.6.0-beta.4</SharpVisionSyntaxHighlightingVersion>
+    <SharpVisionTerminalVersion>1.6.0-beta.5</SharpVisionTerminalVersion>
+    <SharpVisionVersion>1.6.0-beta.5</SharpVisionVersion>
+    <SharpVisionDocumentVersion>1.6.0-beta.5</SharpVisionDocumentVersion>
+    <SharpVisionFigletFontsVersion>1.6.0-beta.5</SharpVisionFigletFontsVersion>
+    <SharpVisionSyntaxHighlightingVersion>1.6.0-beta.5</SharpVisionSyntaxHighlightingVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'SharpVision.Terminal'">
