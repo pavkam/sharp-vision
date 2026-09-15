@@ -30,6 +30,40 @@ public sealed class ScreenTests
         screen.ActualBorder.Foreground.ShouldBe(Color.Default);
     }
 
+    /// <summary>Verifies a mounted Screen actually paints the theme's window plane beneath its
+    /// authored content, so a theme whose desktop differs from its dialogs (Turbo Vision's blue
+    /// desktop under gray windows) shows that desktop without a hand-authored root face.</summary>
+    [Fact]
+    public async Task Render_WhenTurboVisionThemeIsPublished_PaintsBlueDesktopBeneathContentAsync()
+    {
+        using var screen = new ProbeScreen();
+        screen.ContentRoot.HorizontalAlignment = HorizontalAlignment.Stretch;
+        screen.ContentRoot.VerticalAlignment = VerticalAlignment.Stretch;
+        screen.ContentRoot.Face = new Face(
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None,
+            Underline.None,
+            Color.Default);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            screen,
+            new Size(20, 6),
+            options,
+            TestContext.Current.CancellationToken);
+
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("turbo-vision"),
+            "publish Turbo Vision");
+
+        var desktop = surface.Application.Theme.ResolveColor(SemanticColor.Window);
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(desktop);
+        surface.Cell(new Point(19, 5)).Style.Background.ShouldBe(desktop);
+    }
+
     /// <summary>Verifies retained composition precedes attach, first layout, and started hooks.</summary>
     [Fact]
     public async Task Attach_WhenApplicationStarts_RunsRetainedLifecycleInOrderAsync()

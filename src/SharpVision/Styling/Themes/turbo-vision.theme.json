@@ -18,7 +18,6 @@
     "lightGray": "#aaaaaa",
     "darkGray": "#555555",
     "disabledInk": "#494949",
-    "navy": "#000080",
     "brightBlue": "#5555ff",
     "brightGreen": "#55ff55",
     "brightCyan": "#55ffff",
@@ -31,9 +30,9 @@
     "window": "blue",
     "windowSurface": "lightGray",
     "windowText": "lightGray",
-    "surface": "blue",
+    "surface": "cyan",
     "surfaceText": "black",
-    "bar": "white",
+    "bar": "lightGray",
     "control": "lightGray",
     "controlText": "black",
     "controlBorder": "black",
@@ -43,10 +42,10 @@
     "activeControl": "brightCyan",
     "activeText": "blue",
     "activeBorder": "white",
-    "focusedControl": "blue",
-    "focusedText": "lightGray",
+    "focusedControl": "cyan",
+    "focusedText": "black",
     "focusedBorder": "white",
-    "pressedControl": "cyan",
+    "pressedControl": "blue",
     "pressedText": "white",
     "pressedBorder": "black",
     "selectedControl": "green",
@@ -54,9 +53,9 @@
     "disabledControl": "lightGray",
     "disabledText": "disabledInk",
     "disabledBorder": "darkGray",
-    "accent": "green",
+    "accent": "blue",
     "muted": "darkGray",
-    "hotkey": "navy",
+    "hotkey": "red",
     "error": "brightRed",
     "warning": "yellow",
     "success": "brightGreen",
@@ -122,7 +121,7 @@
       "normal": {
         "affixGap": 1,
         "face": {
-          "foreground": "windowText",
+          "foreground": "controlText",
           "background": "surface"
         },
         "border": {
@@ -187,6 +186,7 @@
     },
     "window": {
       "normal": {
+        "closeMarkColor": "green",
         "face": {
           "foreground": "surfaceText",
           "background": "windowSurface"

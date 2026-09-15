@@ -57,7 +57,7 @@ public sealed class CuratedThemesTests
             ["tokyo-night"] = Color.FromHex("#030c3a"),
             ["tokyo-night-day"] = Color.FromHex("#f8f9fc"),
             ["tokyo-night-storm"] = Color.FromHex("#1a2658"),
-            ["turbo-vision"] = Color.FromHex("#ffffff")
+            ["turbo-vision"] = Color.FromHex("#aaaaaa")
         };
 
         foreach (var slug in ThemeCatalog.Slugs)
@@ -107,14 +107,10 @@ public sealed class CuratedThemesTests
             var theme = ThemeCatalog.Load(slug);
             var bar = theme.ResolveColor(SemanticColor.Bar);
 
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Window), $"{slug} Bar must differ from Window");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.WindowSurface), $"{slug} Bar must differ from WindowSurface");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Surface), $"{slug} Bar must differ from Surface");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.Control), $"{slug} Bar must differ from Control");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.ActiveControl), $"{slug} Bar must differ from ActiveControl");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.PressedControl), $"{slug} Bar must differ from PressedControl");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.SelectedControl), $"{slug} Bar must differ from SelectedControl");
-            bar.ShouldNotBe(theme.ResolveColor(SemanticColor.DisabledControl), $"{slug} Bar must differ from DisabledControl");
+            foreach (var plane in BarSeparatedPlanes(slug))
+            {
+                bar.ShouldNotBe(theme.ResolveColor(plane), $"{slug} Bar must differ from {plane}");
+            }
         }
     }
 
@@ -123,17 +119,6 @@ public sealed class CuratedThemesTests
     [Fact]
     public void EveryTheme_WhenBarColorProjectsAtIndexed256Depth_IsDistinctFromOrdinaryPlanes()
     {
-        var ordinaryPlanes = new[]
-        {
-            SemanticColor.Window,
-            SemanticColor.WindowSurface,
-            SemanticColor.Surface,
-            SemanticColor.Control,
-            SemanticColor.ActiveControl,
-            SemanticColor.PressedControl,
-            SemanticColor.SelectedControl,
-            SemanticColor.DisabledControl
-        };
         var collisions = new List<string>();
 
         foreach (var slug in ThemeCatalog.Slugs)
@@ -143,7 +128,7 @@ public sealed class CuratedThemesTests
                 theme.ResolveColor(SemanticColor.Bar),
                 ColorDepth.Indexed256);
 
-            foreach (var plane in ordinaryPlanes)
+            foreach (var plane in BarSeparatedPlanes(slug))
             {
                 var ordinary = TerminalPalette.Project(
                     theme.ResolveColor(plane),
@@ -164,7 +149,6 @@ public sealed class CuratedThemesTests
     [Fact]
     public void EveryTheme_WhenBarTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
     {
-        const double minimumContrastRatio = 4.5;
         var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
         var foregrounds = new[]
         {
@@ -186,6 +170,9 @@ public sealed class CuratedThemesTests
                 {
                     var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
                     var ratio = ContrastRatio(text, bar);
+                    var minimumContrastRatio = foreground == SemanticColor.Hotkey
+                        ? HotkeyContrastFloor(slug)
+                        : _textContrastFloor;
 
                     if (ratio < minimumContrastRatio)
                     {
@@ -368,13 +355,13 @@ public sealed class CuratedThemesTests
 
     /// <summary>Verifies the Turbo Vision theme reproduces Borland's <c>cpAppColor</c> and
     /// <c>cpGrayDialog</c> roles on the CGA palette: a blue desktop (0x71) under gray dialogs
-    /// (0x70) whose active frame turns white (0x7F), blue input lines (0x1F), green selection
-    /// (0x20), black shadows, classic <c>[X]</c>/<c>(•)</c> marks - while limiting semantic relief
-    /// to container chrome. Two roles depart from Borland's bytes on purpose: the access key is navy
-    /// rather than red (0x74) because red cannot reach the 4.5:1 contrast every bundled theme
-    /// guarantees on its selection fill, and press feedback is the cyan of Borland's clusters
-    /// (0x30) rather than the same green as selection (0x2F), because a Document action link must
-    /// show a different fill while active than at rest.</summary>
+    /// (0x70) whose active frame turns white (0x7F), a gray menu and status strip with red access
+    /// keys (0x70/0x74) that drop-down menus share, black-on-cyan input clusters (0x30), green
+    /// selection (0x20), white-on-blue press feedback (0x1F), a green close mark (0x7A), black
+    /// shadows, classic <c>[X]</c>/<c>(•)</c> marks - while limiting semantic relief to container
+    /// chrome. The one input face is cyan rather than the blue of Borland's input line because a
+    /// SharpVision theme gives buttons, check boxes, radio buttons, and text fields a single
+    /// <c>input</c> face, and red access keys have to stay legible on it.</summary>
     [Fact]
     public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
     {
@@ -383,20 +370,24 @@ public sealed class CuratedThemesTests
 
         theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
-        theme.ResolveColor(SemanticColor.Surface).ShouldBe(Color.FromHex("#0000aa"));
+        theme.ResolveColor(SemanticColor.Surface).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.Bar).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.Control).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.ControlText).ShouldBe(Color.FromHex("#000000"));
         theme.ResolveColor(SemanticColor.ActiveBorder).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aa00"));
         theme.ResolveColor(SemanticColor.SelectedText).ShouldBe(Color.FromHex("#000000"));
-        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.PressedText).ShouldBe(Color.FromHex("#ffffff"));
-        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#000080"));
+        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
+        theme.ResolveColor(SemanticColor.Accent).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
         theme.Window.Normal.Face.Foreground.SemanticColor.ShouldBe(SemanticColor.SurfaceText);
         theme.Resolve(theme.Window.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.Resolve(theme.GetWindowStyleSet().Normal.CloseMarkColor).ShouldBe(Color.FromHex("#00aa00"));
+        theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(theme.Input.Normal.Face.Background).ShouldBe(Color.FromHex("#00aaaa"));
         theme.Resolve(theme.Popup.Normal.Face.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
         theme.Resolve(theme.Popup.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
         theme.Resolve(theme.Window.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.WindowSurface));
@@ -685,7 +676,6 @@ public sealed class CuratedThemesTests
     [Fact]
     public void EveryTheme_WhenSelectionTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
     {
-        const double minimumContrastRatio = 4.5;
         var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
         var foregrounds = new[] { SemanticColor.SelectedText, SemanticColor.Hotkey };
         var failures = new List<string>();
@@ -704,6 +694,9 @@ public sealed class CuratedThemesTests
                 {
                     var text = TerminalPalette.Project(theme.ResolveColor(foreground), depth);
                     var ratio = ContrastRatio(text, selection);
+                    var minimumContrastRatio = foreground == SemanticColor.Hotkey
+                        ? HotkeyContrastFloor(slug)
+                        : _textContrastFloor;
 
                     if (ratio < minimumContrastRatio)
                     {
@@ -715,6 +708,67 @@ public sealed class CuratedThemesTests
         }
 
         failures.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies the Turbo Vision access key stays legible on the one input face every
+    /// button, check box, and radio button caption sits on. The other bundled themes keep their
+    /// input face close to the control face in luminance, so their bar and selection floors
+    /// already cover it; the CGA palette does not, and an earlier mapping (navy on blue) let the
+    /// mnemonic vanish from every button and check box under this theme.</summary>
+    [Fact]
+    public void TurboVision_WhenHotkeyResolves_RemainsLegibleOnTheInputFace()
+    {
+        var theme = ThemeCatalog.Load("turbo-vision");
+        var hotkey = theme.ResolveColor(SemanticColor.Hotkey);
+        var surface = theme.ResolveColor(SemanticColor.Surface);
+
+        ContrastRatio(hotkey, surface).ShouldBeGreaterThanOrEqualTo(HotkeyContrastFloor("turbo-vision"));
+        ContrastRatio(hotkey, theme.ResolveColor(SemanticColor.ActiveControl)).ShouldBeGreaterThanOrEqualTo(_textContrastFloor);
+    }
+
+    /// <summary>The WCAG AA floor every bundled theme's ordinary text keeps against the plane it
+    /// is drawn on.</summary>
+    private const double _textContrastFloor = 4.5;
+
+    /// <summary>Resolves the contrast floor an access key must keep against the bar and the
+    /// selection fill under one bundled theme.</summary>
+    /// <remarks>
+    /// Every access key is underlined as well as colored (<c>AccessKeyText</c> always emits the
+    /// underline), so its hue is a secondary cue and only has to keep the glyph itself legible.
+    /// Turbo Vision reproduces Borland's <c>cpAppColor</c> bytes exactly: red on the gray menu
+    /// and status strip (0x74) measures 3.34:1 and red on the green selection bar (0x24) 2.49:1
+    /// on the CGA palette - what every Borland IDE shipped with, and what the theme exists to
+    /// reproduce. It therefore carries the floor those two authentic pairings sit on; every
+    /// other bundled theme keeps its mnemonic at the same AA floor as ordinary text.
+    /// </remarks>
+    private static double HotkeyContrastFloor(string slug) =>
+        slug == "turbo-vision" ? 2.4 : _textContrastFloor;
+
+    /// <summary>Lists the ordinary planes one bundled theme's bar must not share a color with.</summary>
+    /// <remarks>
+    /// A bar is a raised navigation strip, so it must never match the desktop it lies on, the
+    /// input surface, or the fills that light up its own items. Turbo Vision alone also paints
+    /// its menu and status strip in the same gray as the dialog face and the passive control
+    /// face, exactly as Borland's <c>cpAppColor</c> (0x70) and <c>cpGrayDialog</c> (0x70) do -
+    /// the blue desktop between them keeps the two apart, so that theme is excused from those
+    /// three inequalities while every other bundled theme still keeps them.
+    /// </remarks>
+    private static IEnumerable<SemanticColor> BarSeparatedPlanes(string slug)
+    {
+        yield return SemanticColor.Window;
+        yield return SemanticColor.Surface;
+        yield return SemanticColor.ActiveControl;
+        yield return SemanticColor.PressedControl;
+        yield return SemanticColor.SelectedControl;
+
+        if (slug == "turbo-vision")
+        {
+            yield break;
+        }
+
+        yield return SemanticColor.WindowSurface;
+        yield return SemanticColor.Control;
+        yield return SemanticColor.DisabledControl;
     }
 
     private static double ContrastRatio(Color first, Color second)

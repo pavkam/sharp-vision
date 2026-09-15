@@ -67,10 +67,14 @@ the typed public lookup.
 `bar` is the normal raised-navigation background for `Menu`, `MenuItem`,
 `MenuSeparator`, `CommandBar`, `CommandBarItem`, `CommandBarSeparator`,
 `StatusBar`, and `StatusBarItem`. Each bundled theme maps it deliberately to a
-palette tier that retains at least 4.5:1 contrast with `controlText`,
-`activeText`, and `hotkey` at truecolor and xterm-256 depth, and stays distinct
-from ordinary planes and the active, selected, pressed, and disabled fills used
-around it. Physical hover omits only its `Face.Background`, while disablement
+palette tier that retains at least 4.5:1 contrast with `controlText` and
+`activeText` at truecolor and xterm-256 depth, and stays distinct from the
+`window` plane it lies on, the input `surface`, and the active, selected, and
+pressed fills used around it. Every bundled theme except Turbo Vision also keeps
+it distinct from the `windowSurface`, `control`, and `disabledControl` faces;
+Turbo Vision paints its menu and status strip in the same gray as its dialogs,
+exactly as Borland did, and relies on the blue desktop between them to keep the
+two apart. Physical hover omits only its `Face.Background`, while disablement
 restores the Bar background; every other authored state member still applies.
 Focus, selection, checked, and press may replace the Bar background while
 active. A complete local style bypasses these theme overlays and remains
@@ -78,9 +82,19 @@ authoritative in every state. Each bundled `disabledText` remains different from
 `controlText` and retains at least 3:1 contrast with both Bar and
 `disabledControl` at truecolor and xterm-256 depth, keeping unavailable entries
 subdued but legible. Every bundled `selectedControl` pairing likewise retains at
-least 4.5:1 contrast with `selectedText` and `hotkey` at truecolor and xterm-256
-depth so a selected bar row does not make either its caption or mnemonic
-disappear.
+least 4.5:1 contrast with `selectedText` at truecolor and xterm-256 depth so a
+selected bar row does not make its caption disappear.
+
+`hotkey` colors the access-key grapheme of every mnemonic caption, and the
+caption always underlines that grapheme as well, so the hue is a secondary cue.
+Every bundled theme except Turbo Vision keeps `hotkey` at the same 4.5:1 floor
+as ordinary text against both Bar and `selectedControl`. Turbo Vision reproduces
+Borland's red access key (0x74 on the gray bar, 0x24 on the green selection
+bar), which measures 3.34:1 and 2.49:1 on the CGA palette; the theme keeps those
+two historical pairings on purpose, and its curated-theme tests pin that floor
+rather than the AA one. Whatever its floor, the access key must remain legible
+on the input `surface` too, because every `Button`, `CheckBox`, and
+`RadioButton` caption sits on that face.
 
 `reliefHighlight` and `reliefShade` model one light source above and to the left
 of the surface: `BorderRelief.Raised` paints the top and left edges with
@@ -348,26 +362,32 @@ The bundled `turbo-vision` theme is sourced from Turbo Vision's published
 `cpAppColor` and `cpGrayDialog` palettes on the canonical CGA/VGA RGB values
 without interpolation. `window` is the blue desktop (0x71), `windowSurface` the
 light-gray dialog face (0x70) whose frame turns white while the dialog is active
-(0x7F), `surface` the blue input line (0x1F) with light-gray text, `bar` the
-white menu and status strip, `control` the ordinary light-gray face with black
-text and black lines, selection the green highlight (0x20), press feedback the
-cyan of Borland's clusters (0x30), shadows black, and the glyph family `classic`
-for `[X]` check boxes, `(•)` radio buttons, and shaded scrollbar tracks. Because
-the desktop and the dialogs have opposite polarity, `windowText` (light gray,
-for text and tooltips on the desktop) and `surfaceText` (black, the window face
-text) differ. Three roles depart from Borland's bytes on purpose: the access key
-is navy rather than red, because red cannot reach the 4.5:1 contrast every
-bundled theme guarantees on its selection fill; the bar is white rather than the
-dialog gray, because every bundled bar is a plane distinct from the ordinary
-surfaces around it; and press feedback is cyan rather than selection's green,
-because a `Document` action link must show a different fill while active than at
-rest. Its `ReliefHighlight` and `ReliefShade` roles are exact white and black.
-Among built-in styles, only `ContainerStyle` opts into relief, using the sunken
-mapping; Input, Button, Window, Popup, and Tooltip borders remain flat in every
-state. The other bundled themes keep every built-in border flat.
-Application-authored complete borders may still opt into `Raised` or `Sunken`
-relief explicitly. Load the theme with `ThemeCatalog.Load("turbo-vision")`; the
-Showcase theme picker discovers it from the same catalog automatically.
+(0x7F) and whose close mark is green (0x7A), `bar` the light-gray menu and
+status strip with black text (0x70) that drop-down menus share, `hotkey`
+Borland's red access key (0x74), `control` the ordinary light-gray face with
+black text and black lines, `surface` the black-on-cyan face of Borland's
+clusters (0x30) for every input-family control, selection the green highlight
+(0x20), press feedback white on blue (0x1F), `accent` blue (the scrollbar thumb
+and progress fill of a cyan-on-blue scrollbar, 0x13/0x31), shadows black, and
+the glyph family `classic` for `[X]` check boxes, `(•)` radio buttons, and
+shaded scrollbar tracks. Because the desktop and the dialogs have opposite
+polarity, `windowText` (light gray, for text and tooltips on the desktop) and
+`surfaceText` (black, the window face text) differ. The one departure from
+Borland's bytes is deliberate: a SharpVision theme has a single `input` face for
+buttons, check boxes, radio buttons, combo boxes, and text fields, so that face
+takes the cyan of Borland's clusters rather than the blue of its input line -
+red access keys stay legible on cyan and vanish on blue. Its `ReliefHighlight`
+and `ReliefShade` roles are exact white and black. Among built-in styles, only
+`ContainerStyle` opts into relief, using the sunken mapping; Input, Button,
+Window, Popup, and Tooltip borders remain flat in every state. The other bundled
+themes keep every built-in border flat. Application-authored complete borders
+may still opt into `Raised` or `Sunken` relief explicitly. Load the theme with
+`ThemeCatalog.Load("turbo-vision")`; the Showcase theme picker discovers it from
+the same catalog automatically. A layout panel such as `Dock`, `Grid`, or
+`Stack` paints the opaque `control` face, so an application whose authored root
+is a panel and that wants the blue desktop to show through gives that root a
+transparent `Face`; the [`Screen`](screen.md#overview) beneath it already paints
+the `window` plane.
 
 ### Glyph families
 
