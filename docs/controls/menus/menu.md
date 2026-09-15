@@ -55,7 +55,9 @@ classDiagram
   reparent, blur, or reattach the entry.
 - `Orientation` and `Spacing` control horizontal or vertical geometry. `Spacing`
   defaults to zero, so vertical flyout entries occupy adjacent rows; horizontal
-  bars can opt into additional separation.
+  bars can opt into additional separation. A horizontal bar already insets every
+  heading by one cell on each side (see [MenuItem](menu-item.md#behavior)), so
+  zero spacing yields `File  Edit`.
 - The inherited `MinWidth` defaults to `Length.Cells(15)`, while `MaxWidth`
   keeps its unbounded null default. Both constrain the Menu border box through
   the ordinary [layout contract](../../concepts/layout.md#lengths). Set

@@ -80,6 +80,14 @@ therefore fills the shared menu width, which lets content, shortcut hints, and
 separators line up as one aligned surface. An explicit alignment set by the
 caller still wins.
 
+Inside a horizontal menu an item reserves one blank cell on each side of its
+caption, so a heading measures two cells wider than its text and its selected,
+pressed, or hovered face covers `File` rather than `File`, the way a desktop
+menu bar highlights its headings. The inset is intrinsic to the bar orientation:
+a vertical menu, whose rows already fill the menu width, and an item outside any
+menu reserve none. `Menu.Spacing` adds separation beyond the inset; a bar with
+`Spacing = 0` therefore reads `File  Edit` with two cells between captions.
+
 A submenu-bearing item in a vertical menu reserves two trailing cells and draws
 `MenuItemStyle.SubmenuGlyph` at the trailing edge of that reservation. The
 portable default is `▶` with `>` fallback. Horizontal menu-bar headings do not

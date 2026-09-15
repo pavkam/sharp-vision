@@ -44,7 +44,7 @@ public sealed class EditorScreen: Screen
         _contextMenu = new ContextMenu(BuildContextMenu());
         _editor.ContextMenu = _contextMenu;
 
-        var appMenu = MenuBuilder.Horizontal(spacing: 2)
+        var appMenu = MenuBuilder.Horizontal(spacing: 0)
             .Submenu("&File", file => file
                 .Item("&New", shortcut: "Ctrl+N", onInvoke: () => QueueEditorCommand(NewFileAsync))
                 .Item("&Open...", shortcut: "Ctrl+O", onInvoke: () => QueueEditorCommand(OpenFileAsync))

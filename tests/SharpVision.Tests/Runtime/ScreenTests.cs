@@ -22,7 +22,11 @@ public sealed class ScreenTests
     {
         using var screen = new ProbeScreen();
 
-        screen.Face.Background.ShouldBe(SemanticColor.Control);
+        // The screen is the application window, so its resting plane is the theme's window
+        // backdrop - what every floating surface is authored to contrast with - not the generic
+        // control face; border and shadow stay the control style's own.
+        screen.Face.Background.ShouldBe(SemanticColor.Window);
+        screen.Face.Foreground.ShouldBe(SemanticColor.WindowText);
         screen.ActualBorder.Foreground.ShouldBe(Color.Default);
     }
 

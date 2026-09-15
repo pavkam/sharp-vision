@@ -793,6 +793,7 @@ public static class ThemeCatalog
                 "ascii" => GlyphFamily.Ascii,
                 "shades" => GlyphFamily.Shades,
                 "lines" => GlyphFamily.Lines,
+                "classic" => GlyphFamily.Classic,
                 _ => throw new InvalidDataException(
                     $"Theme '{source}' has invalid glyphs '{value}'{FormatPosition(positions, "glyphs")}.")
             };

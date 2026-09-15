@@ -1327,6 +1327,8 @@ public sealed class ThemeCatalogTests
     [InlineData("Shades", "Shades")]
     [InlineData("lines", "Lines")]
     [InlineData("LINES", "Lines")]
+    [InlineData("classic", "Classic")]
+    [InlineData("Classic", "Classic")]
     public void Parse_WhenGlyphsFieldNamesAFamily_Resolves(string value, string familyName)
     {
         var theme = ThemeCatalog.Parse(ThemeJson.Create(glyphs: value));
@@ -1336,6 +1338,7 @@ public sealed class ThemeCatalogTests
             "Blocks" => GlyphFamily.Blocks,
             "Ascii" => GlyphFamily.Ascii,
             "Shades" => GlyphFamily.Shades,
+            "Classic" => GlyphFamily.Classic,
             _ => GlyphFamily.Lines
         };
 

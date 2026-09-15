@@ -272,16 +272,22 @@ of its own to carry a focus cue. A custom theme may author an explicit hover
 contribution on any of the six sections that wants one.
 
 Every bundled `window` style uses `windowSurface` for its normal background and
-`windowText` for its foreground. `windowSurface` contrasts with the application
-`window` background, so a `Window`, `Dialog`, `MessageBox`, or file dialog
-remains visually distinct from the plane beneath it without requiring a local
-style. The bundled values follow each palette's existing surface tier.
+`windowText` - or `surfaceText`, when the desktop and the dialogs have opposite
+polarity and cannot share one legible text color - for its foreground.
+`windowSurface` contrasts with the application `window` background, so a
+`Window`, `Dialog`, `MessageBox`, or file dialog remains visually distinct from
+the plane beneath it without requiring a local style. The bundled values follow
+each palette's existing surface tier. A `Screen` paints that `window` plane
+itself (see [Screen](screen.md#overview)), so the contrast holds for every
+application without a hand-authored root face.
 
-`popup` and `tooltip` continue to use the `window`/`windowText` pair, and both
-are framed with an all-side border for visual containment over whatever sits
-beneath them. Popup uses a non-light square or rounded frame family; Tooltip
-uses the light glyph style instead, so a passive hint still reads as visually
-distinct from an interactive drop-down or menu even though both are now framed.
+`tooltip` continues to use the `window`/`windowText` pair, and `popup` does so
+unless a theme gives its menu boxes their own plane (Turbo Vision puts them on
+the bar). Both are framed with an all-side border for visual containment over
+whatever sits beneath them. Popup uses a non-light square or rounded frame
+family; Tooltip uses the light glyph style instead, so a passive hint still
+reads as visually distinct from an interactive drop-down or menu even though
+both are now framed.
 
 Every fractional object shares the same precise shape regardless of which style
 type or state it overrides: optional `face`, `border`, and `shadow` sub-objects
@@ -339,12 +345,24 @@ code-owned `complete` logic (semantic colors it resolves directly, such as
 `SemanticColor.Accent`) or from a locally assigned `Style`.
 
 The bundled `turbo-vision` theme is sourced from Turbo Vision's published
-`cpAppColor` BIOS palette. Its sixteen palette entries use the canonical CGA/VGA
-RGB values without interpolation. It combines the original blue application
-plane, gray contrasting surfaces, cyan selection, green press feedback, red
-access keys, black shadows, and line glyphs with semantic relief. Its
-`ReliefHighlight` and `ReliefShade` roles are exact white and black. Among
-built-in styles, only `ContainerStyle` opts into relief, using the sunken
+`cpAppColor` and `cpGrayDialog` palettes on the canonical CGA/VGA RGB values
+without interpolation. `window` is the blue desktop (0x71), `windowSurface` the
+light-gray dialog face (0x70) whose frame turns white while the dialog is active
+(0x7F), `surface` the blue input line (0x1F) with light-gray text, `bar` the
+white menu and status strip, `control` the ordinary light-gray face with black
+text and black lines, selection the green highlight (0x20), press feedback the
+cyan of Borland's clusters (0x30), shadows black, and the glyph family `classic`
+for `[X]` check boxes, `(•)` radio buttons, and shaded scrollbar tracks. Because
+the desktop and the dialogs have opposite polarity, `windowText` (light gray,
+for text and tooltips on the desktop) and `surfaceText` (black, the window face
+text) differ. Three roles depart from Borland's bytes on purpose: the access key
+is navy rather than red, because red cannot reach the 4.5:1 contrast every
+bundled theme guarantees on its selection fill; the bar is white rather than the
+dialog gray, because every bundled bar is a plane distinct from the ordinary
+surfaces around it; and press feedback is cyan rather than selection's green,
+because a `Document` action link must show a different fill while active than at
+rest. Its `ReliefHighlight` and `ReliefShade` roles are exact white and black.
+Among built-in styles, only `ContainerStyle` opts into relief, using the sunken
 mapping; Input, Button, Window, Popup, and Tooltip borders remain flat in every
 state. The other bundled themes keep every built-in border flat.
 Application-authored complete borders may still opt into `Raised` or `Sunken`
@@ -359,14 +377,14 @@ style and glyph trio, RadioButton's mark style and glyph pair, ScrollBar's
 chrome, fill, and ten-glyph set, Spinner's frame sequence, ProgressBar's fill,
 track, and indeterminate glyphs, and ChaseIndicator's active and inactive
 glyphs. The root-level `glyphs` field selects one family by name,
-case-insensitively: `dots`, `blocks`, `ascii`, `shades`, or `lines`. An absent
-field - including both zero-config defaults - resolves every one of those six
-styles to `GlyphFamily.Default`, the exact code-owned presentation each carried
-before this field existed; an unrecognized name fails with a source-labelled
-`InvalidDataException` like every other malformed theme value. Complete public
-glyph-family structs also normalize their zero-initialized `default` value to
-their code-owned family, so assigning one through a typed style cannot defer
-invalid Rune failures to render.
+case-insensitively: `dots`, `blocks`, `ascii`, `shades`, `lines`, or `classic`.
+An absent field - including both zero-config defaults - resolves every one of
+those six styles to `GlyphFamily.Default`, the exact code-owned presentation
+each carried before this field existed; an unrecognized name fails with a
+source-labelled `InvalidDataException` like every other malformed theme value.
+Complete public glyph-family structs also normalize their zero-initialized
+`default` value to their code-owned family, so assigning one through a typed
+style cannot defer invalid Rune failures to render.
 
 | `glyphs` value | Look           | Extracted from       |
 | -------------- | -------------- | -------------------- |
@@ -375,6 +393,7 @@ invalid Rune failures to render.
 | `ascii`        | Portable ASCII | Gruvbox              |
 | `shades`       | Shade-block    | Monokai, Tokyo Night |
 | `lines`        | Line-drawing   | Nord, Solarized      |
+| `classic`      | Text-mode DOS  | Turbo Vision         |
 
 These six controls have no `styles.*` section of their own to layer on top any
 more: `glyphs` is now their only theme-driven presentation lever beyond their

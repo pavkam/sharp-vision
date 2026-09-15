@@ -354,7 +354,7 @@ public sealed class CuratedThemesTests
             ["nord"] = GlyphFamily.Lines,
             ["solarized-dark"] = GlyphFamily.Lines,
             ["solarized-light"] = GlyphFamily.Lines,
-            ["turbo-vision"] = GlyphFamily.Lines,
+            ["turbo-vision"] = GlyphFamily.Classic,
             ["default-dark"] = GlyphFamily.Default,
             ["default-light"] = GlyphFamily.Default
         };
@@ -366,8 +366,15 @@ public sealed class CuratedThemesTests
         }
     }
 
-    /// <summary>Verifies the Turbo Vision theme retains the canonical BIOS palette roles while
-    /// limiting semantic relief to container chrome.</summary>
+    /// <summary>Verifies the Turbo Vision theme reproduces Borland's <c>cpAppColor</c> and
+    /// <c>cpGrayDialog</c> roles on the CGA palette: a blue desktop (0x71) under gray dialogs
+    /// (0x70) whose active frame turns white (0x7F), blue input lines (0x1F), green selection
+    /// (0x20), black shadows, classic <c>[X]</c>/<c>(•)</c> marks - while limiting semantic relief
+    /// to container chrome. Two roles depart from Borland's bytes on purpose: the access key is navy
+    /// rather than red (0x74) because red cannot reach the 4.5:1 contrast every bundled theme
+    /// guarantees on its selection fill, and press feedback is the cyan of Borland's clusters
+    /// (0x30) rather than the same green as selection (0x2F), because a Document action link must
+    /// show a different fill while active than at rest.</summary>
     [Fact]
     public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
     {
@@ -376,11 +383,23 @@ public sealed class CuratedThemesTests
 
         theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
-        theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aaaa"));
-        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aa00"));
-        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#0000aa"));
+        theme.ResolveColor(SemanticColor.Surface).ShouldBe(Color.FromHex("#0000aa"));
+        theme.ResolveColor(SemanticColor.Control).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.ResolveColor(SemanticColor.ControlText).ShouldBe(Color.FromHex("#000000"));
+        theme.ResolveColor(SemanticColor.ActiveBorder).ShouldBe(Color.FromHex("#ffffff"));
+        theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aa00"));
+        theme.ResolveColor(SemanticColor.SelectedText).ShouldBe(Color.FromHex("#000000"));
+        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.PressedText).ShouldBe(Color.FromHex("#ffffff"));
+        theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#000080"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
+        theme.Window.Normal.Face.Foreground.SemanticColor.ShouldBe(SemanticColor.SurfaceText);
+        theme.Resolve(theme.Window.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#aaaaaa"));
+        theme.Resolve(theme.Popup.Normal.Face.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
+        theme.Glyphs.CheckBox.Glyphs.Checked.ShouldBe(new Rune('X'));
+        theme.Glyphs.RadioButton.Glyphs.Checked.ShouldBe(new Rune('•'));
         sunken.Relief.ShouldBe(BorderRelief.Sunken);
         theme.Input.Resolve(VisualState.Focused).Border.Relief.ShouldBe(BorderRelief.Flat);
         theme.Input.Resolve(VisualState.Disabled).Border.Relief.ShouldBe(BorderRelief.Flat);
@@ -565,7 +584,12 @@ public sealed class CuratedThemesTests
     }
 
     /// <summary>Verifies every bundled Window profile uses a dedicated raised window surface,
-    /// keeping Window, Dialog, and MessageBox bodies distinct from the application backdrop.</summary>
+    /// keeping Window, Dialog, and MessageBox bodies distinct from the application backdrop. The
+    /// text on that surface is <see cref="SemanticColor.WindowText"/> when the desktop and the
+    /// dialogs share a polarity, or <see cref="SemanticColor.SurfaceText"/> - the color declared
+    /// for text on a raised surface - when they do not: Turbo Vision's light-gray dialogs over a
+    /// blue desktop cannot share one legible text color with the tooltips that sit on that
+    /// desktop, so the two keys carry different values there.</summary>
     [Fact]
     public void EveryTheme_WhenWindowIsNormal_UsesDistinctWindowSurface()
     {
@@ -579,7 +603,9 @@ public sealed class CuratedThemesTests
                 SemanticColor.WindowSurface,
                 $"{slug} window background must use WindowSurface");
             windowFace.Foreground.IsSemantic.ShouldBeTrue($"{slug} window foreground must remain semantic");
-            windowFace.Foreground.SemanticColor.ShouldBe(SemanticColor.WindowText, $"{slug} window foreground must use WindowText");
+            windowFace.Foreground.SemanticColor.ShouldBeOneOf(
+                [SemanticColor.WindowText, SemanticColor.SurfaceText],
+                $"{slug} window foreground must use WindowText or SurfaceText");
 
             theme.Resolve(windowFace.Background).ShouldNotBe(
                 theme.ResolveColor(SemanticColor.Window),

@@ -48,6 +48,45 @@ public abstract class Screen: CompositeControlBase
         VerticalAlignment = VerticalAlignment.Stretch;
     }
 
+    /// <summary>Resolves the screen's default appearance: the universal control style with its
+    /// normal face rebased onto the theme's application-window plane.</summary>
+    /// <param name="theme">The active theme, or null for the built-in dark fallback.</param>
+    /// <returns>The control style states whose normal face paints <see cref="SemanticColor.Window"/>
+    /// under <see cref="SemanticColor.WindowText"/>.</returns>
+    /// <remarks>
+    /// A screen is the application window, so it paints the theme's <c>window</c> plane - the one
+    /// backdrop every floating <see cref="Windows.Window"/>, popup, and tooltip is authored to
+    /// contrast with - rather than the ordinary control face. Themes whose desktop and dialogs
+    /// share one color (every dark and light default) look exactly as before; a theme that gives
+    /// the desktop its own color, such as Turbo Vision's blue desktop under gray dialogs, now
+    /// shows it without every application having to set a root face by hand. Border and shadow
+    /// stay the control style's own, and a complete local <see cref="ControlBase.Face"/> remains
+    /// authoritative exactly as documented.
+    /// </remarks>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme)
+    {
+        var states = (theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default).ToAppearanceStates();
+        var normal = states.Normal;
+        return new AppearanceStates(
+            new ControlAppearance(
+                normal.Face with
+                {
+                    Foreground = SemanticColor.WindowText,
+                    Background = SemanticColor.Window,
+                },
+                normal.Border,
+                normal.Shadow),
+            states.IsPointerOver,
+            states.FocusWithin,
+            states.Focused,
+            states.Current,
+            states.Selected,
+            states.Checked,
+            states.Indeterminate,
+            states.Pressed,
+            states.Disabled);
+    }
+
     /// <summary>Adds one detached temporary surface to the private application presentation plane.</summary>
     /// <param name="surface">The non-null detached floating surface.</param>
     internal void AddPresentation(FloatingSurfaceBase surface)

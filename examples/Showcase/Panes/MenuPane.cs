@@ -116,7 +116,7 @@ internal sealed class MenuPane: CompositeControlBase
         var viewItem = new MenuItem { Text = "&View", Submenu = viewSubmenu };
         var helpItem = new MenuItem { Text = "&Help", Submenu = helpSubmenu };
 
-        var menuBar = new Menu { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var menuBar = new Menu { Orientation = Orientation.Horizontal };
         menuBar.Items.Add(fileItem);
         menuBar.Items.Add(editItem);
         menuBar.Items.Add(viewItem);

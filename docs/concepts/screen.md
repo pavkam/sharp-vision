@@ -16,8 +16,11 @@ child collection. A Screen is not a
 when a screen needs multiple visuals, use a real layout container such as
 `Dock`, `Grid`, or `Stack` as the authored root.
 
-A Screen uses the universal `ControlStyle` (`styles.control`) unless its
-implementation selects another one. With no complete local `Face`, `Border`, or
+A Screen uses the universal `ControlStyle` (`styles.control`) with its normal
+face rebased onto the theme's application-window plane: the background is
+`colors.window` and the text `colors.windowText`, the backdrop every floating
+`Window`, popup, and tooltip is authored to contrast with, while border and
+shadow stay the control style's own. With no complete local `Face`, `Border`, or
 `Shadow`, its `ActualFace`, `ActualBorder`, and `ActualShadow` come from the
 active theme. Assigning a complete local value keeps that developer value
 authoritative across later theme changes.

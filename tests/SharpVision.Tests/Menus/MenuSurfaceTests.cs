@@ -380,13 +380,60 @@ public sealed class MenuSurfaceTests
         submenu.MinWidth.ShouldBe(Length.Cells(15));
         submenu.Bounds.Width.ShouldBe(15);
         popup.SurfaceBounds.Width.ShouldBe(17);
+        // The heading reads " Help " - a bar item insets its caption by one cell on each side so
+        // the selected highlight covers the flanking cells, the way every desktop menu bar does.
         surface.ShouldRender("""
-            Help
+             Help
             ╭───────────────╮
             │About          │
             ╰───────────────╯
 
             """);
+        help.Bounds.Width.ShouldBe(6);
+    }
+
+    /// <summary>Verifies a bar heading's highlight covers the one-cell inset on each side of its
+    /// caption - " File " - and that two headings with zero spacing sit two cells apart, so a bar
+    /// reads " File  Edit " and the selected face never hugs the letters.</summary>
+    [Fact]
+    public async Task Bar_WhenHeadingIsSelected_HighlightsTheInsetCellsAroundTheCaptionAsync()
+    {
+        // Arrange
+        var file = new MenuItem { Text = "File" };
+        var edit = new MenuItem { Text = "Edit" };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        menu.Items.Add(edit);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(16, 2),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var selection = TerminalPalette.Project(theme.ResolveColor(SemanticColor.SelectedControl), colorDepth);
+        var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+
+        // Act
+        await surface.FocusAsync(menu);
+        await surface.UpdateAsync(() => menu.SelectedIndex = 1, "select the second heading");
+
+        // Assert
+        surface.ShouldRender("""
+             File  Edit
+
+            """);
+        file.Bounds.ShouldBe(new Rect(0, 0, 6, 1));
+        edit.Bounds.ShouldBe(new Rect(6, 0, 6, 1));
+        surface.Cell(new Point(6, 0)).Style.Background.ShouldBe(selection);
+        surface.Cell(new Point(7, 0)).Style.Background.ShouldBe(selection);
+        surface.Cell(new Point(11, 0)).Style.Background.ShouldBe(selection);
+        surface.Cell(new Point(5, 0)).Style.Background.ShouldBe(bar);
+        surface.Cell(new Point(12, 0)).Style.Background.ShouldBe(bar);
     }
 
     /// <summary>Verifies a submenu-bearing row in a vertical menu reserves and renders a trailing

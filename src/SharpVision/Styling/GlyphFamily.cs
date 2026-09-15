@@ -152,6 +152,24 @@ public sealed record GlyphFamily
         new ProgressBarGlyphs(new Rune('━'), new Rune('─'), new Rune('┈')),
         new ChaseIndicatorGlyphs(new Rune('━'), new Rune('─')));
 
+    /// <summary>Gets the classic text-mode family of the Turbo Vision theme: <c>[X]</c> check
+    /// boxes, <c>(•)</c> radio buttons, shaded scrollbar tracks with a solid thumb, and the
+    /// four-frame ASCII spinner - the exact marks Borland's <c>TCheckBoxes</c>, <c>TRadioButtons</c>,
+    /// and <c>TScrollBar</c> drew on a CGA/VGA text screen.</summary>
+    public static GlyphFamily Classic { get; } = new(
+        new CheckBoxGlyphFamily(CheckBoxMarkStyle.Brackets, new CheckBoxGlyphs(new Rune(' '), new Rune('X'), new Rune('-'))),
+        new RadioButtonGlyphFamily(RadioButtonMarkStyle.Parentheses, new RadioButtonGlyphs(new Rune(' '), new Rune('•'))),
+        new ScrollBarGlyphFamily(
+            ScrollBarChrome.Full,
+            ScrollBarFill.Block,
+            new ScrollBarGlyphs(
+                new Rune('▲'), new Rune('▼'), new Rune('◄'), new Rune('►'),
+                new Rune('▒'), new Rune('■'),
+                new Rune('▒'), new Rune('■'), new Rune('▒'), new Rune('■'))),
+        [new Rune('|'), new Rune('/'), new Rune('-'), new Rune('\\')],
+        new ProgressBarGlyphs(new Rune('█'), new Rune('░'), new Rune('▒')),
+        new ChaseIndicatorGlyphs(new Rune('■'), new Rune('▒')));
+
     /// <summary>Gets the CheckBox mark style and glyph trio.</summary>
     public required CheckBoxGlyphFamily CheckBox { get; init; }
 

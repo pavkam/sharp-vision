@@ -1036,6 +1036,7 @@ namespace SharpVision.Controls
         protected Screen() { }
         protected SharpVision.Application? Application { get; }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnAttach(SharpVision.Application application) { }
         protected virtual void OnDispose() { }
@@ -5082,6 +5083,7 @@ namespace SharpVision.Styling
         public required System.Collections.Immutable.ImmutableArray<System.Text.Rune> Spinner { get; init; }
         public static SharpVision.Styling.GlyphFamily Ascii { get; }
         public static SharpVision.Styling.GlyphFamily Blocks { get; }
+        public static SharpVision.Styling.GlyphFamily Classic { get; }
         public static SharpVision.Styling.GlyphFamily Default { get; }
         public static SharpVision.Styling.GlyphFamily Dots { get; }
         public static SharpVision.Styling.GlyphFamily Lines { get; }
