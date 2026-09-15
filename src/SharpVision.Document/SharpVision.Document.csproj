@@ -12,7 +12,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;document;markdown;commonmark</PackageTags>
     <Description>Rich flowing documents, interactive forms, and Markdown for SharpVision.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.Document 1.6.0-beta.6 prerelease: version-aligned with the other SharpVision packages; no functional changes since 1.6.0-beta.2, in which Document selection started to take part in the application-wide single text selection introduced in SharpVision 1.6.0-beta.2: selecting in a Document collapses ranges held by other owners and vice versa. Since 1.6.0-beta.1 the Document control derives from the core ScrollableCompositeControlBase and uses the shared ProjectionSurface, scroll-bridge, glyph-resolution, and style-span merging seams introduced in SharpVision 1.6.0-beta.1, replacing its own DocumentSurface and hand-rolled copies; no public behavior change.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.Document 1.6.0-beta.7 prerelease: version-aligned with the other SharpVision packages; no functional changes since 1.6.0-beta.2, in which Document selection started to take part in the application-wide single text selection introduced in SharpVision 1.6.0-beta.2: selecting in a Document collapses ranges held by other owners and vice versa. Since 1.6.0-beta.1 the Document control derives from the core ScrollableCompositeControlBase and uses the shared ProjectionSurface, scroll-bridge, glyph-resolution, and style-span merging seams introduced in SharpVision 1.6.0-beta.1, replacing its own DocumentSurface and hand-rolled copies; no public behavior change.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
