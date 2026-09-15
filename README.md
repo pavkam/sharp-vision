@@ -70,7 +70,7 @@ resize, clipboard, rendition, Unicode, and graphics diagnostics.
 
 ## Packages
 
-SharpVision `1.6.0-beta.5` is a prerelease and may change before the stable API.
+SharpVision `1.6.0-beta.6` is a prerelease and may change before the stable API.
 
 `SharpVision` installs `SharpVision.Terminal` transitively. Reference the
 lower-level package directly only when building terminal infrastructure without
