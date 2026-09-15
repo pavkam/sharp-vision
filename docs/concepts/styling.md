@@ -158,6 +158,11 @@ IsPointerOver -> FocusWithin -> Focused -> Current -> Selected -> Checked
 -> Indeterminate -> Pressed -> Disabled
 ```
 
+`Current` marks the item an Enter press or a navigator currently targets: the
+keyboard-current row of a list or table, and a `Window`'s default `Button`
+(`IsDefault`), so a theme can mark the default button through
+`styles.button.current` without a state of its own.
+
 ```mermaid
 flowchart TD
     Normal["Normal (no active flags)"] --> PointerOver["IsPointerOver"]

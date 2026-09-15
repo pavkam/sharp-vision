@@ -64,4 +64,25 @@ public sealed class GlyphFamilyTests
         chart.VerticalAxis.ShouldBe(ChartGlyphs.Default.VerticalAxis);
         chart.HorizontalAxis.ShouldBe(ChartGlyphs.Default.HorizontalAxis);
     }
+
+    /// <summary>Verifies the desktop glyph is a validated one-cell member of the family: the
+    /// code-owned families keep a solid (space) desktop, the classic family carries Borland's
+    /// dithered one, and a wide or control glyph is rejected where the family is built.</summary>
+    [Fact]
+    public void Desktop_WhenFamilyIsBuilt_IsValidatedAndDefaultsToASolidPlane()
+    {
+        GlyphFamily.Default.Desktop.ShouldBe(new Rune(' '));
+        GlyphFamily.Classic.Desktop.ShouldBe(new Rune('▒'));
+
+        _ = Should.Throw<ArgumentException>(() => GlyphFamily.Default with { Desktop = new Rune('中') });
+        _ = Should.Throw<ArgumentException>(() => new GlyphFamily(
+            GlyphFamily.Default.CheckBox,
+            GlyphFamily.Default.RadioButton,
+            GlyphFamily.Default.ScrollBar,
+            GlyphFamily.Default.Spinner,
+            GlyphFamily.Default.ProgressBar,
+            GlyphFamily.Default.ChaseIndicator,
+            new Rune('\t')));
+        (GlyphFamily.Default with { Desktop = new Rune('░') }).ShouldNotBe(GlyphFamily.Default);
+    }
 }

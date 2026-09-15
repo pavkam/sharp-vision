@@ -54,7 +54,7 @@
     "disabledText": "disabledInk",
     "disabledBorder": "darkGray",
     "accent": "blue",
-    "muted": "darkGray",
+    "muted": "cyan",
     "hotkey": "red",
     "error": "brightRed",
     "warning": "yellow",
@@ -198,6 +198,11 @@
           "background": "transparent"
         }
       },
+      "current": {
+        "face": {
+          "foreground": "brightCyan"
+        }
+      },
       "pointerOver": {
         "face": {
           "foreground": "white",
@@ -241,6 +246,11 @@
         "face": {
           "foreground": "white",
           "background": "cyan"
+        }
+      },
+      "checked": {
+        "face": {
+          "foreground": "black"
         }
       }
     },

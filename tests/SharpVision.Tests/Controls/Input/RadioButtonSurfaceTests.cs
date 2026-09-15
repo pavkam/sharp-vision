@@ -596,4 +596,39 @@ public sealed class RadioButtonSurfaceTests
 
         return group;
     }
+
+    /// <summary>Verifies the checked option's accent foreground is a code-owned default that yields
+    /// to an authored <c>toggle.checked</c> foreground: a theme that keeps its checked option in
+    /// the ordinary text color (Turbo Vision's black-on-cyan cluster) wins outright, while a theme
+    /// that says nothing still shows the accent.</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsToggleCheckedForeground_ReplacesTheAccentDefaultAsync()
+    {
+        // Arrange
+        var accentOnly = ThemeCatalog.Parse(ThemeJson.Create(accent: "#77aaff", hotkey: "#ff8800"));
+        var authored = ThemeCatalog.Parse(ThemeJson.Create(
+            accent: "#77aaff",
+            hotkey: "#ff8800",
+            extraStyles: """, "toggle": { "checked": { "face": { "foreground": "controlText" } } }"""));
+        var selected = Radio("On", isChecked: true);
+        var group = Group(selected);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(8, 1),
+            options,
+            accentOnly,
+            TestContext.Current.CancellationToken);
+
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(Color.FromHex("#77aaff"));
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = authored, "author toggle.checked");
+
+        // Assert
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(authored.ResolveColor(SemanticColor.ControlText));
+    }
 }

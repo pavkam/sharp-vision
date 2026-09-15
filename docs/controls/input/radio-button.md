@@ -73,8 +73,10 @@ active theme's root-level `glyphs` field whenever no local `Style` is assigned
 replaces the whole Theme-owned presentation, and assigning `null` restores it.
 `ActualStyle` never returns null. The parentheses style marks the selected
 interior with a bullet; the glyph style reserves one cell. The checked state
-defaults to the Theme accent foreground, and a developer-authored checked
-appearance replaces that color for the complete mark.
+defaults to the Theme accent foreground - a code-owned default that yields to a
+theme authoring `styles.toggle.checked.face.foreground` (Turbo Vision keeps its
+checked option in the ordinary cluster text color) - and a developer-authored
+checked appearance replaces that color for the complete mark.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column for
 application-owned, per-instance content - never theme-authored - outside the

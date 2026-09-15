@@ -68,12 +68,27 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     public event EventHandler<ActivationEventArgs>? Click;
 
     /// <summary>Gets or sets whether an owning Window treats Enter as a fallback activation.</summary>
+    /// <remarks>
+    /// A default button is also presented as the <see cref="VisualState.Current"/> item of its
+    /// window - the one Enter currently targets - so a theme may distinguish it through
+    /// <c>styles.button.current</c> (Turbo Vision's bright-cyan default-button caption, for
+    /// example). A theme that authors nothing there shows no difference, exactly as before.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
     public bool IsDefault
     {
         get;
-        set => _ = SetProperty(ref field, value, InvalidationImpact.None);
+        set
+        {
+            // The default flag folds into the appearance state (Current), so the resolved
+            // appearance caches - this button's and its ambient caption's - must be cleared the
+            // same way any other state fact clears them, not merely repainted from stale caches.
+            if (SetProperty(ref field, value, InvalidationImpact.None))
+            {
+                InvalidateVisualState();
+            }
+        }
     }
 
     /// <summary>Gets or sets whether an owning Window treats Escape as a fallback activation.</summary>
@@ -148,6 +163,11 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     protected internal override VisualState GetAppearanceState()
     {
         var state = base.GetAppearanceState();
+
+        if (IsDefault)
+        {
+            state |= VisualState.Current;
+        }
 
         return IsCommandExecutable
             ? state

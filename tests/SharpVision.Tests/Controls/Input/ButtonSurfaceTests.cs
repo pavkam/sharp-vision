@@ -1615,4 +1615,52 @@ public sealed class ButtonSurfaceTests
             Shadow = AppearanceTestValues.Shadow(visible: true, offset: _shadowOffset)
         }
     };
+
+    /// <summary>Verifies a default button is presented as the window's Current item, so a theme
+    /// can distinguish it through <c>styles.button.current</c>: Turbo Vision paints its caption
+    /// bright cyan on green (0x2B), an unauthored theme shows no difference, and toggling
+    /// IsDefault at runtime repaints.</summary>
+    [Fact]
+    public async Task Render_WhenButtonIsDefault_UsesTheCurrentStateAsync()
+    {
+        var button = new Button("Run")
+        {
+            IsDefault = true,
+            Width = Length.Cells(8),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(10, 3),
+            options,
+            ThemeCatalog.Load("turbo-vision"),
+            TestContext.Current.CancellationToken);
+
+        (button.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+
+        await surface.UpdateAsync(() => button.IsDefault = false, "clear the default");
+
+        (button.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(Color.FromHex("#000000"));
+
+        await surface.UpdateAsync(
+            () =>
+            {
+                surface.Application.Theme = ThemeCatalog.Dark;
+                button.IsDefault = true;
+                button.Height = Length.Cells(3);
+            },
+            "apply a theme that authors no button.current");
+
+        var caption = button.TextControl.ShouldNotBeNull();
+        surface.Cell(new Point(caption.Bounds.X, caption.Bounds.Y)).Style.Foreground.ShouldBe(
+            ThemeCatalog.Dark.ResolveColor(SemanticColor.ControlText));
+    }
 }

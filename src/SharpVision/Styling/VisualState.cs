@@ -23,7 +23,8 @@ public enum VisualState
     /// <summary>This control owns keyboard focus.</summary>
     Focused = 1 << 2,
 
-    /// <summary>This control is the current item of a navigator.</summary>
+    /// <summary>This control is the current item of a navigator, or the default button of its
+    /// window - the item an Enter press currently targets.</summary>
     Current = 1 << 3,
 
     /// <summary>This control is selected by its owner.</summary>

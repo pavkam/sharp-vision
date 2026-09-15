@@ -49,7 +49,14 @@ public sealed record RadioButtonStyle: InputStyle
     // accidentally did here.
     private static RadioButtonStyle Complete(InputStyle input, VisualState state, Theme theme)
     {
-        var face = state == VisualState.Checked ? input.Face with { Foreground = SemanticColor.Accent } : input.Face;
+        // The accent on the checked option is a code-owned default, not a rule: it fills in only
+        // while the theme's own "toggle" section says nothing about a checked foreground - the
+        // same precedence Window's focusWithin border gives an authored "window.focusWithin". A
+        // theme whose checked option keeps its ordinary text color (Turbo Vision's black-on-cyan
+        // cluster) authors "toggle.checked.face.foreground" and wins outright.
+        var face = state == VisualState.Checked && !ThemeAuthorsCheckedForeground(theme)
+            ? input.Face with { Foreground = SemanticColor.Accent }
+            : input.Face;
         return new RadioButtonStyle(face, NoBorder, NoShadow, theme.Glyphs.RadioButton.MarkStyle, theme.Glyphs.RadioButton.Glyphs)
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
@@ -61,6 +68,9 @@ public sealed record RadioButtonStyle: InputStyle
             AffixGap = input.AffixGap
         };
     }
+
+    private static bool ThemeAuthorsCheckedForeground(Theme theme) =>
+        theme.GetStyleSet(ToggleStyle.Default).AuthoredFor("checked")?.Contains("Face.Foreground") == true;
 
     /// <summary>Initializes a complete radio-button presentation.</summary>
     /// <param name="face">The complete normal face.</param>

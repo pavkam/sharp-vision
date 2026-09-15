@@ -455,13 +455,16 @@ focused (0x2F), with two cells of padding; `toggle` the black-on-cyan cluster
 with a yellow access key (0x30/0x3E) that turns white while focused (0x3F);
 `item` the black-on-cyan list viewer (0x30) whose whole surface a `ListView`
 paints; `panel` a transparent plane, because a Borland `TGroup` arranges its
-views and paints nothing of its own - so the blue desktop shows through an
+views and paints nothing of its own - so the desktop shows through an
 application's root `Dock` and the gray dialog face shows through a dialog's
-`Stack`; selection the green highlight (0x20); press feedback black on cyan
-(0x30); `accent` blue (the checked radio mark, scrollbar thumb, and progress
-fill); shadows black; no underline on any access key (`attributes.hotkey` is
-empty, as Borland drew them); and the glyph family `classic` for `[X]` check
-boxes, `(•)` radio buttons, and shaded scrollbar tracks. Because the desktop and
+`Stack`; a default button's caption bright cyan on green (0x2B, through
+`button.current`); a checked option in the cluster's own black
+(`toggle.checked`, so the accent default never applies); selection the green
+highlight (0x20); press feedback black on cyan (0x30); `accent` blue and `muted`
+cyan (the scrollbar thumb on its shaded cyan rail, 0x31); shadows black; no
+underline on any access key (`attributes.hotkey` is empty, as Borland drew
+them); and the glyph family `classic` for `[X]` check boxes, `(•)` radio
+buttons, shaded scrollbar tracks, and the `▒` desktop. Because the desktop and
 the dialogs have opposite polarity, `windowText` (light gray, for text and
 tooltips on the desktop) and `surfaceText` (black, the window face text) differ.
 Its `ReliefHighlight` and `ReliefShade` roles are exact white and black. Among
@@ -479,15 +482,17 @@ controls that would otherwise need six near-identical sections: CheckBox's mark
 style and glyph trio, RadioButton's mark style and glyph pair, ScrollBar's
 chrome, fill, and ten-glyph set, Spinner's frame sequence, ProgressBar's fill,
 track, and indeterminate glyphs, and ChaseIndicator's active and inactive
-glyphs. The root-level `glyphs` field selects one family by name,
-case-insensitively: `dots`, `blocks`, `ascii`, `shades`, `lines`, or `classic`.
-An absent field - including both zero-config defaults - resolves every one of
-those six styles to `GlyphFamily.Default`, the exact code-owned presentation
-each carried before this field existed; an unrecognized name fails with a
-source-labelled `InvalidDataException` like every other malformed theme value.
-Complete public glyph-family structs also normalize their zero-initialized
-`default` value to their code-owned family, so assigning one through a typed
-style cannot defer invalid Rune failures to render.
+glyphs - plus the desktop glyph a [`Screen`](screen.md#overview) tiles across
+the application-window plane (a space everywhere but `classic`, whose `▒` is
+Borland's dithered desktop). The root-level `glyphs` field selects one family by
+name, case-insensitively: `dots`, `blocks`, `ascii`, `shades`, `lines`, or
+`classic`. An absent field - including both zero-config defaults - resolves
+every one of those six styles to `GlyphFamily.Default`, the exact code-owned
+presentation each carried before this field existed; an unrecognized name fails
+with a source-labelled `InvalidDataException` like every other malformed theme
+value. Complete public glyph-family structs also normalize their
+zero-initialized `default` value to their code-owned family, so assigning one
+through a typed style cannot defer invalid Rune failures to render.
 
 | `glyphs` value | Look           | Extracted from       |
 | -------------- | -------------- | -------------------- |

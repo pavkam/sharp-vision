@@ -23,7 +23,14 @@ face rebased onto the theme's application-window plane: the background is
 shadow stay the control style's own. With no complete local `Face`, `Border`, or
 `Shadow`, its `ActualFace`, `ActualBorder`, and `ActualShadow` come from the
 active theme. Assigning a complete local value keeps that developer value
-authoritative across later theme changes.
+authoritative across later theme changes. Beneath its content the screen tiles
+the active glyph family's desktop glyph (`GlyphFamily.Desktop`, see
+[Glyph families](themes.md#glyph-families)) in that same face - a space in every
+family but `classic`, whose `▒` reproduces Borland's dithered `TDeskTop` - and
+repaints when a theme swap changes only that glyph. Layout panels paint the
+theme's `panel` role over it, so a theme that makes panels transparent (Turbo
+Vision) shows the desktop through an application's root `Dock` without the
+application authoring a face.
 
 ```mermaid
 flowchart LR

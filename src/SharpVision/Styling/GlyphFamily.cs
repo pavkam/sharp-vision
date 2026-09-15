@@ -27,6 +27,8 @@ public sealed record GlyphFamily
     /// <param name="chaseIndicator">The ChaseIndicator active and inactive glyph pair.</param>
     /// <exception cref="ArgumentNullException"><paramref name="spinner"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="spinner"/> is empty, exceeds <see cref="SpinnerStyle.MaximumFrameCount"/>, or contains a control or non-one-cell glyph.</exception>
+    /// <remarks>The desktop glyph is a space: the application-window plane stays a solid fill, as
+    /// it was before the family carried one.</remarks>
     [SetsRequiredMembers]
     public GlyphFamily(
         CheckBoxGlyphFamily checkBox,
@@ -35,6 +37,29 @@ public sealed record GlyphFamily
         IEnumerable<Rune> spinner,
         ProgressBarGlyphs progressBar,
         ChaseIndicatorGlyphs chaseIndicator)
+        : this(checkBox, radioButton, scrollBar, spinner, progressBar, chaseIndicator, new Rune(' '))
+    {
+    }
+
+    /// <summary>Initializes a complete glyph family with an explicit desktop glyph.</summary>
+    /// <param name="checkBox">The CheckBox mark style and glyph trio.</param>
+    /// <param name="radioButton">The RadioButton mark style and glyph pair.</param>
+    /// <param name="scrollBar">The ScrollBar chrome, fill, and ten-glyph set.</param>
+    /// <param name="spinner">The non-empty sequence of printable one-cell spinner frames.</param>
+    /// <param name="progressBar">The ProgressBar fill, track, and indeterminate glyph trio.</param>
+    /// <param name="chaseIndicator">The ChaseIndicator active and inactive glyph pair.</param>
+    /// <param name="desktop">The printable one-cell glyph a <c>Screen</c> tiles across the application-window plane behind its content.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="spinner"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="spinner"/> is empty, exceeds <see cref="SpinnerStyle.MaximumFrameCount"/>, or contains a control or non-one-cell glyph; or <paramref name="desktop"/> is a control or is not one cell wide.</exception>
+    [SetsRequiredMembers]
+    public GlyphFamily(
+        CheckBoxGlyphFamily checkBox,
+        RadioButtonGlyphFamily radioButton,
+        ScrollBarGlyphFamily scrollBar,
+        IEnumerable<Rune> spinner,
+        ProgressBarGlyphs progressBar,
+        ChaseIndicatorGlyphs chaseIndicator,
+        Rune desktop)
     {
         CheckBox = checkBox;
         RadioButton = radioButton;
@@ -42,6 +67,7 @@ public sealed record GlyphFamily
         Spinner = SpinnerStyle.CopyFrames(spinner, nameof(spinner));
         ProgressBar = progressBar;
         ChaseIndicator = chaseIndicator;
+        Desktop = desktop.ValidateSingleCell(nameof(desktop));
     }
 
     /// <summary>Gets the code-owned family: the exact CheckBox, RadioButton, ScrollBar, Spinner,
@@ -153,9 +179,10 @@ public sealed record GlyphFamily
         new ChaseIndicatorGlyphs(new Rune('━'), new Rune('─')));
 
     /// <summary>Gets the classic text-mode family of the Turbo Vision theme: <c>[X]</c> check
-    /// boxes, <c>(•)</c> radio buttons, shaded scrollbar tracks with a solid thumb, and the
-    /// four-frame ASCII spinner - the exact marks Borland's <c>TCheckBoxes</c>, <c>TRadioButtons</c>,
-    /// and <c>TScrollBar</c> drew on a CGA/VGA text screen.</summary>
+    /// boxes, <c>(•)</c> radio buttons, shaded scrollbar tracks with a solid thumb, the
+    /// four-frame ASCII spinner, and the <c>▒</c> desktop - the exact marks Borland's
+    /// <c>TCheckBoxes</c>, <c>TRadioButtons</c>, <c>TScrollBar</c>, and <c>TDeskTop</c> drew on a
+    /// CGA/VGA text screen.</summary>
     public static GlyphFamily Classic { get; } = new(
         new CheckBoxGlyphFamily(CheckBoxMarkStyle.Brackets, new CheckBoxGlyphs(new Rune(' '), new Rune('X'), new Rune('-'))),
         new RadioButtonGlyphFamily(RadioButtonMarkStyle.Parentheses, new RadioButtonGlyphs(new Rune(' '), new Rune('•'))),
@@ -168,7 +195,8 @@ public sealed record GlyphFamily
                 new Rune('▒'), new Rune('■'), new Rune('▒'), new Rune('■'))),
         [new Rune('|'), new Rune('/'), new Rune('-'), new Rune('\\')],
         new ProgressBarGlyphs(new Rune('█'), new Rune('░'), new Rune('▒')),
-        new ChaseIndicatorGlyphs(new Rune('■'), new Rune('▒')));
+        new ChaseIndicatorGlyphs(new Rune('■'), new Rune('▒')),
+        new Rune('▒'));
 
     /// <summary>Gets the CheckBox mark style and glyph trio.</summary>
     public required CheckBoxGlyphFamily CheckBox { get; init; }
@@ -193,6 +221,18 @@ public sealed record GlyphFamily
     /// <summary>Gets the ChaseIndicator active and inactive glyph pair.</summary>
     public required ChaseIndicatorGlyphs ChaseIndicator { get; init; }
 
+    /// <summary>Gets the glyph a <c>Screen</c> tiles across the application-window plane behind
+    /// its content - a space for a solid desktop, <c>▒</c> for Borland's dithered one.</summary>
+    /// <remarks>Drawn in the screen's own resolved face, so the pattern's two tones are the
+    /// theme's <c>windowText</c> over <c>window</c>; content and opaque panels paint over it, and a
+    /// transparent layout panel lets it show through exactly as a <c>TGroup</c> does.</remarks>
+    /// <exception cref="ArgumentException">The replacement value is a control or is not one cell wide.</exception>
+    public required Rune Desktop
+    {
+        get;
+        init => field = value.ValidateSingleCell(nameof(value));
+    }
+
     /// <summary>Compares two families by <see cref="Spinner"/> <em>content</em> as well as every
     /// other member. The compiler-generated record equality would compare <see cref="Spinner"/>
     /// through <see cref="ImmutableArray{T}"/>'s own <see cref="IEquatable{T}"/>, which compares
@@ -208,7 +248,8 @@ public sealed record GlyphFamily
         ScrollBar == other.ScrollBar &&
         Spinner.AsSpan().SequenceEqual(other.Spinner.AsSpan()) &&
         ProgressBar == other.ProgressBar &&
-        ChaseIndicator == other.ChaseIndicator;
+        ChaseIndicator == other.ChaseIndicator &&
+        Desktop == other.Desktop;
 
     /// <summary>Hashes every member, staying consistent with <see cref="Equals(GlyphFamily)"/> by
     /// hashing <see cref="Spinner"/> content rather than its array handle.</summary>
@@ -227,6 +268,7 @@ public sealed record GlyphFamily
 
         hash.Add(ProgressBar);
         hash.Add(ChaseIndicator);
+        hash.Add(Desktop);
         return hash.ToHashCode();
     }
 }

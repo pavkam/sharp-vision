@@ -64,6 +64,42 @@ public sealed class ScreenTests
         surface.Cell(new Point(19, 5)).Style.Background.ShouldBe(desktop);
     }
 
+    /// <summary>Verifies a Screen tiles the theme's desktop glyph across the window plane beneath
+    /// transparent content - Borland's <c>▒</c> under Turbo Vision, a solid plane under a family
+    /// whose desktop glyph is a space - and repaints when a theme swap changes only that glyph.</summary>
+    [Fact]
+    public async Task Render_WhenGlyphFamilyCarriesADesktopGlyph_TilesItAcrossTheWindowPlaneAsync()
+    {
+        using var screen = new ProbeScreen();
+        screen.ContentRoot.HorizontalAlignment = HorizontalAlignment.Stretch;
+        screen.ContentRoot.VerticalAlignment = VerticalAlignment.Stretch;
+        screen.ContentRoot.Face = new Face(
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None,
+            Underline.None,
+            Color.Default);
+        await using var surface = await ComponentSurface.MountScreenAsync(
+            screen,
+            new Size(20, 6),
+            TestContext.Current.CancellationToken);
+
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("turbo-vision"),
+            "publish Turbo Vision");
+
+        surface.Cell(new Point(0, 0)).Text.ShouldBe("▒");
+        surface.Cell(new Point(19, 5)).Text.ShouldBe("▒");
+
+        await surface.UpdateAsync(
+            () => surface.Application.Theme = ThemeCatalog.Load("nord"),
+            "publish a family with a solid desktop");
+
+        surface.Cell(new Point(0, 0)).Text.ShouldBe(" ");
+    }
+
     /// <summary>Verifies retained composition precedes attach, first layout, and started hooks.</summary>
     [Fact]
     public async Task Attach_WhenApplicationStarts_RunsRetainedLifecycleInOrderAsync()

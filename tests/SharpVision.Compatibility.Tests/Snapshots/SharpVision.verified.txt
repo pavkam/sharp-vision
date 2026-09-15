@@ -1041,6 +1041,7 @@ namespace SharpVision.Controls
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected virtual void OnAttach(SharpVision.Application application) { }
         protected virtual void OnDispose() { }
+        protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected virtual void OnStarted(SharpVision.Application application) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
     }
@@ -5079,8 +5080,10 @@ namespace SharpVision.Styling
     public sealed class GlyphFamily : System.IEquatable<SharpVision.Styling.GlyphFamily>
     {
         public GlyphFamily(SharpVision.Styling.CheckBoxGlyphFamily checkBox, SharpVision.Styling.RadioButtonGlyphFamily radioButton, SharpVision.Styling.ScrollBarGlyphFamily scrollBar, System.Collections.Generic.IEnumerable<System.Text.Rune> spinner, SharpVision.Controls.Display.ProgressBarGlyphs progressBar, SharpVision.Controls.Display.ChaseIndicatorGlyphs chaseIndicator) { }
+        public GlyphFamily(SharpVision.Styling.CheckBoxGlyphFamily checkBox, SharpVision.Styling.RadioButtonGlyphFamily radioButton, SharpVision.Styling.ScrollBarGlyphFamily scrollBar, System.Collections.Generic.IEnumerable<System.Text.Rune> spinner, SharpVision.Controls.Display.ProgressBarGlyphs progressBar, SharpVision.Controls.Display.ChaseIndicatorGlyphs chaseIndicator, System.Text.Rune desktop) { }
         public required SharpVision.Controls.Display.ChaseIndicatorGlyphs ChaseIndicator { get; init; }
         public required SharpVision.Styling.CheckBoxGlyphFamily CheckBox { get; init; }
+        public required System.Text.Rune Desktop { get; init; }
         public required SharpVision.Controls.Display.ProgressBarGlyphs ProgressBar { get; init; }
         public required SharpVision.Styling.RadioButtonGlyphFamily RadioButton { get; init; }
         public required SharpVision.Styling.ScrollBarGlyphFamily ScrollBar { get; init; }

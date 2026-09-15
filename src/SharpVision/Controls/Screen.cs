@@ -13,6 +13,12 @@ using SharpVision.Surfaces;
 [PublicAPI]
 public abstract class Screen: CompositeControlBase
 {
+    // Reads the Theme argument alone, so one descriptor serves every Screen (see themes.md,
+    // "Non-appearance theme values").
+    private static readonly ThemeValueDependency<Rune> _desktopGlyphThemeDependency = new(
+        static theme => theme.Glyphs.Desktop,
+        InvalidationImpact.Render);
+
     private readonly Overlay _presentation;
     private readonly OwnedControlSlot _presentationSlot;
 
@@ -225,6 +231,32 @@ public abstract class Screen: CompositeControlBase
         {
             OnStarted(application);
         }
+    }
+
+    #endregion
+
+    #region Rendering
+
+    /// <summary>Tiles the theme's desktop glyph across the application-window plane beneath the
+    /// authored content, in the screen's own resolved face.</summary>
+    /// <param name="canvas">The frame-owned canvas clipped to the screen's visual bounds.</param>
+    /// <remarks>
+    /// The body fill the shared chrome pipeline already painted is the solid plane; this only
+    /// adds the pattern glyph on top, so a family whose desktop glyph is a space - every family but
+    /// the classic one - costs nothing and looks exactly as before. Content, opaque panels, and
+    /// floating surfaces paint over the pattern in the ordinary order; a transparent layout panel
+    /// lets it show through, which is how Borland's <c>TDeskTop</c> reads beneath a <c>TGroup</c>.
+    /// </remarks>
+    protected override void OnRenderContent(TerminalCanvas canvas)
+    {
+        var glyph = ResolveThemeValue(_desktopGlyphThemeDependency);
+
+        if (glyph == new Rune(' ') || Bounds.Width == 0 || Bounds.Height == 0)
+        {
+            return;
+        }
+
+        canvas.Fill(Bounds, glyph, ResolvedStyle);
     }
 
     #endregion
