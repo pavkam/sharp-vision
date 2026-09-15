@@ -193,7 +193,8 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "paired"
+          "glyphStyle": "paired",
+          "background": "windowSurface"
         },
         "shadow": {
           "visible": true,
@@ -218,7 +219,8 @@
         },
         "border": {
           "sides": "all",
-          "glyphStyle": "paired"
+          "glyphStyle": "paired",
+          "background": "bar"
         }
       }
     },

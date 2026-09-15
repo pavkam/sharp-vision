@@ -398,6 +398,8 @@ public sealed class CuratedThemesTests
         theme.Resolve(theme.Window.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
         theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.Resolve(theme.Popup.Normal.Face.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
+        theme.Resolve(theme.Popup.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
+        theme.Resolve(theme.Window.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.WindowSurface));
         theme.Glyphs.CheckBox.Glyphs.Checked.ShouldBe(new Rune('X'));
         theme.Glyphs.RadioButton.Glyphs.Checked.ShouldBe(new Rune('•'));
         sunken.Relief.ShouldBe(BorderRelief.Sunken);
