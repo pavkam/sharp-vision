@@ -35,6 +35,9 @@ public static class ThemeJson
     /// <paramref name="palette"/>, passed straight through. <paramref name="selectedText"/> and
     /// <paramref name="selectedControl"/> default to <paramref name="foreground"/> and
     /// <paramref name="accent"/> respectively, matching every bundled theme's own convention.
+    /// <paramref name="hotkeyAttributes"/> is the raw JSON value of the "attributes.hotkey" entry -
+    /// a quoted attribute name or an array - and is the theme-only value a test reaches for when it
+    /// needs a change that no control's face carries (the access-key color is a face channel).
     /// <paramref name="stylesOverride"/>, when non-null, replaces the entire generated "styles"
     /// object verbatim (a document's "styles" object is legally empty, so <c>"{}"</c> produces a
     /// theme where every well-known style resolves purely from its code-owned default - useful for
@@ -52,6 +55,7 @@ public static class ThemeJson
         string muted = "#707070",
         string error = "#ff0000",
         string? hotkey = null,
+        string hotkeyAttributes = "\"underline\"",
         string inputGlyphStyle = "\"heavy\"",
         string inputSides = "\"all\"",
         string containerSides = "\"all\"",
@@ -182,7 +186,7 @@ public static class ThemeJson
               },
               "attributes": {
                 "normalText":[], "activeText":[], "focusedText":"bold", "pressedText":[],
-                "selectedText":[], "disabledText":[], "border":[], "shadow":"dim", "hotkey":"underline"
+                "selectedText":[], "disabledText":[], "border":[], "shadow":"dim", "hotkey":{{hotkeyAttributes}}
               },
               "styles": {{stylesField}} }
             """;

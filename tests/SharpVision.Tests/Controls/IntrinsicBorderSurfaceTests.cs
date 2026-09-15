@@ -6,15 +6,16 @@ namespace SharpVision.Tests.Controls;
 /// <summary>Verifies intrinsic border glyph families through mounted terminal surfaces.</summary>
 public sealed class IntrinsicBorderSurfaceTests
 {
-    /// <summary>Verifies a focused Turbo Vision input shows its authored flat "focusedBorder"
-    /// color on every edge. Turbo's "input" section authors no per-state Relief today (its
-    /// baseline is the code-owned Flat default), so this test alone no longer exercises the
-    /// border-relief-vs-authored-Foreground bypass - <see
+    /// <summary>Verifies a focused framed input shows its authored flat "focusedBorder" color on
+    /// every edge. Nord frames its input line the way most bundled themes do (Turbo Vision no
+    /// longer does - Borland's <c>TInputLine</c> is a bare strip, so that theme is not a framed
+    /// specimen any more); no bundled "input" section authors a per-state Relief, so this test
+    /// alone does not exercise the border-relief-vs-authored-Foreground bypass - <see
     /// cref="Render_WhenTurboVisionTreeViewReceivesFocus_ShowsFlatActiveFrameAsync"/> is the
     /// bypass's only remaining observable-effect coverage, via "container.normal.border.relief":
     /// "sunken", the sole non-Flat relief left in any bundled theme.</summary>
     [Fact]
-    public async Task Render_WhenTurboVisionInputReceivesFocus_ShowsFlatActiveFrameAsync()
+    public async Task Render_WhenNordInputReceivesFocus_ShowsFlatActiveFrameAsync()
     {
         var control = new TextInput
         {
@@ -34,10 +35,10 @@ public sealed class IntrinsicBorderSurfaceTests
         await surface.UpdateAsync(
             () =>
             {
-                surface.Application.Theme = ThemeCatalog.Load("turbo-vision");
+                surface.Application.Theme = ThemeCatalog.Load("nord");
                 surface.Application.Focus.Focus(control).ShouldBeTrue();
             },
-            "apply Turbo Vision and focus the input");
+            "apply Nord and focus the input");
 
         var focusedBorder = surface.Application.Theme.ResolveColor(SemanticColor.FocusedBorder);
         surface.Cell(new Point(0, 0)).Style.Foreground.ShouldBe(focusedBorder);

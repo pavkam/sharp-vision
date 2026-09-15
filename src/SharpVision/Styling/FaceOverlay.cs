@@ -12,16 +12,18 @@ public readonly record struct FaceOverlay
     /// <param name="attributes">The optional attribute contribution.</param>
     /// <param name="underline">The optional defined underline style contribution.</param>
     /// <param name="underlineColor">The optional paintable underline color contribution.</param>
+    /// <param name="accessKeyColor">The optional paintable access-key color contribution.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="underline"/> is undefined, or <paramref name="foreground"/> or
-    /// <paramref name="underlineColor"/> is not a paintable color.
+    /// <paramref name="underline"/> is undefined, or <paramref name="foreground"/>,
+    /// <paramref name="underlineColor"/>, or <paramref name="accessKeyColor"/> is not a paintable color.
     /// </exception>
     public FaceOverlay(
         ControlColor? foreground = null,
         ControlColor? background = null,
         ControlDecoration? attributes = null,
         Underline? underline = null,
-        ControlColor? underlineColor = null)
+        ControlColor? underlineColor = null,
+        ControlColor? accessKeyColor = null)
     {
         if (foreground is { } foregroundValue)
         {
@@ -31,6 +33,11 @@ public readonly record struct FaceOverlay
         if (underlineColor is { } underlineColorValue)
         {
             ControlColor.ValidatePaint(underlineColorValue, nameof(underlineColor));
+        }
+
+        if (accessKeyColor is { } accessKeyColorValue)
+        {
+            ControlColor.ValidatePaint(accessKeyColorValue, nameof(accessKeyColor));
         }
 
         if (underline is { } underlineValue)
@@ -43,6 +50,7 @@ public readonly record struct FaceOverlay
         Attributes = attributes;
         Underline = underline;
         UnderlineColor = underlineColor;
+        AccessKeyColor = accessKeyColor;
     }
 
     /// <summary>Gets the optional foreground contribution.</summary>
@@ -60,6 +68,9 @@ public readonly record struct FaceOverlay
     /// <summary>Gets the optional underline-color contribution.</summary>
     public ControlColor? UnderlineColor { get; }
 
+    /// <summary>Gets the optional access-key color contribution.</summary>
+    public ControlColor? AccessKeyColor { get; }
+
     /// <summary>Applies this contribution to a complete face.</summary>
     /// <param name="face">The earlier complete face.</param>
     /// <returns>The composed complete face.</returns>
@@ -69,7 +80,8 @@ public readonly record struct FaceOverlay
         Background ?? face.Background,
         Attributes ?? face.Attributes,
         Underline ?? face.Underline,
-        UnderlineColor ?? face.UnderlineColor);
+        UnderlineColor ?? face.UnderlineColor,
+        AccessKeyColor ?? face.AccessKeyColor);
 
     /// <summary>Overlays a later partial contribution over this contribution.</summary>
     /// <param name="later">The later contribution whose supplied members win.</param>
@@ -80,5 +92,6 @@ public readonly record struct FaceOverlay
         later.Background ?? Background,
         later.Attributes ?? Attributes,
         later.Underline ?? Underline,
-        later.UnderlineColor ?? UnderlineColor);
+        later.UnderlineColor ?? UnderlineColor,
+        later.AccessKeyColor ?? AccessKeyColor);
 }

@@ -7,7 +7,7 @@ using Styling;
 
 /// <summary>Defines immutable resolution and invalidation policy for one complete control style.
 /// A leaf control style declares one-hop fallback (via <see cref="StyleDefinitions"/>) to inherit
-/// theme customization from one of the six well-known roots; it authors no <c>styles.*</c> theme
+/// theme customization from one of the ten well-known roots; it authors no <c>styles.*</c> theme
 /// section of its own.</summary>
 /// <typeparam name="TStyle">The immutable complete style value.</typeparam>
 [PublicAPI]

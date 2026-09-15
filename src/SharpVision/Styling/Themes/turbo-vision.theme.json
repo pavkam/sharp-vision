@@ -30,7 +30,7 @@
     "window": "blue",
     "windowSurface": "lightGray",
     "windowText": "lightGray",
-    "surface": "cyan",
+    "surface": "blue",
     "surfaceText": "black",
     "bar": "lightGray",
     "control": "lightGray",
@@ -42,11 +42,11 @@
     "activeControl": "brightCyan",
     "activeText": "blue",
     "activeBorder": "white",
-    "focusedControl": "cyan",
-    "focusedText": "black",
+    "focusedControl": "blue",
+    "focusedText": "white",
     "focusedBorder": "white",
-    "pressedControl": "blue",
-    "pressedText": "white",
+    "pressedControl": "cyan",
+    "pressedText": "black",
     "pressedBorder": "black",
     "selectedControl": "green",
     "selectedText": "black",
@@ -76,7 +76,7 @@
     "disabledText": [],
     "border": [],
     "shadow": "dim",
-    "hotkey": "underline"
+    "hotkey": []
   },
   "styles": {
     "control": {
@@ -84,7 +84,8 @@
         "face": {
           "foreground": "controlText",
           "background": "control",
-          "attributes": "normalText"
+          "attributes": "normalText",
+          "accessKeyColor": "hotkey"
         },
         "border": {
           "sides": "none",
@@ -121,12 +122,12 @@
       "normal": {
         "affixGap": 1,
         "face": {
-          "foreground": "controlText",
-          "background": "surface"
+          "foreground": "white",
+          "background": "surface",
+          "accessKeyColor": "yellow"
         },
         "border": {
-          "sides": "all",
-          "glyphStyle": "light"
+          "sides": "none"
         }
       },
       "pointerOver": {
@@ -172,10 +173,103 @@
         }
       }
     },
+    "button": {
+      "normal": {
+        "padding": {
+          "x": 2,
+          "y": 0
+        },
+        "face": {
+          "foreground": "black",
+          "background": "green",
+          "accessKeyColor": "yellow"
+        },
+        "border": {
+          "sides": "none"
+        },
+        "shadow": {
+          "visible": true,
+          "mode": "fractionalBlock",
+          "offset": {
+            "x": 1,
+            "y": 1
+          },
+          "foreground": "controlShadow",
+          "background": "transparent"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "white",
+          "background": "green"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "white",
+          "background": "green"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "white",
+          "background": "green"
+        }
+      }
+    },
+    "toggle": {
+      "normal": {
+        "face": {
+          "foreground": "black",
+          "background": "cyan",
+          "accessKeyColor": "yellow"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "white",
+          "background": "cyan"
+        }
+      },
+      "focused": {
+        "face": {
+          "foreground": "white",
+          "background": "cyan"
+        }
+      },
+      "pressed": {
+        "face": {
+          "foreground": "white",
+          "background": "cyan"
+        }
+      }
+    },
+    "item": {
+      "normal": {
+        "face": {
+          "foreground": "black",
+          "background": "cyan",
+          "accessKeyColor": "yellow"
+        }
+      },
+      "pointerOver": {
+        "face": {
+          "foreground": "white"
+        }
+      }
+    },
+    "panel": {
+      "normal": {
+        "face": {
+          "background": "transparent"
+        }
+      }
+    },
     "container": {
       "normal": {
         "face": {
-          "background": "windowSurface"
+          "background": "windowSurface",
+          "accessKeyColor": "yellow"
         },
         "border": {
           "sides": "all",
@@ -189,7 +283,8 @@
         "closeMarkColor": "green",
         "face": {
           "foreground": "surfaceText",
-          "background": "windowSurface"
+          "background": "windowSurface",
+          "accessKeyColor": "yellow"
         },
         "border": {
           "sides": "all",

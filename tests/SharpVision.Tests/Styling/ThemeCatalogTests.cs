@@ -893,7 +893,7 @@ public sealed class ThemeCatalogTests
     }
 
     /// <summary>Verifies an unqualified unknown styles key is rejected instead of silently
-    /// retained, since it is very likely a typo of one of the six well-known role names.</summary>
+    /// retained, since it is very likely a typo of one of the ten well-known role names.</summary>
     [Fact]
     public void Parse_WhenStylesKeyIsUnqualifiedAndUnknown_Throws()
     {

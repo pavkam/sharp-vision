@@ -3,7 +3,10 @@
 
 namespace SharpVision.Tests.Controls;
 
-/// <summary>Verifies typed registration of Theme values resolved outside appearance profiles.</summary>
+/// <summary>Verifies typed registration of Theme values resolved outside appearance profiles. The
+/// theme-only value every scenario varies is the access-key decoration (<c>attributes.hotkey</c>):
+/// the access-key color is a channel of every face, so a change to it reaches a control through
+/// ordinary appearance invalidation rather than through a dependency.</summary>
 public sealed class ThemeValueDependencyTests
 {
     /// <summary>Verifies repeated reads deduplicate one registration and a changed value requests
@@ -11,13 +14,13 @@ public sealed class ThemeValueDependencyTests
     [Fact]
     public void ResolveThemeValue_WhenReadRepeatedly_RegistersOnceAndInvalidatesDeclaredPhase()
     {
-        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
         var probe = new ThemeValueDependencyProbe();
         probe.SetTheme(first);
 
-        probe.ResolveHotkey().ShouldBe(first.Hotkey);
-        probe.ResolveHotkey().ShouldBe(first.Hotkey);
+        probe.ResolveHotkey().ShouldBe(TerminalAttributes.Underline);
+        probe.ResolveHotkey().ShouldBe(TerminalAttributes.Underline);
         probe.ThemeValueDependencyCount.ShouldBe(1);
         probe.Clear(Invalidation.All);
         probe.SetTheme(second);
@@ -61,8 +64,8 @@ public sealed class ThemeValueDependencyTests
     [Fact]
     public void SetTheme_WhenDependencyHasNotBeenRead_DoesNotInvalidateForItsValue()
     {
-        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
         var probe = new ThemeValueDependencyProbe();
         probe.SetTheme(first);
         probe.Clear(Invalidation.All);
@@ -79,10 +82,10 @@ public sealed class ThemeValueDependencyTests
     public void SetTheme_WhenMeasureAndRenderDependenciesChange_UsesMeasure()
     {
         var first = ThemeCatalog.Parse(ThemeJson.Create(
-            hotkey: "#ff0000",
+            hotkeyAttributes: "\"underline\"",
             inputExtra: ", \"affixGap\": 1"));
         var second = ThemeCatalog.Parse(ThemeJson.Create(
-            hotkey: "#00ff00",
+            hotkeyAttributes: "\"bold\"",
             inputExtra: ", \"affixGap\": 3"));
         var probe = new ThemeValueDependencyProbe();
         probe.SetTheme(first);
@@ -97,16 +100,12 @@ public sealed class ThemeValueDependencyTests
     }
 
     /// <summary>Verifies equal concrete resolver output suppresses invalidation even when the two
-    /// themes name different palette entries.</summary>
+    /// themes spell the value differently.</summary>
     [Fact]
     public void SetTheme_WhenSymbolicInputsResolveEqually_DoesNotInvalidate()
     {
-        var first = ThemeCatalog.Parse(ThemeJson.Create(
-            palette: "\"firstHotkey\":\"#ff0000\",\"bg\":\"#101010\",\"fg\":\"#e0e0e0\"",
-            hotkey: "firstHotkey"));
-        var second = ThemeCatalog.Parse(ThemeJson.Create(
-            palette: "\"secondHotkey\":\"#ff0000\",\"bg\":\"#101010\",\"fg\":\"#e0e0e0\"",
-            hotkey: "secondHotkey"));
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "[\"underline\"]"));
         var probe = new ThemeValueDependencyProbe();
         probe.SetTheme(first);
         _ = probe.ResolveHotkey();
@@ -122,8 +121,8 @@ public sealed class ThemeValueDependencyTests
     [Fact]
     public void SetThemeValueDependency_WhenDeactivated_RemovesFutureInvalidation()
     {
-        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
         var probe = new ThemeValueDependencyProbe();
         probe.SetTheme(first);
         _ = probe.ResolveHotkey();

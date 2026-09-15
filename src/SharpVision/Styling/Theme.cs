@@ -136,6 +136,23 @@ public sealed class Theme
     /// <summary>Gets the editable or selectable input semantic appearance.</summary>
     public AppearanceStates Input => GetAppearanceStates("input", static theme => theme.GetStyleSet(InputStyle.Default));
 
+    /// <summary>Gets the push-button semantic appearance: the <c>button</c> section, which
+    /// cascades from <c>input</c> until a theme authors it.</summary>
+    public AppearanceStates Button => GetAppearanceStates("button", static theme => theme.GetStyleSet(ButtonStyle.Default));
+
+    /// <summary>Gets the two-state option (check box, radio button) semantic appearance: the
+    /// <c>toggle</c> section, which cascades from <c>input</c> until a theme authors it.</summary>
+    public AppearanceStates Toggle => GetAppearanceStates("toggle", static theme => theme.GetStyleSet(ToggleStyle.Default));
+
+    /// <summary>Gets the selectable-row semantic appearance: the <c>item</c> section, whose Normal
+    /// cascades from <c>control</c> and whose states follow <c>input</c> under the row rule until
+    /// a theme authors it.</summary>
+    public AppearanceStates Item => GetAppearanceStates("item", static theme => theme.GetStyleSet(ItemStyle.Default));
+
+    /// <summary>Gets the layout-panel semantic appearance: the <c>panel</c> section, passive
+    /// chrome that cascades from <c>control</c> until a theme authors it.</summary>
+    public AppearanceStates Panel => GetAppearanceStates("panel", static theme => theme.GetStyleSet(PanelStyle.Default));
+
     /// <summary>Gets the framed grouping or collection semantic appearance.</summary>
     public AppearanceStates Container => GetAppearanceStates("container", static theme => theme.GetStyleSet(ContainerStyle.Default));
 
@@ -205,7 +222,7 @@ public sealed class Theme
     }
 
     /// <summary>Configures one well-known root style's complete state set before this Theme is frozen.</summary>
-    /// <typeparam name="TStyle">One of the six exact well-known root style types.</typeparam>
+    /// <typeparam name="TStyle">One of the ten exact well-known root style types.</typeparam>
     /// <param name="styles">The complete normal style and optional state contributions.</param>
     /// <exception cref="ArgumentNullException"><paramref name="styles"/> is null.</exception>
     /// <exception cref="ArgumentException"><typeparamref name="TStyle"/> is not an exact well-known root style type.</exception>
@@ -802,7 +819,7 @@ public sealed class Theme
     /// <param name="codeOwnedDefault">The code-owned default this type falls back to.</param>
     /// <returns>The complete per-state set.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="codeOwnedDefault"/> is null.</exception>
-    /// <exception cref="ArgumentException"><typeparamref name="TStyle"/> is not one of the six well-known root style types.</exception>
+    /// <exception cref="ArgumentException"><typeparamref name="TStyle"/> is not one of the ten well-known root style types.</exception>
     public StyleStates<TStyle> GetStyleSet<TStyle>(TStyle codeOwnedDefault)
         where TStyle : ControlStyle
     {
@@ -824,11 +841,15 @@ public sealed class Theme
     private static string GetRootStyleKey(Type styleType, string parameterName) =>
         styleType == typeof(ControlStyle) ? StyleKey.Of<ControlStyle>() :
         styleType == typeof(InputStyle) ? StyleKey.Of<InputStyle>() :
+        styleType == typeof(ButtonStyle) ? StyleKey.Of<ButtonStyle>() :
+        styleType == typeof(ToggleStyle) ? StyleKey.Of<ToggleStyle>() :
+        styleType == typeof(ItemStyle) ? StyleKey.Of<ItemStyle>() :
+        styleType == typeof(PanelStyle) ? StyleKey.Of<PanelStyle>() :
         styleType == typeof(ContainerStyle) ? StyleKey.Of<ContainerStyle>() :
         styleType == typeof(WindowStyle) ? StyleKey.Of<WindowStyle>() :
         styleType == typeof(PopupStyle) ? StyleKey.Of<PopupStyle>() :
         styleType == typeof(TooltipStyle) ? StyleKey.Of<TooltipStyle>() :
-        throw new ArgumentException("Only the six well-known root style types own theme sections.", parameterName);
+        throw new ArgumentException("Only the ten well-known root style types own theme sections.", parameterName);
 
     /// <summary>Resolves one root style's complete per-state set from an explicit key, memoized
     /// per theme, style type, key, and code-owned default.</summary>
@@ -855,6 +876,10 @@ public sealed class Theme
     {
         _ = GetStyleSet(ControlStyle.Default);
         _ = GetStyleSet(InputStyle.Default);
+        _ = GetStyleSet(ButtonStyle.Default);
+        _ = GetStyleSet(ToggleStyle.Default);
+        _ = GetStyleSet(ItemStyle.Default);
+        _ = GetStyleSet(PanelStyle.Default);
         _ = GetStyleSet(ContainerStyle.Default);
         _ = GetWindowStyleSet();
         _ = GetStyleSet(PopupStyle.Default);
@@ -908,9 +933,67 @@ public sealed class Theme
         (StyleStates<ControlStyle>) _styleSets.GetOrAdd(
             (typeof(ControlStyle), "$interactiveRow", ControlStyle.Default),
             static (_, theme) => new Lazy<object>(
-                () => theme.BuildInteractiveStyleSet(theme.GetStyleSet(ControlStyle.Default), preservePointerBackground: true),
+                // The "item" role IS the row rule: Normal from "control", every interaction state
+                // from "input" with hover keeping the row's own background, plus whatever the
+                // theme's own styles.item section adds on top. Projecting that set keeps every
+                // row consumer on one resolution path instead of a second, section-blind copy.
+                () => AsControlStates(theme.GetStyleSet(ItemStyle.Default)),
                 LazyThreadSafetyMode.ExecutionAndPublication),
             this).Value;
+
+    /// <summary>Gets the <c>item</c> role's passive projection - its Normal and Disabled states
+    /// only - for the surface that hosts selectable rows rather than a row itself.</summary>
+    /// <remarks>
+    /// A list, tree, or table paints one owner surface behind rows that carry every interactive
+    /// cue themselves. The surface has to share the rows' plane (Turbo Vision's cyan list viewer
+    /// is cyan between rows too), but must not react to hover or, worse, reverse itself when the
+    /// host takes focus - that is the rows' job. Projecting only the two passive states gives the
+    /// host the rows' plane and nothing else.
+    /// </remarks>
+    /// <returns>The cached per-state item-style set holding Normal and Disabled alone.</returns>
+    internal StyleStates<ItemStyle> GetPassiveItemStyleSet() =>
+        (StyleStates<ItemStyle>) _styleSets.GetOrAdd(
+            (typeof(ItemStyle), "$passiveItem", ItemStyle.Default),
+            static (_, theme) => new Lazy<object>(
+                () =>
+                {
+                    var item = theme.GetStyleSet(ItemStyle.Default);
+                    var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
+
+                    if (item.AuthoredFor("disabled") is { } disabled)
+                    {
+                        authored["disabled"] = disabled;
+                    }
+
+                    return new StyleStates<ItemStyle>
+                    {
+                        Normal = item.Normal,
+                        Disabled = item.Disabled,
+                        Authored = authored
+                    };
+                },
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this).Value;
+
+    // Views a derived well-known role's resolved set through its ControlStyle base - every member
+    // is the same instance, only the static type widens - so a consumer declared against
+    // StyleStates<ControlStyle> can adopt a role section without a parallel resolution.
+    private static StyleStates<ControlStyle> AsControlStates<TStyle>(StyleStates<TStyle> set)
+        where TStyle : ControlStyle =>
+        new()
+        {
+            Normal = set.Normal,
+            IsPointerOver = set.IsPointerOver,
+            FocusWithin = set.FocusWithin,
+            Focused = set.Focused,
+            Current = set.Current,
+            Selected = set.Selected,
+            Checked = set.Checked,
+            Indeterminate = set.Indeterminate,
+            Pressed = set.Pressed,
+            Disabled = set.Disabled,
+            Authored = set.Authored
+        };
 
     /// <summary>Gets every interactive state rebased onto passive borderless geometry without the
     /// reverse-video safety net used by a generic borderless focus target.</summary>
@@ -1175,31 +1258,70 @@ public sealed class Theme
         };
     }
 
-    // Only these five well-known style keys cascade unset members from "control"'s own resolved
-    // set, exactly mirroring the prior ThemeCatalog.BuildProfile(key, definition, inherited:
-    // control, ...) behavior every bundled theme document's "input"/"container"/"window"/"popup"/
-    // "tooltip" JSON already assumes (most of those sections only ever author a border-sides/
-    // glyphStyle delta, relying on inheriting "control"'s face/border colors for everything else).
-    // "control" itself and every other key (a leaf control's
-    // own key, or a synthetic/test key with no special meaning) are terminal roots with no
-    // inheritance - GetStyleSet's generic contract for an arbitrary key must stay a pure
-    // codeOwnedDefault-plus-own-JSON resolution, independent of which specific key is passed.
-    private static readonly HashSet<string> _controlInheritingKeys =
-        new(StringComparer.Ordinal) { "input", "container", "window", "popup", "tooltip" };
-
-    // Of those five, only "input" also inherits explicitly authored "control" per-state deltas.
-    // Bundled themes keep interaction cues on "input" and reserve "control" for passive defaults,
-    // while custom themes may still place a shared state contribution on "control" deliberately.
-    // The other four styles are passive chrome and do not inherit either source. That is an
-    // asserted contract, not an accident - a container must ignore hover
+    // Where every well-known role inherits from before its own JSON overlays. "control" is the
+    // terminal root. The passive chrome roles - "container", "window", "popup", "tooltip", and
+    // "panel" - cascade only their Normal from "control": a container must ignore hover
     // (CuratedThemesTests.EveryTheme_WhenPointerIsOver_PreservesPassiveSurfaces,
     // GroupBoxSurfaceTests.Pointer_WhenContentIsHovered_PreservesPassiveSurfaceAsync), and a Window
     // must answer activation alone, keeping its normal face while it contains focus
     // (CuratedThemesTests.EveryTheme_WhenWindowContainsFocus_UsesOnlyActiveBorder,
     // WindowSurfaceTests.Theme_WhenWindowHoveredAndActivated_RespondsOnlyToActivationAsync).
-    // Cascading states into them tints every panel and window border on hover.
-    private static readonly HashSet<string> _controlStateInheritingKeys =
-        new(StringComparer.Ordinal) { "input" };
+    // Cascading states into them tints every panel and window border on hover. "input" also
+    // inherits explicitly authored "control" per-state deltas; bundled themes keep interaction
+    // cues on "input" and reserve "control" for passive defaults, while custom themes may still
+    // place a shared state contribution on "control" deliberately. "button" and "toggle" then
+    // inherit from "input" the same way, so a theme that never authors them sees exactly the
+    // input-fallback appearance those controls had when they were leaves. "item" is the
+    // selectable-row rule that GetInteractiveRowStyleSet always applied - Normal from "control",
+    // states from "input" with hover keeping the row's own background and the borderless
+    // reverse-video focus net - promoted to a section a theme can author.
+    //
+    // Every other key (a synthetic or test key with no special meaning) is a terminal root with
+    // no inheritance - GetStyleSet's generic contract for an arbitrary key must stay a pure
+    // codeOwnedDefault-plus-own-JSON resolution, independent of which specific key is passed.
+    private static readonly IReadOnlyDictionary<string, StyleRoleCascade> _roleCascades =
+        new Dictionary<string, StyleRoleCascade>(StringComparer.Ordinal)
+        {
+            ["control"] = new(normalParent: null, stateParent: null),
+            ["input"] = new(normalParent: "control", stateParent: "control"),
+            ["button"] = new(normalParent: "input", stateParent: "input"),
+            ["toggle"] = new(normalParent: "input", stateParent: "input"),
+            ["item"] = new(
+                normalParent: "control",
+                stateParent: "input",
+                preservePointerBackground: true,
+                applyBorderlessFocusFallback: true),
+            ["panel"] = new(normalParent: "control", stateParent: null),
+            ["container"] = new(normalParent: "control", stateParent: null),
+            ["window"] = new(normalParent: "control", stateParent: null),
+            ["popup"] = new(normalParent: "control", stateParent: null),
+            ["tooltip"] = new(normalParent: "control", stateParent: null)
+        };
+
+    /// <summary>Gets the well-known role keys in cascade order: every parent precedes its children.</summary>
+    internal static IEnumerable<string> RoleKeys => _roleCascades.Keys;
+
+    // A parent contributes only when the theme actually said something about it - its own raw
+    // section, a programmatic SetStyleSet, or a parent of its own that did. A programmatically
+    // constructed Theme that never went through ThemeCatalog.Parse and configured nothing has
+    // nothing real to cascade, and cascading its code-owned defaults would only churn provenance.
+    private bool HasAuthoredRole(string key) =>
+        GetRawStyleSection(key) is not null ||
+        _programmaticStyleSets.Keys.Any(type => GetRootStyleKey(type, nameof(key)) == key) ||
+        (_roleCascades.TryGetValue(key, out var cascade) && cascade.NormalParent is { } parent && HasAuthoredRole(parent));
+
+    // Resolves one parent role's complete set viewed through ControlStyle, paired with the
+    // code-owned default its Normal delta is measured from. Only the two roles that act as parents
+    // are enumerated: the cascade table above names no other.
+    private StyleRoleParent? GetParentRoleStates(string key) =>
+        !HasAuthoredRole(key)
+            ? null
+            : key switch
+            {
+                "control" => new StyleRoleParent(ControlStyle.Default, GetStyleSet(ControlStyle.Default)),
+                "input" => new StyleRoleParent(InputStyle.Default, AsControlStates(GetStyleSet(InputStyle.Default))),
+                _ => throw new InvalidOperationException($"The role '{key}' is not a cascade parent.")
+            };
 
     private StyleStates<TStyle> BuildRootStyleSet<TStyle>(string key, TStyle codeOwnedDefault)
         where TStyle : ControlStyle
@@ -1208,7 +1330,7 @@ public sealed class Theme
 
         var authored = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal);
 
-        if (!_controlInheritingKeys.Contains(key))
+        if (!_roleCascades.TryGetValue(key, out var cascade) || cascade.IsRoot)
         {
             var rootNormal = ResolveRawState(raw, "normal", codeOwnedDefault, key, authored) ?? codeOwnedDefault;
 
@@ -1228,8 +1350,8 @@ public sealed class Theme
             };
         }
 
-        // Every state, Normal included, cascades "control"'s DELTA rather than its whole resolved
-        // value - what the theme changed about "control", applied onto this style's own code-owned
+        // Every state, Normal included, cascades the parent's DELTA rather than its whole resolved
+        // value - what the theme changed about the parent, applied onto this style's own code-owned
         // default, with this style's own JSON winning on top.
         //
         // Normal used to copy Face/Border/Shadow wholesale, guarded only by "this theme has no
@@ -1249,51 +1371,62 @@ public sealed class Theme
         // Rounded None, moving measured widths by whole cells and shifting popup and submenu
         // layout. That was tried and reverted twice before. The two branches now agree.
         //
-        // Cascading explicit control state deltas remains supported for custom themes. Bundled
-        // interaction cues live directly on "input"; control's disabled delta and any deliberate
-        // shared override still reach input without replacing its code-owned geometry.
-        //
-        // Still gated on this theme having authored a "control" section: a programmatically
-        // constructed Theme that never went through ThemeCatalog.Parse has nothing real to cascade.
-        var controlRoot = GetRawStyleSection("control") is null ? null : GetStyleSet(ControlStyle.Default);
-        var normalBase = controlRoot is null
+        // Structural members the child type shares with its parent type (an input family's
+        // disclosure glyph and affix gap) are not chrome and travel separately, through
+        // AdoptParentStructure, exactly as the leaf completions that predated the child roles
+        // forwarded them.
+        var normalParent = GetParentRoleStates(cascade.NormalParent!);
+        var normalBase = normalParent is null
             ? codeOwnedDefault
-            : Cascade(
+            : (TStyle) Cascade(
                 codeOwnedDefault,
                 StyleStatesExtensions.Diff(
-                    ControlStyle.Default,
-                    controlRoot.Normal,
-                    controlRoot.AuthoredFor("normal")));
+                    normalParent.CodeOwnedDefault,
+                    normalParent.Set.Normal,
+                    normalParent.Set.AuthoredFor("normal"))).AdoptParentStructure(normalParent.Set.Normal);
         var normal = ResolveRawState(raw, "normal", normalBase, key, authored) ?? normalBase;
-        var controlSet = _controlStateInheritingKeys.Contains(key) ? controlRoot : null;
+        var stateSet = cascade.StateParent is { } stateParentKey
+            ? GetParentRoleStates(stateParentKey)?.Set
+            : null;
 
-        // Patches "control"'s contribution for one state onto this style's resolved Normal, then lets
-        // this style's own JSON for that state win on top. Returns null (meaning "no such state",
-        // which the appearance-states fold resolves as Normal) only when neither side says anything.
+        // Patches the parent's contribution for one state onto this style's resolved Normal, applies
+        // the row adjustments this role declares, then lets this style's own JSON for that state
+        // win on top. Returns null (meaning "no such state", which the appearance-states fold
+        // resolves as Normal) only when neither side says anything.
         TStyle? InheritState(string stateName, Func<StyleStates<ControlStyle>, ControlStyle?> select)
         {
-            var controlState = controlSet is null ? null : select(controlSet);
+            var parentState = stateSet is null ? null : select(stateSet);
             var basis = normal;
 
-            if (controlState is not null)
+            if (parentState is not null)
             {
-                // "control"'s own provenance travels with its delta. Without it the cascade drops
-                // exactly what the leaf's own diff would - a member "control" authored back to its
+                // The parent's own provenance travels with its delta. Without it the cascade drops
+                // exactly what the leaf's own diff would - a member the parent authored back to its
                 // own Normal - one level earlier and just as silently.
                 var delta = StyleStatesExtensions.Diff(
-                    controlSet!.Normal,
-                    controlState,
-                    controlSet.AuthoredFor(stateName));
+                    stateSet!.Normal,
+                    parentState,
+                    stateSet.AuthoredFor(stateName));
                 basis = Cascade(normal, delta);
 
-                if (controlSet.AuthoredFor(stateName) is { Count: > 0 } inherited)
+                if (cascade.ApplyBorderlessFocusFallback && stateName is "focused" or "focusWithin")
+                {
+                    basis = ApplyBorderlessFocusFallback(basis, normal);
+                }
+
+                if (cascade.PreservePointerBackground && stateName == "pointerOver")
+                {
+                    basis = basis with { Face = basis.Face with { Background = normal.Face.Background } };
+                }
+
+                if (stateSet.AuthoredFor(stateName) is { Count: > 0 } inherited)
                 {
                     authored[stateName] = inherited;
                 }
             }
 
             return ResolveRawState(raw, stateName, basis, key, authored) ??
-                (controlState is null ? null : basis);
+                (parentState is null ? null : basis);
         }
 
         return new StyleStates<TStyle>
@@ -1402,7 +1535,7 @@ public sealed class Theme
     /// the only per-state contribution there is - nothing here overlays this style's own JSON,
     /// because it has none. Converted to a <see cref="AppearanceStates"/> so the unchanged
     /// <see cref="AppearanceResolver"/>/<see cref="AppearanceStates.ApplyStates"/> fold logic can
-    /// consume a leaf control's style exactly as it consumes one of the six well-known base
+    /// consume a leaf control's style exactly as it consumes one of the ten well-known base
     /// types.</summary>
     internal AppearanceStates BuildFallbackAwareStates<TStyle, TFallback>(
         TStyle resolvedNormal,

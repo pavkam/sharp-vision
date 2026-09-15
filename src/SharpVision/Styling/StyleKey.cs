@@ -3,14 +3,14 @@
 
 namespace SharpVision.Styling;
 
-/// <summary>Derives the <c>styles.*</c> section key owned by one of the six well-known base style
+/// <summary>Derives the <c>styles.*</c> section key owned by one of the ten well-known base style
 /// types from its type name, so the two can never drift apart.</summary>
-/// <remarks>Before theme sections closed to exactly the six well-known styles, every style type -
+/// <remarks>Before theme sections closed to the well-known role styles, every style type -
 /// leaf and root alike - hand-wrote its key as a string literal at its <see cref="StyleDefinitions"/>
 /// call site, and <see cref="ThemeCatalog"/> repeated the same literals in a second hand-maintained
 /// registry used to validate theme documents. The two had already diverged: <c>ChartStyle</c>
 /// declared <c>"chart"</c> while the registry omitted it, so a theme authoring <c>styles.chart</c>
-/// was rejected as unknown. Only the six well-known roots resolve a <c>styles.*</c> section at all
+/// was rejected as unknown. Only the ten well-known roots resolve a <c>styles.*</c> section at all
 /// now, but this derivation remains the single source of truth for their own keys and for the
 /// dotted diagnostic paths built from them.
 ///

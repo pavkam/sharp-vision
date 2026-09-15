@@ -182,7 +182,7 @@ internal static class AppearanceResolver
 
         if (isTransparent && ResolveAmbientParentFace(control, parentAmbientFace, useExplicitAmbient) is { } ambient)
         {
-            inheritedFace = ApplyAmbientFace(inheritedFace, ambient);
+            inheritedFace = ApplyAmbientFace(theme, inheritedFace, ambient);
         }
 
         var (authoredAppearance, borderForegroundAuthored, faceBackgroundAuthored) = FoldAuthoredAppearance(
@@ -306,11 +306,13 @@ internal static class AppearanceResolver
         var background = Resolve(theme, face.Background);
         var attributes = Resolve(theme, face.Attributes);
         var underlineColor = Resolve(theme, face.UnderlineColor);
+        var accessKeyColor = Resolve(theme, face.AccessKeyColor);
 
         // Reported here, against the channel that actually failed. A transparent paint channel is
         // a different failure than a decoration conflict, so it is diagnosed directly rather than
         // folded into the reconciliation below.
         ValidatePaint(foreground, face.Foreground, "foreground");
+        ValidatePaint(accessKeyColor, face.AccessKeyColor, "access-key color");
 
         // Theme values (and application-authored semantic values) are resolved independently, so a
         // combination that is individually legal per channel can still conflict once every channel
@@ -330,7 +332,13 @@ internal static class AppearanceResolver
 
         ValidatePaint(reconciledUnderlineColor, face.UnderlineColor, "underline color");
 
-        return new Face(foreground, background, reconciledAttributes, reconciledUnderline, reconciledUnderlineColor);
+        return new Face(
+            foreground,
+            background,
+            reconciledAttributes,
+            reconciledUnderline,
+            reconciledUnderlineColor,
+            accessKeyColor);
     }
 
     private static Border ResolveBorder(Theme? theme, Border border)
@@ -402,12 +410,18 @@ internal static class AppearanceResolver
             : null;
     }
 
-    private static Face ApplyAmbientFace(Face face, Face parent) => new(
+    // The access-key color travels with the foreground it accents: a caption laid transparently on
+    // its owner's plane must color its mnemonic for that plane, not for whatever the caption's own
+    // (never painted) face would have said. A live parent face arrives fully resolved; an
+    // explicitly supplied ambient face (a prospective resolution across an ownership change) may
+    // still carry the semantic token, so that one channel is resolved here rather than assumed.
+    private static Face ApplyAmbientFace(Theme? theme, Face face, Face parent) => new(
         parent.Foreground.Literal,
         face.Background.Literal,
         parent.Attributes.Literal,
         parent.Underline,
-        parent.UnderlineColor.Literal);
+        parent.UnderlineColor.Literal,
+        Resolve(theme, parent.AccessKeyColor));
 
     private static ResolvedAppearance CreateResolved(
         Theme? theme,

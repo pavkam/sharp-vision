@@ -68,4 +68,13 @@ public record InputStyle: ControlStyle
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), value, "The affix gap must be between 0 and 4 cells.");
     } = 1;
+
+    /// <inheritdoc/>
+    /// <remarks>An input-family child role (<c>button</c>, <c>toggle</c>) follows the parent
+    /// input's <see cref="DropDownGlyph"/> and <see cref="AffixGap"/>, exactly as the leaf
+    /// completions that predated those roles forwarded both members from <c>input</c>.</remarks>
+    internal override ControlStyle AdoptParentStructure(ControlStyle parentNormal) =>
+        parentNormal is InputStyle parent
+            ? this with { DropDownGlyph = parent.DropDownGlyph, AffixGap = parent.AffixGap }
+            : this;
 }

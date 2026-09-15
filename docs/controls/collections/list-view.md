@@ -28,8 +28,11 @@ its boundary; callers can opt into an inherited frame or replace the background
 through the shared [chrome contract](../../concepts/styling.md#shared-chrome).
 
 The control paints its complete arranged surface with its normal or disabled
-appearance. Normal and pointer-over realized items keep a transparent background
-when their theme states omit one, so the owning surface stays continuous. A
+appearance, taken from the theme's `item` role - the plane its rows sit on (see
+[themes.md](../../concepts/themes.md#style-types)) - so a theme that gives rows
+their own face paints the whole list with it while hover and focus stay with the
+rows. Normal and pointer-over realized items keep a transparent background when
+their theme states omit one, so the owning surface stays continuous. A
 `VisualState.Selected` overlay may paint the complete row rather than only the
 label cells.
 

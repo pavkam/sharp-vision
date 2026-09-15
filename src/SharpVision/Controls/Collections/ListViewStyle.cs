@@ -5,13 +5,17 @@ namespace SharpVision.Controls.Collections;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines the complete ListView surface, selected-row colors, and keyboard-current cue.</summary>
+/// <summary>Defines the complete ListView surface, selected-row colors, and keyboard-current cue.
+/// The surface falls back to the passive projection of the theme's <c>item</c> role - the plane
+/// its rows sit on - so a theme that gives rows their own plane paints the whole list with it,
+/// while hover and focus stay with the rows.</summary>
 [PublicAPI]
 public sealed record ListViewStyle: ControlStyle
 {
-    /// <summary>Gets the primary ListView style definition.</summary>
+    /// <summary>Gets the primary ListView style definition. Falls back to the <c>item</c> role's
+    /// Normal and Disabled states; the selection colors and current-row underline are code-owned.</summary>
     internal static StyleDefinition<ListViewStyle> Definition { get; } = StyleDefinitions.Control(
-        static theme => theme.GetStyleSet(ControlStyle.Default),
+        static theme => theme.GetPassiveItemStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
             previous != current ||
@@ -22,11 +26,11 @@ public sealed record ListViewStyle: ControlStyle
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
-    private static ListViewStyle Complete(ControlStyle control, VisualState state, Theme theme) =>
+    private static ListViewStyle Complete(ItemStyle item, VisualState state, Theme theme) =>
         new(
-            control.Face,
-            control.Border,
-            control.Shadow,
+            item.Face,
+            item.Border,
+            item.Shadow,
             SemanticColor.SelectedText,
             SemanticColor.SelectedControl,
             Underline.Straight);
@@ -55,7 +59,7 @@ public sealed record ListViewStyle: ControlStyle
     }
 
     /// <summary>Gets the standard list presentation.</summary>
-    public static new ListViewStyle Default => Complete(ControlStyle.Default, VisualState.Normal, Theme.Unthemed);
+    public static new ListViewStyle Default => Complete(ItemStyle.Default, VisualState.Normal, Theme.Unthemed);
 
     /// <summary>Gets the selected-row foreground.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>

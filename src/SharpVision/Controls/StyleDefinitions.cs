@@ -8,8 +8,8 @@ using Styling;
 /// <summary>Creates immutable primary and secondary complete-style definitions. A leaf control
 /// style declares no theme section of its own: it resolves entirely from a code-owned default,
 /// one declared one-hop fallback to inherit another style type's theme customization, and a
-/// locally assigned <c>Style</c>. Only the six well-known base types (<see cref="ControlStyle"/>
-/// and its five siblings) resolve against a <c>styles.*</c> theme section, and they do so through
+/// locally assigned <c>Style</c>. Only the ten well-known base types (<see cref="ControlStyle"/>
+/// and its nine siblings) resolve against a <c>styles.*</c> theme section, and they do so through
 /// <see cref="Theme.GetStyleSet{TStyle}(TStyle)"/> directly rather than through this
 /// class.</summary>
 [PublicAPI]
@@ -21,7 +21,7 @@ public static class StyleDefinitions
     /// section of its own; its only sources of appearance are its code-owned default, the
     /// fallback's resolved states, and a locally assigned <c>Style</c>.</summary>
     /// <typeparam name="TStyle">The immutable complete style value.</typeparam>
-    /// <typeparam name="TFallback">The declared fallback style type (typically one of the six
+    /// <typeparam name="TFallback">The declared fallback style type (typically one of the ten
     /// well-known base types).</typeparam>
     /// <param name="fallbackTo">Resolves the fallback type's complete per-state set for one Theme.</param>
     /// <param name="complete">Completes one fallback-contributed style into this control's own style. The Theme argument is how a completion consults theme-level values beyond the fallback's own resolved appearance - e.g. the glyph-aware styles read <c>theme.Glyphs</c> to complete their own structural members.</param>

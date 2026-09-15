@@ -13,15 +13,16 @@ public static class ThemeCatalog
     private const string _resourcePrefix = "SharpVision.Styling.Themes.";
     private const string _resourceSuffix = ".theme.json";
 
-    // The complete, closed vocabulary of a theme document's "styles" object. A leaf control style
-    // (button, checkBox, ...) resolves entirely from its code-owned default, its declared one-hop
-    // fallback to one of these six, and a locally assigned Style - never from a theme section of
-    // its own - so admitting any other key, leaf or vendor-dotted, would let a theme author a
-    // section that silently does nothing. This used to be a reflectively discovered registry of
-    // every leaf style type's own key as well; that registry is gone along with the leaf keys it
-    // validated, leaving exactly the six names every bundled theme already authors.
-    private static readonly HashSet<string> _knownStyleSections =
-        new(StringComparer.Ordinal) { "control", "input", "container", "window", "popup", "tooltip" };
+    // The complete, closed vocabulary of a theme document's "styles" object: the well-known
+    // presentation roles Theme's cascade table names, and nothing else. A leaf control style
+    // (checkBox, textInput, ...) resolves entirely from its code-owned default, its declared
+    // one-hop fallback to one of these roles, and a locally assigned Style - never from a theme
+    // section of its own - so admitting any other key, leaf or vendor-dotted, would let a theme
+    // author a section that silently does nothing. This used to be a reflectively discovered
+    // registry of every leaf style type's own key as well; that registry is gone along with the
+    // leaf keys it validated. A role is added here only by adding it to the cascade table, so the
+    // two can never disagree.
+    private static readonly HashSet<string> _knownStyleSections = new(Theme.RoleKeys, StringComparer.Ordinal);
     private static readonly Lock _gate = new();
     private static readonly Dictionary<string, Theme> _cache = new(StringComparer.Ordinal);
 
@@ -372,11 +373,11 @@ public static class ThemeCatalog
                 StringComparer.Ordinal);
     }
 
-    // Every key, including a dot-namespaced one, must be one of the six well-known role sections -
+    // Every key, including a dot-namespaced one, must be one of the well-known role sections -
     // the dot no longer bypasses validation, since there is no longer any registrable third-party
     // section for it to admit. Anything else is rejected outright: very likely a typo of one of the
-    // six (e.g. "buton" instead of "button"), or a leaf/vendor key that named no section even before
-    // this closed the vocabulary.
+    // roles (e.g. "buton" instead of "button"), or a leaf/vendor key that named no section even
+    // before this closed the vocabulary.
     private static Dictionary<string, JsonElement> ReadStyleSections(
         Dictionary<string, JsonElement>? sections,
         string source,
@@ -393,7 +394,7 @@ public static class ThemeCatalog
             {
                 var path = $"styles.{name}";
                 throw new InvalidDataException(
-                    $"Theme '{source}' has unknown styles section '{name}'. Sections are limited to the six well-known styles: control, input, container, window, popup, tooltip{FormatPosition(positions, path)}.");
+                    $"Theme '{source}' has unknown styles section '{name}'. Sections are limited to the ten well-known styles: {string.Join(", ", Theme.RoleKeys)}{FormatPosition(positions, path)}.");
             }
         }
 

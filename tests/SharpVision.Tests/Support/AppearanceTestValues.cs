@@ -12,12 +12,14 @@ internal static class AppearanceTestValues
         ControlColor? background = null,
         ControlDecoration? attributes = null,
         Underline underline = Underline.None,
-        ControlColor? underlineColor = null) => new(
+        ControlColor? underlineColor = null,
+        ControlColor? accessKeyColor = null) => new(
             foreground ?? SemanticColor.ControlText,
             background ?? Color.Transparent,
             attributes ?? SemanticDecoration.NormalText,
             underline,
-            underlineColor ?? Color.Default);
+            underlineColor ?? Color.Default,
+            accessKeyColor ?? SemanticColor.Hotkey);
 
     /// <summary>Creates a complete theme-responsive border.</summary>
     internal static Border Border(

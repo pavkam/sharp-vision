@@ -357,6 +357,7 @@ namespace SharpVision.Controls
                 "Y"})]
         public System.ValueTuple<int, int>? ComputeKeyScrollDelta(SharpVision.Terminal.Input.Code code) { }
         protected virtual void GetChildOrder(System.Span<int> indices) { }
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Controls.ControlBase? HitTest(SharpVision.Terminal.Geometry.Point point) { }
         protected void InitializePanelPresentation() { }
@@ -1897,16 +1898,16 @@ namespace SharpVision.Controls.Display
 }
 namespace SharpVision.Controls.Input
 {
-    public sealed class Button : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.ButtonStyle>
+    public sealed class Button : SharpVision.Controls.InputBase, SharpVision.Controls.IStyled<SharpVision.Styling.ButtonStyle>
     {
         public Button() { }
         public Button(string text) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualStyle { get; }
+        public SharpVision.Styling.ButtonStyle ActualStyle { get; }
         protected override SharpVision.Terminal.Geometry.Rect DescendantRenderBounds { get; }
         protected override SharpVision.Terminal.Geometry.Rect InteractionBounds { get; }
         public bool IsCancel { get; set; }
         public bool IsDefault { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? Style { get; set; }
+        public SharpVision.Styling.ButtonStyle? Style { get; set; }
         public SharpVision.Text.Alignment TextAlignment { get; set; }
         protected override SharpVision.Terminal.Geometry.Rect VisualBounds { get; }
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Click;
@@ -1921,15 +1922,6 @@ namespace SharpVision.Controls.Input
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
         public void PerformClick() { }
-    }
-    public sealed class ButtonStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Controls.Input.ButtonStyle>
-    {
-        public ButtonStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding) { }
-        public required SharpVision.Layout.Thickness Padding { get; init; }
-        public new static SharpVision.Controls.Input.ButtonStyle Default { get; }
-        public static SharpVision.Controls.Input.ButtonStyle Filled { get; }
-        public static SharpVision.Controls.StyleDefinition<SharpVision.Controls.Input.ButtonStyle> ForwardingDefinition { get; }
-        public static SharpVision.Controls.Input.ButtonStyle Standard { get; }
     }
     public sealed class Calendar : SharpVision.Controls.ControlBase, SharpVision.Controls.IStyled<SharpVision.Controls.Input.CalendarStyle>
     {
@@ -3209,11 +3201,11 @@ namespace SharpVision.Dialogs
         where TResult :  class
     {
         protected FileDialogBase(SharpVision.Dialogs.IFilePickerFileSystem fileSystem, string title, string initialDirectory, bool showHidden, int filterIndex, int maxVisibleRows, int nonListWindowRows, System.Collections.Generic.IReadOnlyList<SharpVision.Dialogs.FilePickerFilter> filters, SharpVision.Controls.Collections.ListSelectionMode selectionMode, TResult cancelledResult) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualCancelButtonStyle { get; }
+        public SharpVision.Styling.ButtonStyle ActualCancelButtonStyle { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFileListScrollBarStyle { get; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualFilterScrollBarStyle { get; }
         public SharpVision.Controls.Input.CheckBoxStyle ActualShowHiddenCheckBoxStyle { get; }
-        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? CancelButtonStyle { get; set; }
         public string CancelText { get; set; }
         public System.Func<int, int, string> CountFormat { get; set; }
         public string CurrentDirectory { get; }
@@ -3269,9 +3261,9 @@ namespace SharpVision.Dialogs
     {
         public FilePickerDialog() { }
         public FilePickerDialog(SharpVision.Dialogs.FilePickerOptions? options) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualOpenButtonStyle { get; }
+        public SharpVision.Styling.ButtonStyle ActualOpenButtonStyle { get; }
         public SharpVision.Dialogs.FilePickerDialogStyle ActualStyle { get; }
-        public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? OpenButtonStyle { get; set; }
         public string OpenText { get; set; }
         public System.Collections.Generic.IReadOnlyList<string> SelectedPaths { get; }
         public System.Func<int, string> SelectionFormat { get; set; }
@@ -3314,7 +3306,7 @@ namespace SharpVision.Dialogs
     {
         public FilePickerOptions() { }
         public bool AllowMultiple { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? CancelButtonStyle { get; set; }
         public string CancelText { get; set; }
         public System.Func<int, int, string>? CountFormat { get; set; }
         public string DirectoryPlaceholder { get; set; }
@@ -3325,7 +3317,7 @@ namespace SharpVision.Dialogs
         public string InitialDirectory { get; set; }
         public string? LoadingText { get; set; }
         public int MaxVisibleRows { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? OpenButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? OpenButtonStyle { get; set; }
         public string? OpenText { get; set; }
         public string ParentDirectoryText { get; set; }
         public string? ReadyText { get; set; }
@@ -3368,10 +3360,10 @@ namespace SharpVision.Dialogs
     public sealed class MessageBox : SharpVision.Dialogs.Dialog<SharpVision.Dialogs.MessageBoxResult>, SharpVision.Controls.IStyled<SharpVision.Dialogs.MessageBoxStyle>
     {
         public MessageBox(string message, string title = "Message", SharpVision.Dialogs.MessageBoxButtons buttons = 0) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualButtonStyle { get; }
+        public SharpVision.Styling.ButtonStyle ActualButtonStyle { get; }
         public SharpVision.Controls.Display.SeparatorStyle ActualSeparatorStyle { get; }
         public SharpVision.Dialogs.MessageBoxStyle ActualStyle { get; }
-        public SharpVision.Controls.Input.ButtonStyle? ButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? ButtonStyle { get; set; }
         public SharpVision.Dialogs.MessageBoxButtons Buttons { get; }
         public string CancelText { get; set; }
         public string Message { get; }
@@ -3387,7 +3379,7 @@ namespace SharpVision.Dialogs
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons) { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxOptions options) { }
         public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Controls.Input.ButtonStyle? buttonStyle = null) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Styling.ButtonStyle? buttonStyle = null) { }
     }
     public enum MessageBoxButtons
     {
@@ -3399,7 +3391,7 @@ namespace SharpVision.Dialogs
     public sealed class MessageBoxOptions : System.IEquatable<SharpVision.Dialogs.MessageBoxOptions>
     {
         public MessageBoxOptions() { }
-        public SharpVision.Controls.Input.ButtonStyle? ButtonStyle { get; init; }
+        public SharpVision.Styling.ButtonStyle? ButtonStyle { get; init; }
         public SharpVision.Dialogs.MessageBoxButtons Buttons { get; init; }
         public string CancelText { get; init; }
         public string NoText { get; init; }
@@ -3427,7 +3419,7 @@ namespace SharpVision.Dialogs
     {
         public SaveFileDialog() { }
         public SaveFileDialog(SharpVision.Dialogs.SaveFileOptions? options) { }
-        public SharpVision.Controls.Input.ButtonStyle ActualSaveButtonStyle { get; }
+        public SharpVision.Styling.ButtonStyle ActualSaveButtonStyle { get; }
         public SharpVision.Dialogs.SaveFileDialogStyle ActualStyle { get; }
         public string FileName { get; }
         public string FileNameLabel { get; set; }
@@ -3437,7 +3429,7 @@ namespace SharpVision.Dialogs
         public SharpVision.Dialogs.MessageBoxStyle? OverwriteStyle { get; set; }
         public string OverwriteTitle { get; set; }
         public string OverwriteYesText { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? SaveButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? SaveButtonStyle { get; set; }
         public string SaveText { get; set; }
         public SharpVision.Dialogs.SaveFileDialogStyle? Style { get; set; }
         protected override SharpVision.Controls.Layout.Grid CreateContent() { }
@@ -3459,7 +3451,7 @@ namespace SharpVision.Dialogs
     public sealed class SaveFileOptions
     {
         public SaveFileOptions() { }
-        public SharpVision.Controls.Input.ButtonStyle? CancelButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? CancelButtonStyle { get; set; }
         public string CancelText { get; set; }
         public bool ConfirmOverwrite { get; set; }
         public System.Func<int, int, string>? CountFormat { get; set; }
@@ -3481,7 +3473,7 @@ namespace SharpVision.Dialogs
         public string OverwriteYesText { get; set; }
         public string ParentDirectoryText { get; set; }
         public string? ReadyText { get; set; }
-        public SharpVision.Controls.Input.ButtonStyle? SaveButtonStyle { get; set; }
+        public SharpVision.Styling.ButtonStyle? SaveButtonStyle { get; set; }
         public string SaveText { get; set; }
         public bool ShowHidden { get; set; }
         public SharpVision.Controls.Input.CheckBoxStyle? ShowHiddenCheckBoxStyle { get; set; }
@@ -4887,6 +4879,15 @@ namespace SharpVision.Styling
         Bottom = 8,
         All = 15,
     }
+    public sealed class ButtonStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Styling.ButtonStyle>
+    {
+        public ButtonStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Layout.Thickness padding) { }
+        public required SharpVision.Layout.Thickness Padding { get; init; }
+        public new static SharpVision.Styling.ButtonStyle Default { get; }
+        public static SharpVision.Styling.ButtonStyle Filled { get; }
+        public static SharpVision.Controls.StyleDefinition<SharpVision.Styling.ButtonStyle> ForwardingDefinition { get; }
+        public static SharpVision.Styling.ButtonStyle Standard { get; }
+    }
     public readonly struct CalendarGlyphs : System.IEquatable<SharpVision.Styling.CalendarGlyphs>
     {
         public CalendarGlyphs(SharpVision.Styling.ControlGlyph previousMonth, SharpVision.Styling.ControlGlyph nextMonth) { }
@@ -5055,6 +5056,8 @@ namespace SharpVision.Styling
     public readonly struct Face : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.Face>
     {
         public Face(SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes, SharpVision.Terminal.Protocols.Underline underline, SharpVision.Styling.ControlColor underlineColor) { }
+        public Face(SharpVision.Styling.ControlColor foreground, SharpVision.Styling.ControlColor background, SharpVision.Styling.ControlDecoration attributes, SharpVision.Terminal.Protocols.Underline underline, SharpVision.Styling.ControlColor underlineColor, SharpVision.Styling.ControlColor accessKeyColor) { }
+        public SharpVision.Styling.ControlColor AccessKeyColor { get; init; }
         public SharpVision.Styling.ControlDecoration Attributes { get; init; }
         public SharpVision.Styling.ControlColor Background { get; init; }
         public SharpVision.Styling.ControlColor Foreground { get; init; }
@@ -5063,7 +5066,8 @@ namespace SharpVision.Styling
     }
     public readonly struct FaceOverlay : System.IEquatable<SharpVision.Styling.FaceOverlay>
     {
-        public FaceOverlay(SharpVision.Styling.ControlColor? foreground = default, SharpVision.Styling.ControlColor? background = default, SharpVision.Styling.ControlDecoration? attributes = default, SharpVision.Terminal.Protocols.Underline? underline = default, SharpVision.Styling.ControlColor? underlineColor = default) { }
+        public FaceOverlay(SharpVision.Styling.ControlColor? foreground = default, SharpVision.Styling.ControlColor? background = default, SharpVision.Styling.ControlDecoration? attributes = default, SharpVision.Terminal.Protocols.Underline? underline = default, SharpVision.Styling.ControlColor? underlineColor = default, SharpVision.Styling.ControlColor? accessKeyColor = default) { }
+        public SharpVision.Styling.ControlColor? AccessKeyColor { get; }
         public SharpVision.Styling.ControlDecoration? Attributes { get; }
         public SharpVision.Styling.ControlColor? Background { get; }
         public SharpVision.Styling.ControlColor? Foreground { get; }
@@ -5103,6 +5107,11 @@ namespace SharpVision.Styling
         public required System.Text.Rune DropDownGlyph { get; init; }
         public new static SharpVision.Styling.InputStyle Default { get; }
     }
+    public class ItemStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Styling.ItemStyle>
+    {
+        public ItemStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
+        public new static SharpVision.Styling.ItemStyle Default { get; }
+    }
     public readonly struct NavigationGlyphs : System.IEquatable<SharpVision.Styling.NavigationGlyphs>
     {
         public NavigationGlyphs(SharpVision.Styling.ControlGlyph itemIdle, SharpVision.Styling.ControlGlyph itemCurrent, SharpVision.Styling.ControlGlyph groupCollapsed, SharpVision.Styling.ControlGlyph groupExpanded, SharpVision.Styling.ControlGlyph separator) { }
@@ -5111,6 +5120,11 @@ namespace SharpVision.Styling
         public SharpVision.Styling.ControlGlyph ItemCurrent { get; }
         public SharpVision.Styling.ControlGlyph ItemIdle { get; }
         public SharpVision.Styling.ControlGlyph Separator { get; }
+    }
+    public class PanelStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Styling.PanelStyle>
+    {
+        public PanelStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow) { }
+        public new static SharpVision.Styling.PanelStyle Default { get; }
     }
     public readonly struct PopupAnchorGlyphs : SharpVision.Styling.IAppearanceFragment, System.IEquatable<SharpVision.Styling.PopupAnchorGlyphs>
     {
@@ -5341,6 +5355,7 @@ namespace SharpVision.Styling
     {
         public Theme(System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.Terminal.Protocols.Color>? palette = null, string name = "Custom", string slug = "custom", SharpVision.Styling.ColorScheme colorScheme = 0, string author = "SharpVision contributors", string license = "MIT", string source = "https://github.com/sharpvision/sharpvision") { }
         public string Author { get; }
+        public SharpVision.Styling.AppearanceStates Button { get; }
         public SharpVision.Styling.ColorScheme ColorScheme { get; }
         public SharpVision.Styling.AppearanceStates Container { get; }
         public SharpVision.Styling.AppearanceStates Control { get; }
@@ -5350,14 +5365,17 @@ namespace SharpVision.Styling
         public SharpVision.Terminal.Protocols.Color Info { get; }
         public SharpVision.Styling.AppearanceStates Input { get; }
         public bool IsFrozen { get; }
+        public SharpVision.Styling.AppearanceStates Item { get; }
         public string License { get; }
         public SharpVision.Terminal.Protocols.Color Muted { get; }
         public string Name { get; }
         public System.Collections.Generic.IReadOnlyDictionary<string, SharpVision.Terminal.Protocols.Color> Palette { get; }
+        public SharpVision.Styling.AppearanceStates Panel { get; }
         public SharpVision.Styling.AppearanceStates Popup { get; }
         public string Slug { get; }
         public string Source { get; }
         public SharpVision.Terminal.Protocols.Color Success { get; }
+        public SharpVision.Styling.AppearanceStates Toggle { get; }
         public SharpVision.Styling.AppearanceStates Tooltip { get; }
         public SharpVision.Terminal.Protocols.Color Warning { get; }
         public SharpVision.Styling.AppearanceStates Window { get; }
@@ -5398,6 +5416,11 @@ namespace SharpVision.Styling
         public int Order { get; }
         public string Slug { get; }
         public string Source { get; }
+    }
+    public class ToggleStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Styling.ToggleStyle>
+    {
+        public ToggleStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, System.Text.Rune dropDownGlyph) { }
+        public new static SharpVision.Styling.ToggleStyle Default { get; }
     }
     public class TooltipStyle : SharpVision.Styling.ControlStyle, System.IEquatable<SharpVision.Styling.TooltipStyle>
     {

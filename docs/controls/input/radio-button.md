@@ -53,7 +53,11 @@ member without publishing through that stale target.
 
 `RadioButtonStyle : InputStyle` is a complete immutable presentation: it bundles
 a `RadioButtonMarkStyle`, a complete `RadioButtonGlyphs` pair (unchecked and
-checked), and the inherited `Face`/`Border`/`Shadow`.
+checked), and the inherited `Face`/`Border`/`Shadow`. It falls back to the
+theme's `toggle` role section - the two-state option face, which cascades from
+`input` until a theme authors it (see
+[themes.md](../../concepts/themes.md#style-types)) - chromeless, so a theme can
+give radio buttons and check boxes their own plane without moving text fields.
 `RadioButtonStyle.Parentheses` is the default fixed-width `( )`/`(•)`
 presentation reserving three cells; `Glyph` is a compact one-cell circle preset.
 `MarkPlacement` defaults to `SelectionMarkPlacement.Leading` and may move the

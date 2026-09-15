@@ -293,7 +293,7 @@ public sealed class HyperlinkButtonTests
     [Fact]
     public void Face_WhenAssignedExplicitly_OutranksLinkPresentationInEveryState()
     {
-        var custom = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), default, Underline.None, Color.Default);
+        var custom = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), default, Underline.None, Color.Default, Color.Rgb(7, 8, 9));
         var link = new HyperlinkButton("Visit") { Face = custom };
 
         link.GetActualFace(VisualState.Normal).ShouldBe(custom);

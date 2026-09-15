@@ -92,7 +92,8 @@ public static class StyleStatesExtensions
         Keep(state.Background, normal.Background, authored, "Face.Background"),
         Keep(state.Attributes, normal.Attributes, authored, "Face.Attributes"),
         Keep(state.Underline, normal.Underline, authored, "Face.Underline"),
-        Keep(state.UnderlineColor, normal.UnderlineColor, authored, "Face.UnderlineColor"));
+        Keep(state.UnderlineColor, normal.UnderlineColor, authored, "Face.UnderlineColor"),
+        Keep(state.AccessKeyColor, normal.AccessKeyColor, authored, "Face.AccessKeyColor"));
 
     private static BorderOverlay DiffBorder(Border normal, Border state, IReadOnlySet<string>? authored)
     {

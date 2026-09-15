@@ -738,7 +738,7 @@ defaults below:
 Every member is required. A `with` expression creates a validated member-wise
 copy of `DocumentStyle.Default` or of any resolved style; assigning `null` to
 `Style` restores the `control`-derived presentation, and `ActualStyle` never
-returns null. A theme's `styles` object is closed to the six well-known role
+returns null. A theme's `styles` object is closed to the ten well-known role
 sections (see [themes.md](../../concepts/themes.md#style-types)), so restyling
 `Document` beyond a local `Style` assignment means restyling `control` itself -
 every control that falls back to it moves together.

@@ -583,7 +583,7 @@ public sealed class ThemeTests
     /// <summary>Verifies a structural (non-Face/Border/Shadow) member authored under a state other
     /// than "normal" is rejected rather than parsed, validated, and silently discarded -
     /// <see cref="AppearanceOverlay"/> carries only Face/Border/Shadow, so nothing downstream ever
-    /// reads it. Authored under "control" - one of the six role sections a theme can still author
+    /// reads it. Authored under "control" - one of the ten role sections a theme can still author
     /// at all - rather than a synthetic key, since a theme document no longer admits any other
     /// kind.</summary>
     [Fact]

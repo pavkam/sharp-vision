@@ -14,12 +14,34 @@ public readonly record struct Face: IAppearanceFragment
     /// <param name="underlineColor">The underline color.</param>
     /// <exception cref="ArgumentException">A paint channel is transparent or decorations conflict.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An enum or flag value is unknown.</exception>
+    /// <remarks>The access-key channel defaults to <see cref="SemanticColor.Hotkey"/>, the theme-wide
+    /// mnemonic color every face carried before the channel existed.</remarks>
     public Face(
         ControlColor foreground,
         ControlColor background,
         ControlDecoration attributes,
         Underline underline,
         ControlColor underlineColor)
+        : this(foreground, background, attributes, underline, underlineColor, SemanticColor.Hotkey)
+    {
+    }
+
+    /// <summary>Initializes a complete face appearance with an explicit access-key color.</summary>
+    /// <param name="foreground">The text and glyph foreground.</param>
+    /// <param name="background">The body background.</param>
+    /// <param name="attributes">The complete terminal attributes.</param>
+    /// <param name="underline">The typed underline style.</param>
+    /// <param name="underlineColor">The underline color.</param>
+    /// <param name="accessKeyColor">The foreground of a caption's marked access-key grapheme.</param>
+    /// <exception cref="ArgumentException">A paint channel is transparent or decorations conflict.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">An enum or flag value is unknown.</exception>
+    public Face(
+        ControlColor foreground,
+        ControlColor background,
+        ControlDecoration attributes,
+        Underline underline,
+        ControlColor underlineColor,
+        ControlColor accessKeyColor)
     {
         // Validated by parameter name here as well as in each init accessor. The accessor guards
         // the doors a constructor cannot see - a `with` expression and the theme overlay's
@@ -30,6 +52,7 @@ public readonly record struct Face: IAppearanceFragment
         // once, so no single accessor can see them all. Validate re-runs it for the other doors.
         ControlColor.ValidatePaint(foreground, nameof(foreground));
         ControlColor.ValidatePaint(underlineColor, nameof(underlineColor));
+        ControlColor.ValidatePaint(accessKeyColor, nameof(accessKeyColor));
 
         ArgumentOutOfRangeException.ThrowIfNotDefined(underline, nameof(underline), "The underline style is unknown.");
 
@@ -38,6 +61,7 @@ public readonly record struct Face: IAppearanceFragment
         Attributes = attributes;
         Underline = underline;
         UnderlineColor = underlineColor;
+        AccessKeyColor = accessKeyColor;
         ValidateDecorations(attributes, underline, underlineColor);
     }
 
@@ -74,6 +98,28 @@ public readonly record struct Face: IAppearanceFragment
     /// <summary>Gets the underline color.</summary>
     /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
     public ControlColor UnderlineColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the foreground of a caption's marked access-key grapheme - the one letter a
+    /// mnemonic caption colors apart from the rest of its text.</summary>
+    /// <remarks>
+    /// A channel of the face rather than one theme-wide color because the letter has to read on
+    /// whatever plane the caption sits on: a theme whose menu bar is light and whose buttons are
+    /// dark cannot pick one color that survives both. Every state of every role section may author
+    /// it (<c>face.accessKeyColor</c>), a caption inherits it from its owner's face the same way it
+    /// inherits the foreground, and the default is <see cref="SemanticColor.Hotkey"/>, so a face
+    /// that never mentions it behaves exactly as before the channel existed. The grapheme's
+    /// attributes come from <see cref="SemanticDecoration.Hotkey"/>, not from this face.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public ControlColor AccessKeyColor
     {
         get;
         init

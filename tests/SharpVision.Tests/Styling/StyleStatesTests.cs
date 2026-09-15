@@ -7,10 +7,10 @@ using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Verifies the atomic-cutover primitives layered on top of Theme.Overlay:
 /// GetRawStyleSection's per-state JSON extraction, GetStyleSet's self-contained root resolution
-/// (used only by the six well-known base types), BuildFallbackAwareStates's one-hop declared
+/// (used only by the ten well-known base types), BuildFallbackAwareStates's one-hop declared
 /// fallback chain (used by every leaf control style), and ToAppearanceStates's value-diffing adapter
 /// back into today's unchanged AppearanceResolver/AppearanceStates.ApplyStates fold logic. A
-/// theme's "styles" object is closed to exactly the six well-known role sections, so - unlike this
+/// theme's "styles" object is closed to exactly the ten well-known role sections, so - unlike this
 /// file's earlier synthetic-key incarnation - these primitives are exercised through synthetic
 /// style TYPES (TestRootStyle/TestWidgetStyle) whose JSON is authored under a real role section:
 /// "control" for the root form (which never cross-inherits, matching a synthetic root's own
@@ -73,7 +73,7 @@ public sealed class StyleStatesTests
     }
 
     /// <summary>Verifies the self-contained root form falls back to the caller-supplied code-owned
-    /// default when this theme never declared the key at all - used only by the six well-known
+    /// default when this theme never declared the key at all - used only by the ten well-known
     /// base types, which never cross-inherit each other's theme customization.</summary>
     [Fact]
     public void GetStyleSet_WhenThemeDoesNotAuthorTheKey_ResolvesToTheCodeOwnedDefault()

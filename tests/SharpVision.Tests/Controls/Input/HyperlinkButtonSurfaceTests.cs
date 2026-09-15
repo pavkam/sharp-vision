@@ -362,7 +362,7 @@ public sealed class HyperlinkButtonSurfaceTests
     public async Task ActualFace_WhenCallerAssignsFace_WinsAcrossEveryStateAsync()
     {
         // Arrange
-        var pinned = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default);
+        var pinned = new Face(Color.Rgb(1, 2, 3), Color.Rgb(4, 5, 6), TerminalAttributes.None, Underline.None, Color.Default, Color.Rgb(7, 8, 9));
         var link = new HyperlinkButton("Visit") { Face = pinned };
         await using var surface = await ComponentSurface.MountAsync(
             link,

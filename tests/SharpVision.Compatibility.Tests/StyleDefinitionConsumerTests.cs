@@ -5,6 +5,7 @@ namespace SharpVision.Compatibility.Tests;
 
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
+using SharpVision.Styling;
 
 /// <summary>Verifies external composites can use built-in forwarding definitions without internals.</summary>
 public sealed class StyleDefinitionConsumerTests

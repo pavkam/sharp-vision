@@ -460,15 +460,17 @@ public sealed class GroupBoxTests
         group.Pending.ShouldBe(Invalidation.Render);
     }
 
-    /// <summary>Verifies a disabled header never resolves the hotkey color, so it does not
-    /// subscribe to an unrelated root hotkey-only change.</summary>
+    /// <summary>Verifies a caption without a marked mnemonic never resolves the access-key
+    /// decoration, so it does not subscribe to an unrelated access-key-attributes-only change. The
+    /// access-key color itself is a face channel and reaches every control through ordinary
+    /// appearance invalidation, so only the theme-wide decoration is a conditional dependency.</summary>
     [Fact]
-    public void Theme_WhenHeaderIsRenderedAndDisabled_IgnoresHotkeyOnlyChange()
+    public void Theme_WhenHeaderHasNoMnemonic_IgnoresAccessKeyAttributesOnlyChange()
     {
         // Arrange
-        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
-        var group = new GroupBox { HeaderText = "&Tools", IsEnabled = false };
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
+        var group = new GroupBox { HeaderText = "Tools" };
         group.SetTheme(mounted);
         new LayoutEngine().Layout(group, new Size(20, 8));
         using Frame frame = new(new Size(20, 8));

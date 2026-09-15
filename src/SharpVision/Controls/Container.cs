@@ -15,6 +15,7 @@ using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
 [PublicAPI]
 public abstract class Container: ControlBase
 {
+    private bool _isLayoutPanel;
     private readonly StyleSlot<ScrollBarStyle> _scrollBarStyle;
 
     /// <summary>Initializes an empty ordered child collection.</summary>
@@ -55,7 +56,25 @@ public abstract class Container: ControlBase
     {
         EnableChromeAuthoring();
         HorizontalAlignment = HorizontalAlignment.Stretch;
+        _isLayoutPanel = true;
     }
+
+    /// <summary>Resolves the container's default appearance: the theme's <c>panel</c> role for a
+    /// public layout panel, the universal <c>control</c> role for every other container.</summary>
+    /// <param name="theme">The active theme, or null for the built-in dark fallback.</param>
+    /// <returns>The per-state appearance this container presents without a local style.</returns>
+    /// <remarks>
+    /// Only a container that called <see cref="InitializePanelPresentation"/> - <c>Dock</c>,
+    /// <c>Grid</c>, <c>Stack</c>, <c>Wrap</c>, <c>Overlay</c>, <c>SplitPane</c> - is a layout
+    /// panel in the theme's sense. A private presentation host or a composite's internal container
+    /// keeps the passive control face, so a theme that makes its panels transparent (Turbo Vision,
+    /// whose groups arrange views and paint nothing of their own) changes only the layout planes an
+    /// application composes with, never a control's own internals.
+    /// </remarks>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
+        _isLayoutPanel
+            ? (theme ?? ThemeCatalog.Dark).GetStyleSet(PanelStyle.Default).ToAppearanceStates()
+            : base.GetDefaultAppearanceStates(theme);
 
     /// <summary>Gets the owned ordered children.</summary>
     public ControlCollection Children { get; }

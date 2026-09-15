@@ -8,18 +8,18 @@ using System.Diagnostics.CodeAnalysis;
 using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Defines one complete immutable checkbox presentation. This style declares no theme
-/// section of its own: it falls back to <see cref="InputStyle"/>'s "input" role section,
-/// chromeless (a checkbox is a selectable control, not a framed one), resolves its own mark style
+/// section of its own: it falls back to <see cref="ToggleStyle"/>'s "toggle" role section (which
+/// itself cascades from "input" until a theme authors it), chromeless (a checkbox is a selectable control, not a framed one), resolves its own mark style
 /// and glyph family from <see cref="Theme.Glyphs"/>, owns validated mark placement and gap, and is
 /// themeable only through that fallback and a locally assigned <see cref="CheckBox.Style"/>.</summary>
 [PublicAPI]
 public sealed record CheckBoxStyle: InputStyle
 {
-    /// <summary>Gets the primary checkbox-style definition. Falls back to <see cref="InputStyle"/>'s
-    /// "input" role section, chromeless; MarkStyle, Glyphs, MarkGap, and MarkPlacement are
+    /// <summary>Gets the primary checkbox-style definition. Falls back to <see cref="ToggleStyle"/>'s
+    /// "toggle" role section, chromeless; MarkStyle, Glyphs, MarkGap, and MarkPlacement are
     /// code-owned.</summary>
     internal static StyleDefinition<CheckBoxStyle> Definition { get; } = StyleDefinitions.Control(
-        static theme => theme.GetStyleSet(InputStyle.Default),
+        static theme => theme.GetStyleSet(ToggleStyle.Default),
         Complete,
         static (previous, _, current, _) =>
             previous.MarkWidth != current.MarkWidth ||

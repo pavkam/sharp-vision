@@ -8,45 +8,53 @@ using System.Buffers;
 /// <summary>Verifies Button appearance and interaction through a mounted terminal surface.</summary>
 public sealed class ButtonSurfaceTests
 {
-    /// <summary>Verifies Turbo Vision Button chrome remains flat while pointer and Space holds
-    /// change the authored face and border colors.</summary>
+    /// <summary>Verifies the Turbo Vision button is Borland's: a borderless black-on-green face
+    /// with a black block shadow at rest that turns white-on-green while held, keeping flat relief
+    /// throughout, while the shadow cell keeps the shadow color - all authored on the theme's
+    /// <c>button</c> section rather than on the input line it no longer shares a face with.</summary>
     [Fact]
-    public async Task Input_WhenTurboVisionButtonIsHeld_KeepsFlatBorderAsync()
+    public async Task Input_WhenTurboVisionButtonIsHeld_KeepsBorderlessGreenFaceAndBlockShadowAsync()
     {
         var button = new Button("Run")
         {
             Width = Length.Cells(8),
-            Height = Length.Cells(3)
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
         };
         await using var surface = await ComponentSurface.MountAsync(
             button,
-            new Size(8, 3),
+            new Size(10, 3),
+            options,
             ThemeCatalog.Load("turbo-vision"),
             TestContext.Current.CancellationToken);
+        var green = Color.FromHex("#00aa00");
+        var black = Color.FromHex("#000000");
+        var white = Color.FromHex("#ffffff");
 
-        AssertFlatBorder(button, surface);
+        button.ActualBorder.Sides.ShouldBe(BorderSide.None);
+        button.GetActualBorder(button.GetAppearanceState()).Relief.ShouldBe(BorderRelief.Flat);
+        surface.Cell(new Point(3, 0)).Style.Background.ShouldBe(green);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(black);
+        surface.Cell(new Point(8, 0)).Style.Foreground.ShouldBe(black, "the right shadow column");
+        surface.Cell(new Point(8, 0)).Text.ShouldNotBe(" ");
+        surface.Cell(new Point(2, 1)).Style.Foreground.ShouldBe(black, "the bottom shadow row");
+        surface.Cell(new Point(2, 1)).Text.ShouldNotBe(" ");
 
         await surface.Pointer.MoveToAsync(button);
         await surface.Pointer.PressAsync();
 
         button.GetActualBorder(button.GetAppearanceState()).Relief.ShouldBe(BorderRelief.Flat);
-        AssertFlatBorder(button, surface);
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(green);
+        surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(white);
 
-        await surface.Pointer.MovePressedToAsync(new Point(20, 20));
+        await surface.Pointer.ReleaseAsync();
 
-        AssertFlatBorder(button, surface);
-        button.IsFocused.ShouldBeTrue();
-        await surface.UpdateAsync(
-            () => button.SetCapabilities(TestCapabilities.WithKeyReleases),
-            "declare key-release reporting");
-
-        await surface.Keyboard.PressCharacterAsync(new Rune(' '));
-
-        AssertFlatBorder(button, surface);
-
-        await surface.Keyboard.ReleaseCharacterAsync(new Rune(' '));
-
-        AssertFlatBorder(button, surface);
+        surface.Cell(new Point(3, 0)).Style.Background.ShouldBe(green);
     }
 
     /// <summary>Verifies mounted Theme swaps use Button-specific shadow layout impact.</summary>
@@ -122,9 +130,13 @@ public sealed class ButtonSurfaceTests
         button.ActualStyle.ShouldBe(ButtonStyle.Definition.Resolve(null, surface.Application.Theme));
     }
 
-    /// <summary>Verifies every curated theme gives Button and ComboBox the same normal frame weight.</summary>
+    /// <summary>Verifies every curated theme that leaves the <c>button</c> section unauthored
+    /// gives Button and ComboBox the same normal frame weight through the input cascade, and that
+    /// the one theme authoring it - Turbo Vision - is exactly the theme allowed to separate them:
+    /// its button carries a block shadow the input line never has, while both are borderless
+    /// strips the way Borland's <c>TButton</c> and <c>TInputLine</c> are.</summary>
     [Fact]
-    public async Task Theme_WhenEachCuratedThemeIsApplied_AlignsButtonAndInputFramesAsync()
+    public async Task Theme_WhenEachCuratedThemeIsApplied_AlignsButtonAndInputFramesUnlessButtonIsAuthoredAsync()
     {
         var button = new Button
         {
@@ -155,6 +167,15 @@ public sealed class ButtonSurfaceTests
             await surface.UpdateAsync(
                 () => surface.Application.Theme = ThemeCatalog.Load(slug),
                 $"apply {slug} theme");
+
+            if (slug == "turbo-vision")
+            {
+                button.ActualBorder.Sides.ShouldBe(BorderSide.None, slug);
+                comboBox.ActualBorder.Sides.ShouldBe(BorderSide.None, slug);
+                button.ActualShadow.IsVisible.ShouldBeTrue(slug);
+                comboBox.ActualShadow.IsVisible.ShouldBeFalse(slug);
+                continue;
+            }
 
             button.ActualBorder.Sides.ShouldBe(comboBox.ActualBorder.Sides, slug);
             button.ActualBorder.GlyphStyle.ShouldBe(comboBox.ActualBorder.GlyphStyle, slug);

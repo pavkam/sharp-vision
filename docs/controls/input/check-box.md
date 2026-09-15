@@ -52,7 +52,11 @@ outer transition does not subsequently raise a stale `StateChanged` event.
 
 `CheckBoxStyle : InputStyle` is a complete immutable presentation: it bundles a
 `CheckBoxMarkStyle`, a complete `CheckBoxGlyphs` triple (unchecked, checked, and
-indeterminate), and the inherited `Face`/`Border`/`Shadow`.
+indeterminate), and the inherited `Face`/`Border`/`Shadow`. It falls back to the
+theme's `toggle` role section - the two-state option face, which cascades from
+`input` until a theme authors it (see
+[themes.md](../../concepts/themes.md#style-types)) - chromeless, so a theme can
+give check boxes and radio buttons their own plane without moving text fields.
 `CheckBoxStyle.Brackets` is the default fixed-width `[ ]`/`[✓]`/`[─]`
 presentation reserving three cells; `Tick` and `Square` are one-cell presets.
 `MarkPlacement` defaults to `SelectionMarkPlacement.Leading` and may move the

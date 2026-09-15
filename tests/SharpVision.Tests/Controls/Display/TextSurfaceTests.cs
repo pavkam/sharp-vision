@@ -553,4 +553,84 @@ public sealed class TextSurfaceTests
         // Assert
         surface.ShouldHaveState(text, VisualState.Normal);
     }
+
+    /// <summary>Verifies a caption colors its mnemonic with the access-key channel of the face it
+    /// sits on, not with the theme-wide hotkey: a theme that gives <c>button</c> its own
+    /// <c>face.accessKeyColor</c> paints a button's mnemonic in that color while a standalone label
+    /// on the control face keeps the theme-wide one.</summary>
+    [Fact]
+    public async Task Render_WhenOwnerFaceAuthorsAccessKeyColor_ColorsTheMnemonicForThatPlaneAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            palette: "\"bg\":\"#101010\",\"fg\":\"#e0e0e0\",\"buttonKey\":\"#ffff00\"",
+            hotkey: "#ff0000",
+            extraStyles: """, "button": { "normal": { "face": { "accessKeyColor": "buttonKey" } } }"""));
+        var button = new Button
+        {
+            Text = "&Run",
+            UseMnemonic = true,
+            Width = Length.Cells(7),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var label = new ControlText("&Save")
+        {
+            UseMnemonic = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var root = new Stack { Children = { button, label } };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            root,
+            new Size(10, 4),
+            options,
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var caption = button.TextControl.ShouldNotBeNull();
+        surface.Cell(new Point(caption.Bounds.X, caption.Bounds.Y)).Style.Foreground.ShouldBe(Color.FromHex("#ffff00"));
+        surface.Cell(new Point(label.Bounds.X, label.Bounds.Y)).Style.Foreground.ShouldBe(Color.FromHex("#ff0000"));
+    }
+
+    /// <summary>Verifies the theme's access-key decoration (<c>attributes.hotkey</c>) is what a
+    /// mnemonic wears: an empty decoration leaves the grapheme distinguished by color alone, the
+    /// way Turbo Vision draws it, and a bold decoration replaces the underline rather than adding
+    /// to it.</summary>
+    [Theory]
+    [InlineData("[]", TerminalAttributes.None)]
+    [InlineData("\"bold\"", TerminalAttributes.Bold)]
+    [InlineData("[\"bold\", \"underline\"]", TerminalAttributes.Bold | TerminalAttributes.Underline)]
+    public async Task Render_WhenThemeAuthorsAccessKeyAttributes_MarksTheMnemonicWithThemAsync(
+        string hotkeyAttributes,
+        TerminalAttributes expected)
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: hotkeyAttributes));
+        var text = new ControlText("&Save")
+        {
+            UseMnemonic = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            text,
+            new Size(4, 1),
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        surface.Cell(default).Style.Attributes.ShouldBe(expected);
+        surface.Cell(new Point(1, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
+    }
 }

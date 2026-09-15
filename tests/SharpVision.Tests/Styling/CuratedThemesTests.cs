@@ -237,14 +237,14 @@ public sealed class CuratedThemesTests
         failures.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies every curated theme's six well-known role sections ("control"/"input"/
+    /// <summary>Verifies every curated theme's six original well-known role sections ("control"/"input"/
     /// "container"/"window"/"popup"/"tooltip") round-trip through the real reflective engine: each
     /// role's resolved Normal face differs from that role's bare code-owned default, proving the
     /// theme's own "styles.&lt;role&gt;.normal" JSON was actually read and applied rather than
     /// silently ignored (the exact class of bug an earlier root-cause fix addressed, and that this
     /// follow-up investigation continues to guard). Unlike <see cref="EveryCuratedThemeExceptTheDefaults_AuthorsButtonAndResolvesEveryGlyphFamilyStyle"/>,
     /// this covers all 16 themes including the two zero-config defaults, since every curated theme
-    /// (including "default-dark"/"default-light") authors all six well-known roles - only the eight
+    /// (including "default-dark"/"default-light") authors all six original roles - only the eight
     /// LEAF registrable sections are deliberately left unauthored for the two defaults.</summary>
     [Fact]
     public void EveryCuratedTheme_RoundTripsAllSixWellKnownStyleSections()
@@ -354,40 +354,65 @@ public sealed class CuratedThemesTests
     }
 
     /// <summary>Verifies the Turbo Vision theme reproduces Borland's <c>cpAppColor</c> and
-    /// <c>cpGrayDialog</c> roles on the CGA palette: a blue desktop (0x71) under gray dialogs
-    /// (0x70) whose active frame turns white (0x7F), a gray menu and status strip with red access
-    /// keys (0x70/0x74) that drop-down menus share, black-on-cyan input clusters (0x30), green
-    /// selection (0x20), white-on-blue press feedback (0x1F), a green close mark (0x7A), black
-    /// shadows, classic <c>[X]</c>/<c>(•)</c> marks - while limiting semantic relief to container
-    /// chrome. The one input face is cyan rather than the blue of Borland's input line because a
-    /// SharpVision theme gives buttons, check boxes, radio buttons, and text fields a single
-    /// <c>input</c> face, and red access keys have to stay legible on it.</summary>
+    /// <c>cpGrayDialog</c> roles on the CGA palette, each on the role section that owns it: a blue
+    /// desktop (0x71) under gray dialogs (0x70) whose active frame turns white (0x7F) and whose
+    /// labels carry a yellow access key (0x7E); a gray menu and status strip with black text and
+    /// red access keys (0x70/0x74) that drop-down menus share; white-on-blue input lines (0x1F);
+    /// black-on-green buttons with yellow access keys and a black block shadow (0x20/0x2E) that
+    /// turn white while focused (0x2F); black-on-cyan clusters with yellow access keys (0x30/0x3E)
+    /// that turn white while focused (0x3F); black-on-cyan list rows (0x30); transparent layout
+    /// panels (a <c>TGroup</c> paints nothing of its own); green selection (0x20); a green close
+    /// mark (0x7A); black shadows; no underline on any access key; classic <c>[X]</c>/<c>(•)</c>
+    /// marks - while limiting semantic relief to container chrome.</summary>
     [Fact]
     public void TurboVision_WhenLoaded_UsesCanonicalPaletteAndReliefChrome()
     {
         var theme = ThemeCatalog.Load("turbo-vision");
         var sunken = theme.Container.Normal.Border;
+        var button = theme.GetStyleSet(ButtonStyle.Default);
+        var toggle = theme.GetStyleSet(ToggleStyle.Default);
+        var item = theme.GetStyleSet(ItemStyle.Default);
+        var panel = theme.GetStyleSet(PanelStyle.Default);
 
         theme.ResolveColor(SemanticColor.Window).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.WindowSurface).ShouldBe(Color.FromHex("#aaaaaa"));
-        theme.ResolveColor(SemanticColor.Surface).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.Surface).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.Bar).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.Control).ShouldBe(Color.FromHex("#aaaaaa"));
         theme.ResolveColor(SemanticColor.ControlText).ShouldBe(Color.FromHex("#000000"));
         theme.ResolveColor(SemanticColor.ActiveBorder).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.SelectedControl).ShouldBe(Color.FromHex("#00aa00"));
         theme.ResolveColor(SemanticColor.SelectedText).ShouldBe(Color.FromHex("#000000"));
-        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#0000aa"));
-        theme.ResolveColor(SemanticColor.PressedText).ShouldBe(Color.FromHex("#ffffff"));
+        theme.ResolveColor(SemanticColor.PressedControl).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.ResolveColor(SemanticColor.PressedText).ShouldBe(Color.FromHex("#000000"));
         theme.ResolveColor(SemanticColor.Hotkey).ShouldBe(Color.FromHex("#aa0000"));
         theme.ResolveColor(SemanticColor.Accent).ShouldBe(Color.FromHex("#0000aa"));
         theme.ResolveColor(SemanticColor.ReliefHighlight).ShouldBe(Color.FromHex("#ffffff"));
         theme.ResolveColor(SemanticColor.ReliefShade).ShouldBe(Color.FromHex("#000000"));
+        theme.ResolveAttributes(SemanticDecoration.Hotkey).ShouldBe(TerminalAttributes.None);
         theme.Window.Normal.Face.Foreground.SemanticColor.ShouldBe(SemanticColor.SurfaceText);
         theme.Resolve(theme.Window.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(theme.Window.Normal.Face.AccessKeyColor).ShouldBe(Color.FromHex("#ffff55"));
         theme.Resolve(theme.GetWindowStyleSet().Normal.CloseMarkColor).ShouldBe(Color.FromHex("#00aa00"));
-        theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
-        theme.Resolve(theme.Input.Normal.Face.Background).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.Resolve(theme.Control.Normal.Face.AccessKeyColor).ShouldBe(Color.FromHex("#aa0000"));
+        theme.Resolve(theme.Input.Normal.Face.Foreground).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(theme.Input.Normal.Face.Background).ShouldBe(Color.FromHex("#0000aa"));
+        theme.Resolve(button.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(button.Normal.Face.Background).ShouldBe(Color.FromHex("#00aa00"));
+        theme.Resolve(button.Normal.Face.AccessKeyColor).ShouldBe(Color.FromHex("#ffff55"));
+        button.Normal.Border.Sides.ShouldBe(BorderSide.None);
+        button.Normal.Shadow.IsVisible.ShouldBeTrue();
+        button.Normal.Shadow.Mode.ShouldBe(ShadowMode.FractionalBlock);
+        button.Normal.Padding.ShouldBe(new Thickness(horizontal: 2, vertical: 0));
+        theme.Resolve(button.Focused!.Face.Foreground).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(button.Focused!.Face.Background).ShouldBe(Color.FromHex("#00aa00"));
+        theme.Resolve(toggle.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(toggle.Normal.Face.Background).ShouldBe(Color.FromHex("#00aaaa"));
+        theme.Resolve(toggle.Normal.Face.AccessKeyColor).ShouldBe(Color.FromHex("#ffff55"));
+        theme.Resolve(toggle.Focused!.Face.Foreground).ShouldBe(Color.FromHex("#ffffff"));
+        theme.Resolve(item.Normal.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+        theme.Resolve(item.Normal.Face.Background).ShouldBe(Color.FromHex("#00aaaa"));
+        panel.Normal.Face.Background.ShouldBe((ControlColor) Color.Transparent);
         theme.Resolve(theme.Popup.Normal.Face.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
         theme.Resolve(theme.Popup.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.Bar));
         theme.Resolve(theme.Window.Normal.Border.Background).ShouldBe(theme.ResolveColor(SemanticColor.WindowSurface));
@@ -710,39 +735,65 @@ public sealed class CuratedThemesTests
         failures.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies the Turbo Vision access key stays legible on the one input face every
-    /// button, check box, and radio button caption sits on. The other bundled themes keep their
-    /// input face close to the control face in luminance, so their bar and selection floors
-    /// already cover it; the CGA palette does not, and an earlier mapping (navy on blue) let the
-    /// mnemonic vanish from every button and check box under this theme.</summary>
+    /// <summary>Verifies every Turbo Vision role colors its access key for the plane its captions
+    /// actually sit on, and that each pairing clears the theme's floor: red on the gray bar and the
+    /// gray control face, yellow on the blue input line, yellow on the green button, yellow on the
+    /// cyan cluster and list row, yellow on the gray dialog face. One theme-wide color could never
+    /// do this - an earlier mapping (navy on blue) let the mnemonic vanish from every button and
+    /// check box under this theme, which is exactly the gap the per-face channel closes.</summary>
     [Fact]
-    public void TurboVision_WhenHotkeyResolves_RemainsLegibleOnTheInputFace()
+    public void TurboVision_WhenAccessKeysResolve_RemainLegibleOnEveryRoleFace()
     {
         var theme = ThemeCatalog.Load("turbo-vision");
-        var hotkey = theme.ResolveColor(SemanticColor.Hotkey);
-        var surface = theme.ResolveColor(SemanticColor.Surface);
+        var floor = HotkeyContrastFloor("turbo-vision");
+        var bar = theme.ResolveColor(SemanticColor.Bar);
+        var roles = new (string Role, Face Face, Color? Plane)[]
+        {
+            ("control on bar", theme.Control.Normal.Face, bar),
+            ("control", theme.Control.Normal.Face, null),
+            ("input", theme.Input.Normal.Face, null),
+            ("button", theme.Button.Normal.Face, null),
+            ("toggle", theme.Toggle.Normal.Face, null),
+            ("item", theme.Item.Normal.Face, null),
+            ("window", theme.Window.Normal.Face, null),
+            ("container", theme.Container.Normal.Face, null),
+            ("popup", theme.Popup.Normal.Face, null)
+        };
+        var failures = new List<string>();
 
-        ContrastRatio(hotkey, surface).ShouldBeGreaterThanOrEqualTo(HotkeyContrastFloor("turbo-vision"));
-        ContrastRatio(hotkey, theme.ResolveColor(SemanticColor.ActiveControl)).ShouldBeGreaterThanOrEqualTo(_textContrastFloor);
+        foreach (var (role, face, plane) in roles)
+        {
+            var accessKey = theme.Resolve(face.AccessKeyColor);
+            var background = plane ?? theme.Resolve(face.Background);
+            var ratio = ContrastRatio(accessKey, background);
+
+            if (ratio < floor)
+            {
+                failures.Add($"{role} access key has {ratio:F2}:1 contrast on its own face");
+            }
+        }
+
+        failures.ShouldBeEmpty();
     }
 
     /// <summary>The WCAG AA floor every bundled theme's ordinary text keeps against the plane it
     /// is drawn on.</summary>
     private const double _textContrastFloor = 4.5;
 
-    /// <summary>Resolves the contrast floor an access key must keep against the bar and the
-    /// selection fill under one bundled theme.</summary>
+    /// <summary>Resolves the contrast floor an access key must keep against the plane it is drawn
+    /// on - the bar, the selection fill, and each role's own face - under one bundled theme.</summary>
     /// <remarks>
-    /// Every access key is underlined as well as colored (<c>AccessKeyText</c> always emits the
-    /// underline), so its hue is a secondary cue and only has to keep the glyph itself legible.
-    /// Turbo Vision reproduces Borland's <c>cpAppColor</c> bytes exactly: red on the gray menu
-    /// and status strip (0x74) measures 3.34:1 and red on the green selection bar (0x24) 2.49:1
-    /// on the CGA palette - what every Borland IDE shipped with, and what the theme exists to
-    /// reproduce. It therefore carries the floor those two authentic pairings sit on; every
-    /// other bundled theme keeps its mnemonic at the same AA floor as ordinary text.
+    /// Every bundled theme except Turbo Vision underlines its access keys as well as coloring them,
+    /// and keeps the color at the same AA floor as ordinary text. Turbo Vision reproduces Borland's
+    /// palette bytes exactly and, like Borland, draws no underline: red on the gray menu and status
+    /// strip (0x74) measures 3.34:1, red on the green selection bar (0x24) 2.49:1, yellow on the
+    /// green button (0x2E) 2.92:1, yellow on the cyan cluster (0x3E) 2.69:1, and yellow on the
+    /// gray dialog face (0x7E) 2.18:1 on the CGA palette - what every Borland IDE shipped with,
+    /// and what the theme exists to reproduce. It therefore carries the floor its dimmest authentic
+    /// pairing sits on.
     /// </remarks>
     private static double HotkeyContrastFloor(string slug) =>
-        slug == "turbo-vision" ? 2.4 : _textContrastFloor;
+        slug == "turbo-vision" ? 2.1 : _textContrastFloor;
 
     /// <summary>Lists the ordinary planes one bundled theme's bar must not share a color with.</summary>
     /// <remarks>

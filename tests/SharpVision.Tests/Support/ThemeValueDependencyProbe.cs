@@ -6,16 +6,16 @@ namespace SharpVision.Tests.Support;
 /// <summary>Exposes typed non-appearance Theme dependency registration for behavioral tests.</summary>
 internal sealed class ThemeValueDependencyProbe: ControlBase
 {
-    private static readonly ThemeValueDependency<Color> _hotkeyDependency = new(
-        static theme => theme.Hotkey,
+    private static readonly ThemeValueDependency<TerminalAttributes> _hotkeyDependency = new(
+        static theme => theme.ResolveAttributes(SemanticDecoration.Hotkey),
         InvalidationImpact.Render);
 
     private static readonly ThemeValueDependency<int> _affixGapDependency = new(
         static theme => theme.GetStyleSet(InputStyle.Default).Normal.AffixGap,
         InvalidationImpact.Measure);
 
-    /// <summary>Resolves and registers the root hotkey color.</summary>
-    internal Color ResolveHotkey() => ResolveThemeValue(_hotkeyDependency);
+    /// <summary>Resolves and registers the theme-wide access-key attributes.</summary>
+    internal TerminalAttributes ResolveHotkey() => ResolveThemeValue(_hotkeyDependency);
 
     /// <summary>Resolves and registers the shared input affix gap.</summary>
     internal int ResolveTrackedAffixGap() => ResolveThemeValue(_affixGapDependency);

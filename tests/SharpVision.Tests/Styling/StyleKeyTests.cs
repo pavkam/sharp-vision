@@ -13,21 +13,25 @@ using SharpVision.Dialogs;
 using SharpVision.Menus;
 using SharpVision.Navigation;
 
-/// <summary>Verifies <see cref="StyleKey"/> derives the section key each of the six well-known
+/// <summary>Verifies <see cref="StyleKey"/> derives the section key each of the ten well-known
 /// base style types owns from its type name, so the two can never drift apart, and verifies a
-/// theme document's "styles" object is closed to exactly those six names - every leaf control
+/// theme document's "styles" object is closed to exactly those ten names - every leaf control
 /// style's own derived key (still computable, since <see cref="StyleKey.Of{TStyle}"/> is generic
 /// over every <c>ControlStyle</c>-derived type) and every vendor-dotted key is rejected the same
 /// way an unknown name is.</summary>
 public sealed class StyleKeyTests
 {
-    /// <summary>Verifies the six well-known roots drop their <c>Theme</c> prefix and <c>Style</c>
-    /// suffix, keeping the exact section names every bundled theme document already authors.</summary>
+    /// <summary>Verifies the ten well-known roots drop their <c>Theme</c> prefix and <c>Style</c>
+    /// suffix, keeping the exact section names a theme document authors.</summary>
     [Fact]
     public void Of_WhenTypeIsAWellKnownRoot_DerivesTheExistingSectionName()
     {
         StyleKey.Of<ControlStyle>().ShouldBe("control");
         StyleKey.Of<InputStyle>().ShouldBe("input");
+        StyleKey.Of<ButtonStyle>().ShouldBe("button");
+        StyleKey.Of<ToggleStyle>().ShouldBe("toggle");
+        StyleKey.Of<ItemStyle>().ShouldBe("item");
+        StyleKey.Of<PanelStyle>().ShouldBe("panel");
         StyleKey.Of<ContainerStyle>().ShouldBe("container");
         StyleKey.Of<WindowStyle>().ShouldBe("window");
         StyleKey.Of<PopupStyle>().ShouldBe("popup");
@@ -42,7 +46,6 @@ public sealed class StyleKeyTests
     [Fact]
     public void Of_WhenTypeIsALeafControlStyle_StillDerivesAConsistentKey()
     {
-        StyleKey.Of<ButtonStyle>().ShouldBe("button");
         StyleKey.Of<CheckBoxStyle>().ShouldBe("checkBox");
         StyleKey.Of<RadioButtonStyle>().ShouldBe("radioButton");
         StyleKey.Of<ScrollBarStyle>().ShouldBe("scrollBar");
@@ -75,7 +78,6 @@ public sealed class StyleKeyTests
             StyleKey.Of<SpinnerStyle>(),
             StyleKey.Of<StatusBarItemStyle>(),
             StyleKey.Of<TextStyle>(),
-            StyleKey.Of<ButtonStyle>(),
             StyleKey.Of<CalendarStyle>(),
             StyleKey.Of<CheckBoxStyle>(),
             StyleKey.Of<HyperlinkButtonStyle>(),

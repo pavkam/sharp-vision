@@ -1,22 +1,32 @@
 // Copyright (c) SharpVision contributors. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-namespace SharpVision.Controls.Input;
+namespace SharpVision.Styling;
 
 using System.Diagnostics.CodeAnalysis;
 
-/// <summary>Defines one complete immutable Button presentation. This style declares no theme
-/// section of its own: it falls back to <see cref="InputStyle"/>'s "input" role section for its
-/// passive chrome, its own Padding is code-owned, and it is themeable only through that fallback
-/// and a locally assigned <see cref="Button.Style"/>.</summary>
+/// <summary>Defines the well-known push-button appearance - the face, chrome, and padding of a
+/// <c>Button</c> and of every dialog action button that forwards to it - one of the sibling styles
+/// <see cref="ControlStyle"/> generalizes and the owner of the theme's <c>styles.button</c>
+/// section.</summary>
+/// <remarks>
+/// A button cascades from <see cref="InputStyle"/>'s <c>input</c> section exactly the way
+/// <c>input</c> cascades from <c>control</c>: an unauthored <c>button</c> section resolves to the
+/// input chrome plus this type's own code-owned padding, and every input interaction state, so a
+/// theme that never mentions it looks exactly as it did when a button was a leaf falling back to
+/// <c>input</c>. Authoring it lets a theme separate a command from a field - Turbo Vision's
+/// black-on-green buttons with a black block shadow beside its bordered blue input lines - and
+/// author <see cref="Padding"/> under <c>normal</c> like any other structural member.
+/// </remarks>
 [PublicAPI]
 public sealed record ButtonStyle: InputStyle
 {
-    /// <summary>Gets the primary Button-style definition. Falls back to <see cref="InputStyle"/>'s
-    /// "input" role section for its passive chrome; Padding is code-owned.</summary>
+    /// <summary>Gets the primary Button-style definition: the <c>button</c> section itself, so a
+    /// locally assigned <see cref="Controls.Input.Button.Style"/> still borrows that section's
+    /// per-state deltas while a complete local style stays authoritative in every state.</summary>
     internal static StyleDefinition<ButtonStyle> Definition { get; } = StyleDefinitions.ControlWithThemeOwnedStateDefaults(
-        static theme => theme.GetStyleSet(InputStyle.Default),
-        Complete,
+        static theme => theme.GetStyleSet(Default),
+        static (button, _, _) => button,
         static (previous, previousTheme, current, currentTheme) =>
             previous.Padding != current.Padding || previous.AffixGap != current.AffixGap
                 ? InvalidationImpact.Measure
@@ -28,22 +38,6 @@ public sealed record ButtonStyle: InputStyle
     public static StyleDefinition<ButtonStyle> ForwardingDefinition { get; } = StyleDefinitions.Part(
         static theme => Definition.Resolve(null, theme),
         static (_, _, _, _) => InvalidationImpact.None);
-
-    private static ButtonStyle Complete(InputStyle input, VisualState state, Theme theme) =>
-        new(
-            input.Face,
-            input.Border,
-            input.Shadow,
-            new Thickness(horizontal: 1, vertical: 0))
-        {
-            // Forwarded from the fallback rather than left at the code-owned value the base
-            // constructor supplies. Without this, DropDownGlyph would stay stuck at
-            // InputStyle.Default's literal regardless of how a theme customizes "input"'s own
-            // dropDownGlyph - a divergence Button would never surface visually, since it never
-            // draws a dropdown glyph itself.
-            DropDownGlyph = input.DropDownGlyph,
-            AffixGap = input.AffixGap
-        };
 
     /// <summary>Initializes a complete Button presentation.</summary>
     /// <param name="face">The complete normal face.</param>
@@ -57,8 +51,14 @@ public sealed record ButtonStyle: InputStyle
     /// <summary>Gets the internal content padding in terminal cells.</summary>
     public required Thickness Padding { get; init; }
 
-    /// <summary>Gets the standard bordered Button presentation.</summary>
-    public static ButtonStyle Standard { get; } = Complete(InputStyle.Default, VisualState.Normal, Theme.Unthemed);
+    /// <summary>Gets the standard bordered Button presentation: the input family's own default
+    /// chrome with one cell of horizontal padding, so an unauthored <c>button</c> section diffs to
+    /// nothing beyond that padding and resolves exactly as <c>input</c> does.</summary>
+    public static ButtonStyle Standard { get; } = new(
+        InputStyle.Default.Face,
+        InputStyle.Default.Border,
+        InputStyle.Default.Shadow,
+        new Thickness(horizontal: 1, vertical: 0));
 
     /// <summary>Gets the standard Button presentation, aliasing <see cref="Standard"/>.</summary>
     /// <remarks>

@@ -13,7 +13,7 @@ using System.Text.Json;
 /// disclosure pair, Calendar's navigation arrows) that a theme could once reach through the
 /// control's own leaf section.
 ///
-/// <para>A theme's "styles" object is now closed to exactly the six well-known role sections, so a
+/// <para>A theme's "styles" object is now closed to exactly the ten well-known role sections, so a
 /// leaf resolves no section of its own any more: these members are reachable only through a
 /// locally assigned <c>Style</c>, never through a theme. Every test below that once authored a
 /// theme section now assigns a local style instead, and asserts through a rendered cell rather than
@@ -484,7 +484,7 @@ public sealed class StrandedGlyphThemingTests
     }
 
     /// <summary>Verifies the popup anchor arrows are theme-reachable through "popup" - one of the
-    /// six well-known role sections, and critically, run through the same width resolution their
+    /// ten well-known role sections, and critically, run through the same width resolution their
     /// eight border neighbours get. All four are East Asian Ambiguous, so under
     /// <c>Ambiguous.Wide</c> an unresolved arrow measures two cells and overruns its one-cell frame
     /// slot.</summary>

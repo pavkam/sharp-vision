@@ -27,7 +27,7 @@ using SharpVision.Terminal.Rendering;
 /// <c>docs/concepts/theming-new-controls.md</c> describes a control with its own typed style,
 /// substituting one of the five derived interaction sets for the fallback a library-owned leaf
 /// control such as <c>SliderStyle</c> would use. A theme's "styles" object is closed to exactly
-/// the six well-known role sections, so a third-party style - like every library leaf style - now
+/// the ten well-known role sections, so a third-party style - like every library leaf style - now
 /// declares no <c>styles.*</c> key of its own at all: its only sources of appearance are its
 /// code-owned completion logic, the declared fallback, and a locally assigned
 /// <see cref="Gauge.Style"/>.

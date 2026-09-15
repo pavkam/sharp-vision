@@ -47,12 +47,17 @@ changing border relief. `ButtonStyle.Filled` is a shadowed, borderless preset
 with two horizontal padding cells and a fractional lower-right shadow. A `with`
 expression creates a validated member-wise copy of `ButtonStyle.Default`
 (`Standard`). Validation rejects any reachable state that combines a visible
-shadow with enabled border sides. Button declares no `styles.*` theme key of its
-own, so `Padding` is a fixed code-owned value (one horizontal cell) unless a
-local `Style` assigns a different one. Assigning `Style` makes the whole style
-local and authoritative, and assigning `null` hands ownership back to the Theme.
-`ActualStyle` never returns null, and it changes when an inherited Theme changes
-while `Style` is null.
+shadow with enabled border sides. `ButtonStyle` is one of the ten well-known
+role types (see [themes.md](../../concepts/themes.md#style-types)): a theme's
+`styles.button` section owns the push-button presentation - face, border,
+shadow, `Padding` under `normal`, and every interaction state - and cascades
+from `styles.input` until a theme authors it, so a theme that never mentions
+`button` gives a Button exactly the input chrome plus the code-owned padding.
+Turbo Vision authors it as Borland's borderless black-on-green button with a
+block shadow beside a blue input line. Assigning `Style` makes the whole style
+local and authoritative (it still borrows the section's per-state deltas), and
+assigning `null` hands ownership back to the Theme. `ActualStyle` never returns
+null, and it changes when an inherited Theme changes while `Style` is null.
 
 `StartAffix` and `EndAffix` each reserve a fixed cell column pinned to a face
 edge, inside the padding and outside the caption's own alignment box - setting

@@ -45,12 +45,12 @@ actions against the mounted controls.
 
 Appearance is grouped by responsibility:
 
-| Complete value      | Partial set         | Members                                                              |
-| ------------------- | ------------------- | -------------------------------------------------------------------- |
-| `Face`              | `FaceOverlay`       | Foreground, background, attributes, underline, underline color.      |
-| `Border`            | `BorderOverlay`     | Sides, glyph style, foreground, relief, background, attributes.      |
-| `Shadow`            | `ShadowOverlay`     | Visibility, mode, offset, glyph, foreground, background, attributes. |
-| `ControlAppearance` | `AppearanceOverlay` | Face, border, and shadow as one bulk appearance.                     |
+| Complete value      | Partial set         | Members                                                                           |
+| ------------------- | ------------------- | --------------------------------------------------------------------------------- |
+| `Face`              | `FaceOverlay`       | Foreground, background, attributes, underline, underline color, access-key color. |
+| `Border`            | `BorderOverlay`     | Sides, glyph style, foreground, relief, background, attributes.                   |
+| `Shadow`            | `ShadowOverlay`     | Visibility, mode, offset, glyph, foreground, background, attributes.              |
+| `ControlAppearance` | `AppearanceOverlay` | Face, border, and shadow as one bulk appearance.                                  |
 
 A complete value always contains every member and is what a developer assigns
 directly. A set value has nullable members and overlays only the members it
@@ -105,14 +105,14 @@ own `StyleDefinition<TStyle>` is built.
 ## Visual states
 
 Every themeable style type derives from `ControlStyle`, which carries a complete
-`Face`/`Border`/`Shadow` for its resting (`Normal`) state. The six well-known
+`Face`/`Border`/`Shadow` for its resting (`Normal`) state. The ten well-known
 role types resolve the complete Normal appearance plus its nine partial
 per-state contributions, carried as an `AppearanceStates` instance - by
-overlaying their own `styles.*` JSON key onto their code-owned default (see
-[themes.md](themes.md#style-types)); every other (leaf) style type declares no
-`styles.*` key of its own and instead resolves by completing a declared one-hop
-fallback to one of those six, borrowing that fallback's own per-state deltas -
-controls never select a closed enum of roles.
+overlaying their own `styles.*` JSON key onto their parent role's cascade and
+their code-owned default (see [themes.md](themes.md#style-types)); every other
+(leaf) style type declares no `styles.*` key of its own and instead resolves by
+completing a declared one-hop fallback to one of those ten, borrowing that
+fallback's own per-state deltas - controls never select a closed enum of roles.
 
 The resolver applies appearance in this order, with later supplied members
 winning:
@@ -180,18 +180,23 @@ without recoloring passive descendants.
 
 ## Ambient face inheritance
 
-Descendants may inherit a parent's resolved normal text face. Border and shadow
-never inherit. A complete local face is authoritative and is never overwritten
-by ambient inheritance. An opaque face forms a natural inheritance boundary; set
-`IsAppearanceBoundary` when a transparent composition owner also needs to stop
-inheritance. The same boundary ends a continuous background plane
+Descendants may inherit a parent's resolved normal text face - its foreground,
+attributes, underline, underline color, and access-key color (see
+[themes.md](themes.md#access-keys)); the child keeps its own background. Border
+and shadow never inherit. A complete local face is authoritative and is never
+overwritten by ambient inheritance. An opaque face forms a natural inheritance
+boundary; set `IsAppearanceBoundary` when a transparent composition owner also
+needs to stop inheritance. The same boundary ends a continuous background plane
 (`ProvidesContinuousBackground`): `Popup` and `Window` set it, so a submenu or
 dialog logically owned by a menu bar item paints its own face rather than
 inheriting the bar's plane as transparency over the content behind the surface.
 
-Transparent is a valid background for composition. The foreground and underline
-paint channels reject it. `Color.Default` remains an opaque terminal-default
-color; it is not transparency.
+Transparent is a valid background for composition. The foreground, underline,
+and access-key paint channels reject it. `Color.Default` remains an opaque
+terminal-default color; it is not transparency. A layout panel (`Dock`, `Grid`,
+`Stack`, `Wrap`, `Overlay`, `SplitPane`) paints the theme's `panel` role, so a
+theme decides whether layout is a plane of its own or pure arrangement laid
+transparently over the window or desktop beneath it.
 
 ## Shared chrome
 

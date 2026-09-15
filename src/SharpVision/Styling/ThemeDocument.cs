@@ -58,7 +58,7 @@ internal sealed class ThemeDocument
 
     /// <summary>Gets or sets the raw "styles" document, deserialized into a flat per-key section
     /// map for <see cref="Theme.GetStyleSet{TStyle}(string, TStyle)"/>'s reflective path - kept raw here
-    /// so every key, including the six well-known style keys, reaches that one pass unfiltered.</summary>
+    /// so every key, including the ten well-known style keys, reaches that one pass unfiltered.</summary>
     [JsonPropertyName("styles")]
     public JsonElement? Styles { get; set; }
 }

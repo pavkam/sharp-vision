@@ -7202,8 +7202,9 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// style slot of its own - the extension point a control overrides to choose which
     /// well-known base style it resolves. The base implementation
     /// resolves the universal root ("control"); a control that instead wants one of
-    /// <see cref="ControlStyle"/>'s five siblings (an input-like, framed, top-level, popup,
-    /// or passive-hint appearance) overrides this to resolve that sibling's own key instead.</summary>
+    /// <see cref="ControlStyle"/>'s nine siblings (an input-like, push-button, toggle, row,
+    /// layout-panel, framed, top-level, popup, or passive-hint appearance) overrides this to
+    /// resolve that sibling's own key instead.</summary>
     /// <param name="theme">The Theme to resolve against, or null for the library fallback.</param>
     protected virtual AppearanceStates GetDefaultAppearanceStates(Theme? theme) =>
         (theme ?? ThemeCatalog.Dark).GetStyleSet(ControlStyle.Default).ToAppearanceStates();

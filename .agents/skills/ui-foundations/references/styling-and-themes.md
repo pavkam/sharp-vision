@@ -47,13 +47,20 @@ Retired as type vocabulary, and not to be reintroduced: **`Role`** anywhere,
 
 ## The model
 
-Six well-known `ControlStyle` siblings — `ControlStyle`, `InputStyle`,
-`ContainerStyle`, `WindowStyle`, `PopupStyle`, `TooltipStyle` — own the theme's
-closed `styles.*` sections; every leaf control style declares no section of its
-own and instead resolves through a declared one-hop fallback to one of the six,
-via `StyleDefinitions.Control<TStyle, TFallback>`. A well-known type's section
-key is derived from its type name, and that derivation never applies to a leaf.
-See [Style types](../../../../docs/concepts/themes.md#style-types) and
+Ten well-known `ControlStyle` siblings — `ControlStyle`, `InputStyle`,
+`ButtonStyle`, `ToggleStyle`, `ItemStyle`, `PanelStyle`, `ContainerStyle`,
+`WindowStyle`, `PopupStyle`, `TooltipStyle` — own the theme's closed `styles.*`
+sections and cascade from each other by role (`Theme`'s cascade table: `input`
+from `control`; `button`/`toggle` from `input`; `item` Normal from `control` and
+states from `input` under the row rule; the passive five Normal-only from
+`control`); every leaf control style declares no section of its own and instead
+resolves through a declared one-hop fallback to one of the ten, via
+`StyleDefinitions.Control<TStyle, TFallback>`. A well-known type's section key
+is derived from its type name, and that derivation never applies to a leaf.
+`Face.AccessKeyColor` is a per-face paint channel (default
+`SemanticColor.Hotkey`) a caption inherits ambiently; the access-key decoration
+is theme-wide (`SemanticDecoration.Hotkey`). See
+[Style types](../../../../docs/concepts/themes.md#style-types) and
 [Where a section name comes from](../../../../docs/concepts/themes.md#where-a-section-name-comes-from)
 for the full resolution mechanics.
 
@@ -110,9 +117,16 @@ API surface, including `ActualStyle` and `ResolveAppearance`; see
   the theme it is given for these styles, so any valid instance resolves
   identically; do not "fix" this by switching either style to `Theme.Unthemed`.
 - **Passive styles ignore interactive states.** Only `"input"` inherits
-  `"control"`'s per-state deltas. Containers, windows, popups, and tooltips
-  deliberately do not answer hover or focus — cascading into them tints every
-  panel and window border. This is asserted; do not "fix" it.
+  `"control"`'s per-state deltas (and `"button"`, `"toggle"`, `"item"` inherit
+  `"input"`'s). Panels, containers, windows, popups, and tooltips deliberately
+  do not answer hover or focus — cascading into them tints every panel and
+  window border. This is asserted; do not "fix" it.
+- **A new role is a presentation family, not a control.** Add one only to
+  `Theme`'s cascade table (which feeds `ThemeCatalog`'s whitelist, `StyleKey`
+  derivation, and `ValidateStyleSections`), name it for what it presents, and
+  make its code-owned `Default` diff to nothing against its parent so every
+  bundled theme that never authors it stays pixel-identical. Never reopen a
+  per-control key.
 - **Cascade deltas, not whole values.** Carrying a whole per-state value across
   replaces a style's own `Border.Sides`/`GlyphStyle` and moves measured widths
   by whole cells.

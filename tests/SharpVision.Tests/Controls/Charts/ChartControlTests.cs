@@ -160,7 +160,10 @@ public sealed class ChartControlTests
 
     private static string Hex(Color color) => $"#{color.Red:x2}{color.Green:x2}{color.Blue:x2}";
 
-    private static Theme ThemeWithAccent(Color accent) => ThemeCatalog.Parse(ThemeJson.Create(accent: Hex(accent)));
+    // The access key is pinned so it does not follow the accent: it is a channel of every face,
+    // and letting it drift would turn an accent-only swap into a face change.
+    private static Theme ThemeWithAccent(Color accent) =>
+        ThemeCatalog.Parse(ThemeJson.Create(accent: Hex(accent), hotkey: "#ff8800"));
 
     /// <summary>Verifies assigning a genuinely different Scale round-trips and invalidates
     /// rendering, and that re-assigning the identical value afterward is a no-op notification.</summary>

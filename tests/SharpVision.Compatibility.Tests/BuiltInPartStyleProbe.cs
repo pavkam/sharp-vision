@@ -7,6 +7,7 @@ using SharpVision.Controls;
 using SharpVision.Controls.Display;
 using SharpVision.Controls.Input;
 using SharpVision.Controls.Layout;
+using SharpVision.Styling;
 
 /// <summary>Models an external composite that forwards built-in styles through public definitions.</summary>
 internal sealed class BuiltInPartStyleProbe: CompositeControlBase

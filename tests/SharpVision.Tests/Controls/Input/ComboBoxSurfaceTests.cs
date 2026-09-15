@@ -138,17 +138,17 @@ public sealed class ComboBoxSurfaceTests
         pinned.IsOpen.ShouldBeTrue();
     }
 
-    /// <summary>Verifies a disabled Turbo Vision field shows its authored flat "disabledBorder"
-    /// color on every edge against InputStyle's own Flat relief baseline -
-    /// "input.disabled.border.foreground": "disabledBorder" (darkGray, `#555555`), restored to
-    /// visibility by the border-relief-vs-authored-Foreground fix. ComboBox's InputStyle relief
-    /// default is Flat and no bundled theme authors input relief, so there is no Sunken/Raised split
-    /// for the authored color to substitute for here; IntrinsicBorderSurfaceTests.cs:58
-    /// (turbo-vision's "container.normal.border.relief": "sunken") is the sole surviving non-Flat
-    /// specimen in the whole test suite, which is why Flat is the correct default assumption
-    /// everywhere else.</summary>
+    /// <summary>Verifies a disabled framed field shows its authored flat "disabledBorder" color
+    /// on every edge against InputStyle's own Flat relief baseline - Nord's
+    /// "input.disabled.border.foreground": "disabledBorder", restored to visibility by the
+    /// border-relief-vs-authored-Foreground fix. (Turbo Vision used to be this specimen; its input
+    /// line is now a bare strip like Borland's <c>TInputLine</c>, so a framed theme stands in.)
+    /// ComboBox's InputStyle relief default is Flat and no bundled theme authors input relief, so
+    /// there is no Sunken/Raised split for the authored color to substitute for here; turbo-vision's
+    /// "container.normal.border.relief": "sunken" is the sole surviving non-Flat specimen in the
+    /// whole test suite, which is why Flat is the correct default assumption everywhere else.</summary>
     [Fact]
-    public async Task Render_WhenTurboVisionComboBoxIsDisabled_ShowsFlatDisabledBorderAsync()
+    public async Task Render_WhenNordComboBoxIsDisabled_ShowsFlatDisabledBorderAsync()
     {
         // Arrange
         var combo = new ComboBox
@@ -171,8 +171,8 @@ public sealed class ComboBoxSurfaceTests
 
         // Act
         await surface.UpdateAsync(
-            () => surface.Application.Theme = ThemeCatalog.Load("turbo-vision"),
-            "apply Turbo Vision to the disabled ComboBox");
+            () => surface.Application.Theme = ThemeCatalog.Load("nord"),
+            "apply Nord to the disabled ComboBox");
 
         // Assert
         var disabledBorder = surface.Application.Theme.ResolveColor(SemanticColor.DisabledBorder);

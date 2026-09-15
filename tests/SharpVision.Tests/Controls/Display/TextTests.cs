@@ -241,15 +241,17 @@ public sealed class TextTests
     }
 
     /// <summary>Verifies text without an effective mnemonic marker does not subscribe to an
-    /// unrelated root hotkey color.</summary>
+    /// unrelated access-key decoration. The access-key color is a face channel, so a change to
+    /// it reaches every control through ordinary appearance invalidation; only the theme-wide
+    /// decoration is a conditional dependency a marker-less text must not carry.</summary>
     [Theory]
     [InlineData("Save", true)]
     [InlineData("&Save", false)]
-    public void Theme_WhenMnemonicHighlightingIsInactive_IgnoresHotkeyOnlyChange(string content, bool useMnemonic)
+    public void Theme_WhenMnemonicIsInactive_IgnoresAccessKeyAttributesOnlyChange(string content, bool useMnemonic)
     {
         // Arrange
-        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
         var text = new ControlText(content) { UseMnemonic = useMnemonic };
         text.SetTheme(mounted);
         new LayoutEngine().Layout(text, new Size(4, 1));
@@ -263,19 +265,19 @@ public sealed class TextTests
     }
 
     /// <summary>Verifies changing mnemonic participation removes and restores the conditional
-    /// hotkey dependency after the corresponding layout is consumed.</summary>
+    /// access-key decoration dependency after the corresponding layout is consumed.</summary>
     [Fact]
-    public void UseMnemonic_WhenChanged_UpdatesTheHotkeyThemeDependency()
+    public void UseMnemonic_WhenChanged_UpdatesTheAccessKeyAttributesThemeDependency()
     {
         // Arrange
-        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#ff0000"));
-        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkey: "#00ff00"));
+        var first = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var second = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
         var text = new ControlText("&Save") { UseMnemonic = true };
         var layout = new LayoutEngine();
         text.SetTheme(first);
         layout.Layout(text, new Size(4, 1));
 
-        // Act - consume the disabled mnemonic state, then replace only Hotkey.
+        // Act - consume the disabled mnemonic state, then replace only the access-key decoration.
         text.UseMnemonic = false;
         layout.Layout(text, new Size(5, 1));
         text.Clear(Invalidation.All);
@@ -284,7 +286,7 @@ public sealed class TextTests
         // Assert
         text.Pending.ShouldBe(Invalidation.None);
 
-        // Act - consume the active mnemonic state again, then replace only Hotkey.
+        // Act - consume the active mnemonic state again, then replace only the access-key decoration.
         text.UseMnemonic = true;
         layout.Layout(text, new Size(4, 1));
         text.Clear(Invalidation.All);

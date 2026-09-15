@@ -1990,7 +1990,8 @@ public sealed class ControlBaseTests
     {
         var expectedFace = AppearanceTestValues.Face(
             foreground: Color.Rgb(21, 22, 23),
-            attributes: TerminalAttributes.Bold);
+            attributes: TerminalAttributes.Bold,
+            accessKeyColor: Color.Rgb(31, 32, 33));
         var expectedBorder = AppearanceTestValues.Border(
             BorderSide.All,
             foreground: Color.Rgb(24, 25, 26),

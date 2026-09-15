@@ -114,7 +114,8 @@ internal static class AccessKeyText
             }
         }
 
-        /// <summary>Draws visible caption text and underlines the complete marked grapheme.</summary>
+        /// <summary>Draws visible caption text and marks the complete access-key grapheme with the
+        /// access-key attributes.</summary>
         /// <param name="canvas">The borrowed clipped destination.</param>
         /// <param name="origin">The absolute starting cell.</param>
         /// <param name="style">The inherited caption style.</param>
@@ -122,6 +123,8 @@ internal static class AccessKeyText
         /// <param name="ambiguous">The validated ambiguous-width policy.</param>
         /// <param name="useMnemonic">Whether ampersands have access-text semantics.</param>
         /// <param name="accessKeyForeground">The resolved enabled access-key foreground, or null to inherit.</param>
+        /// <param name="accessKeyAttributes">The attributes added to the marked grapheme; the
+        /// theme's <see cref="SemanticDecoration.Hotkey"/> resolution, underline by default.</param>
         /// <returns>The logical visible-cell advance.</returns>
         public int Draw(
             TerminalCanvas canvas,
@@ -130,7 +133,8 @@ internal static class AccessKeyText
             BackgroundMode background,
             Ambiguous ambiguous,
             bool useMnemonic,
-            Color? accessKeyForeground = null)
+            Color? accessKeyForeground = null,
+            TerminalAttributes accessKeyAttributes = TerminalAttributes.Underline)
         {
             if (!useMnemonic || text.IndexOf('&', StringComparison.Ordinal) < 0)
             {
@@ -154,7 +158,7 @@ internal static class AccessKeyText
 
                 var mnemonicLength = FindMnemonicGraphemeLength(visible, mnemonicOffset);
                 var before = canvas.Draw(visible[..mnemonicOffset], origin, style, background: background);
-                var mnemonicStyle = WithAccessKey(style, accessKeyForeground);
+                var mnemonicStyle = WithAccessKey(style, accessKeyForeground, accessKeyAttributes);
                 var marked = canvas.Draw(
                     visible.Slice(mnemonicOffset, mnemonicLength),
                     before.Final,
@@ -180,12 +184,17 @@ internal static class AccessKeyText
         /// <param name="useMnemonic">Whether ampersands have access-text semantics.</param>
         /// <param name="highlightMnemonic">Whether the marked grapheme receives the access-key foreground.</param>
         /// <param name="hotkeyColor">Optional concrete hotkey color to apply as an inline foreground tag.</param>
-        /// <returns>Source markup with marker escapes collapsed and the mnemonic grapheme underlined.</returns>
+        /// <param name="accessKeyAttributes">The attributes wrapped around the marked grapheme; the
+        /// theme's <see cref="SemanticDecoration.Hotkey"/> resolution, underline by default. None
+        /// leaves the grapheme distinguished by color alone, as a theme without underlined access
+        /// keys (Turbo Vision) asks.</param>
+        /// <returns>Source markup with marker escapes collapsed and the mnemonic grapheme marked.</returns>
         [Pure]
         public string ToMarkup(
             bool useMnemonic,
             bool highlightMnemonic = true,
-            Color? hotkeyColor = null)
+            Color? hotkeyColor = null,
+            TerminalAttributes accessKeyAttributes = TerminalAttributes.Underline)
         {
             ArgumentNullException.ThrowIfNull(text);
 
@@ -204,7 +213,7 @@ internal static class AccessKeyText
 
             var visible = buffer.AsSpan(0, length);
             var mnemonicLength = FindMnemonicGraphemeLength(visible, mnemonicOffset);
-            var builder = new StringBuilder(length + (highlightMnemonic ? 30 : 7));
+            var builder = new StringBuilder(length + 64);
             _ = builder.Append(visible[..mnemonicOffset]);
 
             if (highlightMnemonic && hotkeyColor is { IsRgb: true } color)
@@ -212,9 +221,23 @@ internal static class AccessKeyText
                 _ = builder.Append(CultureInfo.InvariantCulture, $"<fg=#{color.Red:x2}{color.Green:x2}{color.Blue:x2}>");
             }
 
-            _ = builder.Append("<u>");
+            foreach (var tag in _attributeTags)
+            {
+                if ((accessKeyAttributes & tag.Attribute) != 0)
+                {
+                    _ = builder.Append('<').Append(tag.Name).Append('>');
+                }
+            }
+
             _ = builder.Append(visible.Slice(mnemonicOffset, mnemonicLength));
-            _ = builder.Append("</u>");
+
+            for (var index = _attributeTags.Length - 1; index >= 0; index--)
+            {
+                if ((accessKeyAttributes & _attributeTags[index].Attribute) != 0)
+                {
+                    _ = builder.Append("</").Append(_attributeTags[index].Name).Append('>');
+                }
+            }
 
             if (highlightMnemonic && hotkeyColor is { IsRgb: true })
             {
@@ -225,6 +248,28 @@ internal static class AccessKeyText
             return builder.ToString();
         }
     }
+
+    // Every terminal attribute the inline markup grammar can open by name, so a theme's access-key
+    // decoration - any combination of them - round-trips through Text's markup path exactly. The
+    // legacy Underline flag maps to the typed straight underline tag, the same reconciliation
+    // DecorationResolver applies everywhere else.
+    [SuppressMessage(
+        "Style",
+        "IDE0052:Remove unread private members",
+        Justification = "Read only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
+    private static readonly (TerminalAttributes Attribute, string Name)[] _attributeTags =
+    [
+        (TerminalAttributes.Bold, "b"),
+        (TerminalAttributes.Dim, "d"),
+        (TerminalAttributes.Italic, "i"),
+        (TerminalAttributes.Underline, "u"),
+        (TerminalAttributes.Blink, "blink"),
+        (TerminalAttributes.Reverse, "reverse"),
+        (TerminalAttributes.Hidden, "hidden"),
+        (TerminalAttributes.Strike, "s"),
+        (TerminalAttributes.RapidBlink, "rapidblink"),
+        (TerminalAttributes.Overline, "overline")
+    ];
 
     [SuppressMessage(
         "Style",
@@ -299,14 +344,20 @@ internal static class AccessKeyText
         "Style",
         "IDE0051:Remove unused private members",
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
-    private static TerminalStyle WithAccessKey(TerminalStyle style, Color? foreground)
+    private static TerminalStyle WithAccessKey(TerminalStyle style, Color? foreground, TerminalAttributes accessKeyAttributes)
     {
         var attributes = style.Attributes;
 
-        if ((attributes & TerminalAttributes.Underline) == 0 && style.Underline == Underline.None)
+        // A requested underline joins the typed underline channel when one is already active
+        // rather than doubling it; every other requested attribute simply adds to the style's own.
+        if ((accessKeyAttributes & TerminalAttributes.Underline) != 0 &&
+            (attributes & TerminalAttributes.Underline) == 0 &&
+            style.Underline == Underline.None)
         {
             attributes |= TerminalAttributes.Underline;
         }
+
+        attributes |= accessKeyAttributes & ~TerminalAttributes.Underline;
 
         return new TerminalStyle(
             foreground ?? style.Foreground,

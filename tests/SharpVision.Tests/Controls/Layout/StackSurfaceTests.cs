@@ -525,4 +525,51 @@ public sealed class StackSurfaceTests
         surface.ShouldHaveState(stack, VisualState.Normal);
         child.EffectiveIsEnabled.ShouldBeTrue();
     }
+
+    /// <summary>Verifies a layout panel paints the theme's <c>panel</c> role: a theme that makes
+    /// it transparent lets the window face beneath a Stack show through its empty cells, while a
+    /// theme that leaves the role unauthored keeps painting the passive control face.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Render_WhenThemeMakesPanelTransparent_ShowsTheWindowFaceBeneathTheStackAsync(bool transparentPanel)
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            palette: "\"bg\":\"#101010\",\"fg\":\"#e0e0e0\",\"dialog\":\"#404040\"",
+            windowExtra: """, "face": { "background": "dialog" }""",
+            extraStyles: transparentPanel
+                ? """, "panel": { "normal": { "face": { "background": "transparent" } } }"""
+                : string.Empty));
+        var stack = new Stack
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var window = new Window
+        {
+            Content = stack,
+            Width = Length.Cells(10),
+            Height = Length.Cells(5)
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+
+        // Act
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(12, 6),
+            options,
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var inside = surface.Cell(new Point(stack.Bounds.X + 1, stack.Bounds.Y + 1)).Style.Background;
+        var expected = transparentPanel
+            ? Color.FromHex("#404040")
+            : theme.ResolveColor(SemanticColor.Control);
+        inside.ShouldBe(expected);
+    }
 }

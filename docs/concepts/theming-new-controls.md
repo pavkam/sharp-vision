@@ -2,7 +2,7 @@
 
 ## Overview
 
-A new control either reuses one of the six well-known style types outright, or
+A new control either reuses one of the ten well-known style types outright, or
 declares a typed style with a declared one-hop fallback to one of them. It never
 adds selector syntax or a mutable style registry, and it never needs internal
 access to compile - both extension paths below are fully public.
@@ -129,11 +129,11 @@ so callers can inspect the fully resolved values.
 
 ## A control with its own typed style
 
-A control whose structure needs more than one of the six well-known types
+A control whose structure needs more than one of the ten well-known types
 alone - its own padding, glyph family, mark style, or any other structural
 member - declares a `sealed record` deriving from `ControlStyle` (or one of its
-five siblings), and registers a `static StyleDefinition<TStyle>` for it with a
-declared **one-hop fallback** to whichever of the six well-known types is the
+nine siblings), and registers a `static StyleDefinition<TStyle>` for it with a
+declared **one-hop fallback** to whichever of the ten well-known types is the
 closest semantic match -
 `StyleDefinitions.Control<TStyle, TFallback>(fallbackTo, complete, compare)`.
 This is the factory most leaf control styles in the library call today -
@@ -183,7 +183,7 @@ public sealed class CommandTile : ControlBase, IStyled<CommandTileStyle>
 ```
 
 `CommandTileStyle` declares no `styles.*` key of its own at all: a theme's
-`styles` object is closed to exactly the six well-known role sections, so a leaf
+`styles` object is closed to exactly the ten well-known role sections, so a leaf
 control's only sources of appearance are its code-owned `Complete` logic, the
 fallback type's own resolved states (`InputStyle`'s `"input"` role section
 here), and a locally assigned `Style`. `Complete` runs once per resolved state,
@@ -191,7 +191,7 @@ completing the fallback's contribution into this type's own shape; a state the
 fallback does not author still runs `Complete` against the fallback's own
 `Normal`, which is the only place a per-state code-owned default - a checked
 accent color, a glyph-family lookup through `theme.Glyphs` - can be expressed.
-`fallbackTo` may resolve any public per-state set: one of the six well-known
+`fallbackTo` may resolve any public per-state set: one of the ten well-known
 types through `Theme.GetStyleSet`, or one of `Theme`'s five derived interaction
 sets - `GetInteractiveControlStyleSet`, `GetInteractiveRowStyleSet`,
 `GetFocusableContainerStyleSet`, `GetFocusableControlStyleSet`, and

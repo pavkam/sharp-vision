@@ -3,15 +3,15 @@
 ## Overview
 
 A SharpVision theme is a single bounded UTF-8 JSON document. It defines the
-global semantic colors, terminal attributes, and a `styles` object holding
-exactly six role sections - one JSON section per well-known style type. The
+global semantic colors, terminal attributes, and a `styles` object holding at
+most ten role sections - one JSON section per well-known style type. The
 document contains no control instances and no application-defined selector
 names. A leading UTF-8 byte order mark is accepted and ignored.
 
 ```mermaid
 flowchart LR
     JSON["bounded JSON"] --> Values["colors and attributes"]
-    JSON --> Styles["the six styles.* role sections"]
+    JSON --> Styles["the ten styles.* role sections"]
     Values --> Styles
     Styles --> Theme["frozen Theme"]
     Theme --> Controls["controls resolve their own StyleDefinition"]
@@ -27,7 +27,7 @@ The root object accepts only these fields:
 | `palette`                              | object   | At most 256 case-sensitive names mapped to RGB literals.                                             |
 | `colors`                               | object   | One concrete value for every known `SemanticColor`.                                                  |
 | `attributes`                           | object   | One concrete value for every known `SemanticDecoration`.                                             |
-| `styles`                               | object   | Exactly the six well-known role sections (see below).                                                |
+| `styles`                               | object   | Any subset of the ten well-known role sections (see below).                                          |
 
 Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata, `colorScheme` included; external documents fill in missing _or blank_
@@ -85,16 +85,44 @@ subdued but legible. Every bundled `selectedControl` pairing likewise retains at
 least 4.5:1 contrast with `selectedText` at truecolor and xterm-256 depth so a
 selected bar row does not make its caption disappear.
 
-`hotkey` colors the access-key grapheme of every mnemonic caption, and the
-caption always underlines that grapheme as well, so the hue is a secondary cue.
-Every bundled theme except Turbo Vision keeps `hotkey` at the same 4.5:1 floor
-as ordinary text against both Bar and `selectedControl`. Turbo Vision reproduces
-Borland's red access key (0x74 on the gray bar, 0x24 on the green selection
-bar), which measures 3.34:1 and 2.49:1 on the CGA palette; the theme keeps those
-two historical pairings on purpose, and its curated-theme tests pin that floor
-rather than the AA one. Whatever its floor, the access key must remain legible
-on the input `surface` too, because every `Button`, `CheckBox`, and
-`RadioButton` caption sits on that face.
+`hotkey` is the default color of the access-key grapheme of every mnemonic
+caption - the value every face's `accessKeyColor` channel carries until a role
+section authors its own (see [Access keys](#access-keys)). Every bundled theme
+except Turbo Vision underlines that grapheme as well, keeps `hotkey` at the same
+4.5:1 floor as ordinary text against both Bar and `selectedControl`, and lets
+every face inherit it. Turbo Vision reproduces Borland's access keys per role
+and, like Borland, draws no underline: red on the gray bar (0x74) and on the
+green selection bar (0x24), yellow on the green button (0x2E), the cyan cluster
+(0x3E), and the gray dialog face (0x7E). Those measure between 3.34:1 and 2.18:1
+on the CGA palette; the theme keeps the historical pairings on purpose, and its
+curated-theme tests pin that floor - against the bar, the selection fill, and
+every role's own face - rather than the AA one.
+
+### Access keys
+
+A mnemonic caption (`&File`) colors its marked grapheme with the
+`accessKeyColor` channel of the face it is drawn on, resolved exactly as the
+caption's foreground is: a `Text` owned as a `Button`, `CheckBox`, `MenuItem`,
+`GroupBox`, or other caption inherits its owner's resolved face through the
+ambient rule (see [styling.md](styling.md#ambient-face-inheritance)), so the
+letter takes the color the theme chose for that owner's plane and current state.
+The channel defaults to `hotkey`, which is why a theme that never names it
+behaves exactly as before the channel existed, and any role section may author
+it under any state - `styles.button.normal.face.accessKeyColor`,
+`styles.control.selected.face.accessKeyColor` - the same way it authors a
+foreground. It is a paint channel: transparent is rejected. This is what lets a
+theme whose planes differ widely in luminance keep every mnemonic legible where
+one theme-wide color could not - a red letter on a light menu bar and a yellow
+one on a dark button at the same time. A disabled caption never colors its
+grapheme.
+
+The grapheme's decoration is theme-wide: `attributes.hotkey`
+(`SemanticDecoration.Hotkey`) is wrapped around it - `underline` in every
+bundled theme but Turbo Vision, whose empty value leaves the letter
+distinguished by color alone, the way Borland drew it. A caption with a marked
+mnemonic registers a render-only dependency on that decoration, so a theme swap
+that changes only it repaints without remeasuring; a changed color arrives
+through ordinary appearance invalidation like any other face channel.
 
 `reliefHighlight` and `reliefShade` model one light source above and to the left
 of the surface: `BorderRelief.Raised` paints the top and left edges with
@@ -151,24 +179,36 @@ condition holds, rather than for its entire lifetime.
 Every themeable style value derives from `ControlStyle` - a required `Face`,
 `Border`, and `Shadow` plus, for a specific control's own style type, whatever
 structural members that control needs (padding, glyph families, mark styles, and
-so on). Six sibling types generalize the common presentations - `ControlStyle`
-itself (the passive base and universal fallback), `InputStyle`,
-`ContainerStyle`, `WindowStyle`, `PopupStyle`, and `TooltipStyle`. Each has its
-own `static Default` baking in a distinct code-owned border (none, heavy, light,
-paired, rounded, and light again, respectively) and, for `Window` only, a
-visible composite shadow. A control with nothing to add beyond one of these six
-uses that type directly - there is no requirement to declare a new type per
-control.
+so on). Ten sibling types generalize the common presentations - `ControlStyle`
+itself (the passive base and universal fallback), `InputStyle`, `ButtonStyle`,
+`ToggleStyle`, `ItemStyle`, `PanelStyle`, `ContainerStyle`, `WindowStyle`,
+`PopupStyle`, and `TooltipStyle`. Each is a presentation role, never a control:
+`button` is the push-button face a `Button` and every dialog action button
+share, `toggle` the two-state option face a `CheckBox` and `RadioButton` caption
+sits on, `item` the selectable row a list, tree, table, tab, or navigation entry
+paints, and `panel` the plane a `Dock`, `Grid`, `Stack`, `Wrap`, `Overlay`, or
+`SplitPane` paints behind the children it arranges. Each has its own
+`static Default` baking in a distinct code-owned border (none, heavy, heavy,
+heavy, none, none, light, paired, rounded, and light, respectively) and, for
+`Window` only, a visible composite shadow; `ButtonStyle` adds a code-owned
+`Padding`. A control with nothing to add beyond one of these ten uses that type
+directly - there is no requirement to declare a new type per control.
 
 ```mermaid
 classDiagram
     ControlStyle <|-- InputStyle
+    InputStyle <|-- ButtonStyle
+    InputStyle <|-- ToggleStyle
+    ControlStyle <|-- ItemStyle
+    ControlStyle <|-- PanelStyle
     ControlStyle <|-- ContainerStyle
     ControlStyle <|-- WindowStyle
     ControlStyle <|-- PopupStyle
     ControlStyle <|-- TooltipStyle
-    ButtonStyle ..> InputStyle : falls back to
-    CheckBoxStyle ..> InputStyle : falls back to
+    CheckBoxStyle ..> ToggleStyle : falls back to
+    RadioButtonStyle ..> ToggleStyle : falls back to
+    TextInputStyle ..> InputStyle : falls back to
+    ListViewStyle ..> ItemStyle : falls back to
     ChartStyle ..> ControlStyle : falls back to
     JsonViewStyle ..> ContainerStyle : falls back to
     ToastStyle ..> PopupStyle : falls back to
@@ -177,41 +217,52 @@ classDiagram
     FilePickerDialogStyle ..> WindowStyle : falls back to
 ```
 
-`styles` is a flat JSON object closed to exactly six top-level keys - one per
-well-known style type: `control`, `input`, `container`, `window`, `popup`,
-`tooltip`. Nothing else is accepted: not a leaf control's own key, not a
-namespaced vendor key. Any other name is rejected as an unknown field, since it
-is far more likely a typo of one of the six than an intentional section.
+`styles` is a flat JSON object closed to exactly ten top-level keys - one per
+well-known style type: `control`, `input`, `button`, `toggle`, `item`, `panel`,
+`container`, `window`, `popup`, `tooltip`. Nothing else is accepted: not a leaf
+control's own key, not a namespaced vendor key. Any other name is rejected as an
+unknown field, since it is far more likely a typo of one of the ten than an
+intentional section. The vocabulary grew from six to ten because the four
+additions are the presentation families the original six could not separate - a
+command from a field, an option from a field, a row from the passive face, and
+arrangement from a painted plane - which any theme reproducing a classic desktop
+toolkit (Turbo Vision's green buttons, cyan clusters, blue input lines, and
+transparent groups) needs; it stays closed to roles so a theme remains
+finishable.
 
-A leaf control style - `Button`, `CheckBox`, every other control with its own
+A leaf control style - `CheckBox`, `TextInput`, every other control with its own
 style type - resolves no `styles.*` section of its own at all. Its only sources
 of appearance are its code-owned default, a declared one-hop fallback to
-whichever of the six well-known types is the closest semantic match, and a
+whichever of the ten well-known types is the closest semantic match, and a
 locally assigned `Style`. Restyling a leaf therefore means either restyling the
 role section it falls back to (moving every leaf that shares that fallback) or
 assigning that one control a local `Style` - see
-[theming-new-controls.md](theming-new-controls.md).
+[theming-new-controls.md](theming-new-controls.md). `Button` is the one control
+whose own style type is itself a well-known root: its `Style` and `ActualStyle`
+are `ButtonStyle`, and a locally assigned one still borrows the `button`
+section's per-state deltas while staying authoritative for every member it
+authors.
 
 Only `control` is conventionally load-bearing: it is the terminal root every
-other well-known style's `Normal` state cascades from (see below), and every
-bundled theme authors it. There is no strict parse-time requirement that any
-individual `styles.*` key be present, though - an absent key simply means that
-type resolves entirely from its own code-owned default. Theme loading compiles
-all six declared root style sections before publishing the frozen `Theme`, so a
-malformed leaf fails atomically from `Parse`, `Load`, or `LoadFile` with that
-loader's source label. Control inventory and first-use order never affect
-validation.
+other well-known style's `Normal` state cascades from, directly or through
+`input` (see below), and every bundled theme authors it. There is no strict
+parse-time requirement that any individual `styles.*` key be present, though -
+an absent key simply means that role resolves from its parent's cascade and its
+own code-owned default. Theme loading compiles all ten root style sections
+before publishing the frozen `Theme`, so a malformed leaf fails atomically from
+`Parse`, `Load`, or `LoadFile` with that loader's source label. Control
+inventory and first-use order never affect validation.
 
 Each style type's own section is an object whose top-level keys are visual state
 names - `normal`, `pointerOver`, `focusWithin`, `focused`, `current`,
 `selected`, `checked`, `indeterminate`, `pressed`, `disabled` - each holding a
 **fractional** override object: any subset of that style type's own public
 properties, reflectively patched onto a resolved base value. `normal` patches
-onto the type's own code-owned default (or, for the five non-`control` well-
-known styles, onto `control`'s own resolved `Normal` face/border/shadow first);
-every other authored state patches onto the SAME type's own resolved `normal`,
-not onto another state. An unauthored state is that type's resolved `normal`
-unchanged, except where the cascade described next supplies one.
+onto the type's own code-owned default (or, for the nine non-`control` well-
+known styles, onto its parent role's own resolved `Normal` face/border/shadow
+first); every other authored state patches onto the SAME type's own resolved
+`normal`, not onto another state. An unauthored state is that type's resolved
+`normal` unchanged, except where the cascade described next supplies one.
 
 A control is often in more than one state at once - a list row can be both
 `selected` and `disabled`. Every active state applies, in the fixed order the
@@ -222,12 +273,32 @@ state supplied, falling back to `normal`. Writing a member back to the value
 how a later state says "for this combination, go back to the normal value" and
 stops an earlier state from claiming that member.
 
-For the five well-known styles other than `control` (`input`, `container`,
-`window`, `popup`, `tooltip`), `Normal`'s `face`/`border`/`shadow` cascade from
-`control` before this style's own `normal` JSON overlays on top - this is why
-most bundled themes' `input`/`container`/`window`/`popup` JSON sections only
+Every well-known style other than `control` has a parent role, and its
+`Normal`'s `face`/`border`/`shadow` cascade from that parent before its own
+`normal` JSON overlays on top. `input`, `item`, `panel`, `container`, `window`,
+`popup`, and `tooltip` cascade from `control`; `button` and `toggle` cascade
+from `input`, so what `control` authored reaches them through `input`. This is
+why most bundled themes' `input`/`container`/`window`/`popup` JSON sections only
 ever author a `border` delta (sides, glyph style) rather than repeating face
-colors `control` already supplies.
+colors `control` already supplies, and why fifteen of the sixteen bundled themes
+author no `button`, `toggle`, `item`, or `panel` section at all - each resolves
+exactly as its parent does until a theme has something to say about it. A
+structural member a child type shares with its parent type follows the parent as
+well: `input`'s `dropDownGlyph` and `affixGap` reach `button` and `toggle`
+without either section repeating them.
+
+| Role        | Normal cascades from | States cascade from                       |
+| ----------- | -------------------- | ----------------------------------------- |
+| `control`   | -                    | -                                         |
+| `input`     | `control`            | `control`                                 |
+| `button`    | `input`              | `input`                                   |
+| `toggle`    | `input`              | `input`                                   |
+| `item`      | `control`            | `input`, hover keeping the row's own fill |
+| `panel`     | `control`            | -                                         |
+| `container` | `control`            | -                                         |
+| `window`    | `control`            | -                                         |
+| `popup`     | `control`            | -                                         |
+| `tooltip`   | `control`            | -                                         |
 
 What cascades is what `control`'s own JSON **authored**, not its whole resolved
 value. A theme that sets colors on `control` and says nothing about its border
@@ -238,25 +309,35 @@ same delta rule every other state uses, and it is what lets a minimal theme
 author `styles.control` alone without silently changing measured widths
 everywhere, since a border's `sides` reserves layout space.
 
-Past `Normal`, only **`input`** keeps following explicitly authored `control`
-state deltas. Bundled themes reserve `control` for passive normal and disabled
-defaults and author pointer, focus, press, and selection cues directly on
-`input`. A custom theme may still put a deliberate shared state delta on
-`control`; that delta is applied onto `input`'s own resolved `Normal`, with
-`input`'s own JSON for the state winning on top. Inheriting the delta rather
-than the whole value keeps `input`'s own border sides and glyph style intact, so
-a state change never silently re-measures a field.
+Past `Normal`, **`input`** keeps following explicitly authored `control` state
+deltas, and **`button`**, **`toggle`**, and **`item`** keep following `input`'s.
+Bundled themes reserve `control` for passive normal and disabled defaults and
+author pointer, focus, press, and selection cues directly on `input`, so a
+button, an option, and a row all react the way a field does unless their own
+section says otherwise. A custom theme may still put a deliberate shared state
+delta on `control`; that delta is applied onto `input`'s own resolved `Normal`,
+with `input`'s own JSON for the state winning on top, and then travels on to the
+three roles below it. Inheriting the delta rather than the whole value keeps
+each role's own border sides, glyph style, and shadow intact, so a state change
+never silently re-measures a field or a button. `item` applies the selectable-
+row rule on top of what it inherits: pointer hover keeps the row's own
+background and changes only its text, because a row's selection - not mere
+pointer membership - owns the highlighted fill; and, being borderless, its
+`focused`/`focusWithin` receive the reverse-video safety net described under
+[styling.md](styling.md#visual-states) when they would otherwise match `Normal`.
+`Theme.GetInteractiveRowStyleSet()` is that section viewed through
+`ControlStyle`, so every row consumer resolves through one path.
 
-`container`, `window`, `popup`, and `tooltip` deliberately do **not** follow
-`control` past `Normal`. They are passive chrome: a panel does not light up
-because the pointer is over its content, and a window answers activation rather
-than hover. For those four, an unauthored state simply is that type's resolved
-`Normal`, and a theme that wants one to react must author the state on that
-section itself. One exception exists in code, not JSON: `Window` defaults its
-`focusWithin` border to `SemanticColor.ActiveBorder` unless a theme explicitly
-authors `styles.window.focusWithin` itself, mirroring the application-owned
-`IsActive` flag every mounted `Window` maps onto that state (see
-[styling.md](styling.md#shared-chrome)).
+`panel`, `container`, `window`, `popup`, and `tooltip` deliberately do **not**
+follow any parent past `Normal`. They are passive chrome: a panel does not light
+up because the pointer is over its content, and a window answers activation
+rather than hover. For those five, an unauthored state simply is that type's
+resolved `Normal`, and a theme that wants one to react must author the state on
+that section itself. One exception exists in code, not JSON: `Window` defaults
+its `focusWithin` border to `SemanticColor.ActiveBorder` unless a theme
+explicitly authors `styles.window.focusWithin` itself, mirroring the
+application-owned `IsActive` flag every mounted `Window` maps onto that state
+(see [styling.md](styling.md#shared-chrome)).
 
 A leaf control style's own per-state appearance is not authored JSON at all:
 every state a leaf resolves - `pointerOver`, `focused`, `pressed`, and the rest
@@ -264,26 +345,27 @@ every state a leaf resolves - `pointerOver`, `focused`, `pressed`, and the rest
 - borrows its declared fallback's own resolved per-state **delta** (what that
   role section's JSON changed about that state, not its whole resolved value)
   and re-applies just that delta onto the leaf's own resolved `Normal`. A
-  `Button` falling back to `input`, for example, reacts to
-  `styles.input.pointerOver` exactly as `input` itself does, with no
-  `styles.button.pointerOver` of its own to layer on top or narrow it with -
-  there is no such section any more.
+  `CheckBox` falling back to `toggle`, for example, reacts to
+  `styles.toggle.pointerOver` - or, when a theme never authors that, to the
+  `styles.input.pointerOver` that `toggle` inherits - exactly as `toggle` itself
+  does, with no `styles.checkBox.pointerOver` of its own to layer on top or
+  narrow it with.
 
-The bundled themes keep `control`, `container`, and `window` visually unchanged
-on hover. This keeps text, table shells, tab content, grouping surfaces, and
-other passive ancestry stable even though physical pointer membership remains
-observable. The bundled `input` section uses `surface` for its normal face and
-`activeControl` during hover (authored directly on `input.pointerOver`), which
-every borderless interactive leaf - `Button` included - inherits through its
-fallback. Focus keeps the normal `surface`/`controlText` face, adds the focused
-text decoration, and uses `activeBorder` for chrome; focus therefore remains
-visible without introducing an alarm-like fill or text color. Borderless
+The bundled themes keep `control`, `panel`, `container`, and `window` visually
+unchanged on hover. This keeps text, table shells, tab content, grouping
+surfaces, and other passive ancestry stable even though physical pointer
+membership remains observable. The bundled `input` section uses `surface` for
+its normal face and `activeControl` during hover (authored directly on
+`input.pointerOver`), which `button`, `toggle`, and every borderless interactive
+leaf inherit. Focus keeps the normal `surface`/`controlText` face, adds the
+focused text decoration, and uses `activeBorder` for chrome; focus therefore
+remains visible without introducing an alarm-like fill or text color. Borderless
 interactive styles rebase those `input` state colors onto `control` geometry.
-`CheckBox`, `RadioButton`, and `CommandBarItem` instead fall back to `input`
-directly rather than rebasing onto `control` geometry; they opt in only to the
-same reverse-video fallback for Focused/FocusWithin, since neither has a border
-of its own to carry a focus cue. A custom theme may author an explicit hover
-contribution on any of the six sections that wants one.
+`CheckBox` and `RadioButton` fall back to `toggle`, and `CommandBarItem` to
+`input`, rather than rebasing onto `control` geometry; they opt in only to the
+same reverse-video fallback for Focused/FocusWithin, since none has a border of
+its own to carry a focus cue. A custom theme may author an explicit hover
+contribution on any of the ten sections that wants one.
 
 Every bundled `window` style uses `windowSurface` for its normal background and
 `windowText` - or `surfaceText`, when the desktop and the dialogs have opposite
@@ -352,7 +434,7 @@ take precedence over everything a theme supplies.
 Every bundled theme except the two zero-config defaults (`default-dark`/
 `default-light`, backing `ThemeCatalog.Dark`/`ThemeCatalog.White`) restyles
 `input`'s hover and focus cues and `window`'s frame; none of the sixteen authors
-anything beyond the six sections and the root-level `glyphs` field described
+anything beyond the ten sections and the root-level `glyphs` field described
 next - there is no other section left to author. A leaf's own appearance,
 wherever it differs from its fallback's, now comes exclusively from its
 code-owned `complete` logic (semantic colors it resolves directly, such as
@@ -360,34 +442,35 @@ code-owned `complete` logic (semantic colors it resolves directly, such as
 
 The bundled `turbo-vision` theme is sourced from Turbo Vision's published
 `cpAppColor` and `cpGrayDialog` palettes on the canonical CGA/VGA RGB values
-without interpolation. `window` is the blue desktop (0x71), `windowSurface` the
-light-gray dialog face (0x70) whose frame turns white while the dialog is active
-(0x7F) and whose close mark is green (0x7A), `bar` the light-gray menu and
-status strip with black text (0x70) that drop-down menus share, `hotkey`
-Borland's red access key (0x74), `control` the ordinary light-gray face with
-black text and black lines, `surface` the black-on-cyan face of Borland's
-clusters (0x30) for every input-family control, selection the green highlight
-(0x20), press feedback white on blue (0x1F), `accent` blue (the scrollbar thumb
-and progress fill of a cyan-on-blue scrollbar, 0x13/0x31), shadows black, and
-the glyph family `classic` for `[X]` check boxes, `(•)` radio buttons, and
-shaded scrollbar tracks. Because the desktop and the dialogs have opposite
-polarity, `windowText` (light gray, for text and tooltips on the desktop) and
-`surfaceText` (black, the window face text) differ. The one departure from
-Borland's bytes is deliberate: a SharpVision theme has a single `input` face for
-buttons, check boxes, radio buttons, combo boxes, and text fields, so that face
-takes the cyan of Borland's clusters rather than the blue of its input line -
-red access keys stay legible on cyan and vanish on blue. Its `ReliefHighlight`
-and `ReliefShade` roles are exact white and black. Among built-in styles, only
-`ContainerStyle` opts into relief, using the sunken mapping; Input, Button,
-Window, Popup, and Tooltip borders remain flat in every state. The other bundled
-themes keep every built-in border flat. Application-authored complete borders
-may still opt into `Raised` or `Sunken` relief explicitly. Load the theme with
-`ThemeCatalog.Load("turbo-vision")`; the Showcase theme picker discovers it from
-the same catalog automatically. A layout panel such as `Dock`, `Grid`, or
-`Stack` paints the opaque `control` face, so an application whose authored root
-is a panel and that wants the blue desktop to show through gives that root a
-transparent `Face`; the [`Screen`](screen.md#overview) beneath it already paints
-the `window` plane.
+without interpolation, each Borland role on the SharpVision role section that
+owns it. `window` is the blue desktop (0x71); `windowSurface` the light-gray
+dialog face (0x70) whose frame turns white while the dialog is active (0x7F),
+whose close mark is green (0x7A), and whose labels carry a yellow access key
+(0x7E); `bar` the light-gray menu and status strip with black text and red
+access keys (0x70/0x74) that drop-down menus share; `control` the ordinary
+light-gray face with black text and black lines; `input` Borland's borderless
+white-on-blue input line (0x1F); `button` the black-on-green push button with a
+yellow access key and a black block shadow (0x20/0x2E) that turns white while
+focused (0x2F), with two cells of padding; `toggle` the black-on-cyan cluster
+with a yellow access key (0x30/0x3E) that turns white while focused (0x3F);
+`item` the black-on-cyan list viewer (0x30) whose whole surface a `ListView`
+paints; `panel` a transparent plane, because a Borland `TGroup` arranges its
+views and paints nothing of its own - so the blue desktop shows through an
+application's root `Dock` and the gray dialog face shows through a dialog's
+`Stack`; selection the green highlight (0x20); press feedback black on cyan
+(0x30); `accent` blue (the checked radio mark, scrollbar thumb, and progress
+fill); shadows black; no underline on any access key (`attributes.hotkey` is
+empty, as Borland drew them); and the glyph family `classic` for `[X]` check
+boxes, `(•)` radio buttons, and shaded scrollbar tracks. Because the desktop and
+the dialogs have opposite polarity, `windowText` (light gray, for text and
+tooltips on the desktop) and `surfaceText` (black, the window face text) differ.
+Its `ReliefHighlight` and `ReliefShade` roles are exact white and black. Among
+built-in styles, only `ContainerStyle` opts into relief, using the sunken
+mapping; Input, Button, Window, Popup, and Tooltip borders remain flat in every
+state. The other bundled themes keep every built-in border flat.
+Application-authored complete borders may still opt into `Raised` or `Sunken`
+relief explicitly. Load the theme with `ThemeCatalog.Load("turbo-vision")`; the
+Showcase theme picker discovers it from the same catalog automatically.
 
 ### Glyph families
 
@@ -428,10 +511,10 @@ A section key is not a free-form string: it is **derived from the style type
 that owns it**. Drop a trailing `Style` and lower-case the first character - so
 `ControlStyle` owns `control`, `InputStyle` owns `input`, and the same rule
 accounts for the remaining four well-known roots. Deriving the key from the type
-keeps the two from drifting apart, but only the six well-known roots ever
+keeps the two from drifting apart, but only the ten well-known roots ever
 resolve a section through this derivation: a leaf control style's own derived
-key (`ButtonStyle` would derive `button`) is never looked up against a theme
-document at all, since `styles` admits only the six names regardless of what a
+key (`CheckBoxStyle` would derive `checkBox`) is never looked up against a theme
+document at all, since `styles` admits only the ten names regardless of what a
 type's own key would compute to.
 
 Register a library style type's fallback definition with
@@ -570,6 +653,30 @@ require no internal access; see
         "border": { "foreground": "activeBorder" }
       }
     },
+    "button": {
+      "normal": {
+        "padding": { "x": 2, "y": 0 },
+        "face": { "background": "accent", "accessKeyColor": "warn" },
+        "border": { "sides": "none" },
+        "shadow": {
+          "visible": true,
+          "mode": "fractionalBlock",
+          "offset": { "x": 1, "y": 1 }
+        }
+      }
+    },
+    "toggle": {
+      "normal": {
+        "face": { "background": "panel" },
+        "border": { "sides": "none" }
+      }
+    },
+    "item": {
+      "pointerOver": { "face": { "foreground": "accent" } }
+    },
+    "panel": {
+      "normal": { "face": { "background": "transparent" } }
+    },
     "container": {
       "normal": { "border": { "sides": "all", "glyphStyle": "light" } }
     },
@@ -621,7 +728,7 @@ Theme content failures remain source-labelled `InvalidDataException` values.
 
 For typed construction, create an unfrozen `Theme`, configure semantic colors
 with `SetColor`, semantic decorations with `SetAttributes`, the glyph family
-with `SetGlyphs`, and any of the six root state sets with `SetStyleSet`, then
+with `SetGlyphs`, and any of the ten root state sets with `SetStyleSet`, then
 call `Freeze`. Mutation after freezing throws. `Application.Theme` accepts only
 a frozen instance, so unfinished construction state cannot enter a live retained
 tree.

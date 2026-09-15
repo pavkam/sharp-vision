@@ -11,15 +11,18 @@ using TextLayout = SharpVision.Text.Layout;
 using UnicodeWidth = Width;
 
 /// <summary>Displays grapheme-safe inline-markup text through semantic terminal cells.</summary>
-/// <remarks>Parsed spans cache the effective caption-owned mnemonic settings and resolved hotkey
-/// color. An active marked mnemonic registers a render-only dependency on
-/// <see cref="Theme.Hotkey"/> so a theme replacement reparses before the next frame without
-/// remeasuring unchanged text geometry.</remarks>
+/// <remarks>Parsed spans cache the effective caption-owned mnemonic settings, the access-key
+/// color resolved from this text's own face (<see cref="Face.AccessKeyColor"/>, inherited from the
+/// owning caption's plane the way the foreground is), and the theme's access-key attributes. An
+/// active marked mnemonic registers a render-only dependency on
+/// <see cref="SemanticDecoration.Hotkey"/> so a theme replacement that changes only those
+/// attributes reparses before the next frame without remeasuring unchanged text geometry; a
+/// changed color already arrives through ordinary appearance invalidation.</remarks>
 [PublicAPI]
 public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 {
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
+    private static readonly ThemeValueDependency<TerminalAttributes> _hotkeyAttributesThemeDependency = new(
+        static theme => theme.ResolveAttributes(SemanticDecoration.Hotkey),
         InvalidationImpact.Render);
 
     private string _display = string.Empty;
@@ -28,6 +31,7 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
     private bool _parsedHighlightMnemonic;
     private bool _parsedUseMnemonic;
     private Color? _parsedHotkeyColor;
+    private TerminalAttributes _parsedHotkeyAttributes;
     private int _cachedWidth;
     private Overflow _cachedOverflow;
     private Alignment _cachedAlignment;
@@ -247,32 +251,40 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         var captionOwner = isCaption ? Parent : null;
         var useMnemonic = captionOwner?.UseMnemonic ?? UseMnemonic;
         var highlightMnemonic = captionOwner?.EffectiveIsEnabled ?? EffectiveIsEnabled;
-        var hasHighlightedMnemonic =
-            useMnemonic &&
-            highlightMnemonic &&
-            Content.AsSpan().TryGetKey(out _);
-        Color? hotkeyColor = hasHighlightedMnemonic
-            ? ResolveThemeValue(_hotkeyThemeDependency)
-            : null;
+        var hasMarkedMnemonic = useMnemonic && Content.AsSpan().TryGetKey(out _);
+        var hasHighlightedMnemonic = hasMarkedMnemonic && highlightMnemonic;
 
-        if (!hasHighlightedMnemonic)
+        // The access-key color is a channel of this text's own resolved face - which, for a
+        // transparent caption, is its owner's face on its owner's current plane - so a mnemonic on
+        // a dark button and one on a light menu bar each get the color their theme chose for that
+        // plane. Only the grapheme's attributes are theme-wide.
+        Color? hotkeyColor = hasHighlightedMnemonic
+            ? GetResolvedAppearance(GetAppearanceState()).Face.AccessKeyColor.Literal
+            : null;
+        var hotkeyAttributes = hasMarkedMnemonic
+            ? ResolveThemeValue(_hotkeyAttributesThemeDependency)
+            : TerminalAttributes.None;
+
+        if (!hasMarkedMnemonic)
         {
-            SetThemeValueDependency(_hotkeyThemeDependency, active: false);
+            SetThemeValueDependency(_hotkeyAttributesThemeDependency, active: false);
         }
 
         if (ReferenceEquals(_parsedContent, Content) &&
             _parsedUseMnemonic == useMnemonic &&
             _parsedHighlightMnemonic == highlightMnemonic &&
-            _parsedHotkeyColor == hotkeyColor)
+            _parsedHotkeyColor == hotkeyColor &&
+            _parsedHotkeyAttributes == hotkeyAttributes)
         {
             return;
         }
 
-        _spans = Content.ToMarkup(useMnemonic, highlightMnemonic, hotkeyColor).Parse(out _display);
+        _spans = Content.ToMarkup(useMnemonic, highlightMnemonic, hotkeyColor, hotkeyAttributes).Parse(out _display);
         _parsedContent = Content;
         _parsedUseMnemonic = useMnemonic;
         _parsedHighlightMnemonic = highlightMnemonic;
         _parsedHotkeyColor = hotkeyColor;
+        _parsedHotkeyAttributes = hotkeyAttributes;
         _layoutValid = false;
     }
 
