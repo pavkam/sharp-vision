@@ -12,7 +12,7 @@
     <PackageTags>terminal;terminal-ui;tui;console;syntax-highlighting;code;kate</PackageTags>
     <Description>Read-only, selectable, foldable syntax-highlighted code display for SharpVision, driven by Kate/KSyntaxHighlighting-format definitions.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>SharpVision.SyntaxHighlighting 1.6.0-beta.2 prerelease: version-aligned with the other SharpVision packages. CodeView selection now takes part in the application-wide single text selection introduced in SharpVision 1.6.0-beta.2: selecting in a CodeView collapses ranges held by other owners and vice versa. Since 1.6.0-beta.1 CodeView derives from the core ScrollableCompositeControlBase and uses the shared ProjectionSurface, scroll-bridge, PropertyChanged, attachment, and glyph-resolution seams introduced in SharpVision 1.6.0-beta.1, replacing its own CodeViewContent and hand-rolled copies; no public behavior change.</PackageReleaseNotes>
+    <PackageReleaseNotes>SharpVision.SyntaxHighlighting 1.6.0-beta.3 prerelease: version-aligned with the other SharpVision packages; no functional changes since 1.6.0-beta.2, in which CodeView selection started to take part in the application-wide single text selection introduced in SharpVision 1.6.0-beta.2: selecting in a CodeView collapses ranges held by other owners and vice versa. Since 1.6.0-beta.1 CodeView derives from the core ScrollableCompositeControlBase and uses the shared ProjectionSurface, scroll-bridge, PropertyChanged, attachment, and glyph-resolution seams introduced in SharpVision 1.6.0-beta.1, replacing its own CodeViewContent and hand-rolled copies; no public behavior change.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
