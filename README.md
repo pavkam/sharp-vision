@@ -7,6 +7,7 @@ Build rich terminal applications in C# without giving up Unicode, predictable
 layout, or correct terminal behavior.
 
 [![CI](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-publish.yml/badge.svg)](https://github.com/pavkam/sharp-vision/actions/workflows/sharpvision-publish.yml)
+[![Coverage](https://codecov.io/gh/pavkam/sharp-vision/graph/badge.svg)](https://codecov.io/gh/pavkam/sharp-vision)
 [![License](https://img.shields.io/github/license/pavkam/sharp-vision)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/pavkam/sharp-vision)](https://github.com/pavkam/sharp-vision/issues)
 [![NuGet alpha](https://img.shields.io/nuget/vpre/SharpVision?label=NuGet)](https://www.nuget.org/packages/SharpVision)

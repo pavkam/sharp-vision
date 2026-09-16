@@ -62,6 +62,8 @@ jobs:
 
       - name: ⏯️ Build and test
         uses: ./.github/actions/build-and-test
+        with:
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: 🔖 Read package versions
         id: package-versions

@@ -1,0 +1,49 @@
+# Codecov configuration for SharpVision.
+#
+# Each CI platform leg uploads the merged Cobertura report that ReportGenerator already produces
+# from the per-project coverage runs, tagged with a platform flag. Codecov merges the three legs
+# into one report, so code that only executes on one operating system (the Windows console host,
+# the Unix pseudoterminal lane) still counts as covered rather than dragging the total down on the
+# legs that cannot reach it.
+#
+# The gate is the project status: the merged line coverage of the shipped libraries under `src/`
+# must reach 90 percent. It is an absolute floor, not a comparison against the base commit, so a
+# pull request cannot pass merely by not making things worse. The patch status stays informational:
+# it annotates new code but never blocks on its own, because a small, fully-legitimate change to a
+# thinly-covered region would otherwise fail on the delta while the project total stayed healthy.
+
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "80...100"
+  status:
+    project:
+      default:
+        target: 90%
+        threshold: 0%
+        if_ci_failed: error
+    patch:
+      default:
+        informational: true
+
+# Tests and example applications are not product code. The coverage settings under `tests/` already
+# exclude both paths at collection time; this mirrors that rule on the Codecov side so a report
+# produced without those settings still cannot pull non-product files into the 90 percent figure.
+ignore:
+  - "examples/**"
+  - "tests/**"
+
+# Flags are not carried forward. A leg that failed to upload already fails its own job, and the
+# status must reflect what this commit actually proved, not what a previous commit's upload for the
+# same platform happened to say.
+flag_management:
+  default_rules:
+    carryforward: false
+
+comment:
+  layout: "condensed_header, diff, flags"
+  behavior: default
+  require_changes: false

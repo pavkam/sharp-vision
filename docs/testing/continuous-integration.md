@@ -38,11 +38,41 @@ publication still cannot happen while lint is failing, because the push job
 needs both gates.
 
 The shared composite action runs the Release build, the tests with coverage, the
-real-pseudoterminal lane on non-Windows runners, coverage-report generation, and
-artifact publication, in that order. Tests run on the Microsoft Testing
-Platform, enforce a discovery minimum, and produce xUnit TRX plus Cobertura
-output. The action publishes the test-result check and uploads both the raw TRX
-files and an HTML/Cobertura/badge coverage report as workflow artifacts.
+real-pseudoterminal lane on non-Windows runners, coverage-report generation, the
+Codecov upload, and artifact publication, in that order. Tests run on the
+Microsoft Testing Platform, enforce a discovery minimum, and produce xUnit TRX
+plus Cobertura output. The action publishes the test-result check and uploads
+both the raw TRX files and an HTML/Cobertura/badge coverage report as workflow
+artifacts.
+
+Each platform leg uploads the single Cobertura file that ReportGenerator merged
+from the per-project runs to Codecov, tagged with a flag named after the runner
+operating system. Codecov merges the legs into one report, so code that only
+executes on one operating system — the Windows console host, the Unix
+pseudoterminal lane — counts as covered rather than dragging the total down on
+the legs that cannot reach it. The uploader searches for nothing on its own and
+an upload failure fails the leg; a silently missing upload would otherwise let
+the status be computed from an incomplete report. Flags are not carried forward
+between commits for the same reason. The upload token is the `CODECOV_TOKEN`
+repository secret, passed into the action by each workflow because a composite
+action cannot read secrets itself; pull requests from forks receive no secret
+and use the tokenless path Codecov permits for public repositories.
+
+The Codecov project status, configured in the root
+[`codecov.yml`](../../codecov.yml), requires the merged line coverage of the
+libraries under `src/` to reach 90 percent. Example applications and test
+projects, including the shared `SharpVision.Test.Shared` harness, are excluded
+by source path in both coverage settings files at collection time, and
+`codecov.yml` ignores the same two paths so the figure stays product-only even
+for a report produced without those settings. The target is an absolute floor
+rather than a comparison against the base commit, so a change cannot pass merely
+by not making coverage worse. The patch status is informational: it annotates
+the coverage of changed lines but never blocks on its own, because a small,
+legitimate change inside a thinly covered region would otherwise fail on the
+delta while the project total stayed healthy. Codecov reports the status as a
+commit status on the pull request; it blocks merging only when the repository's
+branch protection lists `codecov/project` as a required check. The coverage
+badge in the [README](../../README.md#sharpvision) reads the same merged figure.
 
 The target the action actually runs is `make test-ci`. It also runs
 `npm run test:docs` — the Node unit suite covering the `scripts/` gate layer
@@ -182,4 +212,5 @@ terminal, Unicode, rendering, and control behavior.
 | Format and lint | No C# formatting/analyzer, Markdown formatting/lint, or local-link violations; runs as its own job beside build and test. |
 | Build           | Zero warnings/errors across production, examples, showcase, tests, and XML documentation.                                 |
 | Test            | Minimum discovery is met and every discovered test passes without retries.                                                |
+| Coverage        | Every platform leg uploads its merged Cobertura report to Codecov, and the merged `src/` line coverage is at least 90%.   |
 | Package         | All five packages and symbols use the approved version and validated metadata; dependencies publish before dependents.    |

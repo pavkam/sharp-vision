@@ -13,6 +13,14 @@ inputs:
     description: Coverage report output directory.
     required: false
     default: coverage-report
+  codecov-token:
+    description: >-
+      Codecov upload token. A composite action cannot read `secrets` itself, so the calling
+      workflow passes `secrets.CODECOV_TOKEN` through here. Pull requests from forks receive an
+      empty value because secrets are withheld from them; the uploader then falls back to the
+      tokenless path Codecov permits for public repositories.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -36,6 +44,24 @@ runs:
         reports: "**/TestResults/**/*.cobertura.xml"
         targetdir: ${{ inputs.coverage-report-path }}
         reporttypes: HtmlInline;Cobertura;Badges
+
+    # Uploads the single Cobertura file ReportGenerator merged from the per-project runs above,
+    # not the raw per-project files, so Codecov receives one deterministic report per platform and
+    # search is disabled so a stray coverage file elsewhere in the workspace cannot be picked up.
+    # Each leg is tagged with its platform flag; Codecov merges the three so platform-specific code
+    # covered on only one operating system still counts. An upload failure fails the leg: the
+    # 90 percent floor is enforced from this data, and a silently missing upload would let the
+    # status be computed from an incomplete report.
+    - name: ☂️ Upload coverage to Codecov
+      uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+      with:
+        token: ${{ inputs.codecov-token }}
+        files: ${{ inputs.coverage-report-path }}/Cobertura.xml
+        disable_search: true
+        flags: ${{ runner.os }}
+        name: ${{ runner.os }}
+        fail_ci_if_error: true
+        verbose: false
 
     - name: 📤 Upload test results
       if: ${{ always() }}
