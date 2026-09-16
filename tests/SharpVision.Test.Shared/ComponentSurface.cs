@@ -260,12 +260,12 @@ public sealed class ComponentSurface: IAsyncDisposable
                 _ = idle.TrySetResult();
             }
 
-            application.Idle += OnIdle;
-
             try
             {
-                await application.Dispatcher.InvokeAsync(
+                await InvokeThenArmIdleAsync(
+                    application,
                     () => application.Focus.Focus(host).ShouldBeTrue(),
+                    OnIdle,
                     cancellationToken);
 
                 // The Idle event fires the instant the dispatcher queue drains, with no debounce,
@@ -323,8 +323,6 @@ public sealed class ComponentSurface: IAsyncDisposable
             _ = idle.TrySetResult();
         }
 
-        Application.Idle += OnIdle;
-
         try
         {
             // Advance on the dispatcher, not on the calling thread. ManualTimeProvider walks each
@@ -337,8 +335,10 @@ public sealed class ComponentSurface: IAsyncDisposable
             // part of a step while the surface reported itself settled. IsRunning the advance as
             // dispatcher work puts every write and every read of the clock on one thread, so the
             // interval a callback observes is always the whole requested duration.
-            await Application.Dispatcher.InvokeAsync(
+            await InvokeThenArmIdleAsync(
+                Application,
                 () => timeProvider.Advance(value),
+                OnIdle,
                 _cancellationToken);
             await Application.Dispatcher.InvokeAsync(static () => { }, _cancellationToken);
             await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), description, _cancellationToken);
@@ -379,6 +379,50 @@ public sealed class ComponentSurface: IAsyncDisposable
         ShouldHaveCursor(position, visible);
         _terminal.Screen.CursorShape.ShouldBe(shape);
     }
+
+    /// <summary>Runs <paramref name="work"/> on the dispatcher and subscribes <paramref name="onIdle"/> to
+    /// <see cref="Application.Idle"/> from the dispatcher thread, immediately after the work returns.</summary>
+    /// <remarks>
+    /// <para>
+    /// The subscription must happen on the dispatcher thread, after the work, and not on the calling
+    /// thread before it. <see cref="Application.Idle"/> is published by the dispatcher thread every
+    /// time its queue drains with nothing pending, including the drain that follows an unrelated
+    /// read the caller has just awaited. A handler subscribed from the calling thread can therefore
+    /// receive an idle notification that predates the work: the caller's continuation runs on the
+    /// pool while the dispatcher thread is still on its way to publishing the idle for the previous
+    /// drain, and whichever thread wins decides whether that notification is observed. When it is,
+    /// the caller settles the moment the work returns, before the frame the work invalidated has
+    /// been rendered, and an assertion against the modeled screen reads the previous frame.
+    /// </para>
+    /// <para>
+    /// Idle is only ever published between work items on the dispatcher thread, so nothing can be
+    /// published between <paramref name="work"/> returning and the subscription that follows it in
+    /// the same work item. The first notification the handler sees is then guaranteed to follow the
+    /// work, and because <see cref="Application"/> processes pending invalidation instead of
+    /// publishing idle, it also follows the frame the work produced.
+    /// </para>
+    /// <para>
+    /// If <paramref name="work"/> throws, the handler is never subscribed; a caller's unconditional
+    /// unsubscribe in its <c>finally</c> block is a harmless no-op in that case.
+    /// </para>
+    /// </remarks>
+    /// <param name="application">The hosting application whose dispatcher runs the work.</param>
+    /// <param name="work">The work to run on the dispatcher thread.</param>
+    /// <param name="onIdle">The idle handler to subscribe after the work has run.</param>
+    /// <param name="cancellationToken">Requests cancellation of the dispatcher invocation.</param>
+    /// <returns>A task completed once the work has run and the handler is subscribed.</returns>
+    private static ValueTask InvokeThenArmIdleAsync(
+        Application application,
+        Action work,
+        EventHandler onIdle,
+        CancellationToken cancellationToken) =>
+        application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                work();
+                application.Idle += onIdle;
+            },
+            cancellationToken);
 
     /// <summary>Waits for one settle signal while watching the hosting application for shutdown.</summary>
     /// <remarks>
@@ -592,11 +636,9 @@ public sealed class ComponentSurface: IAsyncDisposable
             _ = idle.TrySetResult();
         }
 
-        Application.Idle += OnIdle;
-
         try
         {
-            await Application.Dispatcher.InvokeAsync(update, _cancellationToken);
+            await InvokeThenArmIdleAsync(Application, update, OnIdle, _cancellationToken);
             await SettleAsync(Application, idle.Task, TimeSpan.FromSeconds(2), description, _cancellationToken);
         }
         catch (TimeoutException exception)
