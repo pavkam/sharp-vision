@@ -125,8 +125,9 @@ public sealed class FloatingSurfaceBaseTests
         probe.SurfaceBounds.ShouldBe(default);
     }
 
-    /// <summary>Verifies shared fade durations validate timer bounds and remain immutable for the
-    /// complete presented lifetime.</summary>
+    /// <summary>Verifies shared fade durations validate timer bounds - accepting zero and the
+    /// shared timer-interval seam's maximum, rejecting negative and sub-millisecond positive
+    /// values - and remain immutable for the complete presented lifetime.</summary>
     [Fact]
     public async Task FadeDurations_WhenInvalidOrPresented_RejectBeforeMutationAsync()
     {
@@ -137,10 +138,19 @@ public sealed class FloatingSurfaceBaseTests
         };
 
         _ = Should.Throw<ArgumentOutOfRangeException>(() => probe.FadeInDuration = TimeSpan.FromTicks(-1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => probe.FadeInDuration = TimeSpan.FromTicks(9999));
         _ = Should.Throw<ArgumentOutOfRangeException>(() =>
             probe.FadeOutDuration = TimeSpan.FromMilliseconds((double) int.MaxValue + 1));
         probe.FadeInDuration.ShouldBe(TimeSpan.FromMilliseconds(40));
         probe.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(60));
+
+        probe.FadeInDuration = TimeSpan.Zero;
+        probe.FadeOutDuration = TimeSpan.FromMilliseconds(int.MaxValue);
+        probe.FadeInDuration.ShouldBe(TimeSpan.Zero);
+        probe.FadeOutDuration.ShouldBe(TimeSpan.FromMilliseconds(int.MaxValue));
+        probe.FadeInDuration = TimeSpan.FromMilliseconds(40);
+        probe.FadeOutDuration = TimeSpan.FromMilliseconds(60);
+
         await using var surface = await ComponentSurface.MountAsync(
             probe,
             new Size(20, 6),

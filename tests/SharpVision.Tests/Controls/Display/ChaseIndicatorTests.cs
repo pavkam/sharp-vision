@@ -153,6 +153,43 @@ public sealed class ChaseIndicatorTests
         indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(400));
     }
 
+    /// <summary>Verifies a too-small or too-large FadeDuration is rejected before the previous value
+    /// changes, matching the shared timer-interval seam's own contract.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void FadeDuration_WhenIntervalIsBelowOneMillisecond_ThrowsArgumentOutOfRangeException(int milliseconds)
+    {
+        // Arrange
+        var indicator = new ChaseIndicator();
+
+        // Act
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => indicator.FadeDuration = TimeSpan.FromMilliseconds(milliseconds));
+
+        // Assert
+        indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(400));
+    }
+
+    /// <summary>Verifies the maximum interval the shared timer-interval seam accepts is accepted,
+    /// and one millisecond above it is rejected.</summary>
+    [Fact]
+    public void FadeDuration_WhenAtMaximumSupportedInterval_AcceptsAndRejectsAboveIt()
+    {
+        // Arrange
+        var indicator = new ChaseIndicator
+        {
+            // Act
+            FadeDuration = TimeSpan.FromMilliseconds(int.MaxValue)
+        };
+
+        // Assert
+        indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(int.MaxValue));
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => indicator.FadeDuration = TimeSpan.FromMilliseconds((double) int.MaxValue + 1));
+        indicator.FadeDuration.ShouldBe(TimeSpan.FromMilliseconds(int.MaxValue));
+    }
+
     /// <summary>Verifies retained trail storage has a fixed public bound and rejects larger values
     /// before observable state changes.</summary>
     [Fact]

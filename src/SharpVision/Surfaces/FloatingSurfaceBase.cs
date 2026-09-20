@@ -1161,7 +1161,7 @@ public abstract class FloatingSurfaceBase: ContentControl
 
         if (value > TimeSpan.Zero)
         {
-            DispatcherTimer.ValidateInterval(value, propertyName);
+            ControlTimer.ValidateInterval(value, propertyName);
         }
 
         VerifyMutable();

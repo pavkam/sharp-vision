@@ -155,7 +155,7 @@ public sealed class ChaseIndicator: AnimatedIndicatorBase, IStyled<ChaseIndicato
         get;
         set
         {
-            DispatcherTimer.ValidateInterval(value, nameof(value));
+            ControlTimer.ValidateInterval(value, nameof(value));
 
             _ = SetPropertyAndContinue(ref field, value, InvalidationImpact.Render, ScheduleNext);
         }
