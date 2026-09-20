@@ -227,102 +227,90 @@ public sealed class CommandPalette: CompositeControlBase
         set => _endAffix.Value = value;
     }
 
-    /// <summary>Gets or sets the complete local editor border.</summary>
-    /// <remarks>Assigning either <see cref="FieldBorder"/> or <see cref="FieldShadow"/> sets the
-    /// editor's complete local style: it snapshots the editor's whole resolved presentation into a
-    /// local <see cref="TextInputStyle"/>, immediately and permanently disabling the editor's
-    /// focused, hovered, and disabled state-reactivity for its ENTIRE appearance, not just the
-    /// assigned facet, until both <see cref="ResetFieldBorder"/> and <see cref="ResetFieldShadow"/>
-    /// have been called. A theme-authored facet neither property names (its affix gap, for
-    /// instance) is likewise pinned to the value it resolved to at assignment time and stops
-    /// tracking a later theme swap until both resets have been called.</remarks>
+    /// <summary>Gets or sets a facet-only override for the editor border.</summary>
+    /// <remarks>Assigning this overlays only the border facet on the editor's Normal appearance;
+    /// every other resolved facet - the face, the shadow, and the editor's own per-state border
+    /// deltas (focused, hovered, disabled) - keeps layering on top of the override and keeps
+    /// tracking a later theme swap exactly as it would with no override active. Call
+    /// <see cref="ResetFieldBorder"/> to return the border facet to theme ownership.</remarks>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Border FieldBorder
     {
-        get => _input.ActualStyle.Border;
+        get => _input.FieldBorderOverride ?? _input.ActualStyle.Border;
         set
         {
             VerifyMutable();
 
-            if (_input.ActualStyle.Border == value)
+            // Compared against the effective value, not the raw override: without a local
+            // override yet, reassigning today's theme-resolved border must stay a no-op instead
+            // of pinning that resolved value as a new local override.
+            if (FieldBorder == value)
             {
                 return;
             }
 
-            _input.Style = _input.ActualStyle with { Border = value };
+            _input.FieldBorderOverride = value;
             NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
         }
     }
 
-    /// <summary>Returns the editor border to the active input appearance.</summary>
+    /// <summary>Returns the editor border to the active theme appearance.</summary>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public void ResetFieldBorder()
     {
         VerifyMutable();
 
-        if (_input.Style is not { } local)
+        if (_input.FieldBorderOverride is null)
         {
             return;
         }
 
-        // The border alone returns to the theme-owned appearance; any other locally assigned
-        // facet (a shadow set through FieldShadow, for instance) survives untouched. Only when
-        // that leaves nothing but the theme-owned appearance does the local style collapse back
-        // to null, so a later theme swap keeps tracking the border live instead of staying pinned
-        // to today's resolved value.
-        var fallback = TextInputStyle.Definition.Resolve(null, _input.Theme);
-        var updated = local with { Border = fallback.Border };
-        _input.Style = updated == fallback ? null : updated;
+        _input.FieldBorderOverride = null;
         NotifyPropertyChanged(nameof(FieldBorder), InvalidationImpact.None);
     }
 
-    /// <summary>Gets or sets the complete local editor shadow.</summary>
-    /// <remarks>Assigning either <see cref="FieldShadow"/> or <see cref="FieldBorder"/> sets the
-    /// editor's complete local style: it snapshots the editor's whole resolved presentation into a
-    /// local <see cref="TextInputStyle"/>, immediately and permanently disabling the editor's
-    /// focused, hovered, and disabled state-reactivity for its ENTIRE appearance, not just the
-    /// assigned facet, until both <see cref="ResetFieldShadow"/> and <see cref="ResetFieldBorder"/>
-    /// have been called. A theme-authored facet neither property names is likewise pinned to the
-    /// value it resolved to at assignment time and stops tracking a later theme swap until both
-    /// resets have been called.</remarks>
+    /// <summary>Gets or sets a facet-only override for the editor shadow.</summary>
+    /// <remarks>Assigning this overlays only the shadow facet on the editor's Normal appearance;
+    /// every other resolved facet - the face, the border, and the editor's own per-state shadow
+    /// deltas - keeps layering on top of the override and keeps tracking a later theme swap
+    /// exactly as it would with no override active. Call <see cref="ResetFieldShadow"/> to return
+    /// the shadow facet to theme ownership.</remarks>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public Shadow FieldShadow
     {
-        get => _input.ActualStyle.Shadow;
+        get => _input.FieldShadowOverride ?? _input.ActualStyle.Shadow;
         set
         {
             VerifyMutable();
 
-            if (_input.ActualStyle.Shadow == value)
+            // Compared against the effective value, not the raw override: see the matching
+            // comment on FieldBorder's setter.
+            if (FieldShadow == value)
             {
                 return;
             }
 
-            _input.Style = _input.ActualStyle with { Shadow = value };
+            _input.FieldShadowOverride = value;
             NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
         }
     }
 
-    /// <summary>Returns the editor shadow to the active input appearance.</summary>
+    /// <summary>Returns the editor shadow to the active theme appearance.</summary>
     /// <exception cref="InvalidOperationException">The attached palette is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The palette is disposed.</exception>
     public void ResetFieldShadow()
     {
         VerifyMutable();
 
-        if (_input.Style is not { } local)
+        if (_input.FieldShadowOverride is null)
         {
             return;
         }
 
-        // Mirrors ResetFieldBorder: only the shadow facet returns to the theme-owned appearance,
-        // collapsing the local style back to null only once nothing local remains.
-        var fallback = TextInputStyle.Definition.Resolve(null, _input.Theme);
-        var updated = local with { Shadow = fallback.Shadow };
-        _input.Style = updated == fallback ? null : updated;
+        _input.FieldShadowOverride = null;
         NotifyPropertyChanged(nameof(FieldShadow), InvalidationImpact.None);
     }
 

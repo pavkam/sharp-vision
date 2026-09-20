@@ -2591,6 +2591,7 @@ namespace SharpVision.Controls.Input
         public bool AcceptsTab { get; set; }
         public SharpVision.Controls.Scrolling.ScrollBarStyle ActualScrollBarStyle { get; }
         public SharpVision.Controls.Input.TextInputStyle ActualStyle { get; }
+        protected override SharpVision.Styling.AppearanceStates AppearanceStates { get; }
         public bool CanRedo { get; }
         public bool CanUndo { get; }
         protected override bool CaptureTextSelectionOnPress { get; }
@@ -2620,6 +2621,7 @@ namespace SharpVision.Controls.Input
         protected override void CommitTextSelectionNavigation(SharpVision.Text.Selection selection) { }
         public string CopySelection() { }
         public string CutSelection() { }
+        protected override SharpVision.Styling.AppearanceStates GetAppearanceStates(SharpVision.Styling.Theme? theme) { }
         public override SharpVision.Text.SelectableTextSnapshot GetSelectableTextSnapshot() { }
         protected override SharpVision.Terminal.Geometry.Rect GetTextSelectionAdornmentBounds(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected override string GetTextSelectionCopyText() { }

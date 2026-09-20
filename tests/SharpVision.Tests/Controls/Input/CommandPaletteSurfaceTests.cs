@@ -896,4 +896,54 @@ public sealed class CommandPaletteSurfaceTests
         palette.IsOpen.ShouldBeFalse();
         surface.Application.Modality.Active.ShouldBeNull();
     }
+
+    /// <summary>Verifies FieldBorder overlays only the border facet on a mounted palette: after
+    /// assignment, a Theme swap still repaints the retained editor's face from the new Theme while
+    /// the borderless override survives untouched, and resetting it returns the border to the new
+    /// Theme's own appearance rather than the Theme active when the override was assigned.</summary>
+    [Fact]
+    public async Task FieldBorder_WhenSurfaceThemeSwapsAfterAssignment_KeepsFaceLiveAndBorderLocalAsync()
+    {
+        // Arrange
+        var noBorder = new Border(
+            BorderSide.None,
+            BorderGlyphStyle.Ascii,
+            Color.Default,
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette
+        {
+            Width = Length.Cells(20),
+            Height = Length.Cells(1),
+            FieldBorder = noBorder
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            palette,
+            new Size(20, 1),
+            TestContext.Current.CancellationToken);
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+        editor.ActualBorder.Sides.ShouldBe(BorderSide.None);
+        var editorOrigin = new Point(editor.Bounds.X, editor.Bounds.Y);
+        var previousFace = editor.ActualFace;
+        var previousCellBackground = surface.Cell(editorOrigin).Style.Background;
+
+        // Act
+        var nextTheme = ThemeCatalog.Load("default-light");
+        await surface.UpdateAsync(() => surface.Application.Theme = nextTheme, "apply default light theme");
+
+        // Assert: the face facet the override never named keeps tracking the new Theme, both in
+        // the resolved appearance and in the rendered cell, while the border stays local.
+        editor.ActualFace.ShouldNotBe(previousFace);
+        surface.Cell(editorOrigin).Style.Background.ShouldNotBe(previousCellBackground);
+        palette.FieldBorder.ShouldBe(noBorder);
+        editor.ActualBorder.Sides.ShouldBe(BorderSide.None);
+
+        // Act
+        await surface.UpdateAsync(palette.ResetFieldBorder, "reset the field border to Theme ownership");
+
+        // Assert: the border returns to the Theme that is active NOW, not the one active when the
+        // override was assigned.
+        palette.FieldBorder.ShouldNotBe(noBorder);
+        editor.ActualBorder.ShouldBe(editor.ResolveAppearance(editor.Theme).Border);
+    }
 }

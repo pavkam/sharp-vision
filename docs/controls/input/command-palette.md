@@ -23,33 +23,33 @@ classDiagram
 
 ## API
 
-| Member                         | Type                                                    | Default           | Description                                                                                          |
-| ------------------------------ | ------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
-| `Resolver`                     | `CommandPaletteResolver?`                               | `null`            | Resolves a fresh borrowed item snapshot for the current text and cancellation token.                 |
-| `Text`                         | `string`                                                | `""`              | Freely editable search text forwarded to the retained `TextInput`.                                   |
-| `Items`                        | `IReadOnlyList<object?>`                                | Empty             | Read-only copied snapshot from the latest current successful resolution.                             |
-| `IsResolving`                  | `bool`                                                  | `false`           | Read-only; true between starting and committing the current asynchronous request.                    |
-| `ItemTemplate`                 | `ItemTemplate`                                          | Text template     | Realizes each resolved item as one detached result-row control.                                      |
-| `RowHeight`                    | `Length`                                                | `Length.Auto`     | Automatic eager rows or a positive fixed/percentage virtualized result-row request.                  |
-| `Placeholder`                  | `string?`                                               | `null`            | Placeholder shown while the retained editor is empty.                                                |
-| `StartAffix`                   | `Affix?`                                                | `null`            | Optional leading edge-pinned editor decoration.                                                      |
-| `EndAffix`                     | `Affix?`                                                | `null`            | Optional trailing edge-pinned editor decoration.                                                     |
-| `FieldBorder`                  | `Border`                                                | Input appearance  | Complete local border for the retained editor; `BorderSide.None` supports menu-bar embedding.        |
-| `FieldShadow`                  | `Shadow`                                                | Input appearance  | Complete local shadow for the retained editor.                                                       |
-| Inherited `PopupChrome`        | `PopupChrome`                                           | Popup appearance  | Complete local border/shadow fragments for the retained result popup.                                |
-| Inherited `DropDownHeight`     | `Length`                                                | `Length.Cells(8)` | Automatic, fixed-cell, or placement-relative maximum result-list height.                             |
-| `IsOpen`                       | `bool`                                                  | `false`           | Opens non-empty results or starts a resolution; false closes results without clearing text.          |
-| `Open()`                       | `bool`                                                  | —                 | Opens current or fresh results, focuses the retained editor, and reports whether focus was acquired. |
-| `Close()`                      | `void`                                                  | —                 | Closes the result popup while preserving text and items.                                             |
-| `Refresh()`                    | `void`                                                  | —                 | Starts a fresh current-text resolution and makes non-empty results eligible to open.                 |
-| `ResetFieldBorder()`           | `void`                                                  | —                 | Returns the retained editor border to the active input appearance.                                   |
-| `ResetFieldShadow()`           | `void`                                                  | —                 | Returns the retained editor shadow to the active input appearance.                                   |
-| Inherited `ResetPopupChrome()` | `void`                                                  | —                 | Returns result popup border and shadow to the active popup appearance.                               |
-| Inherited `DropDownOpened`     | `EventHandler`                                          | —                 | Raised after the non-empty result popup opens.                                                       |
-| Inherited `DropDownClosed`     | `EventHandler`                                          | —                 | Raised after the result popup closes.                                                                |
-| `ResultsChanged`               | `EventHandler`                                          | —                 | Raised after current results commit or clear.                                                        |
-| `ResolutionFailed`             | `EventHandler<CommandPaletteResolutionFailedEventArgs>` | —                 | Raised after a still-current resolver failure clears the results.                                    |
-| `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`                    | —                 | Raised after pointer or keyboard activation; carries index, borrowed item, and activation cause.     |
+| Member                         | Type                                                    | Default           | Description                                                                                              |
+| ------------------------------ | ------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `Resolver`                     | `CommandPaletteResolver?`                               | `null`            | Resolves a fresh borrowed item snapshot for the current text and cancellation token.                     |
+| `Text`                         | `string`                                                | `""`              | Freely editable search text forwarded to the retained `TextInput`.                                       |
+| `Items`                        | `IReadOnlyList<object?>`                                | Empty             | Read-only copied snapshot from the latest current successful resolution.                                 |
+| `IsResolving`                  | `bool`                                                  | `false`           | Read-only; true between starting and committing the current asynchronous request.                        |
+| `ItemTemplate`                 | `ItemTemplate`                                          | Text template     | Realizes each resolved item as one detached result-row control.                                          |
+| `RowHeight`                    | `Length`                                                | `Length.Auto`     | Automatic eager rows or a positive fixed/percentage virtualized result-row request.                      |
+| `Placeholder`                  | `string?`                                               | `null`            | Placeholder shown while the retained editor is empty.                                                    |
+| `StartAffix`                   | `Affix?`                                                | `null`            | Optional leading edge-pinned editor decoration.                                                          |
+| `EndAffix`                     | `Affix?`                                                | `null`            | Optional trailing edge-pinned editor decoration.                                                         |
+| `FieldBorder`                  | `Border`                                                | Input appearance  | Facet-only local border override for the retained editor; `BorderSide.None` supports menu-bar embedding. |
+| `FieldShadow`                  | `Shadow`                                                | Input appearance  | Facet-only local shadow override for the retained editor.                                                |
+| Inherited `PopupChrome`        | `PopupChrome`                                           | Popup appearance  | Complete local border/shadow fragments for the retained result popup.                                    |
+| Inherited `DropDownHeight`     | `Length`                                                | `Length.Cells(8)` | Automatic, fixed-cell, or placement-relative maximum result-list height.                                 |
+| `IsOpen`                       | `bool`                                                  | `false`           | Opens non-empty results or starts a resolution; false closes results without clearing text.              |
+| `Open()`                       | `bool`                                                  | —                 | Opens current or fresh results, focuses the retained editor, and reports whether focus was acquired.     |
+| `Close()`                      | `void`                                                  | —                 | Closes the result popup while preserving text and items.                                                 |
+| `Refresh()`                    | `void`                                                  | —                 | Starts a fresh current-text resolution and makes non-empty results eligible to open.                     |
+| `ResetFieldBorder()`           | `void`                                                  | —                 | Returns the retained editor border to the active input appearance.                                       |
+| `ResetFieldShadow()`           | `void`                                                  | —                 | Returns the retained editor shadow to the active input appearance.                                       |
+| Inherited `ResetPopupChrome()` | `void`                                                  | —                 | Returns result popup border and shadow to the active popup appearance.                                   |
+| Inherited `DropDownOpened`     | `EventHandler`                                          | —                 | Raised after the non-empty result popup opens.                                                           |
+| Inherited `DropDownClosed`     | `EventHandler`                                          | —                 | Raised after the result popup closes.                                                                    |
+| `ResultsChanged`               | `EventHandler`                                          | —                 | Raised after current results commit or clear.                                                            |
+| `ResolutionFailed`             | `EventHandler<CommandPaletteResolutionFailedEventArgs>` | —                 | Raised after a still-current resolver failure clears the results.                                        |
+| `ItemInvoked`                  | `EventHandler<ItemInvokedEventArgs>`                    | —                 | Raised after pointer or keyboard activation; carries index, borrowed item, and activation cause.         |
 
 `CommandPaletteResolver` receives the current non-null search string and a
 cancellation token. It returns a `ValueTask<IReadOnlyList<object?>>`; returning
@@ -150,6 +150,15 @@ making a transient instance visible transfers focus to the editor.
 menu-bar palette can remove the field border and use compact start/end glyphs,
 while a centered transient palette can retain a full field border and give the
 result popup its own border and shadow.
+
+Assigning `FieldBorder` or `FieldShadow` overlays only that one facet of the
+retained editor's Normal appearance. Every other resolved facet keeps tracking
+its theme normally, including the editor's own focused, hovered, and disabled
+border and shadow deltas, which keep layering on top of the assigned facet
+instead of being flattened by it. A theme-authored member neither property
+names - the editor's affix gap, for instance - also keeps tracking a later theme
+swap. `ResetFieldBorder()`/`ResetFieldShadow()` return only their own facet to
+theme ownership; the other facet, if locally assigned, is untouched.
 
 ## Example
 

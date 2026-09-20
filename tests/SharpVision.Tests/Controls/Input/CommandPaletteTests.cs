@@ -553,6 +553,67 @@ public sealed class CommandPaletteTests
         palette.FieldBorder.ShouldBe(before);
     }
 
+    /// <summary>Verifies FieldBorder overlays only the border facet of the editor's Normal
+    /// appearance: the editor's own per-state border deltas - a focused or disabled border color,
+    /// for instance - keep applying on top of the override instead of collapsing every visual
+    /// state to the assigned value.</summary>
+    [Theory]
+    [InlineData(VisualState.Focused)]
+    [InlineData(VisualState.Disabled)]
+    public void FieldBorder_WhenAssigned_StillDiffersBetweenNormalAndInteractiveState(VisualState state)
+    {
+        // Arrange
+        var border = new Border(
+            BorderSide.All,
+            BorderGlyphStyle.Ascii,
+            Color.Rgb(9, 9, 9),
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette { FieldBorder = border };
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+
+        // Act
+        var normal = editor.ResolveAppearance(ThemeCatalog.Dark);
+        var actual = editor.ResolveAppearance(ThemeCatalog.Dark, state);
+
+        // Assert
+        normal.Border.ShouldBe(border);
+        actual.Border.ShouldNotBe(normal.Border);
+        actual.Border.Sides.ShouldBe(border.Sides);
+
+        // The face facet the override never named must keep reacting to the state too - the
+        // regression this override exists to fix froze the editor's ENTIRE presentation, not just
+        // the assigned border, the moment either facet was assigned.
+        actual.Face.ShouldNotBe(normal.Face);
+    }
+
+    /// <summary>Verifies FieldShadow overlays only the shadow facet, mirroring
+    /// <see cref="FieldBorder_WhenAssigned_StillDiffersBetweenNormalAndInteractiveState"/> for the
+    /// shadow facet.</summary>
+    [Fact]
+    public void FieldShadow_WhenAssigned_StillDiffersBetweenNormalAndFocused()
+    {
+        // Arrange
+        var shadow = new Shadow(
+            isVisible: true,
+            ShadowMode.Composite,
+            new Point(1, 1),
+            new Rune('#'),
+            Color.Rgb(1, 2, 3),
+            Color.Transparent,
+            TerminalAttributes.None);
+        var palette = new CommandPalette { FieldShadow = shadow };
+        var editor = OwnedTree.Find<TextInput>(palette).ShouldNotBeNull();
+
+        // Act
+        var normal = editor.ResolveAppearance(ThemeCatalog.Dark);
+        var focused = editor.ResolveAppearance(ThemeCatalog.Dark, VisualState.Focused);
+
+        // Assert
+        normal.Shadow.ShouldBe(shadow);
+        normal.Face.ShouldNotBe(focused.Face);
+    }
+
     /// <summary>Verifies invalid drop-down sizing is rejected before the prior value changes.</summary>
     [Fact]
     public void DropDownHeight_WhenNonPositive_ThrowsBeforeMutation()

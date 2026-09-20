@@ -76,6 +76,101 @@ public sealed class TextInput: InputBase, IClipboardCopySource, IStyled<TextInpu
     /// <summary>Gets the complete local, theme-owned, or code-owned presentation.</summary>
     public TextInputStyle ActualStyle => _style.Actual;
 
+    /// <summary>Gets or sets a facet-only border override reserved for a composing owner control
+    /// (<see cref="CommandPalette"/>'s editor field). Unlike <see cref="Style"/>, assigning this
+    /// leaves every other resolved facet - including this editor's own per-state border deltas,
+    /// which keep layering on top of the override - tracking its theme normally.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    internal Border? FieldBorderOverride
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previousSides = ActualBorder.Sides;
+            field = value;
+            InvalidateResolvedStyleCache();
+            Invalidate(previousSides == ActualBorder.Sides ? Invalidation.Render : Invalidation.Measure);
+            RaisePropertyChanged(nameof(ActualBorder));
+        }
+    }
+
+    /// <summary>Gets or sets a facet-only shadow override reserved for a composing owner control,
+    /// mirroring <see cref="FieldBorderOverride"/> for the shadow facet.</summary>
+    /// <exception cref="InvalidOperationException">The attached control is mutated off-dispatcher.</exception>
+    internal Shadow? FieldShadowOverride
+    {
+        get;
+        set
+        {
+            VerifyMutable();
+
+            if (field == value)
+            {
+                return;
+            }
+
+            var previous = ActualShadow;
+            field = value;
+            InvalidateResolvedStyleCache();
+            Invalidate(
+                HasSameFieldShadowFootprint(previous, ActualShadow) ? Invalidation.Render : Invalidation.Measure);
+            RaisePropertyChanged(nameof(ActualShadow));
+        }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>Layers the facet-only <see cref="FieldBorderOverride"/>/<see cref="FieldShadowOverride"/>
+    /// contributions onto the Normal slot alone, after the theme- and style-resolved states are
+    /// composed: every per-state delta the theme or <see cref="TextInputStyle"/> already authors -
+    /// a focused or disabled border color, for instance - keeps applying on top of the override,
+    /// exactly as it would with no override active.</remarks>
+    protected override AppearanceStates AppearanceStates => ApplyFieldFacetOverride(base.AppearanceStates);
+
+    /// <inheritdoc/>
+    protected override AppearanceStates GetAppearanceStates(Theme? theme) =>
+        ReferenceEquals(theme, Theme) ? AppearanceStates : ApplyFieldFacetOverride(base.GetAppearanceStates(theme));
+
+    private AppearanceStates ApplyFieldFacetOverride(AppearanceStates states) =>
+        FieldBorderOverride is null && FieldShadowOverride is null
+            ? states
+            : states.Compose(
+                new AppearanceStatesOverlay(
+                    normal: new AppearanceOverlay(
+                        border: FieldBorderOverride is { } border ? ToBorderOverlay(border) : null,
+                        shadow: FieldShadowOverride is { } shadow ? ToShadowOverlay(shadow) : null)));
+
+    [Pure]
+    private static BorderOverlay ToBorderOverlay(Border border) => new(
+        border.Sides,
+        border.GlyphStyle,
+        border.Foreground,
+        border.Background,
+        border.Attributes,
+        border.Relief);
+
+    [Pure]
+    private static ShadowOverlay ToShadowOverlay(Shadow shadow) => new(
+        shadow.IsVisible,
+        shadow.Mode,
+        shadow.Offset,
+        shadow.Glyph,
+        shadow.Foreground,
+        shadow.Background,
+        shadow.Attributes);
+
+    [Pure]
+    private static bool HasSameFieldShadowFootprint(Shadow left, Shadow right) =>
+        left.IsVisible == right.IsVisible &&
+        left.Offset == right.Offset &&
+        left.Mode == right.Mode;
+
     /// <inheritdoc/>
     /// <summary>Raised before a text mutation and cancellable before commit.</summary>
     public event EventHandler<TextChangingEventArgs>? TextChanging;
