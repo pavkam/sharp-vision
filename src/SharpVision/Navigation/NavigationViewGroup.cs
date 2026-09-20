@@ -4,7 +4,6 @@
 namespace SharpVision.Navigation;
 
 using SharpVision.Controls;
-using SharpVision.Terminal.Input;
 using SharpVision.Text;
 
 using LayoutStack = Controls.Layout.Stack;
@@ -44,7 +43,6 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
                 ContentBounds.Y,
                 ContentBounds.Width,
                 Math.Min(1, ContentBounds.Height)),
-            canCompleteSpace: () => true,
             requestFocus: () => FindNavigationView()?.Focus() == true);
     }
 
@@ -349,24 +347,19 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Only pointer presses reach the shared press-activation machine here. The owning
+    /// <see cref="NavigationView"/> is the sidebar's single tab stop - it forces every group and
+    /// item non-focusable and out of the tab order while owned - so Enter and Space are routed
+    /// keys the view's own key handler resolves against its current entry and never events this
+    /// group observes directly.
+    /// </remarks>
     protected override void OnEvent(RoutedEventArgs eventArgs)
     {
         ArgumentNullException.ThrowIfNull(eventArgs);
 
         if (eventArgs.IsHandled)
         {
-            return;
-        }
-
-        var keyboard = eventArgs is KeyEventArgs
-        {
-            IsInitialKeyDown: true,
-            Stroke: { Code: Code.Enter, Modifiers: var enterModifiers }
-        } && enterModifiers.IsActivationEligible();
-        if (keyboard)
-        {
-            Activate(ActivationCause.Keyboard);
-            eventArgs.IsHandled = true;
             return;
         }
 

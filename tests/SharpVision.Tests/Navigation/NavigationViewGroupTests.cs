@@ -109,4 +109,27 @@ public sealed class NavigationViewGroupTests
         // Assert
         group.Pending.ShouldBe(Invalidation.Render);
     }
+
+    /// <summary>Verifies a routed Enter or Space key delivered directly to the group leaves it
+    /// unhandled and its expansion untouched. The owning <see cref="NavigationView"/> forces every
+    /// group non-focusable and out of the tab order while owned, so this key never actually reaches
+    /// a group through real routing; the group carries no local activation branch for it, and only
+    /// the view's own key handler resolves Enter and Space against its current entry.</summary>
+    [Theory]
+    [InlineData(Code.Enter)]
+    [InlineData(Code.Character)]
+    public void Dispatch_WhenActivationKeyArrivesDirectly_LeavesExpansionAndEventUnchanged(Code code)
+    {
+        // Arrange
+        var group = new NavigationViewGroup { Header = "Tools", IsExpanded = true };
+        var character = code == Code.Character ? new Rune(' ') : (Rune?) null;
+        var key = new KeyEventArgs(new Stroke(code, character, nativeCode: 0, Modifiers.None, KeyAction.Press));
+
+        // Act
+        _ = Router.Route(group, Events.Key, key);
+
+        // Assert
+        key.IsHandled.ShouldBeFalse();
+        group.IsExpanded.ShouldBeTrue();
+    }
 }
