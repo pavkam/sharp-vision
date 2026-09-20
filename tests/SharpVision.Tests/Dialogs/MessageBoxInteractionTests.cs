@@ -187,7 +187,8 @@ public sealed class MessageBoxInteractionTests
                 _ = MessageBox.ShowAsync(
                     opener,
                     "Message",
-                    new MessageBoxOptions { Buttons = (MessageBoxButtons) 99 });
+                    new MessageBoxOptions { Buttons = (MessageBoxButtons) 99 },
+                    TestContext.Current.CancellationToken);
             }),
             TestContext.Current.CancellationToken);
 

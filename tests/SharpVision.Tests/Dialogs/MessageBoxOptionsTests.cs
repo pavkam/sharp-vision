@@ -5,7 +5,7 @@ namespace SharpVision.Tests.Dialogs;
 
 /// <summary>Verifies defaults and ShowAsync forwarding for the MessageBox options carrier. Options
 /// themselves are plain init-only properties with no local validation - the required-member checks
-/// live in <see cref="MessageBox.ShowAsync(ControlBase,string,MessageBoxOptions)"/>, so this suite
+/// live in <see cref="MessageBox.ShowAsync(ControlBase,string,MessageBoxOptions,CancellationToken)"/>, so this suite
 /// exercises those effects rather than a property setter.</summary>
 public sealed class MessageBoxOptionsTests
 {

@@ -237,35 +237,52 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     /// <summary>Shows an OK message box owned by the supplied attached control.</summary>
     /// <param name="owner">The attached control whose ancestry identifies the application host.</param>
     /// <param name="message">The non-null message text.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
     /// <returns>A task completing with <see cref="MessageBoxResult.Ok"/> or dismissal.</returns>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message) =>
-        ShowAsync(owner, message, "Message", MessageBoxButtons.Ok);
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    public static Task<MessageBoxResult> ShowAsync(
+        ControlBase owner,
+        string message,
+        CancellationToken cancellationToken = default) =>
+        ShowAsync(owner, message, "Message", MessageBoxButtons.Ok, buttonStyle: null, cancellationToken);
 
     /// <summary>Shows an OK message box with a custom title.</summary>
     /// <param name="owner">The attached control whose ancestry identifies the application host.</param>
     /// <param name="message">The non-null message text.</param>
     /// <param name="title">The non-null window title.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
     /// <returns>A task completing with the selected result.</returns>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message, string title) =>
-        ShowAsync(owner, message, title, MessageBoxButtons.Ok);
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    public static Task<MessageBoxResult> ShowAsync(
+        ControlBase owner,
+        string message,
+        string title,
+        CancellationToken cancellationToken = default) =>
+        ShowAsync(owner, message, title, MessageBoxButtons.Ok, buttonStyle: null, cancellationToken);
 
     /// <summary>Shows a message box with a custom button layout and the default title.</summary>
     /// <param name="owner">The attached control whose ancestry identifies the application host.</param>
     /// <param name="message">The non-null message text.</param>
     /// <param name="buttons">The defined standard button layout.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
     /// <returns>A task completing with the selected result.</returns>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="buttons"/> is undefined.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message, MessageBoxButtons buttons) =>
-        ShowAsync(owner, message, "Message", buttons);
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    public static Task<MessageBoxResult> ShowAsync(
+        ControlBase owner,
+        string message,
+        MessageBoxButtons buttons,
+        CancellationToken cancellationToken = default) =>
+        ShowAsync(owner, message, "Message", buttons, buttonStyle: null, cancellationToken);
 
     /// <summary>Shows a titled message box with the requested standard button layout.</summary>
     /// <param name="owner">The attached control whose ancestry identifies the application host.</param>
@@ -274,22 +291,25 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     /// <param name="buttons">The defined standard button layout.</param>
     /// <param name="buttonStyle">The complete local Button presentation, or null to use each
     /// generated Button's own semantic input profile.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
     /// <returns>A task completing when a button or dismissal selects a result.</returns>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="buttons"/> is undefined.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
     public static Task<MessageBoxResult> ShowAsync(
         ControlBase owner,
         string message,
         string title,
         MessageBoxButtons buttons,
-        ButtonStyle? buttonStyle = null)
+        ButtonStyle? buttonStyle = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(message);
         var messageBox = new MessageBox(message, title, buttons) { ButtonStyle = buttonStyle };
-        return messageBox.PresentAsync(owner, messageBox._buttons[0], CancellationToken.None);
+        return messageBox.PresentAsync(owner, messageBox._buttons[0], cancellationToken);
     }
 
     /// <summary>Shows a message box configured through a reusable options carrier, without exposing
@@ -297,13 +317,19 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
     /// <param name="owner">The attached control whose ancestry identifies the application host.</param>
     /// <param name="message">The non-null message text.</param>
     /// <param name="options">The non-null layout, caption, and style configuration.</param>
+    /// <param name="cancellationToken">Cancels the returned task and tears down the presentation.</param>
     /// <returns>A task completing when a button or dismissal selects a result.</returns>
     /// <exception cref="ArgumentNullException">An argument, or a required member of
     /// <paramref name="options"/>, is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><see cref="MessageBoxOptions.Buttons"/> is undefined.</exception>
     /// <exception cref="ArgumentException">The owner has no attached presentation host.</exception>
     /// <exception cref="InvalidOperationException">The call is made off the owner's dispatcher.</exception>
-    public static Task<MessageBoxResult> ShowAsync(ControlBase owner, string message, MessageBoxOptions options)
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is already cancelled.</exception>
+    public static Task<MessageBoxResult> ShowAsync(
+        ControlBase owner,
+        string message,
+        MessageBoxOptions options,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(message);
@@ -323,7 +349,7 @@ public sealed class MessageBox: Dialog<MessageBoxResult>, IStyled<MessageBoxStyl
             YesText = options.YesText,
             NoText = options.NoText
         };
-        return messageBox.PresentAsync(owner, messageBox._buttons[0], CancellationToken.None);
+        return messageBox.PresentAsync(owner, messageBox._buttons[0], cancellationToken);
     }
 
     #endregion

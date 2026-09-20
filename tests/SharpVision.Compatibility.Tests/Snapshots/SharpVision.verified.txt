@@ -3406,11 +3406,11 @@ namespace SharpVision.Dialogs
         public string YesText { get; set; }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override SharpVision.Styling.WindowStyle ResolveInteractionChromeStyle(SharpVision.Styling.Theme? theme) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxOptions options) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title) { }
-        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Styling.ButtonStyle? buttonStyle = null) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxButtons buttons, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, SharpVision.Dialogs.MessageBoxOptions options, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, System.Threading.CancellationToken cancellationToken = default) { }
+        public static System.Threading.Tasks.Task<SharpVision.Dialogs.MessageBoxResult> ShowAsync(SharpVision.Controls.ControlBase owner, string message, string title, SharpVision.Dialogs.MessageBoxButtons buttons, SharpVision.Styling.ButtonStyle? buttonStyle = null, System.Threading.CancellationToken cancellationToken = default) { }
     }
     public enum MessageBoxButtons
     {

@@ -94,7 +94,12 @@ confirmation rather than retained, it is presented through
 `OverwriteTitle`, `OverwriteYesText`, `OverwriteNoText`, and `SaveButtonStyle`
 (forwarded as the options' `ButtonStyle`, since "replace it" is the
 confirmation's affirmative, accept-like action) — see
-[Text and localization](#text-and-localization).
+[Text and localization](#text-and-localization). The confirmation is also
+presented with the same `cancellationToken` the caller passed to `ShowAsync`, so
+cancelling that token while the confirmation is showing tears down both the
+confirmation and the outer save dialog instead of leaving the confirmation
+running under an uncancellable token after the outer task has already completed
+as cancelled.
 
 ## Presentation and ownership
 

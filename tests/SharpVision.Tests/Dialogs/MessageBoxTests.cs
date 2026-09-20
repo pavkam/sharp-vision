@@ -1074,4 +1074,62 @@ public sealed class MessageBoxTests
 
         OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldBeNull();
     }
+
+    /// <summary>Verifies the simplest ShowAsync overload rejects an already cancelled token before
+    /// constructing or attaching any dialog, matching the same guarantee FilePickerDialog and
+    /// SaveFileDialog already give their own ShowAsync callers.</summary>
+    [Fact]
+    public void ShowAsync_WhenCancellationTokenIsAlreadyCancelled_ThrowsOperationCanceledException()
+    {
+        var owner = new Button();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = Should.Throw<OperationCanceledException>(
+            () => MessageBox.ShowAsync(owner, "Message", cancellation.Token));
+    }
+
+    /// <summary>Verifies the options-carrier ShowAsync overload rejects an already cancelled token
+    /// the same way the simpler overloads do.</summary>
+    [Fact]
+    public void ShowAsync_WhenCancellationTokenIsAlreadyCancelledAndOptionsAreUsed_ThrowsOperationCanceledException()
+    {
+        var owner = new Button();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = Should.Throw<OperationCanceledException>(
+            () => MessageBox.ShowAsync(owner, "Message", new MessageBoxOptions(), cancellation.Token));
+    }
+
+    /// <summary>Verifies external cancellation cancels the returned task and removes the temporary
+    /// modal surface, mirroring the same live-cancellation guarantee already proven for
+    /// FilePickerDialog and SaveFileDialog now that MessageBox forwards its own token.</summary>
+    [Fact]
+    public async Task ShowAsync_WhenCancellationIsRequested_CancelsTaskAndRestoresHostAsync()
+    {
+        // Arrange
+        using var cancellation = new CancellationTokenSource();
+        var opener = new Button { Text = "Open" };
+        var host = new Overlay { Children = { opener } };
+        await using var surface = await ComponentSurface.MountAsync(
+            host,
+            new Size(40, 12),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(opener).ShouldBeTrue(), "focus opener");
+        Task<MessageBoxResult>? pending = null;
+
+        // Act
+        await surface.UpdateAsync(
+            () => pending = MessageBox.ShowAsync(opener, "Saved successfully.", cancellation.Token),
+            "show externally cancellable MessageBox");
+
+        cancellation.Cancel();
+        _ = await Should.ThrowAsync<TaskCanceledException>(() => pending!);
+
+        // Assert
+        await surface.UpdateAsync(static () => { }, "settle cancellation cleanup");
+        host.Children.Count.ShouldBe(1);
+        opener.IsFocused.ShouldBeTrue();
+    }
 }

@@ -4,7 +4,7 @@
 namespace SharpVision.Dialogs;
 
 /// <summary>Carries optional layout, caption, and style configuration for the
-/// <see cref="MessageBox.ShowAsync(ControlBase,string,MessageBoxOptions)"/> presentation helper, so
+/// <see cref="MessageBox.ShowAsync(ControlBase,string,MessageBoxOptions,CancellationToken)"/> presentation helper, so
 /// callers who need more than the title/buttons overloads offer do not force new overload growth.</summary>
 [PublicAPI]
 public sealed record MessageBoxOptions

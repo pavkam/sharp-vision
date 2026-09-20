@@ -30,6 +30,12 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
     private readonly StyleSlot<SaveFileDialogStyle> _style;
     private long _acceptanceVersion;
 
+    // The token supplied to the static ShowAsync factory, retained so the nested overwrite
+    // confirmation MessageBox (raised well after ShowAsync itself returns) still observes the
+    // same external cancellation as the outer save presentation, instead of silently running
+    // under an uncancellable CancellationToken.None.
+    private CancellationToken _presentedCancellationToken;
+
     /// <summary>Gets or sets a deterministic overwrite-confirmation source for lifecycle tests
     /// that must hold the asynchronous boundary while dispatcher ownership changes.</summary>
     internal Func<Task<MessageBoxResult>>? ConfirmOverwriteForLifecycleTest { get; set; }
@@ -326,7 +332,7 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
         var dispatcher = owner.Dispatcher ??
             throw new ArgumentException("The save-file owner must be attached.", nameof(owner));
         dispatcher.VerifyAccess();
-        var dialog = new SaveFileDialog(options);
+        var dialog = new SaveFileDialog(options) { _presentedCancellationToken = cancellationToken };
         return dialog.PresentAsync(owner, dialog.GetModalFocusTarget(), cancellationToken);
     }
 
@@ -481,7 +487,8 @@ public sealed class SaveFileDialog: FileDialogBase<SaveFileResult>, IStyled<Save
                         NoText = OverwriteNoText,
                         Style = OverwriteStyle,
                         ButtonStyle = SaveButtonStyle
-                    });
+                    },
+                    _presentedCancellationToken);
 
             // The MessageBox completion resumes on a background thread. Post back to the
             // owning dispatcher so that Complete can safely modify attached control state.

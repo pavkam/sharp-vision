@@ -1124,6 +1124,65 @@ public sealed class SaveFileDialogTests
         }
     }
 
+    /// <summary>Verifies cancelling the token passed to ShowAsync while the overwrite-confirmation
+    /// MessageBox is showing cancels the outer save task and leaves neither the confirmation nor
+    /// the save dialog itself mounted - proving the nested confirmation observes the same external
+    /// token as the outer presentation instead of running under an uncancellable token that would
+    /// otherwise leave it stranded after the outer save task already completed as cancelled.</summary>
+    [Fact]
+    public async Task Save_WhenOuterTokenIsCancelledDuringOverwriteConfirmation_CancelsOuterTaskAndRemovesConfirmationAsync()
+    {
+        // Arrange — use a real temporary directory so the dialog can load and FileExists works.
+        var directory = Path.Combine(Path.GetTempPath(), $"save-confirm-cancel-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(directory);
+
+        try
+        {
+            var existingPath = Path.Combine(directory, "existing.txt");
+            await File.WriteAllTextAsync(existingPath, "content", TestContext.Current.CancellationToken);
+            using var cancellation = new CancellationTokenSource();
+            var opener = new Button { Text = "Save" };
+            var host = new Overlay { Children = { opener } };
+            await using var surface = await ComponentSurface.MountAsync(
+                host,
+                new Size(100, 40),
+                TestContext.Current.CancellationToken);
+            Task<SaveFileResult>? pending = null;
+
+            // Act
+            await surface.UpdateAsync(
+                () => pending = SaveFileDialog.ShowAsync(
+                    opener,
+                    new SaveFileOptions
+                    {
+                        InitialDirectory = directory,
+                        InitialFileName = "existing.txt",
+                        ConfirmOverwrite = true
+                    },
+                    cancellation.Token),
+                "show externally cancellable save dialog");
+            var dialog = OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldNotBeNull();
+            await DialogWait.UntilAsync(surface, dialog, () => !dialog.IsLoading);
+
+            // Trigger save — this shows the overwrite-confirmation MessageBox since the file exists.
+            await surface.Keyboard.PressAsync(Code.Enter);
+            await surface.UpdateAsync(static () => { }, "settle confirmation dialog");
+            _ = OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldNotBeNull();
+
+            cancellation.Cancel();
+            _ = await Should.ThrowAsync<TaskCanceledException>(() => pending!);
+
+            // Assert
+            await surface.UpdateAsync(static () => { }, "settle cancellation cleanup");
+            OwnedTree.Find<MessageBox>(surface.Application.Root).ShouldBeNull();
+            OwnedTree.Find<SaveFileDialog>(surface.Application.Root).ShouldBeNull();
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     /// <summary>Verifies declining the overwrite confirmation ("No") leaves the save dialog open
     /// and its own returned task uncompleted, the sibling outcome to the "Yes" path covered by
     /// Save_WhenFileExistsAndConfirmOverwrite_ShowsConfirmationAsync immediately above - the

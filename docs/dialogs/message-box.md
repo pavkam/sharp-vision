@@ -29,7 +29,7 @@ when shown asynchronously; there is no nested proxy Window.
 | `SelectedResult`       | `MessageBoxResult`       | default enum value     | The last selection made on a directly mounted MessageBox.                                                                                                                                   |
 | `HasSelectedResult`    | `bool`                   | `false`                | Distinguishes "no modeless selection yet" from the enum's default value.                                                                                                                    |
 | `ResultSelected`       | `EventHandler?`          | no subscribers         | Raised when a directly mounted MessageBox takes a keyboard or pointer choice.                                                                                                               |
-| `ShowAsync(...)`       | `Task<MessageBoxResult>` | —                      | Presents one temporary modal MessageBox and returns its semantic result.                                                                                                                    |
+| `ShowAsync(...)`       | `Task<MessageBoxResult>` | —                      | Presents one temporary modal MessageBox and returns its semantic result; every overload accepts a trailing optional `cancellationToken` that cancels the returned task.                     |
 
 `MessageBoxButtons` defines the supported layouts:
 
@@ -98,6 +98,13 @@ The `MessageBoxOptions` overload configures title, layout, all four captions,
 and a local `Style` in one call, without exposing the generated Buttons or
 divider - the preferred way to localize or restyle a presented MessageBox
 instead of multiplying `ShowAsync` overloads.
+
+Every `ShowAsync` overload also accepts a trailing, optional
+`cancellationToken`, exactly like `FilePickerDialog.ShowAsync` and
+`SaveFileDialog.ShowAsync`: an already cancelled token throws
+`OperationCanceledException` before any MessageBox is attached, and external
+cancellation while the box is presented cancels the returned task itself and
+tears the temporary MessageBox down.
 
 `owner` must resolve to an owning Screen, an explicit `Overlay`, or the
 outermost `Overlay` ancestor. In a hosted application the helper adds one
