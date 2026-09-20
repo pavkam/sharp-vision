@@ -955,6 +955,126 @@ public sealed class TableSurfaceTests
         changes[0].AddedRows.ShouldBe([first, second]);
     }
 
+    /// <summary>Verifies a focused cell control that owns its own text selection keeps Ctrl+A for
+    /// its text instead of the table claiming it for select-all-rows: the click that focuses the
+    /// cell already selects that one row through the table's own pointer handling, and Ctrl+A must
+    /// leave that row selection exactly as the click left it.</summary>
+    [Fact]
+    public async Task Keyboard_WhenFocusedCellOwnsTextSelection_CtrlASelectsCellTextNotRowsAsync()
+    {
+        var cell = new TextSelectionLifecycleProbe("hello")
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true
+        };
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            SelectionMode = TableSelectionMode.MultipleRows,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+        var owning = new TableRow([cell]);
+        var other = new TableRow([new ControlText("Two")]);
+        table.Rows.Add(owning);
+        table.Rows.Add(other);
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 4),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(cell.Text, new Point(0, 0));
+        surface.ShouldHaveFocus(cell);
+        table.SelectedRows.ShouldBe([owning]);
+
+        await surface.SendAsync(new byte[] { 0x01 }, "press Ctrl+A on the focused cell");
+
+        var (selectedText, textSelection) = await surface.Application.Dispatcher.InvokeAsync(
+            () => (cell.SelectedText, cell.TextSelection),
+            TestContext.Current.CancellationToken);
+        selectedText.ShouldBe("hello");
+        textSelection.ShouldBe(new Selection(0, 5));
+        table.SelectedRows.ShouldBe([owning]);
+    }
+
+    /// <summary>Verifies a focused cell control that owns its own text selection keeps Shift+Right
+    /// for extending its own caret instead of the table extending row/cell selection.</summary>
+    [Fact]
+    public async Task Keyboard_WhenFocusedCellOwnsTextSelection_ShiftRightExtendsCellSelectionAsync()
+    {
+        var cell = new TextSelectionLifecycleProbe("hello")
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true
+        };
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+        var row = new TableRow([cell]);
+        table.Rows.Add(row);
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(cell.Text, new Point(0, 0));
+        surface.ShouldHaveFocus(cell);
+        var activeBefore = table.ActiveCell;
+
+        await surface.Keyboard.PressAsync(Code.Right, Modifiers.Shift);
+
+        var textSelection = await surface.Application.Dispatcher.InvokeAsync(
+            () => cell.TextSelection,
+            TestContext.Current.CancellationToken);
+        textSelection.ShouldBe(new Selection(0, 1));
+        table.ActiveCell.ShouldBe(activeBefore);
+    }
+
+    /// <summary>Verifies Ctrl+C still copies a focused cell control's own selected text through the
+    /// application's independent clipboard shortcut - a regression guard proving the Bubble-phase
+    /// change above never touches that separate Preview-phase path.</summary>
+    [Fact]
+    public async Task Keyboard_WhenFocusedCellOwnsTextSelection_ControlCCopiesCellTextAsync()
+    {
+        var cell = new TextSelectionLifecycleProbe("hello")
+        {
+            IsFocusable = true,
+            IsTextSelectionEnabled = true
+        };
+        var target = new TextInput();
+        var table = new Table
+        {
+            ShowHeader = false,
+            ShowGridLines = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        table.Columns.Add(TableColumn.Fixed("Value", 8));
+        table.Rows.Add(new TableRow([cell]));
+        table.Rows.Add(new TableRow([target]));
+        await using var surface = await ComponentSurface.MountAsync(
+            table,
+            new Size(8, 2),
+            TestContext.Current.CancellationToken);
+
+        await surface.Pointer.ClickAsync(cell.Text, new Point(0, 0));
+        surface.ShouldHaveFocus(cell);
+        await surface.SendAsync(new byte[] { 0x01 }, "select all in the focused cell");
+
+        await surface.ControlAsync('c');
+        await surface.UpdateAsync(() => target.Focus().ShouldBeTrue(), "focus the paste target");
+        await surface.ControlAsync('v');
+
+        target.Text.ShouldBe("hello");
+    }
+
     /// <summary>Verifies mounted read-only TextInput cells reject editing and retain their text.</summary>
     [Fact]
     public async Task Keyboard_WhenReadOnlyTextInputIsActivated_DoesNotBeginEditingAsync()

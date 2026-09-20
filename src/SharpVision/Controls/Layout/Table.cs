@@ -1255,51 +1255,86 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     {
         _ = sender;
 
-        if (eventArgs.IsHandled ||
-            eventArgs.Phase != RoutingPhase.Preview ||
-            !eventArgs.IsKeyDown)
+        if (!eventArgs.IsKeyDown)
         {
             return;
         }
 
         var stroke = eventArgs.Stroke;
 
-        if (_edit is not null)
+        // The active edit's commit/cancel keys must win over everything else - including a
+        // focused cell control's own Bubble handlers - so this transaction stays on Preview,
+        // ahead of the focused cell, and is entirely self-contained: it never falls through to
+        // the shared default-key handling below.
+        if (eventArgs.Phase == RoutingPhase.Preview)
         {
-            if (stroke.Code == TerminalInput.Code.Enter)
+            if (eventArgs.IsHandled)
             {
-                if (eventArgs.IsInitialKeyDown)
-                {
-                    _ = CommitEdit();
-                }
-
-                eventArgs.IsHandled = true;
                 return;
             }
 
-            if (stroke.Code == TerminalInput.Code.Escape &&
-                stroke.Modifiers.IsActivationEligible())
+            if (_edit is not null)
             {
-                if (eventArgs.IsInitialKeyDown)
+                if (stroke.Code == TerminalInput.Code.Enter)
                 {
-                    _ = CancelEdit();
+                    if (eventArgs.IsInitialKeyDown)
+                    {
+                        _ = CommitEdit();
+                    }
+
+                    eventArgs.IsHandled = true;
+                    return;
                 }
 
-                eventArgs.IsHandled = true;
+                if (stroke.Code == TerminalInput.Code.Escape &&
+                    stroke.Modifiers.IsActivationEligible())
+                {
+                    if (eventArgs.IsInitialKeyDown)
+                    {
+                        _ = CancelEdit();
+                    }
+
+                    eventArgs.IsHandled = true;
+                    return;
+                }
+
+                if (stroke.Code == TerminalInput.Code.Tab)
+                {
+                    if (eventArgs.IsInitialKeyDown)
+                    {
+                        _ = CommitEdit();
+                        _ = MoveActive(0, (stroke.Modifiers & TerminalInput.Modifiers.Shift) != 0 ? -1 : 1);
+                    }
+
+                    eventArgs.IsHandled = true;
+                }
+
                 return;
             }
 
-            if (stroke.Code == TerminalInput.Code.Tab)
+            // Outside a live edit transaction, a TextInput cell still defers entirely to the
+            // table's own defaults on Preview, exactly as before this method started splitting by
+            // phase: BeginEdit/CommitEdit can leave a TextInput cell holding stray keyboard focus
+            // with no _edit transaction of its own, and the table must keep winning over it here.
+            // Only a different, independently focusable cell control - one BeginEdit never touches
+            // - gets first crack, and only once the key reaches Bubble below still unhandled.
+            if (eventArgs.OriginalSource is not TextInput)
             {
-                if (eventArgs.IsInitialKeyDown)
-                {
-                    _ = CommitEdit();
-                    _ = MoveActive(0, (stroke.Modifiers & TerminalInput.Modifiers.Shift) != 0 ? -1 : 1);
-                }
-
-                eventArgs.IsHandled = true;
+                return;
             }
-
+        }
+        else if (eventArgs.Phase != RoutingPhase.Bubble ||
+            eventArgs.IsHandled ||
+            _edit is not null ||
+            eventArgs.OriginalSource is TextInput)
+        {
+            // Select-all, F2, and cell/row navigation apply to a non-TextInput focused cell only
+            // once the key reaches Bubble still unhandled, mirroring TreeView: a focused cell
+            // control's own Bubble handlers - such as ControlBase's text-selection Ctrl+A and
+            // Shift-extended caret movement - run first because Bubble travels from the focused
+            // target outward, and the table's own defaults below apply only to whatever that
+            // control leaves unhandled. A TextInput cell was already resolved on Preview above, so
+            // it is excluded here to avoid handling the same key twice.
             return;
         }
 

@@ -341,9 +341,15 @@ editing. Edit completion publishes `IsEditing` after clearing the transaction;
 if that callback removes, clears, replaces, or disposes the edited cell, the
 completed outer operation does not reactivate the obsolete row. `Ctrl+A` selects
 every row or cell when the active selection mode supports it and the stroke
-matches the exact lock-normalized Control command. An ancestor that handles
-preview key or pointer input suppresses all Table defaults; deliberate
-handled-events observers still receive the record. These rules follow the shared
+matches the exact lock-normalized Control command. Outside a live edit
+transaction, a focused cell control's own key handling — such as another
+control's independent text selection — runs before `Ctrl+A` and the navigation
+defaults above, which then apply only to a key that control leaves unhandled; a
+`TextInput` cell has no independent claim of its own outside the edit
+transaction, so the table's defaults keep winning over one that merely holds
+stray keyboard focus. An ancestor that handles preview key or pointer input
+suppresses all Table defaults; deliberate handled-events observers still receive
+the record. These rules follow the shared
 [keyboard modifier policy](../../concepts/input-routing.md#keyboard-modifier-policy)
 and routed handled-state contract.
 
