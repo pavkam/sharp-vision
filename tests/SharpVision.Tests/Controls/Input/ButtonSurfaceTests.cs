@@ -1663,4 +1663,43 @@ public sealed class ButtonSurfaceTests
         surface.Cell(new Point(caption.Bounds.X, caption.Bounds.Y)).Style.Foreground.ShouldBe(
             ThemeCatalog.Dark.ResolveColor(SemanticColor.ControlText));
     }
+
+    /// <summary>Verifies a disabled default button never presents Current, even though it keeps
+    /// the flag: Window's own key-time discovery already skips a disabled candidate, so painting
+    /// one as the window's current target would show a cue Enter cannot honor. Turbo Vision's
+    /// button style authors no local <c>disabled</c> face overlay, so before this fix the
+    /// unconditional <c>IsDefault</c> check left the bright-cyan <c>current</c> caption
+    /// (<c>styles.button.current</c>) painted straight through the disabled state instead of the
+    /// inherited disabled ink.</summary>
+    [Fact]
+    public async Task Render_WhenDisabledButtonIsDefault_DoesNotUseTheCurrentStateAsync()
+    {
+        var button = new Button("Run")
+        {
+            IsDefault = true,
+            IsEnabled = false,
+            Width = Length.Cells(8),
+            Height = Length.Cells(1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            button,
+            new Size(10, 3),
+            options,
+            ThemeCatalog.Load("turbo-vision"),
+            TestContext.Current.CancellationToken);
+
+        (button.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(Color.FromHex("#494949"));
+
+        await surface.UpdateAsync(() => button.IsEnabled = true, "re-enable the default button");
+
+        (button.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        surface.Cell(new Point(3, 0)).Style.Foreground.ShouldBe(Color.FromHex("#55ffff"));
+    }
 }

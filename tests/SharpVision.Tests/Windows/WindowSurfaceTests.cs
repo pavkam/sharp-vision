@@ -1663,6 +1663,72 @@ public sealed class WindowSurfaceTests
         accept.IsPointerOver.ShouldBeTrue();
     }
 
+    /// <summary>Verifies two IsDefault buttons stay legal at once but only the one Enter currently
+    /// targets paints the Current cue, and that disabling or re-enabling that button moves both
+    /// the cue and Enter's own activation target together - since Button.GetAppearanceState and
+    /// Window's key-time routing both defer to the same resolution.</summary>
+    [Fact]
+    public async Task Render_WhenTwoButtonsAreDefault_MovesTheCurrentCueWithEnterActivationAsync()
+    {
+        // Arrange
+        var firstClicks = 0;
+        var secondClicks = 0;
+        var first = new Button { Text = "First", IsDefault = true };
+        var second = new Button { Text = "Second", IsDefault = true };
+        first.Click += (_, _) => firstClicks++;
+        second.Click += (_, _) => secondClicks++;
+        var content = new Stack { Children = { first, second } };
+        var window = new Window { Content = content, Width = Length.Cells(14), Height = Length.Cells(8) };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(18, 10),
+            TestContext.Current.CancellationToken);
+
+        // Assert only the first candidate in ownership order is Current
+        (first.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        (second.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+
+        // Act focus content so the fallback key bubbles to the Window, then Enter with both
+        // candidates eligible
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(first).ShouldBeTrue(), "focus the first button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert only the current candidate activated
+        firstClicks.ShouldBe(1);
+        secondClicks.ShouldBe(0);
+
+        // Act disable the current default button - which also clears its own focus - then
+        // refocus content so the fallback key keeps bubbling to the Window
+        await surface.UpdateAsync(() => first.IsEnabled = false, "disable the first default button");
+
+        // Assert the cue moved to the second candidate
+        (first.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+        (second.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+
+        // Act Enter now that the first candidate is unavailable
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(second).ShouldBeTrue(), "focus the second button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation followed the moved cue
+        firstClicks.ShouldBe(1);
+        secondClicks.ShouldBe(1);
+
+        // Act re-enable the first candidate
+        await surface.UpdateAsync(() => first.IsEnabled = true, "re-enable the first default button");
+
+        // Assert the cue moved back
+        (first.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Current);
+        (second.GetAppearanceState() & VisualState.Current).ShouldBe(VisualState.Normal);
+
+        // Act Enter after recovery
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(first).ShouldBeTrue(), "refocus the first button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation moved back with the cue
+        firstClicks.ShouldBe(2);
+        secondClicks.ShouldBe(1);
+    }
+
     /// <summary>Verifies a mounted Window inherits Disabled from a disabled ancestor rather than
     /// only from its own IsEnabled flag, and resumes Normal once re-enabled.</summary>
     [Fact]

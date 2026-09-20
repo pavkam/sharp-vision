@@ -5,6 +5,8 @@ namespace SharpVision.Controls.Input;
 
 using System.Runtime.ExceptionServices;
 
+using SharpVision.Windows;
+
 using Text;
 
 using DisplayText = Display.Text;
@@ -26,6 +28,13 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         EnableCommand();
         _style = InitializeStyle(ButtonStyle.Definition);
         VerticalAlignment = VerticalAlignment.Center;
+
+        // Only this button's own availability can move the owning Window's resolved default
+        // button (Window.ResolveDefaultButton only ever considers IsDefault candidates), so a
+        // sibling IsDefault button may need to repaint its Current cue when this one becomes or
+        // stops being eligible - a fact it cannot detect from its own unchanged state.
+        EnabledChanged += OnDefaultCandidateAvailabilityChanged;
+        VisibilityChanged += OnDefaultCandidateAvailabilityChanged;
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
@@ -69,10 +78,13 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
 
     /// <summary>Gets or sets whether an owning Window treats Enter as a fallback activation.</summary>
     /// <remarks>
-    /// A default button is also presented as the <see cref="VisualState.Current"/> item of its
-    /// window - the one Enter currently targets - so a theme may distinguish it through
-    /// <c>styles.button.current</c> (Turbo Vision's bright-cyan default-button caption, for
-    /// example). A theme that authors nothing there shows no difference, exactly as before.
+    /// The effective default button - the one <see cref="Window.ResolveDefaultButton"/>
+    /// resolves, the first enabled and visible <see cref="IsDefault"/> descendant in ownership
+    /// order - is also presented as the <see cref="VisualState.Current"/> item of its window, so a
+    /// theme may distinguish it through <c>styles.button.current</c> (Turbo Vision's bright-cyan
+    /// default-button caption, for example). Several descendants may keep this flag at once, but
+    /// only the one Enter would currently activate paints as current; a theme that authors nothing
+    /// there shows no difference, exactly as before.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The attached Button is mutated off-dispatcher.</exception>
     /// <exception cref="ObjectDisposedException">The Button is disposed.</exception>
@@ -87,6 +99,11 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
             if (SetProperty(ref field, value, InvalidationImpact.None))
             {
                 InvalidateVisualState();
+
+                // This button's own cache is cleared above; a sibling IsDefault descendant whose
+                // own facts did not change may still need to move its Current cue now that the
+                // window's resolution has a new or one fewer candidate to consider.
+                FindAncestor<Window>()?.InvalidateDefaultButtonCues();
             }
         }
     }
@@ -164,7 +181,7 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     {
         var state = base.GetAppearanceState();
 
-        if (IsDefault)
+        if (IsDefault && IsEffectiveDefaultButton)
         {
             state |= VisualState.Current;
         }
@@ -172,6 +189,70 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         return IsCommandExecutable
             ? state
             : (state & ~(VisualState.IsPointerOver | VisualState.Pressed)) | VisualState.Disabled;
+    }
+
+    /// <summary>Gets whether this button is the one an owning Window's Enter key currently
+    /// targets - or, absent an owning Window, whether it is simply available - so
+    /// <see cref="GetAppearanceState"/> presents <see cref="VisualState.Current"/> on at most one
+    /// of several <see cref="IsDefault"/> siblings, matching <see cref="Window.OnEvent"/>'s
+    /// own key-time resolution exactly rather than duplicating or drifting from it.</summary>
+    private bool IsEffectiveDefaultButton =>
+        FindAncestor<Window>() is { } window
+            ? window.IsEffectiveDefault(this)
+            : EffectiveIsEnabled && EffectiveIsVisible;
+
+    /// <summary>Repaints this button's <see cref="VisualState.Current"/> cue after the owning
+    /// <see cref="Window"/>'s default-button resolution moves to or away from this
+    /// instance.</summary>
+    /// <remarks>
+    /// The internal seam <see cref="Window.InvalidateDefaultButtonCues()"/> needs: this
+    /// button's own facts may be unchanged, so nothing else already invalidates its cache, and
+    /// <see cref="ControlBase.InvalidateVisualState"/> stays protected because Window does not
+    /// derive from Button.
+    /// </remarks>
+    internal void InvalidateDefaultButtonCue() => InvalidateVisualState();
+
+    private void OnDefaultCandidateAvailabilityChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = sender;
+        _ = eventArgs;
+
+        // A non-default button's own availability never enters Window.ResolveDefaultButton's
+        // predicate, so only a candidate that carries the flag can move the resolution.
+        if (IsDefault)
+        {
+            FindAncestor<Window>()?.InvalidateDefaultButtonCues();
+        }
+    }
+
+    /// <inheritdoc/>
+    protected override void OnParentChanged(ControlBase? previous, ControlBase? current)
+    {
+        base.OnParentChanged(previous, current);
+
+        if (!IsDefault)
+        {
+            return;
+        }
+
+        // Reparenting can add this candidate to one window's resolution and remove it from
+        // another's, so both ownership chains - the one being left and the one being joined -
+        // need their default-button cues re-evaluated.
+        FindWindowAncestor(previous)?.InvalidateDefaultButtonCues();
+        FindWindowAncestor(current)?.InvalidateDefaultButtonCues();
+    }
+
+    private static Window? FindWindowAncestor(ControlBase? control)
+    {
+        for (var candidate = control; candidate is not null; candidate = candidate.Parent)
+        {
+            if (candidate is Window window)
+            {
+                return window;
+            }
+        }
+
+        return null;
     }
 
     // The shadowed face shifts while pressed; a press that cannot activate shows no shift either.

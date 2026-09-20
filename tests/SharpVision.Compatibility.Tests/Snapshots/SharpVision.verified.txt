@@ -1927,6 +1927,7 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
+        protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnPressedChanged(bool pressed) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }

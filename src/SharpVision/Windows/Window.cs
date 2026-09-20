@@ -705,7 +705,7 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             var button = key.Stroke.Modifiers.IsActivationEligible()
                 ? key.Stroke.Code == Code.Enter
-                    ? FindButton(this, static candidate => candidate.IsDefault)
+                    ? ResolveDefaultButton()
                     : key.Stroke.Code == Code.Escape
                         ? FindButton(this, static candidate => candidate.IsCancel)
                         : null
@@ -1417,6 +1417,63 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         }
 
         return null;
+    }
+
+    /// <summary>Resolves the button this window's Enter key currently targets: the first enabled,
+    /// visible descendant whose <see cref="Button.IsDefault"/> is true, walked in the same
+    /// ownership order <see cref="OnEvent"/> uses at key time.</summary>
+    /// <returns>The resolved default button, or null when no descendant is presently eligible.</returns>
+    /// <remarks>
+    /// This is the single authority for "the default button of this window" - the fact
+    /// <see cref="Button.GetAppearanceState"/> defers to for its <see cref="VisualState.Current"/>
+    /// bit, so a window with several <see cref="Button.IsDefault"/> descendants paints the cue on
+    /// exactly the one Enter would activate, never on more than one, and never on a disabled or
+    /// hidden one even while it keeps the flag.
+    /// </remarks>
+    [Pure]
+    internal Button? ResolveDefaultButton() => FindButton(this, static candidate => candidate.IsDefault);
+
+    /// <summary>Gets whether the given button is the one <see cref="ResolveDefaultButton"/>
+    /// currently resolves.</summary>
+    /// <param name="button">The non-null candidate button.</param>
+    /// <returns>True when <paramref name="button"/> is this window's effective default button.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="button"/> is null.</exception>
+    [Pure]
+    internal bool IsEffectiveDefault(Button button)
+    {
+        ArgumentNullException.ThrowIfNull(button);
+
+        return ReferenceEquals(ResolveDefaultButton(), button);
+    }
+
+    /// <summary>Repaints the <see cref="VisualState.Current"/> cue on every descendant
+    /// <see cref="Button.IsDefault"/> button, so it reflects a resolution change even for a
+    /// button whose own facts (<see cref="ControlBase.EffectiveIsEnabled"/>,
+    /// <see cref="ControlBase.EffectiveIsVisible"/>, <see cref="Button.IsDefault"/>) did not
+    /// themselves change.</summary>
+    /// <remarks>
+    /// Keeping several <see cref="Button.IsDefault"/> descendants legal means the resolved
+    /// default can move from one to another purely because a sibling's flag, availability, or
+    /// ownership changed - a fact each affected button cannot detect from its own state alone.
+    /// A <see cref="Button"/> calls this on its owning window whenever <see cref="Button.IsDefault"/>,
+    /// its own enabled or visible state, or its ownership commits, so every candidate re-evaluates
+    /// <see cref="ResolveDefaultButton"/> and repaints if the answer changed.
+    /// </remarks>
+    internal void InvalidateDefaultButtonCues() => InvalidateDefaultButtonCues(this);
+
+    private static void InvalidateDefaultButtonCues(ControlBase control)
+    {
+        if (control is Button { IsDefault: true } button)
+        {
+            button.InvalidateDefaultButtonCue();
+        }
+
+        var count = control.OwnedControlCount;
+
+        for (var index = 0; index < count; index++)
+        {
+            InvalidateDefaultButtonCues(control.OwnedControlAt(index));
+        }
     }
 
     #endregion

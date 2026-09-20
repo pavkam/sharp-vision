@@ -941,6 +941,52 @@ public sealed class WindowTests
         invocations[laterEligible].ShouldBe(0);
     }
 
+    /// <summary>Verifies the internal default-button resolution Button.GetAppearanceState defers
+    /// to for its Current cue is exactly the button Enter activates - with two IsDefault
+    /// descendants legal at once, and after the first becomes unavailable and then available
+    /// again - so the two paths can never disagree about which instance is "the" default button.</summary>
+    [Fact]
+    public void ResolveDefaultButton_WhenTwoButtonsAreDefault_AgreesWithEnterActivation()
+    {
+        var content = new Stack();
+        var first = new Button { IsDefault = true };
+        var second = new Button { IsDefault = true };
+        var invoked = new List<Button>();
+        first.Click += (_, _) => invoked.Add(first);
+        second.Click += (_, _) => invoked.Add(second);
+        content.Children.Add(first);
+        content.Children.Add(second);
+        var window = new Window { Content = content };
+
+        window.ResolveDefaultButton().ShouldBeSameAs(first);
+        window.IsEffectiveDefault(first).ShouldBeTrue();
+        window.IsEffectiveDefault(second).ShouldBeFalse();
+
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+
+        invoked.ShouldBe([first]);
+
+        first.IsEnabled = false;
+
+        window.ResolveDefaultButton().ShouldBeSameAs(second);
+        window.IsEffectiveDefault(first).ShouldBeFalse();
+        window.IsEffectiveDefault(second).ShouldBeTrue();
+
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+
+        invoked.ShouldBe([first, second]);
+
+        first.IsEnabled = true;
+
+        window.ResolveDefaultButton().ShouldBeSameAs(first);
+        window.IsEffectiveDefault(first).ShouldBeTrue();
+        window.IsEffectiveDefault(second).ShouldBeFalse();
+
+        _ = Router.Route(window, Events.Key, Key(Code.Enter));
+
+        invoked.ShouldBe([first, second, first]);
+    }
+
     /// <summary>Verifies handled keys and non-press strokes do not invoke Window fallbacks.</summary>
     [Fact]
     public void Dispatch_WhenKeyIsHandledOrNotPress_IgnoresFallbackButton()

@@ -161,7 +161,11 @@ IsPointerOver -> FocusWithin -> Focused -> Current -> Selected -> Checked
 `Current` marks the item an Enter press or a navigator currently targets: the
 keyboard-current row of a list or table, and a `Window`'s default `Button`
 (`IsDefault`), so a theme can mark the default button through
-`styles.button.current` without a state of its own.
+`styles.button.current` without a state of its own. Several descendant `Button`s
+may keep `IsDefault` at once; `Current` still applies to exactly the one the
+owning `Window` resolves - the first enabled, visible `IsDefault` descendant in
+ownership order, the same button Enter activates - never to more than one and
+never to a disabled or hidden one that still carries the flag.
 
 ```mermaid
 flowchart TD
