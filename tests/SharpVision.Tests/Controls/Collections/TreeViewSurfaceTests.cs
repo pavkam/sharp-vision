@@ -979,6 +979,64 @@ public sealed class TreeViewSurfaceTests
         }
     }
 
+    /// <summary>Verifies pointer hover over an unselected row keeps the row's own normal
+    /// background - the "item" role's <c>PreservePointerBackground</c> cascade rule
+    /// (<see cref="Theme.GetInteractiveRowStyleSet"/>) - while its caption's ink switches to the
+    /// theme-authored <c>styles.input.pointerOver</c> foreground delta. TreeViewItem now resolves
+    /// through that role exactly like every other selectable row (see
+    /// <see cref="Render_WhenItemIsSelected_PaintsOnlyTheSelectedRowWithThemeSelectionColorsAsync"/>),
+    /// so hover repaints only the caption, never the row's fill.</summary>
+    [Fact]
+    public async Task Render_WhenPointerIsOverAnUnselectedRow_KeepsTheRowFillAndTakesTheHoverForegroundAsync()
+    {
+        // Arrange
+        var first = new TreeViewItem { Header = "One" };
+        var second = new TreeViewItem { Header = "Two" };
+        var tree = CreateTree(8);
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        // TrueColor keeps the theme's own literal colors comparable to the rendered cells without
+        // a Basic16 projection step - Dark's "control"/"activeText" colors are not exact Basic16
+        // table hits the way its selection colors happen to be.
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        // ThemeCatalog.Dark's "container" role draws an all-sides border, unlike the borderless
+        // test themes most other surface tests mount with - two extra rows make room for it.
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(8, 4),
+            options,
+            ThemeCatalog.Dark,
+            TestContext.Current.CancellationToken);
+        var rowStyles = ThemeCatalog.Dark.GetInteractiveRowStyleSet();
+        var normalForeground = rowStyles.Normal.Face.Foreground.Resolve(ThemeCatalog.Dark);
+        var normalBackground = rowStyles.Normal.Face.Background.Resolve(ThemeCatalog.Dark);
+        var hoverForeground = rowStyles.IsPointerOver.ShouldNotBeNull().Face.Foreground.Resolve(ThemeCatalog.Dark);
+        // Dark's input.pointerOver authors both a foreground and a background, but the row rule
+        // only lets the foreground through - proving that requires the two foregrounds to differ.
+        hoverForeground.ShouldNotBe(normalForeground);
+
+        // Act
+        await surface.Pointer.MoveToAsync(first);
+
+        // Assert - the hovered row keeps its own normal fill; its caption uses the theme's hover
+        // foreground everywhere the row paints, not just at the header text.
+        first.IsPointerOver.ShouldBeTrue();
+
+        for (var x = first.Bounds.X; x < first.Bounds.Right; x++)
+        {
+            surface.Cell(new Point(x, first.Bounds.Y)).Style.Background.ShouldBe(normalBackground);
+            surface.Cell(new Point(x, first.Bounds.Y)).Style.Foreground.ShouldBe(hoverForeground);
+        }
+
+        // Assert - the unselected, un-hovered sibling keeps the plain normal foreground and fill.
+        second.IsPointerOver.ShouldBeFalse();
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Foreground.ShouldBe(normalForeground);
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Background.ShouldBe(normalBackground);
+    }
+
     #region Asynchronous child-loading surfaces
 
     /// <summary>Verifies an item whose children are still loading keeps its disclosure glyph and

@@ -764,26 +764,28 @@ public sealed class CuratedThemesTests
         failures.ShouldBeEmpty();
     }
 
-    /// <summary>Verifies every curated theme's authored <c>button</c>, <c>toggle</c>, <c>item</c>,
-    /// and <c>panel</c> role faces remain readable, in every state a theme or the code-owned
-    /// default declares, at the two color depths used for curated RGB presentation. These four
-    /// leaf role sections sit outside every other gate in this file, which only ever resolves the
-    /// six original well-known sections or the global semantic colors - so a regression in one of
+    /// <summary>Verifies every curated theme's authored <c>button</c>, <c>toggle</c>, and
+    /// <c>item</c> role faces remain readable, in every state a theme or the code-owned default
+    /// declares, at the two color depths used for curated RGB presentation. These three leaf role
+    /// sections sit outside every other gate in this file, which only ever resolves the six
+    /// original well-known sections or the global semantic colors - so a regression in one of
     /// their authored faces, or a new theme shipping an illegible hover or pressed row, would
     /// otherwise pass unnoticed. A state whose resolved <see cref="Face.Background"/> is
-    /// transparent has no plane to measure against and is skipped - <c>panel</c>'s Normal state is
-    /// exactly this on every curated theme.</summary>
+    /// transparent has no plane to measure against and is skipped. <c>panel</c> is not part of this
+    /// gate: a panel arranges children and paints no caption of its own, so no text-contrast floor
+    /// applies to its face - only <c>button</c>, <c>toggle</c>, and <c>item</c> paint a real
+    /// caption and stay gated.</summary>
     /// <remarks>
-    /// Only Turbo Vision authors these four sections; every other bundled theme's button, toggle,
-    /// item, and panel resolve purely through the already-shipped <c>input</c>/<c>control</c>
-    /// deltas that <see cref="StyleRoleCascadeTests"/> already proves each such theme inherits
-    /// unchanged. Running this gate over the resulting fifteen inherited faces surfaced that
-    /// <c>input</c>'s own Pressed fill, and three themes' own passive Surface fill, were never once
-    /// measured against their text anywhere in this file before - only Bar and SelectedControl ever
-    /// were. <see cref="_preexistingInheritedContrastGap"/> names exactly those already-shipped
-    /// pairings so this new gate does not fail on legacy text it did not introduce and cannot fix
-    /// here (this change is test-only); every pairing it excludes, and the ratio each one measured,
-    /// is reported alongside this change for a follow-up to size and prioritize.
+    /// Only Turbo Vision authors these three sections; every other bundled theme's button, toggle,
+    /// and item resolve purely through the already-shipped <c>input</c>/<c>control</c> deltas that
+    /// <see cref="StyleRoleCascadeTests"/> already proves each such theme inherits unchanged.
+    /// Running this gate over the resulting fifteen inherited faces surfaced that <c>input</c>'s
+    /// own Pressed fill, and three themes' own passive Surface fill, were never once measured
+    /// against their text anywhere in this file before - only Bar and SelectedControl ever were.
+    /// <see cref="_preexistingInheritedContrastGap"/> names exactly those already-shipped pairings
+    /// so this new gate does not fail on legacy text it did not introduce and cannot fix here (this
+    /// change is test-only); every pairing it excludes, and the ratio each one measured, is
+    /// reported alongside this change for a follow-up to size and prioritize.
     /// </remarks>
     [Fact]
     public void EveryTheme_WhenInteractiveRoleTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
@@ -798,7 +800,6 @@ public sealed class CuratedThemesTests
             CheckRole("button", theme.GetStyleSet(ButtonStyle.Default));
             CheckRole("toggle", theme.GetStyleSet(ToggleStyle.Default));
             CheckRole("item", theme.GetStyleSet(ItemStyle.Default));
-            CheckRole("panel", theme.GetStyleSet(PanelStyle.Default));
 
             void CheckRole<TStyle>(string role, StyleStates<TStyle> set) where TStyle : ControlStyle
             {
@@ -949,8 +950,8 @@ public sealed class CuratedThemesTests
     private static double HotkeyContrastFloor(string slug) =>
         slug == "turbo-vision" ? 2.1 : _textContrastFloor;
 
-    /// <summary>Resolves the contrast floor an authored <c>button</c>, <c>toggle</c>, <c>item</c>,
-    /// or <c>panel</c> state's text must keep against its own resolved face background under one
+    /// <summary>Resolves the contrast floor an authored <c>button</c>, <c>toggle</c>, or
+    /// <c>item</c> state's text must keep against its own resolved face background under one
     /// bundled theme.</summary>
     /// <remarks>
     /// Disabled text keeps the same 3:1 subdued-but-legible floor
@@ -970,15 +971,15 @@ public sealed class CuratedThemesTests
 
     /// <summary>Names the exact (theme, role, state) triples whose text this file has never once
     /// measured before this change, and which already fall under the ordinary AA floor today -
-    /// none of it introduced by, or owned by, the button/toggle/item/panel sections this change
-    /// gates. Every triple here resolves through the theme's own already-shipped <c>input</c> or
+    /// none of it introduced by, or owned by, the button/toggle/item sections this change gates.
+    /// Every triple here resolves through the theme's own already-shipped <c>input</c> or
     /// <c>control</c> section exactly as <see cref="StyleRoleCascadeTests"/> proves for every
     /// bundled theme but Turbo Vision, so the underlying legacy pairing is the same one a fix would
     /// have to land in <c>input</c>/<c>control</c> itself, not here. Two families make up the whole
     /// set: "pressed" text on twelve themes' own <c>pressedControl</c> fill (as low as 1.36:1 on
     /// default-light's gold-on-silver-gray pairing), and "normal"/"pointerOver"/"focused" text on
     /// three themes' own passive <c>surface</c> fill (tokyo-night-day, solarized-dark, and
-    /// solarized-light, down to 3.20:1). Both families predate the four leaf role sections
+    /// solarized-light, down to 3.20:1). Both families predate the three leaf role sections
     /// entirely; this gate is simply the first to look at them at all.</summary>
     private static readonly HashSet<(string Slug, string Role, string State)> _preexistingInheritedContrastGap =
     [
@@ -987,7 +988,6 @@ public sealed class CuratedThemesTests
         ("tokyo-night-day", "button", "normal"), ("tokyo-night-day", "button", "pointerOver"), ("tokyo-night-day", "button", "focused"), ("tokyo-night-day", "button", "pressed"),
         ("tokyo-night-day", "toggle", "normal"), ("tokyo-night-day", "toggle", "pointerOver"), ("tokyo-night-day", "toggle", "focused"), ("tokyo-night-day", "toggle", "pressed"),
         ("tokyo-night-day", "item", "normal"), ("tokyo-night-day", "item", "focused"), ("tokyo-night-day", "item", "pressed"),
-        ("tokyo-night-day", "panel", "normal"),
         ("catppuccin-latte", "button", "pressed"), ("catppuccin-latte", "toggle", "pressed"), ("catppuccin-latte", "item", "pressed"),
         ("gruvbox-dark", "button", "pressed"), ("gruvbox-dark", "toggle", "pressed"), ("gruvbox-dark", "item", "pressed"),
         ("gruvbox-light", "button", "pressed"), ("gruvbox-light", "toggle", "pressed"), ("gruvbox-light", "item", "pressed"),
@@ -997,11 +997,9 @@ public sealed class CuratedThemesTests
         ("solarized-dark", "button", "normal"), ("solarized-dark", "button", "pointerOver"), ("solarized-dark", "button", "focused"), ("solarized-dark", "button", "pressed"),
         ("solarized-dark", "toggle", "normal"), ("solarized-dark", "toggle", "pointerOver"), ("solarized-dark", "toggle", "focused"), ("solarized-dark", "toggle", "pressed"),
         ("solarized-dark", "item", "normal"), ("solarized-dark", "item", "focused"), ("solarized-dark", "item", "pressed"),
-        ("solarized-dark", "panel", "normal"),
         ("solarized-light", "button", "normal"), ("solarized-light", "button", "focused"), ("solarized-light", "button", "pressed"),
         ("solarized-light", "toggle", "normal"), ("solarized-light", "toggle", "focused"), ("solarized-light", "toggle", "pressed"),
         ("solarized-light", "item", "normal"), ("solarized-light", "item", "focused"), ("solarized-light", "item", "pressed"),
-        ("solarized-light", "panel", "normal"),
         ("one-dark", "button", "pressed"), ("one-dark", "toggle", "pressed"), ("one-dark", "item", "pressed")
     ];
 
