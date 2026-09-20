@@ -483,4 +483,28 @@ public sealed class GroupBoxTests
         // Assert
         group.Pending.ShouldBe(Invalidation.None);
     }
+
+    /// <summary>Verifies a rendered marked mnemonic registers the render-only access-key-attributes
+    /// dependency this control's caption resolves through the shared <c>ControlBase</c> helper, so
+    /// an access-key-attributes-only theme change repaints it - the positive counterpart the
+    /// previous test's negative case needs to actually prove the dependency is wired at all.</summary>
+    [Fact]
+    public void Theme_WhenHeaderHasMnemonic_InvalidatesRenderForAccessKeyAttributesOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
+        var group = new GroupBox { HeaderText = "&Tools" };
+        group.SetTheme(mounted);
+        new LayoutEngine().Layout(group, new Size(20, 8));
+        using Frame frame = new(new Size(20, 8));
+        group.Render(frame.Canvas);
+        group.Clear(Invalidation.All);
+
+        // Act
+        group.SetTheme(replacement);
+
+        // Assert
+        group.Pending.ShouldBe(Invalidation.Render);
+    }
 }

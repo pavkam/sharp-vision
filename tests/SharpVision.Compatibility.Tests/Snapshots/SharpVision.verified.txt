@@ -665,6 +665,10 @@ namespace SharpVision.Controls
         protected bool ResetOptionalGlyph(ref System.Text.Rune? storage, string propertyName) { }
         public void ResetPopupChrome() { }
         public void ResetShadow() { }
+        [return: System.Runtime.CompilerServices.TupleElementNames(new string[] {
+                "Foreground",
+                "Attributes"})]
+        protected System.ValueTuple<SharpVision.Terminal.Protocols.Color?, SharpVision.Terminal.Rendering.TerminalAttributes> ResolveAccessKeyStyle(bool hasMarkedMnemonic) { }
         protected int ResolveAffixGap() { }
         public SharpVision.Styling.ControlAppearance ResolveAppearance(SharpVision.Styling.Theme? theme, SharpVision.Styling.VisualState visualState = 0) { }
         protected SharpVision.Styling.BorderGlyphStyle ResolveBorderGlyphs(SharpVision.Styling.BorderGlyphStyle glyphs) { }

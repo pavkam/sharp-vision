@@ -569,6 +569,30 @@ public sealed class ExpanderTests
         expander.Pending.ShouldBe(Invalidation.None);
     }
 
+    /// <summary>Verifies a rendered marked mnemonic registers the render-only access-key-attributes
+    /// dependency this control's caption resolves through the shared <c>ControlBase</c> helper, so
+    /// an access-key-attributes-only theme change repaints it - the positive counterpart the
+    /// previous test's negative case needs to actually prove the dependency is wired at all.</summary>
+    [Fact]
+    public void Theme_WhenHeaderHasMnemonic_InvalidatesRenderForAccessKeyAttributesOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
+        var expander = new Expander { HeaderText = "&Details", IsExpanded = true };
+        expander.SetTheme(mounted);
+        new LayoutEngine().Layout(expander, new Size(30, 8));
+        using Frame frame = new(new Size(30, 8));
+        expander.Render(frame.Canvas);
+        expander.Clear(Invalidation.All);
+
+        // Act
+        expander.SetTheme(replacement);
+
+        // Assert
+        expander.Pending.ShouldBe(Invalidation.Render);
+    }
+
     /// <summary>Verifies the header's arranged slot - and, separately, rendering the header
     /// caption itself - both stay well-ordered and crash-free when an ancestor drives Bounds.X to
     /// the integer coordinate limit, mirroring GroupBox's own

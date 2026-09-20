@@ -21,10 +21,6 @@ using UnicodeWidth = Width;
 [PublicAPI]
 public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
 {
-    private static readonly ThemeValueDependency<TerminalAttributes> _hotkeyAttributesThemeDependency = new(
-        static theme => theme.ResolveAttributes(SemanticDecoration.Hotkey),
-        InvalidationImpact.Render);
-
     private string _display = string.Empty;
     private StyleSpan[] _spans = [];
     private string? _parsedContent;
@@ -252,23 +248,16 @@ public sealed class Text: ControlBase, IAccessKeyCaption, IStyled<TextStyle>
         var useMnemonic = captionOwner?.UseMnemonic ?? UseMnemonic;
         var highlightMnemonic = captionOwner?.EffectiveIsEnabled ?? EffectiveIsEnabled;
         var hasMarkedMnemonic = useMnemonic && Content.AsSpan().TryGetKey(out _);
-        var hasHighlightedMnemonic = hasMarkedMnemonic && highlightMnemonic;
 
         // The access-key color is a channel of this text's own resolved face - which, for a
         // transparent caption, is its owner's face on its owner's current plane - so a mnemonic on
         // a dark button and one on a light menu bar each get the color their theme chose for that
-        // plane. Only the grapheme's attributes are theme-wide.
-        Color? hotkeyColor = hasHighlightedMnemonic
-            ? GetResolvedAppearance(GetAppearanceState()).Face.AccessKeyColor.Literal
-            : null;
-        var hotkeyAttributes = hasMarkedMnemonic
-            ? ResolveThemeValue(_hotkeyAttributesThemeDependency)
-            : TerminalAttributes.None;
-
-        if (!hasMarkedMnemonic)
-        {
-            SetThemeValueDependency(_hotkeyAttributesThemeDependency, active: false);
-        }
+        // plane. Only the grapheme's attributes are theme-wide. `ResolveAccessKeyStyle` gates the
+        // color on this control's own `EffectiveIsEnabled`, which already agrees with
+        // `highlightMnemonic` above: an owned caption's `EffectiveIsEnabled` folds in its owner's
+        // through the ordinary ancestor walk, since the caption itself is never independently
+        // disabled.
+        var (hotkeyColor, hotkeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
 
         if (ReferenceEquals(_parsedContent, Content) &&
             _parsedUseMnemonic == useMnemonic &&

@@ -38,6 +38,79 @@ public sealed class GroupBoxSurfaceTests
         surface.Cell(new Point(3, 0)).Continuation.ShouldBeTrue();
     }
 
+    /// <summary>Verifies the Turbo Vision theme's per-role yellow <c>accessKeyColor</c> and empty
+    /// <c>attributes.hotkey</c> reach a GroupBox header exactly as they already reach a Button's
+    /// caption - proving parity between the two access-key drawing paths. GroupBox draws its own
+    /// caption directly through <c>AccessKeyText.Draw</c>; Button hosts a child <c>Text</c> that
+    /// already resolved this correctly. Neither marked grapheme carries the legacy underline, and
+    /// neither takes the theme-wide red <c>colors.hotkey</c> - each takes its own role's yellow.</summary>
+    [Fact]
+    public async Task Render_WhenTurboVisionThemeIsApplied_MatchesButtonCaptionAccessKeyStylingAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Load("turbo-vision");
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        var group = new GroupBox
+        {
+            HeaderText = "&Tools",
+            Content = new ControlText("Body"),
+            Width = Length.Cells(12),
+            Height = Length.Cells(3)
+        };
+        var button = new Button("&Run")
+        {
+            Width = Length.Cells(10),
+            Height = Length.Cells(3),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        // Act
+        await using var groupSurface = await ComponentSurface.MountAsync(
+            group,
+            new Size(12, 3),
+            options,
+            theme,
+            TestContext.Current.CancellationToken);
+        await using var buttonSurface = await ComponentSurface.MountAsync(
+            button,
+            new Size(10, 3),
+            options,
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert - GroupBox header, resolved against the "container" role.
+        var containerAccessKeyColor = theme.GetStyleSet(ContainerStyle.Default).Normal.Face.AccessKeyColor.Resolve(theme);
+        var headerMnemonic = groupSurface.Cell(new Point(2, 0));
+        headerMnemonic.Text.ShouldBe("T");
+        headerMnemonic.Style.Attributes.ShouldBe(TerminalAttributes.None);
+        headerMnemonic.Style.Foreground.ShouldBe(containerAccessKeyColor);
+        headerMnemonic.Style.Foreground.ShouldNotBe(theme.Hotkey);
+
+        // Assert - Button caption, resolved against the "button" role, proving parity: the
+        // mnemonic column is located rather than assumed, since Button centers its caption.
+        var buttonAccessKeyColor = theme.GetStyleSet(ButtonStyle.Default).Normal.Face.AccessKeyColor.Resolve(theme);
+        var mnemonicColumn = -1;
+
+        for (var x = 0; x < button.Bounds.Width; x++)
+        {
+            if (buttonSurface.Cell(new Point(x, 0)).Text == "R")
+            {
+                mnemonicColumn = x;
+                break;
+            }
+        }
+
+        mnemonicColumn.ShouldBeGreaterThanOrEqualTo(0);
+        var buttonMnemonic = buttonSurface.Cell(new Point(mnemonicColumn, 0));
+        buttonMnemonic.Style.Attributes.ShouldBe(TerminalAttributes.None);
+        buttonMnemonic.Style.Foreground.ShouldBe(buttonAccessKeyColor);
+        buttonMnemonic.Style.Foreground.ShouldNotBe(theme.Hotkey);
+    }
+
     /// <summary>Verifies a disabled group keeps its unavailable caption color while retaining
     /// mnemonic syntax, cascades disabled appearance to composed content — GroupBox's natural
     /// "ancestor-inherited" leg since it is content-composing — keeps geometry stable across a

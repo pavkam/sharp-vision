@@ -12,10 +12,6 @@ using SharpVision.Text;
 [PublicAPI]
 public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemStyle>
 {
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
-        InvalidationImpact.Render);
-
     private bool _isSelected;
     private readonly StyleSlot<NavigationViewItemStyle> _style;
 
@@ -191,6 +187,8 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
         RenderAffixes(clipped, textRegion, affixes, StartAffix, EndAffix, style);
 
         var deflated = DeflateForAffixes(textRegion, affixes);
+        var hasMarkedMnemonic = UseMnemonic && Text.AsSpan().TryGetKey(out _);
+        var (accessKeyForeground, accessKeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
         _ = Text.Draw(
             clipped.Clip(deflated),
             new Point(deflated.X, deflated.Y),
@@ -198,7 +196,8 @@ public sealed class NavigationViewItem: InputBase, IStyled<NavigationViewItemSty
             BackgroundMode.Transparent,
             CellPolicy.AmbiguousWidth,
             UseMnemonic,
-            EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
+            accessKeyForeground,
+            accessKeyAttributes);
     }
 
     /// <inheritdoc/>

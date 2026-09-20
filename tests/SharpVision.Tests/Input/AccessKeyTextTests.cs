@@ -53,6 +53,59 @@ public sealed class AccessKeyTextTests
         frame.GetCell(new Point(5, 0)).Style.Attributes.ShouldBe(TerminalAttributes.None);
     }
 
+    /// <summary>Verifies a requested rapid-blink access-key attribute clears an inherited
+    /// slow-blink bit instead of reaching the mutually exclusive combination the underlying
+    /// <see cref="TerminalStyle"/> construction rejects, and that the marked grapheme carries only
+    /// the requested blink variant while the rest of the caption keeps the inherited one.</summary>
+    [Fact]
+    public void Draw_WhenInheritedStyleBlinksAndAccessKeyAttributesRequestRapidBlink_YieldsRequestedBlink()
+    {
+        // Arrange
+        using Frame frame = new(new Size(6, 1));
+        var style = new TerminalStyle(attributes: TerminalAttributes.Blink);
+
+        // Act
+        var cells = "&Go".Draw(
+            frame.Canvas,
+            default,
+            style,
+            BackgroundMode.Transparent,
+            Ambiguous.Narrow,
+            useMnemonic: true,
+            accessKeyAttributes: TerminalAttributes.RapidBlink);
+
+        // Assert
+        cells.ShouldBe(2);
+        frame.GetCell(default).Style.Attributes.ShouldBe(TerminalAttributes.RapidBlink);
+        frame.GetCell(new Point(1, 0)).Style.Attributes.ShouldBe(TerminalAttributes.Blink);
+    }
+
+    /// <summary>Verifies the mirror combination: an inherited rapid-blink style with a requested
+    /// plain-blink access-key attribute yields the requested blink on the marked grapheme only,
+    /// without throwing on the otherwise-conflicting combination.</summary>
+    [Fact]
+    public void Draw_WhenInheritedStyleRapidBlinksAndAccessKeyAttributesRequestBlink_YieldsRequestedBlink()
+    {
+        // Arrange
+        using Frame frame = new(new Size(6, 1));
+        var style = new TerminalStyle(attributes: TerminalAttributes.RapidBlink);
+
+        // Act
+        var cells = "&Go".Draw(
+            frame.Canvas,
+            default,
+            style,
+            BackgroundMode.Transparent,
+            Ambiguous.Narrow,
+            useMnemonic: true,
+            accessKeyAttributes: TerminalAttributes.Blink);
+
+        // Assert
+        cells.ShouldBe(2);
+        frame.GetCell(default).Style.Attributes.ShouldBe(TerminalAttributes.Blink);
+        frame.GetCell(new Point(1, 0)).Style.Attributes.ShouldBe(TerminalAttributes.RapidBlink);
+    }
+
     /// <summary>Verifies markup gives only the complete marked grapheme the access-key semantic foreground.</summary>
     [Fact]
     public void ToMarkup_WhenMnemonicIsHighlighted_UsesAccessKeyForegroundAndUnderline()

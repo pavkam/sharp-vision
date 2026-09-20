@@ -19,10 +19,6 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
     // The header occupies one terminal row.
     private const int _headerHeightCells = 1;
 
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
-        InvalidationImpact.Render);
-
     private readonly StyleSlot<ExpanderStyle> _style;
     private readonly CallbackTransitionStream _expandedTransitions = new();
     private bool _isHeaderPointerOver;
@@ -216,6 +212,8 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
         if (Header is { EffectiveIsVisible: true } and DisplayText text && content.Width > HeaderChromeWidth)
         {
             var caption = canvas.Clip(HeaderBounds);
+            var hasMarkedMnemonic = UseMnemonic && text.Content.AsSpan().TryGetKey(out _);
+            var (accessKeyForeground, accessKeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
             _ = text.Content.Draw(
                 caption,
                 new Point(content.X.Add(HeaderChromeWidth), content.Y),
@@ -223,7 +221,8 @@ public sealed class Expander: HeaderedContentControl, IStyled<ExpanderStyle>
                 BackgroundMode.Transparent,
                 CellPolicy.AmbiguousWidth,
                 UseMnemonic,
-                EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
+                accessKeyForeground,
+                accessKeyAttributes);
         }
     }
 

@@ -298,4 +298,28 @@ public sealed class NavigationViewItemTests
         // Assert
         item.Pending.ShouldBe(Invalidation.None);
     }
+
+    /// <summary>Verifies a rendered marked mnemonic registers the render-only access-key-attributes
+    /// dependency this control's caption resolves through the shared <c>ControlBase</c> helper, so
+    /// an access-key-attributes-only theme change repaints it - the positive counterpart the
+    /// previous test's negative case needs to actually prove the dependency is wired at all.</summary>
+    [Fact]
+    public void Theme_WhenItemHasMnemonic_InvalidatesRenderForAccessKeyAttributesOnlyChange()
+    {
+        // Arrange
+        var mounted = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"underline\""));
+        var replacement = ThemeCatalog.Parse(ThemeJson.Create(hotkeyAttributes: "\"bold\""));
+        using var item = new NavigationViewItem { Text = "&Page" };
+        item.SetTheme(mounted);
+        new LayoutEngine().Layout(item, new Size(40, 3));
+        using Frame frame = new(new Size(40, 3));
+        item.Render(frame.Canvas);
+        item.Clear(Invalidation.All);
+
+        // Act
+        item.SetTheme(replacement);
+
+        // Assert
+        item.Pending.ShouldBe(Invalidation.Render);
+    }
 }

@@ -9,10 +9,6 @@ internal sealed class TabHeader: InputBase
     private const int _headerRowHeight = 1;
     private const int _headerHorizontalPadding = 1;
 
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
-        InvalidationImpact.Render);
-
     private bool _isSelected;
 
     /// <summary>Initializes one non-focusable header with validated text.</summary>
@@ -90,6 +86,8 @@ internal sealed class TabHeader: InputBase
             new Point(Bounds.X, Bounds.Y),
             appearance.Style,
             background: BackgroundMode.Transparent);
+        var hasMarkedMnemonic = UseMnemonic && Text.AsSpan().TryGetKey(out _);
+        var (accessKeyForeground, accessKeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
         var cells = Text.Draw(
             canvas,
             leading.Final,
@@ -97,7 +95,8 @@ internal sealed class TabHeader: InputBase
             BackgroundMode.Transparent,
             CellPolicy.AmbiguousWidth,
             UseMnemonic,
-            EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
+            accessKeyForeground,
+            accessKeyAttributes);
         _ = canvas.Draw(
             " ".AsSpan(),
             new Point(leading.Final.X + cells, leading.Final.Y),

@@ -21,16 +21,18 @@ Embarcadero's
 The first unescaped `&` followed immediately by a valid Unicode scalar declares
 the access key. Matching is invariant and case-insensitive. The marker itself
 occupies no cells; the complete grapheme that begins with the marked scalar is
-underlined and drawn in the active theme's `Hotkey` status foreground while the
-caption's owner is enabled. For example, `"&Save"` renders `Save`, and
-`"&e\u0301dit"` underlines the one-cell grapheme `é` rather than separating its
+drawn in the caption owner's resolved `Face.AccessKeyColor` channel and wrapped
+in the theme-wide `attributes.hotkey` decoration while the caption's owner is
+enabled - see [Access keys](themes.md#access-keys) for the full per-face color
+and theme-wide decoration rule. For example, `"&Save"` renders `Save`, and
+`"&e\u0301dit"` decorates the one-cell grapheme `é` rather than separating its
 combining mark.
 
 `&&` renders a single literal ampersand and declares no key. A trailing `&` also
 renders literally, because no scalar follows it. When a caption contains more
 than one unescaped marker, every marker is removed from the visible text, but
-only the first marked scalar is the access key and only its grapheme is
-underlined.
+only the first marked scalar is the access key and only its grapheme receives
+the access-key color and decoration.
 
 `ControlBase.UseMnemonic` defaults to `true` for captioned controls. Setting it
 to `false` removes the control from access-key discovery and renders its caption
@@ -180,28 +182,33 @@ collapsed, and disabled breadcrumb items publish no mnemonic in either surface.
 
 ## Rendering integration
 
-Marker collapse, escaping, Unicode measurement, and segmented underline drawing
+Marker collapse, escaping, Unicode measurement, and segmented decoration drawing
 share one implementation. The direct `Header` and `Title` renderers use the same
 visible width for measuring and drawing. `Text` converts enabled access syntax
 into its existing semantic markup before grapheme layout, so clipping, wrapping,
 wide-cell ownership, inherited background, attributes, and underline metadata
-remain authoritative. Only the marked grapheme receives the resolved
-`Theme.Hotkey` foreground. A disabled owner keeps its disabled foreground while
-marker collapse and the underline remain visible. A live hotkey-only theme
-replacement repaints active standalone and retained captions without measuring
-or arranging them; captions without an effective marker ignore that unrelated
-theme value.
+remain authoritative. The marked grapheme's foreground is the caption owner's
+resolved `Face.AccessKeyColor` channel, and its decoration is the theme-wide
+`attributes.hotkey` (`SemanticDecoration.Hotkey`) - see
+[Access keys](themes.md#access-keys) for the complete per-face color and
+theme-wide decoration rule. A disabled owner keeps its disabled foreground while
+marker collapse and the decoration remain visible. A caption with a marked
+mnemonic registers a render-only dependency on `SemanticDecoration.Hotkey`, so a
+live hotkey-only theme replacement repaints active standalone and retained
+captions without measuring or arranging them; captions without an effective
+marker ignore that unrelated theme value, and a changed access-key color instead
+arrives through ordinary appearance invalidation.
 
 ## Expected behavior
 
 The behavior above is verified across marker removal, `&&`, trailing markers,
 disabled parsing, invariant Rune matching, combining and wide graphemes, exact
-cells, underline style, access-key theme resolution, disabled-foreground
-preservation, dynamic caption and tree mutation, duplicate cycling, routed
-interception, modifier filtering, unavailable controls, modal confinement, scope
-focus transfer, every built-in semantic action, and adjacent key/text
-suppression. The showcase inventory keeps an intentional marker on every
-authored interactive specimen, with keys unique across each selected page and
-the complete active application tree, and no ancestor collision along an open
-menu path. Generated list data, body prose, repeated documentation chrome, and
-the arrow-navigated catalog sidebar do not participate.
+cells, per-face access-key color resolution, theme-wide access-key decoration,
+disabled-foreground preservation, dynamic caption and tree mutation, duplicate
+cycling, routed interception, modifier filtering, unavailable controls, modal
+confinement, scope focus transfer, every built-in semantic action, and adjacent
+key/text suppression. The showcase inventory keeps an intentional marker on
+every authored interactive specimen, with keys unique across each selected page
+and the complete active application tree, and no ancestor collision along an
+open menu path. Generated list data, body prose, repeated documentation chrome,
+and the arrow-navigated catalog sidebar do not participate.

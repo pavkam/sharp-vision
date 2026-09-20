@@ -49,6 +49,13 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         static theme => ResolveColor(new ControlColor(SemanticColor.SelectedControl), theme),
         InvalidationImpact.Render);
 
+    // Shared with every control that draws a directly-owned caption through
+    // AccessKeyText.Draw instead of hosting a child Text: the grapheme's decoration is
+    // theme-wide, exactly as Text resolves it for its own caption.
+    private static readonly ThemeValueDependency<TerminalAttributes> _hotkeyAttributesThemeDependency = new(
+        static theme => theme.ResolveAttributes(SemanticDecoration.Hotkey),
+        InvalidationImpact.Render);
+
     private IThemeValueDependency[]? _themeValueDependencies;
     private AppearanceStatesOverlay? _appearanceOverlay;
     private bool? _effectiveIsVisible;
@@ -4940,6 +4947,45 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// </remarks>
     /// <returns>The cell gap between a present affix and the content it sits beside.</returns>
     protected int ResolveAffixGap() => ResolveThemeValue(_inputAffixGapThemeDependency);
+
+    /// <summary>Resolves the foreground and attributes a directly-drawn caption applies to its
+    /// marked access-key grapheme.</summary>
+    /// <param name="hasMarkedMnemonic">Whether the caption currently declares a marked access
+    /// key, exactly as <see cref="AccessKeyText.Draw"/>'s own text argument would report through
+    /// <c>TryGetKey</c>.</param>
+    /// <returns>The resolved access-key foreground - this control's own <see
+    /// cref="Face.AccessKeyColor"/> channel while a mnemonic is marked and this control is
+    /// enabled, or null to let the grapheme inherit the caption's ordinary foreground - and the
+    /// active theme's <see cref="SemanticDecoration.Hotkey"/> attributes while a mnemonic is
+    /// marked, or <see cref="TerminalAttributes.None"/> otherwise.</returns>
+    /// <remarks>
+    /// Mirrors the resolution <see cref="Display.Text"/> performs for its own
+    /// caption, for the handful of controls - <see cref="Layout.GroupBox"/>,
+    /// the internal tab header, <see cref="Navigation.NavigationViewItem"/>, <see
+    /// cref="Navigation.NavigationViewGroup"/>, and <see
+    /// cref="Layout.Expander"/> - that draw a directly-owned caption through
+    /// <see cref="AccessKeyText.Draw"/> rather than hosting a child <see
+    /// cref="Display.Text"/>. Registers a render-only Theme dependency on
+    /// <see cref="SemanticDecoration.Hotkey"/> only while a mnemonic is actually marked and
+    /// removes it otherwise, so a theme swap that changes only that decoration repaints a marked
+    /// caption without remeasuring while never touching an unmarked one.
+    /// </remarks>
+    protected (Color? Foreground, TerminalAttributes Attributes) ResolveAccessKeyStyle(bool hasMarkedMnemonic)
+    {
+        var foreground = hasMarkedMnemonic && EffectiveIsEnabled
+            ? GetResolvedAppearance(GetAppearanceState()).Face.AccessKeyColor.Literal
+            : (Color?) null;
+        var attributes = hasMarkedMnemonic
+            ? ResolveThemeValue(_hotkeyAttributesThemeDependency)
+            : TerminalAttributes.None;
+
+        if (!hasMarkedMnemonic)
+        {
+            SetThemeValueDependency(_hotkeyAttributesThemeDependency, active: false);
+        }
+
+        return (foreground, attributes);
+    }
 
     /// <summary>Resolves and registers one typed non-appearance Theme value.</summary>
     /// <typeparam name="T">The immutable resolved value type.</typeparam>

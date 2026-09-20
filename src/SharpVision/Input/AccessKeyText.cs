@@ -346,25 +346,25 @@ internal static class AccessKeyText
         Justification = "Called only from within extension(...) blocks; the analyzer doesn't track that usage yet.")]
     private static TerminalStyle WithAccessKey(TerminalStyle style, Color? foreground, TerminalAttributes accessKeyAttributes)
     {
-        var attributes = style.Attributes;
+        // A requested underline joins the style's own underline channel - typed or legacy flag -
+        // when one is already active, rather than doubling it; every other requested attribute
+        // simply adds to the style's own. Stripping the bit here, before delegating the rest of
+        // the merge (including the blink/rapid-blink exclusion) to the shared decoration
+        // resolver, is what keeps that channel from doubling: DecorationResolver.Merge itself has
+        // no notion of "already active" for the legacy flag, only for the typed variant it is
+        // explicitly told about.
+        var hasActiveUnderline = style.Underline != Underline.None || (style.Attributes & TerminalAttributes.Underline) != 0;
+        var mergeAttributes = hasActiveUnderline
+            ? accessKeyAttributes & ~TerminalAttributes.Underline
+            : accessKeyAttributes;
 
-        // A requested underline joins the typed underline channel when one is already active
-        // rather than doubling it; every other requested attribute simply adds to the style's own.
-        if ((accessKeyAttributes & TerminalAttributes.Underline) != 0 &&
-            (attributes & TerminalAttributes.Underline) == 0 &&
-            style.Underline == Underline.None)
-        {
-            attributes |= TerminalAttributes.Underline;
-        }
-
-        attributes |= accessKeyAttributes & ~TerminalAttributes.Underline;
-
-        return new TerminalStyle(
-            foreground ?? style.Foreground,
-            style.Background,
-            attributes,
-            style.Hyperlink,
-            style.Underline,
-            style.UnderlineColor);
+        return DecorationResolver.Merge(
+            style,
+            mergeAttributes,
+            Underline.None,
+            foreground,
+            background: null,
+            underlineColor: null,
+            link: null);
     }
 }

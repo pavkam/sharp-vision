@@ -13,10 +13,6 @@ using LayoutStack = Controls.Layout.Stack;
 [PublicAPI]
 public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGroupStyle>
 {
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
-        InvalidationImpact.Render);
-
     private readonly LayoutStack _stack;
     private readonly OwnedControlSlot _childrenSlot;
     private readonly RetainedPropertyOverrideService _propertyOverrides;
@@ -339,6 +335,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             new Point(ContentBounds.X, ContentBounds.Y),
             ResolvedStyle,
             background: BackgroundMode.Transparent);
+        var hasMarkedMnemonic = UseMnemonic && Header.AsSpan().TryGetKey(out _);
+        var (accessKeyForeground, accessKeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
         _ = Header.Draw(
             canvas,
             leading.Final,
@@ -346,7 +344,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
             BackgroundMode.Transparent,
             CellPolicy.AmbiguousWidth,
             UseMnemonic,
-            EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
+            accessKeyForeground,
+            accessKeyAttributes);
     }
 
     /// <inheritdoc/>

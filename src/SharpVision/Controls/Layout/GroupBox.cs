@@ -18,10 +18,6 @@ using DisplayText = Display.Text;
 [PublicAPI]
 public sealed class GroupBox: HeaderedContentControl
 {
-    private static readonly ThemeValueDependency<Color> _hotkeyThemeDependency = new(
-        static theme => theme.Hotkey,
-        InvalidationImpact.Render);
-
     /// <summary>Initializes an empty group box.</summary>
     public GroupBox() => EnableChromeAuthoring();
 
@@ -136,6 +132,8 @@ public sealed class GroupBox: HeaderedContentControl
 
             if (header is DisplayText text)
             {
+                var hasMarkedMnemonic = UseMnemonic && text.Content.AsSpan().TryGetKey(out _);
+                var (accessKeyForeground, accessKeyAttributes) = ResolveAccessKeyStyle(hasMarkedMnemonic);
                 var cells = text.Content.Draw(
                     title,
                     start.Final,
@@ -143,7 +141,8 @@ public sealed class GroupBox: HeaderedContentControl
                     bg,
                     CellPolicy.AmbiguousWidth,
                     UseMnemonic,
-                    EffectiveIsEnabled ? ResolveThemeValue(_hotkeyThemeDependency) : null);
+                    accessKeyForeground,
+                    accessKeyAttributes);
                 _ = title.Draw(
                     " ".AsSpan(),
                     new Point(start.Final.X.Add(cells), start.Final.Y),
