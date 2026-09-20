@@ -543,6 +543,118 @@ the same way it gates `RunCoreAsync`'s.
 cooperative shutdown regardless of this option, because they represent
 process-manager-initiated termination rather than a Ctrl+C key press.
 
+## Job control
+
+`ConsoleApplicationBuilder.Build()` registers Unix job control - `SIGTSTP`
+(Ctrl+Z) and `SIGCONT` (`fg`, `bg`, or a supervisor resuming the process) -
+through `SharpVision.Terminal.Runtime.JobControlSignals`, unconditionally,
+whenever the opened connection owns a real Unix `UnixConsoleMode`
+(`connection.UnixMode` is non-null on Linux or macOS). There is no
+`ConsoleRunOptions` opt-out: unlike `TreatControlCAsInput`, which governs only
+Ctrl+C, job control has no equivalent flag, the same way `SIGTERM` and `SIGHUP`
+above have none. It is Unix-only - Windows has no `SIGTSTP`/`SIGCONT` equivalent
+to catch, so `Build()` never registers it there - and a caller-supplied
+transport or a Windows console leaves `connection.UnixMode` null and is skipped
+the same way.
+
+Both callbacks run synchronously on an arbitrary signal-handling thread, the
+same constraint `CooperativeShutdownSignals` documents for Ctrl+C/`SIGTERM`/
+`SIGHUP`, and each must finish before returning control to the signal
+infrastructure. `SIGTSTP`'s own default disposition would otherwise leave the
+terminal raw and the cursor hidden the instant the shell suspends the process,
+and `SIGCONT`'s the instant it resumes it, so the callback itself performs the
+restore or re-entry rather than deferring it. See the type remarks on
+`JobControlSignals` for why this process raises `SIGSTOP` on itself instead of
+relying on the OS default disposition to actually stop it.
+
+On `SIGTSTP`, the callback:
+
+1. Calls `Session.SuspendAsync()`, which writes every active lease's disable
+   bytes in reverse acquisition order - the same reverse walk `CleanupAsync`
+   performs at final shutdown, popping the title stack among the rest - but
+   without clearing the lease list, since a suspend is not final. A
+   `SuspendAsync` walk that arrives after final reverse cleanup has already
+   begun is a no-op: the same gate that refuses a late title reservation refuses
+   it too.
+2. Calls `UnixConsoleMode.Suspend()`, which restores the captured cooked termios
+   state without releasing the lease, so `Resume()` can re-derive and re-apply
+   the identical raw state later.
+3. Raises `SIGSTOP` on the whole process.
+
+On `SIGCONT`, the callback reverses that order:
+
+1. Calls `UnixConsoleMode.Resume()`, re-entering raw mode.
+2. Calls `Session.ResumeAsync()`, which replays every active lease's enable
+   bytes in original acquisition order and then raises `Session.Resumed`. Every
+   lease replays except the title-stack push: `Session` tracks whether its own
+   `SIGTSTP`-side pop actually ran for the entry currently on the stack, and
+   pushes again only when it did. An external `SIGSTOP`/`SIGCONT` cycle -
+   `kill -STOP`, a debugger pause, an orchestrator pause - never runs
+   `SuspendAsync` (`SIGSTOP` cannot be caught), so the matching `SIGCONT`
+   replays every other lease but does not push the title stack a second time.
+3. `Resumed` is raised with per-subscriber isolation: every subscriber runs in
+   turn even when an earlier one throws, and the first exception any subscriber
+   raises is recorded on `Session.LastResumeException` rather than propagating
+   or starving the subscribers registered after it.
+4. `Application`'s own `Resumed` subscriber marshals onto the dispatcher
+   thread - the callback itself is still running on the same arbitrary
+   signal-handling thread as the rest of this sequence - to force a full
+   `RefreshScreen()` and re-send the last title text `TerminalServices.SetTitle`
+   established, without pushing the title stack again. The repaint is needed
+   because the terminal may have shown unrelated content - the shell's own
+   prompt, another foregrounded program - for the entire time this process was
+   stopped, so the renderer's cached idea of the screen can no longer be trusted
+   for a differential update; the title needs re-sending for a similar reason
+   the stack itself is not re-pushed - a push only saves whatever title is
+   displayed at push time, and that is now the shell's own title, not this
+   application's.
+
+`Session.LastSuspendException` and `Session.LastResumeException` each record
+only the first failure from any single reverse or forward walk over the
+session's lifetime, mirroring `LastCleanupException`'s "first failure sticks"
+contract; a write failure on one lease never stops the walk from attempting the
+rest. The
+[terminal session implementation](../architecture/runtime-event-loop.md#terminal-session-implementation)
+owns how these two walks relate to `CleanupAsync`'s own reverse walk.
+
+`ConsoleApplicationBuilder` disposes the job-control registration itself, before
+it tears down terminal resources - ahead of `Session.DisposeAsync` and the host
+lease's own restore, not from a handler that would run only after both have
+already completed. `UnixConsoleMode.Suspend()` and `Resume()` are themselves
+no-ops once the lease has been disposed, so a signal landing in the disposal
+window touches neither termios nor a torn-down transport regardless of exactly
+when the registration itself finishes unregistering.
+
+```mermaid
+sequenceDiagram
+    participant OS as OS signal
+    participant Signals as JobControlSignals
+    participant Mode as UnixConsoleMode
+    participant Session
+    participant App as Application
+    participant Dispatcher
+
+    Note over OS,Dispatcher: Ctrl+Z suspends the process
+    OS-->>Signals: SIGTSTP
+    Signals->>Session: SuspendAsync()
+    Session->>Session: Write every lease's disable bytes in reverse<br/>(pops the title stack; a no-op once final cleanup has begun)
+    Session-->>Signals: leases disabled (LastSuspendException on first failure)
+    Signals->>Mode: Suspend() (restore cooked termios)
+    Signals->>OS: raise(SIGSTOP) on this process
+    Note over OS: Process stopped until a later SIGCONT
+
+    Note over OS,Dispatcher: fg resumes the process
+    OS-->>Signals: SIGCONT
+    Signals->>Mode: Resume() (re-enter raw mode)
+    Signals->>Session: ResumeAsync()
+    Session->>Session: Replay every lease's enable bytes forward<br/>(re-pushes the title stack only if this session's own pop ran)
+    Session->>Session: Raise Resumed (per-subscriber isolation;<br/>first failure recorded to LastResumeException)
+    Session-->>Signals: returns
+    Signals->>App: Resumed handler runs (same signal-handling thread)
+    App->>Dispatcher: InvokeAsync (marshal off the signal-handling thread)
+    Dispatcher->>App: RefreshScreen() and re-send the last title text
+```
+
 ## Expected behavior
 
 | Layer          | Required evidence                                                                                             |

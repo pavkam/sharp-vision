@@ -464,6 +464,27 @@ resize, cancellation, or handler exception. Lifecycle programs expand with one
 session-owned bounded interpreter. A pair is one static-variable transaction:
 both zero-parameter expansions succeed before output, or neither commits.
 
+A Unix `SIGTSTP`/`SIGCONT` job-control cycle reuses this reverse-cleanup
+machinery without ending the session. `SuspendAsync` runs the identical reverse
+lease walk `CleanupAsync` uses, but leaves the lease list intact and never sets
+the same guard `CleanupAsync` sets, so a suspend mid-run and a later confirmed
+title lease do not race each other. `ReplayLeasesAsync` is the forward
+counterpart, replaying every lease's enable bytes in original acquisition order,
+except that it re-pushes the title stack only when this session's own pop
+actually ran for the entry currently on it; `ResumeAsync` calls
+`ReplayLeasesAsync` and then raises `Resumed`. Both walks are best-effort: each
+records only its first failure - `LastSuspendException` for the reverse walk,
+`LastResumeException` for the forward one and for a throwing `Resumed`
+subscriber - without replacing that first failure on a later cycle, mirroring
+`LastCleanupException`'s own contract. `Resumed` itself is raised through the
+same per-subscriber isolation every other runtime event in this codebase uses -
+each subscriber runs even when an earlier one throws, and only the first
+exception is retained - inlined locally rather than routed through
+`SharpVision.EventPublication`, which this assembly cannot reference.
+`docs/concepts/hosting.md`'s [job control](../concepts/hosting.md#job-control)
+section owns the full suspend/resume sequence, including where the title-stack
+push is skipped and why the resumed application forces a repaint.
+
 ### Run and disposal interleaving
 
 This section is normative for how `Session.RunAsync` and `Session.DisposeAsync`
