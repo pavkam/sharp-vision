@@ -598,6 +598,57 @@ public sealed class TableTests
         table.Columns.Count.ShouldBe(1);
     }
 
+    /// <summary>Verifies SortBy on a disposed table with no columns reports the owner's disposed
+    /// state rather than the column-index bound check, matching the mutability-guard-first
+    /// convention InsertRow, ReplaceRow, RemoveRow, and ClearRows already follow.</summary>
+    [Fact]
+    public void SortBy_WhenTableIsDisposedAndHasNoColumns_ThrowsObjectDisposedException()
+    {
+        var table = new Table();
+
+        table.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => table.SortBy(999));
+    }
+
+    /// <summary>Verifies every row-mutation member on an off-dispatcher progressive table reports
+    /// the same dispatcher-affinity message as <see cref="TableRowCollection.Clear"/> and
+    /// <see cref="TableRowCollection.RemoveAt"/>, rather than the progressive-mode message
+    /// <c>RequireNotProgressive</c> would otherwise report first.</summary>
+    [Fact]
+    public async Task RowMutation_WhenAttachedOffThreadAndProgressive_ReportsDispatcherAffinityMessageAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var table = new Table();
+        var source = new FakeTableDataSource<int>([1, 2, 3], static item => item, count: 3);
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                table.Columns.Add(TableColumn.Fixed("Value", 5));
+                table.Attach(dispatcher);
+                table.SetDataSource(
+                    source,
+                    static item => new TableRow([new ControlText(item.ToString(CultureInfo.InvariantCulture))]),
+                    Length.Cells(1));
+            },
+            TestContext.Current.CancellationToken);
+
+        table.IsProgressive.ShouldBeTrue();
+
+        var clearException = Should.Throw<InvalidOperationException>(table.Rows.Clear);
+        var removeAtException = Should.Throw<InvalidOperationException>(() => table.Rows.RemoveAt(0));
+        var insertException = Should.Throw<InvalidOperationException>(
+            () => table.Rows.Insert(0, new TableRow([new ControlText("New")])));
+        var indexerException = Should.Throw<InvalidOperationException>(
+            () => table.Rows[0] = new TableRow([new ControlText("New")]));
+
+        clearException.Message.ShouldContain("dispatcher thread");
+        removeAtException.Message.ShouldBe(clearException.Message);
+        insertException.Message.ShouldBe(clearException.Message);
+        indexerException.Message.ShouldBe(clearException.Message);
+    }
+
     /// <summary>Verifies the row-mutation repair paths that move the active cell outside SetActive —
     /// removing the active row, replacing it, and cancelling an edit while rows disappear — publish
     /// PropertyChanged for the active-cell properties they commit.</summary>

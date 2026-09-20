@@ -3100,6 +3100,33 @@ public sealed class NavigationViewTests
         _ = Should.Throw<ObjectDisposedException>(() => nav.Items[0] = candidate);
     }
 
+    /// <summary>Verifies a disposed NavigationView's BringItemIntoView and SelectItem still reject
+    /// a null argument with ArgumentNullException rather than the owner's disposed-state check
+    /// pre-empting that validation.</summary>
+    [Fact]
+    public void BringItemIntoViewAndSelectItem_WhenOwnerDisposedAndArgumentIsNull_ThrowsArgumentNullException()
+    {
+        var nav = new NavigationView();
+        nav.Dispose();
+
+        _ = Should.Throw<ArgumentNullException>(() => nav.BringItemIntoView(null!));
+        _ = Should.Throw<ArgumentNullException>(() => nav.SelectItem(null!));
+    }
+
+    /// <summary>Verifies a disposed NavigationView's BringItemIntoView and SelectItem still throw
+    /// ObjectDisposedException for a non-null, unowned candidate once argument validation has
+    /// cleared.</summary>
+    [Fact]
+    public void BringItemIntoViewAndSelectItem_WhenOwnerDisposedAndArgumentIsNotNull_ThrowsObjectDisposedException()
+    {
+        var nav = new NavigationView();
+        nav.Dispose();
+        var candidate = new NavigationViewItem { Text = "Candidate" };
+
+        _ = Should.Throw<ObjectDisposedException>(() => nav.BringItemIntoView(candidate));
+        _ = Should.Throw<ObjectDisposedException>(() => nav.SelectItem(candidate));
+    }
+
     /// <summary>Verifies every NavigationView-declared settable property requires dispatcher
     /// affinity once attached.</summary>
     [Fact]

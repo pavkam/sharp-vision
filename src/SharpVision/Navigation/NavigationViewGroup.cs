@@ -137,8 +137,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
 
     private bool RemoveItemCore(NavigationViewItem item, bool restorePresentation)
     {
-        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
+        VerifyMutable();
 
         if (!_stack.Children.Contains(item))
         {

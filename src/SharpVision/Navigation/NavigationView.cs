@@ -50,8 +50,8 @@ public sealed class NavigationView: ScrollableCompositeControlBase
     /// <exception cref="ObjectDisposedException">The navigation view is disposed.</exception>
     public bool BringItemIntoView(NavigationViewItem item)
     {
-        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
+        VerifyMutable();
 
         if (!ReferenceEquals(item.FindNavigationView(), this))
         {
@@ -184,8 +184,8 @@ public sealed class NavigationView: ScrollableCompositeControlBase
     /// <exception cref="ObjectDisposedException">The view is disposed.</exception>
     public void SelectItem(NavigationViewItem item)
     {
-        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
+        VerifyMutable();
 
         if (!ReferenceEquals(item.FindNavigationView(), this))
         {
@@ -244,8 +244,8 @@ public sealed class NavigationView: ScrollableCompositeControlBase
 
     private bool RemoveEntryCore(ControlBase entry, bool isFooter, bool restorePresentation)
     {
-        VerifyMutable();
         ArgumentNullException.ThrowIfNull(entry);
+        VerifyMutable();
         var stack = isFooter ? _footerStack : _itemsStack;
 
         if (!stack.Children.Contains(entry))

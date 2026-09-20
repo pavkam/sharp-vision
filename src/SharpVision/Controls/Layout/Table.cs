@@ -443,6 +443,11 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public void SortBy([NonNegativeValue] int columnIndex)
     {
+        // The mutability guard must run before the bound checks below, or an out-of-range index on
+        // a disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of
+        // the table's terminal or thread state. SetSort repeats this guard further down; that
+        // second call stays in place so it still protects direct callers of SetSort itself.
+        VerifyMutable();
         ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual((uint) columnIndex, (uint) Columns.Count);
 
@@ -466,9 +471,12 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <exception cref="ObjectDisposedException">The table is disposed.</exception>
     public void SetSort(int columnIndex, TableSortDirection direction)
     {
+        // The enum's validity is a domain check independent of the table's state, so it runs
+        // before the mutability guard, matching the convention every other collection and mutator
+        // in this file follows: domain checks first, then VerifyMutable(), then state checks.
+        ArgumentOutOfRangeException.ThrowIfNotDefined(direction, nameof(direction), "The enum value is unknown.");
         VerifyMutable();
         RequireNotProgressive("Sorting is unavailable while the table is progressive; the data source owns sort order.");
-        ArgumentOutOfRangeException.ThrowIfNotDefined(direction, nameof(direction), "The enum value is unknown.");
 
         // Validate columnIndex before CommitEdit below mutates any in-flight edit: an invalid
         // argument must throw without side effects, matching InsertRow/ReplaceRow's precedent of
@@ -2371,15 +2379,15 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <param name="row">The non-null row.</param>
     internal void InsertRow(TableRowCollection owner, int index, TableRow row)
     {
+        // The mutability guard must run before VerifyRowsOwner's ownership check, the
+        // progressive-mode check, and the range check below, or a disposed or off-dispatcher
+        // table would report ArgumentException/InvalidOperationException/ArgumentOutOfRangeException
+        // instead of the table's terminal or thread state. ValidateRow repeats this guard further
+        // down; that second call stays in place so the row-shape and cell-attachment checks it also
+        // performs still run after the range check, exactly as before.
+        VerifyMutable();
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
-
-        // The mutability guard must run before the range check below, or an out-of-range index on
-        // a disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of
-        // the table's terminal or thread state. ValidateRow repeats this guard further down; that
-        // second call stays in place so the row-shape and cell-attachment checks it also performs
-        // still run after the range check, exactly as before.
-        VerifyMutable();
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) Rows.Count);
         ValidateRow(row);
 
@@ -2524,15 +2532,15 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <param name="row">The non-null replacement row.</param>
     internal void ReplaceRow(TableRowCollection owner, int index, TableRow row)
     {
+        // The mutability guard must run before VerifyRowsOwner's ownership check, the
+        // progressive-mode check, and the index read below, or a disposed or off-dispatcher table
+        // would report ArgumentException/InvalidOperationException/ArgumentOutOfRangeException
+        // instead of the table's terminal or thread state. ValidateRow repeats this guard further
+        // down; that second call stays in place so the row-shape and cell-attachment checks it also
+        // performs still run after the index is confirmed valid, exactly as before.
+        VerifyMutable();
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
-
-        // The mutability guard must run before the index is read below, or an out-of-range index
-        // on a disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of
-        // the table's terminal or thread state. ValidateRow repeats this guard further down; that
-        // second call stays in place so the row-shape and cell-attachment checks it also performs
-        // still run after the index is confirmed valid, exactly as before.
-        VerifyMutable();
         _ = Rows[index];
         ValidateRow(row);
         var previous = Rows[index];
