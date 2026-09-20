@@ -1585,6 +1585,7 @@ namespace SharpVision.Controls.Collections
         public event System.EventHandler<SharpVision.Controls.Collections.TreeViewChildStateChangedEventArgs>? ChildStateChanged;
         public event System.EventHandler<SharpVision.Controls.Collections.ItemExpandedChangedEventArgs>? ExpandedChanged;
         public event System.EventHandler<SharpVision.Input.ActivationEventArgs>? Invoked;
+        protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
         protected override void OnDirectDisposalRequested() { }
@@ -1630,13 +1631,16 @@ namespace SharpVision.Controls.Collections
     }
     public sealed class TreeViewStyle : SharpVision.Styling.ContainerStyle, System.IEquatable<SharpVision.Controls.Collections.TreeViewStyle>
     {
-        public TreeViewStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor loadingColor, SharpVision.Styling.ControlColor failedColor, System.Text.Rune loadingGlyph, System.Text.Rune failedGlyph, System.Text.Rune collapsedGlyph, System.Text.Rune expandedGlyph) { }
+        public TreeViewStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor loadingColor, SharpVision.Styling.ControlColor failedColor, System.Text.Rune loadingGlyph, System.Text.Rune failedGlyph, System.Text.Rune collapsedGlyph, System.Text.Rune expandedGlyph, SharpVision.Styling.ControlColor selectedTextColor, SharpVision.Styling.ControlColor selectedBackground, SharpVision.Terminal.Protocols.Underline currentUnderline) { }
         public required System.Text.Rune CollapsedGlyph { get; init; }
+        public required SharpVision.Terminal.Protocols.Underline CurrentUnderline { get; init; }
         public required System.Text.Rune ExpandedGlyph { get; init; }
         public required SharpVision.Styling.ControlColor FailedColor { get; init; }
         public required System.Text.Rune FailedGlyph { get; init; }
         public required SharpVision.Styling.ControlColor LoadingColor { get; init; }
         public required System.Text.Rune LoadingGlyph { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedBackground { get; init; }
+        public required SharpVision.Styling.ControlColor SelectedTextColor { get; init; }
         public new static SharpVision.Controls.Collections.TreeViewStyle Default { get; }
     }
 }

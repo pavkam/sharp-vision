@@ -869,6 +869,116 @@ public sealed class TreeViewSurfaceTests
             TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
     }
 
+    /// <summary>Verifies a selected row's cells carry the theme's selected-row colors and an
+    /// unselected sibling does not. TreeViewItem previously never overrode
+    /// <c>GetDefaultAppearanceStates</c>, so it always resolved the root "control" role - a
+    /// cascade dead end no bundled theme authors a Selected delta for - and a selected row painted
+    /// identically to an unselected one under every bundled theme, including
+    /// <see cref="ThemeCatalog.Dark"/>.</summary>
+    [Fact]
+    public async Task Render_WhenItemIsSelected_PaintsOnlyTheSelectedRowWithThemeSelectionColorsAsync()
+    {
+        // Arrange
+        var first = new TreeViewItem { Header = "One" };
+        var second = new TreeViewItem { Header = "Two" };
+        var tree = CreateTree(8);
+        tree.Items.Add(first);
+        tree.Items.Add(second);
+        tree.SelectItem(second);
+        // ThemeCatalog.Dark's "container" role draws an all-sides border, unlike the borderless
+        // test themes most other surface tests mount with - two extra rows make room for it.
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(8, 4),
+            ThemeCatalog.Dark,
+            TestContext.Current.CancellationToken);
+        var selectedForeground = ThemeColorHelper.SelectionForeground(ThemeCatalog.Dark);
+        var selectedBackground = ThemeColorHelper.SelectionBackground(ThemeCatalog.Dark);
+
+        // Assert - every cell of the selected row carries the theme's selected-row background,
+        // and its caption carries the selected-row foreground.
+        for (var x = second.Bounds.X; x < second.Bounds.Right; x++)
+        {
+            surface.Cell(new Point(x, second.Bounds.Y)).Style.Background.ShouldBe(selectedBackground);
+        }
+
+        surface.Cell(new Point(second.Bounds.X, second.Bounds.Y)).Style.Foreground.ShouldBe(selectedForeground);
+
+        // Assert - the unselected sibling keeps its own ordinary background, not the selection
+        // fill. (Dark's normal control text and its selected text both resolve to plain white, so
+        // only the background reliably distinguishes the two rows.)
+        surface.Cell(new Point(first.Bounds.X, first.Bounds.Y)).Style.Background.ShouldNotBe(selectedBackground);
+    }
+
+    /// <summary>Verifies a custom theme authoring its own selection colors reaches a selected
+    /// tree row - the same semantic <c>selectedText</c>/<c>selectedControl</c> path
+    /// <see cref="TreeViewStyle.SelectedTextColor"/>/<see cref="TreeViewStyle.SelectedBackground"/>
+    /// resolve through by default - proving the row now genuinely depends on the theme rather than
+    /// only on TreeViewStyle's code-owned defaults.</summary>
+    [Fact]
+    public async Task Render_WhenCustomThemeAuthorsSelectionColors_ReachesTheSelectedRowAsync()
+    {
+        // Arrange
+        var item = new TreeViewItem { Header = "One" };
+        var tree = CreateTree(8);
+        tree.Items.Add(item);
+        tree.SelectItem(item);
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(selectedText: "#123456", selectedControl: "#654321"));
+        // ThemeJson.Create's default "container" section draws an all-sides border, unlike the
+        // borderless test themes most other surface tests mount with - two extra rows make room
+        // for it.
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(8, 3),
+            theme,
+            TestContext.Current.CancellationToken);
+
+        // Assert - projected through the mounted session's own color depth, exactly as every other
+        // custom-theme-color surface assertion in this codebase compares a literal theme color
+        // against a rendered cell.
+        surface.Cell(new Point(item.Bounds.X, item.Bounds.Y)).Style.Foreground.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.SelectionForeground(theme), ColorDepth.Basic16));
+        surface.Cell(new Point(item.Bounds.X, item.Bounds.Y)).Style.Background.ShouldBe(
+            TerminalPalette.Project(ThemeColorHelper.SelectionBackground(theme), ColorDepth.Basic16));
+    }
+
+    /// <summary>Verifies a local <see cref="TreeView.Style"/> overrides the selected-row
+    /// background without disturbing the container's own resolved geometry. The override is
+    /// layered onto the theme-resolved <see cref="TreeView.ActualStyle"/> rather than built from
+    /// <see cref="TreeViewStyle.Default"/>, because <c>TreeViewStyle.Default</c> bakes in
+    /// <see cref="ContainerStyle.Default"/>'s real all-side border regardless of the mount theme.</summary>
+    [Fact]
+    public async Task Render_WhenSelectionStyleIsCustomized_AppliesItToTheCompleteSelectedRowAsync()
+    {
+        // Arrange
+        var background = Color.Rgb(0xcd, 0x00, 0xcd);
+        var item = new TreeViewItem { Header = "One" };
+        var tree = CreateTree(8);
+        tree.Items.Add(item);
+        await using var surface = await ComponentSurface.MountAsync(
+            tree,
+            new Size(8, 1),
+            TestThemes.BorderlessContainer,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.UpdateAsync(
+            () =>
+            {
+                tree.Style = tree.ActualStyle with { SelectedBackground = background };
+                tree.SelectItem(item);
+            },
+            "customize the selected-row background and select the row");
+
+        // Assert
+        var expectedBackground = TerminalPalette.Project(background, ColorDepth.Basic16);
+
+        for (var x = item.Bounds.X; x < item.Bounds.Right; x++)
+        {
+            surface.Cell(new Point(x, item.Bounds.Y)).Style.Background.ShouldBe(expectedBackground);
+        }
+    }
+
     #region Asynchronous child-loading surfaces
 
     /// <summary>Verifies an item whose children are still loading keeps its disclosure glyph and

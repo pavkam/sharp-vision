@@ -2301,6 +2301,27 @@ public sealed class TreeViewTests
         tree.ActualStyle.LoadingGlyph.ShouldBe(defaultLoadingGlyph);
     }
 
+    /// <summary>Verifies the typed tree style supplies semantic selection defaults and validates
+    /// every locally customizable selection member before assignment.</summary>
+    [Fact]
+    public void Style_WhenCreatedOrInvalidSelectionMembersAreAssigned_UsesDefaultsAndRejectsMutation()
+    {
+        var tree = new TreeView();
+
+        tree.ActualStyle.SelectedTextColor.ShouldBe((ControlColor) SemanticColor.SelectedText);
+        tree.ActualStyle.SelectedBackground.ShouldBe((ControlColor) SemanticColor.SelectedControl);
+        tree.ActualStyle.CurrentUnderline.ShouldBe(Underline.Straight);
+
+        _ = Should.Throw<ArgumentException>(
+            () => tree.Style = TreeViewStyle.Default with { SelectedTextColor = Color.Transparent });
+        _ = Should.Throw<ArgumentException>(
+            () => tree.Style = TreeViewStyle.Default with { SelectedBackground = Color.Transparent });
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => tree.Style = TreeViewStyle.Default with { CurrentUnderline = (Underline) int.MaxValue });
+
+        tree.Style.ShouldBeNull();
+    }
+
     /// <summary>
     /// Verifies a tree defaults to the same bracket mark a standalone CheckBox uses, so the two
     /// controls no longer disagree about what an unconfigured check mark looks like.

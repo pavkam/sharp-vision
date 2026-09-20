@@ -81,14 +81,39 @@ so no `CheckBox` appearance profile reaches the row.
 
 `TreeViewStyle`, reached through `Style`/`ActualStyle`, extends `ContainerStyle`
 with the loading and failed status foreground colors and one-cell glyphs the
-synthetic status row draws, plus the one-cell disclosure glyphs drawn beside
-collapsed and expanded items. Its defaults use the semantic `Muted` and `Error`
-`SemanticColor` roles, so built-in and custom themes remain authoritative for
-the colors those roles resolve to. TreeViewStyle declares no `styles.*` theme
-key of its own: its `Face`/`Border`/`Shadow` fall back to `container`'s role
-section, while `LoadingColor`/`FailedColor`/`LoadingGlyph`/`FailedGlyph`/
-`CollapsedGlyph`/`ExpandedGlyph` stay code-owned - reachable only through a
-locally assigned `Style`.
+synthetic status row draws, the one-cell disclosure glyphs drawn beside
+collapsed and expanded items, and the selected-row colors and keyboard-current
+underline every `TreeViewItem` row resolves. Its defaults use the semantic
+`Muted`, `Error`, `SelectedText`, and `SelectedControl` `SemanticColor` roles,
+so built-in and custom themes remain authoritative for the colors those roles
+resolve to. TreeViewStyle declares no `styles.*` theme key of its own: its
+`Face`/`Border`/`Shadow` fall back to `container`'s role section, while
+`LoadingColor`/`FailedColor`/`LoadingGlyph`/`FailedGlyph`/`CollapsedGlyph`/
+`ExpandedGlyph`/`SelectedTextColor`/`SelectedBackground`/`CurrentUnderline` stay
+code-owned - reachable only through a locally assigned `Style`.
+
+| `TreeViewStyle` member | Type           | Default resolution              | Description                                                       |
+| ---------------------- | -------------- | ------------------------------- | ----------------------------------------------------------------- |
+| `LoadingColor`         | `ControlColor` | `SemanticColor.Muted`           | Loading-row foreground.                                           |
+| `FailedColor`          | `ControlColor` | `SemanticColor.Error`           | Failed-row foreground.                                            |
+| `LoadingGlyph`         | `Rune`         | Code-owned                      | One-cell indicator drawn while a child request is in flight.      |
+| `FailedGlyph`          | `Rune`         | Code-owned                      | One-cell indicator drawn after a child request fails.             |
+| `CollapsedGlyph`       | `Rune`         | Code-owned                      | One-cell indicator beside a collapsed item that has children.     |
+| `ExpandedGlyph`        | `Rune`         | Code-owned                      | One-cell indicator beside an expanded item that has children.     |
+| `SelectedTextColor`    | `ControlColor` | `SemanticColor.SelectedText`    | Selected-row foreground.                                          |
+| `SelectedBackground`   | `ControlColor` | `SemanticColor.SelectedControl` | Selected-row background.                                          |
+| `CurrentUnderline`     | `Underline`    | `Underline.Straight`            | Underline distinguishing the keyboard-current row from selection. |
+
+Unlike the status and disclosure glyphs, which paint the same regardless of
+role, a row's own selected, hovered, and focus-containing appearance resolves
+against the theme's `item` row role - the same role `ListItem`, `Table`, and
+every other selectable row resolves - rather than against `TreeViewStyle`'s own
+`container` fallback above. `TreeViewItem.GetDefaultAppearanceStates` composes
+`SelectedTextColor`/`SelectedBackground`/`CurrentUnderline` on top of that
+resolved row role, so a theme's `styles.item` section still reaches every
+`TreeViewItem` row for any member the two colors above and the underline do not
+already pin, and a theme that never authors its own selected colors still paints
+selected rows with its `selectedText`/`selectedControl` semantic colors.
 
 ## Keyboard
 

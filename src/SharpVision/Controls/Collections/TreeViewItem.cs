@@ -74,17 +74,6 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
         Children = new TreeViewItemCollection(this);
         EnabledChanged += OnEnabledChanged;
         VisibilityChanged += OnVisibilityChanged;
-
-        // No bundled theme authors "input.current" (see themes.md), and real keyboard focus stays
-        // on the owning TreeView rather than this item (IsFocusable is false above), so
-        // TreeView.MoveCurrent - the same CurrentItemNavigator mechanism ListView uses - would
-        // otherwise move Current with no visible cue at all under TreeSelectionMode.None, where
-        // CommitCurrent's call to ApplyInputSelection returns false before anything else renders a
-        // change. A code-owned Current contribution here, mirroring ListItem's identical fix,
-        // guarantees that cue independently of both theme authoring and real focus. Selected
-        // (later in the fixed state-precedence order) still wins the same member if a theme ever
-        // authors one, and Underline composes without disturbing Attributes.
-        SetAppearance(VisualState.Current, new AppearanceOverlay(face: new FaceOverlay(underline: Underline.Straight)));
     }
 
     /// <summary>Initializes a tree view item with the specified header text.</summary>
@@ -524,6 +513,41 @@ public sealed class TreeViewItem: ControlBase, IDispatcherAttachmentObserver
 
     /// <inheritdoc/>
     protected override bool IsSelectedState => _isSelected;
+
+    /// <inheritdoc/>
+    protected override AppearanceStates GetDefaultAppearanceStates(Theme? theme)
+    {
+        var resolvedTheme = theme ?? ThemeCatalog.Dark;
+        var style = FindTreeView()?.ActualStyle ??
+            TreeViewStyle.Definition.Resolve(null, resolvedTheme);
+
+        // No bundled theme authors "input.current" (see themes.md), and real keyboard focus stays
+        // on the owning TreeView rather than this item (IsFocusable is false above), so
+        // TreeView.MoveCurrent - the same CurrentItemNavigator mechanism ListView uses - would
+        // otherwise move Current with no visible cue at all under TreeSelectionMode.None, where
+        // CommitCurrent's call to ApplyInputSelection returns false before anything else renders a
+        // change. A code-owned Current contribution here, mirroring ListItem's identical fix,
+        // guarantees that cue independently of both theme authoring and real focus. Selected
+        // (later in the fixed state-precedence order) still wins the same member if a theme ever
+        // authors one, and Underline composes without disturbing Attributes.
+        //
+        // The base itself resolves the "item" row role - Normal from "control", every interaction
+        // state from "input" under the row rule, plus whatever the theme's own styles.item section
+        // adds - rather than the root "control" role a plain ControlBase falls back to. The root
+        // role is a cascade dead end no bundled theme authors a Selected, PointerOver, or
+        // FocusWithin delta for, so resolving it left every tree row painting identically to an
+        // unselected one under any bundled theme. Selected still composes an explicit foreground
+        // and background from TreeViewStyle, mirroring ListItem, so a theme that never authors its
+        // own selected colors still resolves to the theme's semantic selection colors.
+        var overlay = new AppearanceStatesOverlay(
+            current: new AppearanceOverlay(
+                face: new FaceOverlay(underline: style.CurrentUnderline)),
+            selected: new AppearanceOverlay(
+                face: new FaceOverlay(
+                    foreground: style.SelectedTextColor,
+                    background: style.SelectedBackground)));
+        return resolvedTheme.GetInteractiveRowStyleSet().ToAppearanceStates().Compose(overlay);
+    }
 
     /// <inheritdoc/>
     protected override bool IsCheckedState => IsChecked == true;

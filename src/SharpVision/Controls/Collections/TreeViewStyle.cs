@@ -6,11 +6,15 @@ namespace SharpVision.Controls.Collections;
 using System.Diagnostics.CodeAnalysis;
 
 /// <summary>Defines one complete immutable tree view presentation, including the synthetic
-/// loading and failed status rows an unloaded item's asynchronous child request may present. This
-/// style declares no theme section of its own: it falls back to <see cref="ContainerStyle"/>'s
-/// "container" role section for its passive chrome, resolves its own status colors and glyphs
-/// from semantic colors, and is themeable only through that fallback and a locally assigned
-/// <see cref="TreeView.Style"/>.</summary>
+/// loading and failed status rows an unloaded item's asynchronous child request may present, and
+/// the selected-row colors and keyboard-current underline every <see cref="TreeViewItem"/> row
+/// resolves through <see cref="TreeView.ActualStyle"/>. This style declares no theme section of
+/// its own: it falls back to <see cref="ContainerStyle"/>'s "container" role section for its
+/// passive tree-surface chrome, resolves its own status and selection colors and glyphs from
+/// semantic colors, and is themeable only through that fallback and a locally assigned
+/// <see cref="TreeView.Style"/>. A row's own appearance is resolved separately, against the
+/// theme's "item" row role rather than this style's "container" fallback - see
+/// <see cref="TreeViewItem"/>.</summary>
 [PublicAPI]
 public sealed record TreeViewStyle: ContainerStyle
 {
@@ -18,14 +22,17 @@ public sealed record TreeViewStyle: ContainerStyle
     /// <see cref="Theme.GetFocusableContainerStyleSet"/> rather than the bare "container" role
     /// section so a directly focused TreeView gets a visible border-color cue instead of none at
     /// all - TreeView is a focus target in its own right, unlike a merely passive panel. The
-    /// status colors, glyphs, and disclosure glyphs are all code-owned.</summary>
+    /// status colors, glyphs, disclosure glyphs, selection colors, and current-row underline are
+    /// all code-owned.</summary>
     internal static StyleDefinition<TreeViewStyle> Definition { get; } = StyleDefinitions.Control(
         static theme => theme.GetFocusableContainerStyleSet(),
         Complete,
         static (previous, previousTheme, current, currentTheme) =>
             previous != current ||
             ControlBase.ResolveColor(previous.LoadingColor, previousTheme) != ControlBase.ResolveColor(current.LoadingColor, currentTheme) ||
-            ControlBase.ResolveColor(previous.FailedColor, previousTheme) != ControlBase.ResolveColor(current.FailedColor, currentTheme)
+            ControlBase.ResolveColor(previous.FailedColor, previousTheme) != ControlBase.ResolveColor(current.FailedColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.SelectedTextColor, previousTheme) != ControlBase.ResolveColor(current.SelectedTextColor, currentTheme) ||
+            ControlBase.ResolveColor(previous.SelectedBackground, previousTheme) != ControlBase.ResolveColor(current.SelectedBackground, currentTheme)
                 ? InvalidationImpact.Render
                 : InvalidationImpact.None);
 
@@ -39,7 +46,10 @@ public sealed record TreeViewStyle: ContainerStyle
             ControlGlyphs.Status.Loading.Value,
             ControlGlyphs.Status.Failed.Value,
             ControlGlyphs.Disclosure.Collapsed.Value,
-            ControlGlyphs.Disclosure.Expanded.Value);
+            ControlGlyphs.Disclosure.Expanded.Value,
+            SemanticColor.SelectedText,
+            SemanticColor.SelectedControl,
+            Underline.Straight);
 
     /// <summary>Initializes a complete tree view presentation.</summary>
     /// <param name="face">The complete normal face.</param>
@@ -51,7 +61,11 @@ public sealed record TreeViewStyle: ContainerStyle
     /// <param name="failedGlyph">The printable one-cell failed-row indicator.</param>
     /// <param name="collapsedGlyph">The printable one-cell collapsed-item disclosure indicator.</param>
     /// <param name="expandedGlyph">The printable one-cell expanded-item disclosure indicator.</param>
+    /// <param name="selectedTextColor">The non-transparent selected-row foreground.</param>
+    /// <param name="selectedBackground">The non-transparent selected-row background.</param>
+    /// <param name="currentUnderline">The keyboard-current underline.</param>
     /// <exception cref="ArgumentException">A configured color is transparent, or a glyph is a control or is not one cell wide.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="currentUnderline"/> is unknown.</exception>
     [SetsRequiredMembers]
     public TreeViewStyle(
         Face face,
@@ -62,7 +76,10 @@ public sealed record TreeViewStyle: ContainerStyle
         Rune loadingGlyph,
         Rune failedGlyph,
         Rune collapsedGlyph,
-        Rune expandedGlyph) : base(face, border, shadow)
+        Rune expandedGlyph,
+        ControlColor selectedTextColor,
+        ControlColor selectedBackground,
+        Underline currentUnderline) : base(face, border, shadow)
     {
         LoadingColor = loadingColor;
         FailedColor = failedColor;
@@ -70,6 +87,9 @@ public sealed record TreeViewStyle: ContainerStyle
         FailedGlyph = failedGlyph;
         CollapsedGlyph = collapsedGlyph;
         ExpandedGlyph = expandedGlyph;
+        SelectedTextColor = selectedTextColor;
+        SelectedBackground = selectedBackground;
+        CurrentUnderline = currentUnderline;
     }
 
     /// <summary>Gets the standard tree view presentation.</summary>
@@ -144,5 +164,41 @@ public sealed record TreeViewStyle: ContainerStyle
     {
         get;
         init => field = value.ValidateSingleCell(nameof(value));
+    }
+
+    /// <summary>Gets the selected-row foreground.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor SelectedTextColor
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the selected-row background.</summary>
+    /// <exception cref="ArgumentException">The replacement value is transparent.</exception>
+    public required ControlColor SelectedBackground
+    {
+        get;
+        init
+        {
+            ControlColor.ValidatePaint(value, nameof(value));
+            field = value;
+        }
+    }
+
+    /// <summary>Gets the underline used to distinguish the keyboard-current row from selection.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is unknown.</exception>
+    public required Underline CurrentUnderline
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The underline style is unknown.");
+            field = value;
+        }
     }
 }
