@@ -181,6 +181,53 @@ public sealed class CodeViewStyleTests
         ControlBase.ResolveColor(style.SpecialStringColor, theme).ShouldNotBe(stringColor);
     }
 
+    /// <summary>Verifies information, warning, and alert - the three severity roles a doc comment
+    /// can carry together (an <c>@info</c>/<c>@note</c> tag, an <c>@warning</c> tag, and a
+    /// TODO/FIXME marker) - resolve to three pairwise distinct colors under every bundled theme,
+    /// proving the TODO/FIXME alert stays visually distinct from the <c>@warning</c> tag it
+    /// commonly appears alongside.</summary>
+    /// <remarks>
+    /// Error is deliberately left out of this comparison. Every bundled theme except
+    /// <c>turbo-vision</c> defines its "error" palette entry as a literal alias of its "red"
+    /// entry, so <see cref="SemanticColor.Error"/> and <see cref="SemanticColor.Red"/> resolve to
+    /// the same color under those themes regardless of which role in this file uses
+    /// <see cref="SemanticColor.Red"/>. That aliasing lives in the bundled theme documents
+    /// themselves, predates this style, and is out of this file's scope to change; asserting
+    /// Alert (now Red) distinct from Error would fail for a reason unrelated to the TODO/FIXME
+    /// versus <c>@warning</c> distinction this test protects.
+    /// </remarks>
+    [Fact]
+    public void EveryTheme_ResolvesDistinctSeverityColors()
+    {
+        var flat = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+            var style = CodeViewStyle.Definition.Resolve(null, theme);
+
+            var severities = new (string Name, Color Color)[]
+            {
+                ("Information", ControlBase.ResolveColor(style.InformationColor, theme)),
+                ("Warning", ControlBase.ResolveColor(style.WarningColor, theme)),
+                ("Alert", ControlBase.ResolveColor(style.AlertColor, theme))
+            };
+
+            for (var i = 0; i < severities.Length; i++)
+            {
+                for (var j = i + 1; j < severities.Length; j++)
+                {
+                    if (severities[i].Color == severities[j].Color)
+                    {
+                        flat.Add($"{slug} resolves {severities[i].Name} and {severities[j].Name} to the same color");
+                    }
+                }
+            }
+        }
+
+        flat.ShouldBeEmpty();
+    }
+
     /// <summary>Verifies the focusable CodeView fallback contributes the standard focused
     /// container border instead of leaving keyboard focus visually identical to rest.</summary>
     [Fact]

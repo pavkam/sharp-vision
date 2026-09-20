@@ -138,7 +138,9 @@ public sealed record CodeViewStyle: ContainerStyle
             regionMarkerColor: SemanticColor.Muted,
             informationColor: SemanticColor.Info,
             warningColor: SemanticColor.Warning,
-            alertColor: SemanticColor.Warning,
+            // Red, not Warning: a TODO/FIXME alert must stay distinct from an @warning
+            // documentation tag, matching Kate's own dsAlert red-family highlight.
+            alertColor: SemanticColor.Red,
             othersColor: SemanticColor.ControlText,
             errorColor: SemanticColor.Error,
             selectedTextColor: SemanticColor.SelectedText,
