@@ -465,11 +465,11 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         var content = TextControl;
         var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
-        var leading = BarInset.Add(PrefixWidth).Add(affixes.StartCells);
+        var leading = BarInsetLeft.Add(PrefixWidth).Add(affixes.StartCells);
         var shortcutExtra = ShortcutText is { Length: > 0 }
             ? ShortcutExtent
             : 0;
-        var trailing = affixes.EndCells.Add(shortcutExtra).Add(SubmenuIndicatorExtent).Add(BarInset);
+        var trailing = affixes.EndCells.Add(shortcutExtra).Add(SubmenuIndicatorExtent).Add(BarInsetRight);
 
         if (content is null)
         {
@@ -499,8 +499,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
     {
         if (TextControl is { } content)
         {
-            var rowLeading = Math.Min(BarInset.Add(PrefixWidth), bounds.Width);
-            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent).Add(BarInset), bounds.Width - rowLeading);
+            var rowLeading = Math.Min(BarInsetLeft.Add(PrefixWidth), bounds.Width);
+            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent).Add(BarInsetRight), bounds.Width - rowLeading);
             var rowWidth = bounds.Width - rowLeading - rowTrailing;
 
             var startCells = Math.Min(Math.Max(StartAffixCells, AffixColumnWidth), rowWidth);
@@ -552,7 +552,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
         };
         _ = canvas.Draw(
             marker.AsSpan(),
-            new Point(content.X.Add(BarInset), content.Y),
+            new Point(content.X.Add(BarInsetLeft), content.Y),
             style,
             background: BackgroundMode.Transparent);
 
@@ -563,8 +563,8 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
             // marker and shortcut columns the same way ArrangeOverride's rowLeading/rowTrailing
             // does, so a start affix always draws flush against the marker column regardless of
             // AffixColumnWidth - only the caption's own inset shifts for a wider sibling.
-            var rowLeading = Math.Min(BarInset.Add(PrefixWidth), content.Width);
-            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent).Add(BarInset), content.Width - rowLeading);
+            var rowLeading = Math.Min(BarInsetLeft.Add(PrefixWidth), content.Width);
+            var rowTrailing = Math.Min(ShortcutExtent.Add(SubmenuIndicatorExtent).Add(BarInsetRight), content.Width - rowLeading);
             var rowBox = new Rect(content.X + rowLeading, content.Y, content.Width - rowLeading - rowTrailing, 1);
             var affixes = MeasureAffixes(StartAffix, EndAffix, ActualStyle.AffixGap);
             RenderAffixes(canvas, rowBox, affixes, StartAffix, EndAffix, style);
@@ -579,7 +579,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
                 style.Hyperlink,
                 style.Underline,
                 style.UnderlineColor);
-            var shortcutX = content.Right - BarInset - ShortcutWidth;
+            var shortcutX = content.Right - BarInsetRight - ShortcutWidth;
 
             if (shortcutX > content.X)
             {
@@ -593,7 +593,7 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
         if (SubmenuIndicatorExtent > 0)
         {
-            var indicatorX = content.Right - BarInset - ShortcutExtent - 1;
+            var indicatorX = content.Right - BarInsetRight - ShortcutExtent - 1;
 
             if (indicatorX >= content.X)
             {
@@ -855,11 +855,19 @@ public sealed class MenuItem: InputBase, IStyled<MenuItemStyle>
 
     private int PrefixWidth => Kind == MenuItemKind.Check ? 4 : Kind == MenuItemKind.Radio ? 2 : 0;
 
-    /// <summary>Gets the one-cell inset a heading reserves on each side of its caption inside a
-    /// horizontal <see cref="Menu"/>, so the selected highlight reads as " File " rather than
-    /// "File" the way every desktop menu bar - Turbo Vision's included - paints it. Zero in a
-    /// vertical menu, whose rows already fill their width, and for an item not owned by a menu.</summary>
-    private int BarInset => FindAncestor<Menu>()?.Orientation == Orientation.Horizontal ? 1 : 0;
+    /// <summary>Gets the leading inset a heading reserves before its caption inside a horizontal
+    /// <see cref="Menu"/>, so the selected highlight reads as " File " rather than "File" the way
+    /// every desktop menu bar - Turbo Vision's included - paints it. The magnitude comes from
+    /// <see cref="MenuItemStyle.Padding"/>'s left edge; zero in a vertical menu, whose rows already
+    /// fill their width, and for an item not owned by a menu.</summary>
+    private int BarInsetLeft => FindAncestor<Menu>()?.Orientation == Orientation.Horizontal ? ActualStyle.Padding.Left : 0;
+
+    /// <summary>Gets the trailing inset a heading reserves after its caption inside a horizontal
+    /// <see cref="Menu"/>, mirroring <see cref="BarInsetLeft"/> on the opposite edge so an
+    /// asymmetric <see cref="MenuItemStyle.Padding"/> reads differently on each side. The magnitude
+    /// comes from <see cref="MenuItemStyle.Padding"/>'s right edge; zero in a vertical menu and for
+    /// an item not owned by a menu.</summary>
+    private int BarInsetRight => FindAncestor<Menu>()?.Orientation == Orientation.Horizontal ? ActualStyle.Padding.Right : 0;
 
     private int ShortcutWidth => ShortcutText is { Length: > 0 } shortcut
         ? Terminal.Unicode.Width.Measure(shortcut, CellPolicy.AmbiguousWidth).Cells

@@ -24,7 +24,7 @@ public sealed record MenuItemStyle: ControlStyle
         static theme => theme.GetInteractiveControlStyleSet(),
         Complete,
         static (previous, _, current, _) =>
-            previous.AffixGap != current.AffixGap
+            previous.AffixGap != current.AffixGap || previous.Padding != current.Padding
                 ? InvalidationImpact.Measure
                 : previous != current
                     ? InvalidationImpact.Render
@@ -159,4 +159,21 @@ public sealed record MenuItemStyle: ControlStyle
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), value, "The affix gap must be between 0 and 4 cells.");
     } = 1;
+
+    /// <summary>Gets the inset a heading reserves on each side of its caption inside a horizontal
+    /// <see cref="Menu"/>.</summary>
+    /// <remarks>
+    /// Only <see cref="Thickness.Left"/> and <see cref="Thickness.Right"/> are read today, by
+    /// <see cref="MenuItem"/>'s bar-inset calculation, and only while that item's ancestor
+    /// <see cref="Menu"/> is <see cref="Orientation.Horizontal"/> - a vertical menu's rows already
+    /// fill the shared menu width and ignore this member entirely, regardless of what it is set to.
+    /// <see cref="Thickness.Top"/> and <see cref="Thickness.Bottom"/> are carried for shape parity
+    /// with every other bar-family leaf style's <c>Padding</c> member
+    /// (<see cref="Controls.Input.CommandBarItemStyle.Padding"/>,
+    /// <see cref="Controls.Input.CommandBarStyle.Padding"/>,
+    /// <see cref="Controls.Layout.TableStyle.CellPadding"/>) but are currently unused: a menu row's
+    /// height is fixed at one cell, so there is no vertical extent left for a top or bottom inset to
+    /// grow into.
+    /// </remarks>
+    public Thickness Padding { get; init; } = new Thickness(horizontal: 1, vertical: 0);
 }

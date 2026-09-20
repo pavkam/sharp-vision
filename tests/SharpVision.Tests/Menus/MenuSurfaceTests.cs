@@ -436,6 +436,89 @@ public sealed class MenuSurfaceTests
         surface.Cell(new Point(12, 0)).Style.Background.ShouldBe(bar);
     }
 
+    /// <summary>Verifies a local <see cref="MenuItemStyle.Padding"/> wider than the code-owned
+    /// default widens the heading's own opaque fill by the same amount on each side, proving the
+    /// inset's magnitude comes from the style rather than a fixed one-cell literal. Uses a
+    /// distinguishing local <see cref="ControlStyle.Face"/> rather than a selected state, because a
+    /// complete local <see cref="MenuItem.Style"/> bypasses the theme's per-state overlays and
+    /// always renders its own constant appearance instead.</summary>
+    [Fact]
+    public async Task Bar_WhenLocalStyleWidensPadding_FillsTwoCellsOnEachSideAsync()
+    {
+        // Arrange
+        var localBackground = Color.Rgb(120, 30, 60);
+        var style = MenuItemStyle.Default with
+        {
+            Face = MenuItemStyle.Default.Face with { Background = localBackground },
+            Padding = new Thickness(horizontal: 2, vertical: 0)
+        };
+        var file = new MenuItem { Text = "File", Style = style };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(10, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var local = TerminalPalette.Project(localBackground, colorDepth);
+        var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+
+        // Assert
+        surface.ShouldRender("  File");
+        file.Bounds.ShouldBe(new Rect(0, 0, 8, 1));
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(1, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(2, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(5, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(6, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(7, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(8, 0)).Style.Background.ShouldBe(bar);
+    }
+
+    /// <summary>Verifies a local <see cref="MenuItemStyle.Padding"/> of zero removes the inset
+    /// entirely, so the heading's own opaque fill hugs the caption with no blank cell on either
+    /// side.</summary>
+    [Fact]
+    public async Task Bar_WhenLocalStyleZeroesPadding_FillsOnlyTheCaptionAsync()
+    {
+        // Arrange
+        var localBackground = Color.Rgb(120, 30, 60);
+        var style = MenuItemStyle.Default with
+        {
+            Face = MenuItemStyle.Default.Face with { Background = localBackground },
+            Padding = new Thickness(0)
+        };
+        var file = new MenuItem { Text = "File", Style = style };
+        var menu = new Menu();
+        menu.Items.Add(file);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            menu,
+            new Size(6, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        var theme = menu.Theme.ShouldNotBeNull();
+        var local = TerminalPalette.Project(localBackground, colorDepth);
+        var bar = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Bar), colorDepth);
+
+        // Assert
+        surface.ShouldRender("File");
+        file.Bounds.ShouldBe(new Rect(0, 0, 4, 1));
+        surface.Cell(new Point(0, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(3, 0)).Style.Background.ShouldBe(local);
+        surface.Cell(new Point(4, 0)).Style.Background.ShouldBe(bar);
+    }
+
     /// <summary>Verifies a submenu-bearing row in a vertical menu reserves and renders a trailing
     /// directional affordance, including a complete local glyph customization.</summary>
     [Fact]
