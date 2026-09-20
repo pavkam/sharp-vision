@@ -21,6 +21,9 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException">The assigned value is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current rows.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public TableRow this[int index]
     {
         get => _items[index];
@@ -39,6 +42,8 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void Add(TableRow item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -46,6 +51,8 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
     }
 
     /// <inheritdoc/>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void Clear() => _owner.ClearRows(this);
 
     /// <inheritdoc/>
@@ -74,6 +81,9 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
 
     /// <inheritdoc/>
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void Insert(int index, TableRow item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -81,6 +91,9 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public bool Remove(TableRow item)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -96,6 +109,9 @@ public sealed class TableRowCollection: IList<TableRow>, IReadOnlyList<TableRow>
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current rows.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void RemoveAt(int index) => _owner.RemoveRow(this, index);
 
     /// <summary>Adds a row after the owner has validated and attached its cells.</summary>

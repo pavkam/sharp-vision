@@ -2338,6 +2338,13 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     {
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
+
+        // The mutability guard must run before the range check below, or an out-of-range index on
+        // a disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of
+        // the table's terminal or thread state. ValidateRow repeats this guard further down; that
+        // second call stays in place so the row-shape and cell-attachment checks it also performs
+        // still run after the range check, exactly as before.
+        VerifyMutable();
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) Rows.Count);
         ValidateRow(row);
 
@@ -2380,6 +2387,7 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <param name="index">The valid row index.</param>
     internal void RemoveRow(TableRowCollection owner, int index)
     {
+        VerifyMutable();
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
         RemoveRowCore(owner, index, repairSelection: true);
@@ -2387,6 +2395,14 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
 
     private void RemoveRowCore(TableRowCollection owner, int index, bool repairSelection)
     {
+        // Every caller must have already verified mutability before doing any of its own
+        // observable work - RemoveRow and ClearRows both guard themselves above, and the
+        // presenter's direct-cell-disposal callback below only ever reaches here while the table
+        // is still alive and dispatcher-owned, since an owner-driven disposal cascade (the table's
+        // own teardown) never raises that callback in the first place. This repeated guard is
+        // therefore always a cheap no-op in practice, kept so this private removal core stays
+        // correct on its own even if a future caller is added without an equivalent guard.
+        VerifyMutable();
         var row = Rows[index];
 
         // A reorder relocates this exact row instance rather than removing it — cancelling an
@@ -2445,6 +2461,10 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     /// <param name="owner">The calling row collection.</param>
     internal void ClearRows(TableRowCollection owner)
     {
+        // The mutability guard must run before any of the selection-repair work below, or clearing
+        // a disposed or off-dispatcher table would mutate selection state before ever reporting the
+        // table's terminal or thread state.
+        VerifyMutable();
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
 
@@ -2471,6 +2491,13 @@ public sealed class Table: ScrollableItemsControl, IStyled<TableStyle>
     {
         VerifyRowsOwner(owner);
         RequireNotProgressive("Rows cannot be mutated directly while the table is progressive.");
+
+        // The mutability guard must run before the index is read below, or an out-of-range index
+        // on a disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of
+        // the table's terminal or thread state. ValidateRow repeats this guard further down; that
+        // second call stays in place so the row-shape and cell-attachment checks it also performs
+        // still run after the index is confirmed valid, exactly as before.
+        VerifyMutable();
         _ = Rows[index];
         ValidateRow(row);
         var previous = Rows[index];

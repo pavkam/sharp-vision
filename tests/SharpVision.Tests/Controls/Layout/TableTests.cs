@@ -490,6 +490,114 @@ public sealed class TableTests
         table.SelectionMode.ShouldBe(TableSelectionMode.Row);
     }
 
+    /// <summary>Verifies disposing an empty table prevents every column and row mutation member
+    /// from succeeding, including the exact regressions the owner mutability guard previously
+    /// missed: <see cref="TableColumnCollection.Clear"/> returned early on an already-empty
+    /// collection before its guard ever ran, and both <see cref="TableColumnCollection.RemoveAt"/>
+    /// and <see cref="TableRowCollection.Insert"/> range-checked the index before their guard, so
+    /// an out-of-range index on a disposed table reported <see cref="ArgumentOutOfRangeException"/>
+    /// instead of <see cref="ObjectDisposedException"/>.</summary>
+    [Fact]
+    public void Dispose_WhenTableIsEmpty_PreventsColumnAndRowMutation()
+    {
+        var table = new Table();
+
+        table.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(table.Columns.Clear);
+        _ = Should.Throw<ObjectDisposedException>(() => table.Columns.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => table.Columns.Add(TableColumn.Auto("Name")));
+        _ = Should.Throw<ObjectDisposedException>(() => table.Columns.Insert(0, TableColumn.Auto("Name")));
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows.Insert(1, new TableRow([new ControlText("Value")])));
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows.Add(new TableRow([new ControlText("Value")])));
+        _ = Should.Throw<ObjectDisposedException>(table.Rows.Clear);
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows.RemoveAt(0));
+
+        table.Columns.ShouldBeEmpty();
+        table.Rows.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies disposing a table that already owns columns and rows prevents every row
+    /// mutation member from succeeding, including the exact regression the owner mutability guard
+    /// previously missed: <see cref="Table.RemoveRow"/>, its shared removal core, and
+    /// <see cref="Table.ClearRows"/> never checked mutability at all, so removing, clearing, or
+    /// replacing rows on a disposed table with existing rows previously mutated it silently.</summary>
+    [Fact]
+    public void Dispose_WhenTableHasRowsAndColumns_PreventsColumnAndRowMutation()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        var first = new TableRow([new ControlText("A")]);
+        table.Rows.Add(first);
+
+        table.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows.RemoveAt(0));
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows[0] = new TableRow([new ControlText("B")]));
+        _ = Should.Throw<ObjectDisposedException>(table.Rows.Clear);
+        _ = Should.Throw<ObjectDisposedException>(() => table.Rows.Insert(0, new TableRow([new ControlText("B")])));
+        _ = Should.Throw<ObjectDisposedException>(table.Columns.Clear);
+        _ = Should.Throw<ObjectDisposedException>(() => table.Columns.RemoveAt(0));
+
+        table.Rows.ShouldBe([first]);
+        table.Columns.Count.ShouldBe(1);
+    }
+
+    /// <summary>Verifies disposing a table that owns rows still completes without throwing and
+    /// still detaches every cell through the owned presenter's ordinary cascading disposal - the
+    /// row-mutation guards added above must not interfere with that internal teardown path, which
+    /// never itself calls into <see cref="Table.RemoveRow"/>, <see cref="Table.ClearRows"/>, or
+    /// <see cref="TableRowCollection.Clear"/>.</summary>
+    [Fact]
+    public void Dispose_WhenTableHasRows_CompletesAndDetachesCells()
+    {
+        var table = new Table();
+        table.Columns.Add(TableColumn.Auto("Name"));
+        var first = new TableRow([new ControlText("A")]);
+        var second = new TableRow([new ControlText("B")]);
+        table.Rows.Add(first);
+        table.Rows.Add(second);
+
+        Should.NotThrow(table.Dispose);
+
+        table.IsDisposed.ShouldBeTrue();
+        first.Cells[0].IsDisposed.ShouldBeTrue();
+        second.Cells[0].IsDisposed.ShouldBeTrue();
+        first.Cells[0].Parent.ShouldBeNull();
+        second.Cells[0].Parent.ShouldBeNull();
+    }
+
+    /// <summary>Verifies every column and row mutation member requires dispatcher affinity once
+    /// attached, matching the existing property-setter contract verified above.</summary>
+    [Fact]
+    public async Task RowAndColumnMutation_WhenAttachedOffThread_ThrowsBeforeMutationAsync()
+    {
+        await using var dispatcher = Dispatcher.Start();
+        var table = new Table();
+        var first = new TableRow([new ControlText("A")]);
+
+        await dispatcher.InvokeAsync(
+            () =>
+            {
+                table.Columns.Add(TableColumn.Auto("Name"));
+                table.Rows.Add(first);
+                table.Attach(dispatcher);
+            },
+            TestContext.Current.CancellationToken);
+
+        _ = Should.Throw<InvalidOperationException>(() => table.Columns.Add(TableColumn.Auto("Extra")));
+        _ = Should.Throw<InvalidOperationException>(() => table.Columns.RemoveAt(0));
+        _ = Should.Throw<InvalidOperationException>(table.Columns.Clear);
+        _ = Should.Throw<InvalidOperationException>(() => table.Rows.Add(new TableRow([new ControlText("B")])));
+        _ = Should.Throw<InvalidOperationException>(() => table.Rows.Insert(0, new TableRow([new ControlText("B")])));
+        _ = Should.Throw<InvalidOperationException>(() => table.Rows.RemoveAt(0));
+        _ = Should.Throw<InvalidOperationException>(() => table.Rows[0] = new TableRow([new ControlText("B")]));
+        _ = Should.Throw<InvalidOperationException>(table.Rows.Clear);
+
+        table.Rows.ShouldBe([first]);
+        table.Columns.Count.ShouldBe(1);
+    }
+
     /// <summary>Verifies the row-mutation repair paths that move the active cell outside SetActive —
     /// removing the active row, replacing it, and cancelling an edit while rows disappear — publish
     /// PropertyChanged for the active-cell properties they commit.</summary>

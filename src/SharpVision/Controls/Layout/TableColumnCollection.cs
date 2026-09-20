@@ -58,8 +58,15 @@ public sealed class TableColumnCollection: IList<TableColumn>, IReadOnlyList<Tab
     }
 
     /// <inheritdoc/>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void Clear()
     {
+        // The mutability guard must run before the empty-collection short circuit below, or
+        // clearing an already-empty collection on a disposed or off-dispatcher table would
+        // silently succeed instead of reporting the owner's terminal or thread state.
+        _owner.VerifyMutable();
+
         if (_items.Count == 0)
         {
             return;
@@ -113,8 +120,17 @@ public sealed class TableColumnCollection: IList<TableColumn>, IReadOnlyList<Tab
     }
 
     /// <inheritdoc/>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the current columns.</exception>
+    /// <exception cref="InvalidOperationException">The owning table is mutated off-dispatcher.</exception>
+    /// <exception cref="ObjectDisposedException">The owning table is disposed.</exception>
     public void RemoveAt(int index)
     {
+        // The mutability guard must run before the index is read, or an out-of-range index on a
+        // disposed or off-dispatcher table would report ArgumentOutOfRangeException instead of the
+        // owner's terminal or thread state. ValidateColumnCount is not used for the guard itself
+        // here: it evaluates the hypothetical post-removal count against every existing row, which
+        // is only meaningful once the index below is already known to be valid.
+        _owner.VerifyMutable();
         _ = _items[index];
         _owner.ValidateColumnCount(_items.Count - 1);
         var sortedColumn = _owner.GetSortedColumn(out var sortedIndex);
