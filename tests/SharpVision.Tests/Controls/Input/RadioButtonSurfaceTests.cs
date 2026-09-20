@@ -631,4 +631,41 @@ public sealed class RadioButtonSurfaceTests
         // Assert
         surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(authored.ResolveColor(SemanticColor.ControlText));
     }
+
+    /// <summary>Verifies the code-owned accent default is member-grained: a theme authoring only
+    /// <c>toggle.checked.face.background</c> leaves the accent foreground default in place, since
+    /// <see cref="RadioButtonStyle"/> checks for an authored <c>Face.Foreground</c> specifically
+    /// rather than yielding on any authored member of the checked state - the same member-grained
+    /// precedence Window's focusWithin border gives an authored <c>border.foreground</c>.</summary>
+    [Fact]
+    public async Task Render_WhenThemeAuthorsToggleCheckedBackground_KeepsTheAccentForegroundDefaultAsync()
+    {
+        // Arrange
+        var accentOnly = ThemeCatalog.Parse(ThemeJson.Create(accent: "#77aaff", hotkey: "#ff8800"));
+        var authored = ThemeCatalog.Parse(ThemeJson.Create(
+            accent: "#77aaff",
+            hotkey: "#ff8800",
+            extraStyles: """, "toggle": { "checked": { "face": { "background": "muted" } } }"""));
+        var selected = Radio("On", isChecked: true);
+        var group = Group(selected);
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            group,
+            new Size(8, 1),
+            options,
+            accentOnly,
+            TestContext.Current.CancellationToken);
+
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(Color.FromHex("#77aaff"));
+
+        // Act
+        await surface.UpdateAsync(() => surface.Application.Theme = authored, "author toggle.checked.face.background");
+
+        // Assert
+        surface.Cell(new Point(1, 0)).Style.Foreground.ShouldBe(Color.FromHex("#77aaff"));
+        surface.Cell(new Point(1, 0)).Style.Background.ShouldBe(authored.ResolveColor(SemanticColor.Muted));
+    }
 }

@@ -218,28 +218,30 @@ frames visually stable while still letting a theme animate any border member by
 state. The `Container` and `Window` style types do not inherit the generic hover
 contribution, so passive surfaces stay visually unchanged while pointer ancestry
 remains observable. `Window` maps the application-owned `IsActive` flag onto the
-`FocusWithin` appearance contribution, switching only its border to
-`SemanticColor.ActiveBorder` by default; keyboard focus remains an independent
-fact. The button and input style types opt into a filled hover face. Borderless
-interactive controls such as Expander, Slider, and ScrollBar rebase Input's
-state colors onto Control's passive geometry, so they gain interaction cues
-without inventing a frame. CheckBox, RadioButton, and CommandBarItem instead
-fall back to Input directly rather than rebasing onto Control geometry; they opt
-in only to the same reverse-video safety net for Focused/FocusWithin, since a
-checkbox or radio button has no border to signal focus on its own. A control
-that is a direct Tab-stop and focus target in its own right - a Table, TreeView,
-or JsonView, none of which read their own resolved appearance for hover, press,
-selection, or current-item cues that their own content already owns more
-specifically - instead rebases only Focused/FocusWithin. TreeView and JsonView
-use `Theme.GetFocusableContainerStyleSet` onto Container's all-sides light
-border, recoloring it without changing its sides. Table uses the same focused
-text delta over borderless control geometry but omits the generic reverse-video
-fallback: its selected row or cell owns the strong filled cue, while reversing
-the large owner surface would conflict with independently styled cells. Falling
-back to the bare passive `control`/`container` key here would leave literally no
-visual difference between focused and unfocused, since no bundled theme authors
-a `focused`/`focusWithin` delta for either key. A custom theme may explicitly
-add hover styling to any passive type.
+`FocusWithin` appearance contribution, filling in only the border foreground
+with `SemanticColor.ActiveBorder` unless the theme authors that member itself,
+while any other authored member of that state - a shadow, a face color - is
+preserved; keyboard focus remains an independent fact. The button and input
+style types opt into a filled hover face. Borderless interactive controls such
+as Expander, Slider, and ScrollBar rebase Input's state colors onto Control's
+passive geometry, so they gain interaction cues without inventing a frame.
+CheckBox, RadioButton, and CommandBarItem instead fall back to Input directly
+rather than rebasing onto Control geometry; they opt in only to the same
+reverse-video safety net for Focused/FocusWithin, since a checkbox or radio
+button has no border to signal focus on its own. A control that is a direct
+Tab-stop and focus target in its own right - a Table, TreeView, or JsonView,
+none of which read their own resolved appearance for hover, press, selection, or
+current-item cues that their own content already owns more specifically -
+instead rebases only Focused/FocusWithin. TreeView and JsonView use
+`Theme.GetFocusableContainerStyleSet` onto Container's all-sides light border,
+recoloring it without changing its sides. Table uses the same focused text delta
+over borderless control geometry but omits the generic reverse-video fallback:
+its selected row or cell owns the strong filled cue, while reversing the large
+owner surface would conflict with independently styled cells. Falling back to
+the bare passive `control`/`container` key here would leave literally no visual
+difference between focused and unfocused, since no bundled theme authors a
+`focused`/`focusWithin` delta for either key. A custom theme may explicitly add
+hover styling to any passive type.
 
 `ShadowMode.Composite` restyles the destination cells, `BlockGlyph` writes one
 configured rune, and `FractionalBlock` uses code-owned half-block glyphs.

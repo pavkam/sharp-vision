@@ -336,10 +336,12 @@ up because the pointer is over its content, and a window answers activation
 rather than hover. For those five, an unauthored state simply is that type's
 resolved `Normal`, and a theme that wants one to react must author the state on
 that section itself. One exception exists in code, not JSON: `Window` defaults
-its `focusWithin` border to `SemanticColor.ActiveBorder` unless a theme
-explicitly authors `styles.window.focusWithin` itself, mirroring the
-application-owned `IsActive` flag every mounted `Window` maps onto that state
-(see [styling.md](styling.md#shared-chrome)).
+its `focusWithin` border foreground to `SemanticColor.ActiveBorder` unless a
+theme itself authors `styles.window.focusWithin.border.foreground`; any other
+authored member of that state, such as a shadow or a face color, is preserved
+alongside the filled-in border, mirroring the application-owned `IsActive` flag
+every mounted `Window` maps onto that state (see
+[styling.md](styling.md#shared-chrome)).
 
 A leaf control style's own per-state appearance is not authored JSON at all:
 every state a leaf resolves - `pointerOver`, `focused`, `pressed`, and the rest

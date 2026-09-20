@@ -90,6 +90,54 @@ public sealed class ThemeTests
         theme.GetWindowStyleSet().ShouldBeSameAs(theme.GetWindowStyleSet());
     }
 
+    /// <summary>Verifies the code-owned ActiveBorder default is member-grained, not whole-state:
+    /// a theme authoring only <c>styles.window.focusWithin.shadow</c> still gets the border cue
+    /// filled in, and the authored shadow member survives rather than being discarded by rebuilding
+    /// FocusWithin from Normal.</summary>
+    [Fact]
+    public void GetWindowStyleSet_WhenFocusWithinAuthorsOnlyShadow_FillsInActiveBorderAndKeepsShadow()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: /*lang=json,strict*/ """
+            {
+              "control": { "normal": {
+                "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" }
+              } },
+              "window": {
+                "normal": { "border": { "sides":"all", "glyphStyle":"paired" } },
+                "focusWithin": { "shadow": { "visible": false } }
+              }
+            }
+            """));
+
+        var focusWithin = theme.GetWindowStyleSet().FocusWithin.ShouldNotBeNull();
+
+        focusWithin.Border.Foreground.ShouldBe((ControlColor) SemanticColor.ActiveBorder);
+        focusWithin.Shadow.IsVisible.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies a theme that authors <c>styles.window.focusWithin.border.foreground</c>
+    /// itself wins outright, exactly the precedence <see cref="RadioButtonStyle"/>'s checked
+    /// foreground and <see cref="BarAppearance"/> give their own code-owned per-member defaults.</summary>
+    [Fact]
+    public void GetWindowStyleSet_WhenFocusWithinAuthorsBorderForeground_ThatWinsOutright()
+    {
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(stylesOverride: /*lang=json,strict*/ """
+            {
+              "control": { "normal": {
+                "face": { "foreground":"controlText", "background":"control", "attributes":"normalText" }
+              } },
+              "window": {
+                "normal": { "border": { "sides":"all", "glyphStyle":"paired" } },
+                "focusWithin": { "border": { "foreground": "controlBorder" } }
+              }
+            }
+            """));
+
+        var focusWithin = theme.GetWindowStyleSet().FocusWithin.ShouldNotBeNull();
+
+        focusWithin.Border.Foreground.ShouldBe((ControlColor) SemanticColor.ControlBorder);
+    }
+
     /// <summary>Verifies a derived style-set cache entry's first concurrent access is single-flight:
     /// every racing task observes the exact same published instance rather than a value-equal but
     /// separately built one. <c>ConcurrentDictionary.GetOrAdd</c> does not guarantee its factory

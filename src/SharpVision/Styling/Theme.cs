@@ -1669,13 +1669,18 @@ public sealed class Theme
             StyleStatesExtensions.Diff(completedFallbackNormal, ResolveState(VisualState.Disabled)));
     }
 
-    // An active Window's border has always distinguished itself from an inactive one, but no
-    // bundled or custom theme has ever authored styles.window.focusWithin - unlike every other
-    // per-state slot (which simply falls back to Normal when unauthored), so this one code-owned
-    // default is preserved here as a shared primitive, rather than duplicated between this Theme's
-    // own Window property and Window.GetDefaultAppearanceStates (both need it identically).
-    // A theme JSON that DOES author "window.focusWithin" still wins
-    // outright - this only fills in when the raw section is entirely absent.
+    // An active Window's border has always distinguished itself from an inactive one, and that
+    // cue is code-owned at the member level rather than the whole state: it fills in only while
+    // the theme's own "window.focusWithin" section says nothing about the border foreground - the
+    // same precedence RadioButtonStyle.ThemeAuthorsCheckedForeground and BarAppearance.Rebase give
+    // their own code-owned defaults, rather than duplicated between this Theme's own Window
+    // property and Window.GetDefaultAppearanceStates (both need it identically). turbo-vision.theme.json
+    // does author "window.focusWithin" (border.foreground only, which happens to already equal
+    // this default), so a whole-state yield would be wrong the moment a theme authored a
+    // different member of that state, such as a shadow or a face color - a theme whose
+    // "window.focusWithin" section authors "border.foreground" itself wins outright, and any
+    // other authored member of that state (a shadow, a face) is preserved alongside the filled-in
+    // border.
     internal StyleStates<WindowStyle> GetWindowStyleSet() =>
         (StyleStates<WindowStyle>) _styleSets.GetOrAdd(
             (typeof(WindowStyle), "$windowWithFocusWithin", WindowStyle.Default),
@@ -1687,25 +1692,29 @@ public sealed class Theme
     private StyleStates<WindowStyle> BuildWindowStyleSet()
     {
         var styleSet = GetStyleSet(WindowStyle.Default);
-        return styleSet.FocusWithin is not null
-            ? styleSet
-            : new StyleStates<WindowStyle>
+        if (styleSet.AuthoredFor("focusWithin")?.Contains("Border.Foreground") == true)
+        {
+            return styleSet;
+        }
+
+        var focusWithinBasis = styleSet.FocusWithin ?? styleSet.Normal;
+        return new StyleStates<WindowStyle>
+        {
+            Normal = styleSet.Normal,
+            IsPointerOver = styleSet.IsPointerOver,
+            FocusWithin = focusWithinBasis with
             {
-                Normal = styleSet.Normal,
-                IsPointerOver = styleSet.IsPointerOver,
-                FocusWithin = styleSet.Normal with
-                {
-                    Border = styleSet.Normal.Border with { Foreground = SemanticColor.ActiveBorder }
-                },
-                Focused = styleSet.Focused,
-                Current = styleSet.Current,
-                Selected = styleSet.Selected,
-                Checked = styleSet.Checked,
-                Indeterminate = styleSet.Indeterminate,
-                Pressed = styleSet.Pressed,
-                Disabled = styleSet.Disabled,
-                Authored = styleSet.Authored
-            };
+                Border = focusWithinBasis.Border with { Foreground = SemanticColor.ActiveBorder }
+            },
+            Focused = styleSet.Focused,
+            Current = styleSet.Current,
+            Selected = styleSet.Selected,
+            Checked = styleSet.Checked,
+            Indeterminate = styleSet.Indeterminate,
+            Pressed = styleSet.Pressed,
+            Disabled = styleSet.Disabled,
+            Authored = styleSet.Authored
+        };
     }
 
     private AppearanceStates GetAppearanceStates<TStyle>(
