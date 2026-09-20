@@ -425,6 +425,23 @@ public sealed class CuratedThemesTests
         theme.Resolve(theme.Window.Normal.Shadow.Foreground).ShouldBe(Color.FromHex("#000000"));
     }
 
+    /// <summary>Verifies Turbo Vision's authored <c>current</c> and <c>checked</c> role states each
+    /// resolve their own distinct interactive text color rather than falling through to the state
+    /// they layer onto: the button's current-item caption turns bright cyan (0x2B) against the
+    /// green face it keeps from Normal, and the checked toggle's caption stays black against the
+    /// cyan face it likewise keeps, matching the un-highlighted cluster rather than adopting the
+    /// white the toggle uses while pointer-over, focused, or pressed.</summary>
+    [Fact]
+    public void TurboVision_WhenCurrentAndCheckedRoleStatesResolve_UsesAuthoredInteractiveText()
+    {
+        var theme = ThemeCatalog.Load("turbo-vision");
+        var button = theme.GetStyleSet(ButtonStyle.Default);
+        var toggle = theme.GetStyleSet(ToggleStyle.Default);
+
+        theme.Resolve(button.Current!.Face.Foreground).ShouldBe(Color.FromHex("#55ffff"));
+        theme.Resolve(toggle.Checked!.Face.Foreground).ShouldBe(Color.FromHex("#000000"));
+    }
+
     /// <summary>Verifies every curated theme declares <see cref="SemanticColor.ReliefHighlight"/>
     /// lighter than <see cref="SemanticColor.ReliefShade"/>, using the same 0.299R + 0.587G + 0.114B
     /// luminance weighting the framework already applies elsewhere (see
@@ -747,6 +764,131 @@ public sealed class CuratedThemesTests
         failures.ShouldBeEmpty();
     }
 
+    /// <summary>Verifies every curated theme's authored <c>button</c>, <c>toggle</c>, <c>item</c>,
+    /// and <c>panel</c> role faces remain readable, in every state a theme or the code-owned
+    /// default declares, at the two color depths used for curated RGB presentation. These four
+    /// leaf role sections sit outside every other gate in this file, which only ever resolves the
+    /// six original well-known sections or the global semantic colors - so a regression in one of
+    /// their authored faces, or a new theme shipping an illegible hover or pressed row, would
+    /// otherwise pass unnoticed. A state whose resolved <see cref="Face.Background"/> is
+    /// transparent has no plane to measure against and is skipped - <c>panel</c>'s Normal state is
+    /// exactly this on every curated theme.</summary>
+    /// <remarks>
+    /// Only Turbo Vision authors these four sections; every other bundled theme's button, toggle,
+    /// item, and panel resolve purely through the already-shipped <c>input</c>/<c>control</c>
+    /// deltas that <see cref="StyleRoleCascadeTests"/> already proves each such theme inherits
+    /// unchanged. Running this gate over the resulting fifteen inherited faces surfaced that
+    /// <c>input</c>'s own Pressed fill, and three themes' own passive Surface fill, were never once
+    /// measured against their text anywhere in this file before - only Bar and SelectedControl ever
+    /// were. <see cref="_preexistingInheritedContrastGap"/> names exactly those already-shipped
+    /// pairings so this new gate does not fail on legacy text it did not introduce and cannot fix
+    /// here (this change is test-only); every pairing it excludes, and the ratio each one measured,
+    /// is reported alongside this change for a follow-up to size and prioritize.
+    /// </remarks>
+    [Fact]
+    public void EveryTheme_WhenInteractiveRoleTextResolves_RemainsReadableAtTrueColorAndIndexed256Depth()
+    {
+        var depths = new[] { ColorDepth.TrueColor, ColorDepth.Indexed256 };
+        var failures = new List<string>();
+
+        foreach (var slug in ThemeCatalog.Slugs)
+        {
+            var theme = ThemeCatalog.Load(slug);
+
+            CheckRole("button", theme.GetStyleSet(ButtonStyle.Default));
+            CheckRole("toggle", theme.GetStyleSet(ToggleStyle.Default));
+            CheckRole("item", theme.GetStyleSet(ItemStyle.Default));
+            CheckRole("panel", theme.GetStyleSet(PanelStyle.Default));
+
+            void CheckRole<TStyle>(string role, StyleStates<TStyle> set) where TStyle : ControlStyle
+            {
+                foreach (var (stateName, style) in InteractiveRoleStates(set))
+                {
+                    if (_preexistingInheritedContrastGap.Contains((slug, role, stateName)))
+                    {
+                        continue;
+                    }
+
+                    var background = theme.Resolve(style.Face.Background);
+
+                    if (background.IsTransparent)
+                    {
+                        continue;
+                    }
+
+                    var foreground = theme.Resolve(style.Face.Foreground);
+                    var floor = InteractiveTextContrastFloor(slug, stateName);
+
+                    foreach (var depth in depths)
+                    {
+                        var projectedBackground = TerminalPalette.Project(background, depth);
+                        var projectedForeground = TerminalPalette.Project(foreground, depth);
+                        var ratio = ContrastRatio(projectedForeground, projectedBackground);
+
+                        if (ratio < floor)
+                        {
+                            failures.Add(
+                                $"{slug} {role} {stateName} text at {depth} has {ratio:F2}:1 contrast");
+                        }
+                    }
+                }
+            }
+        }
+
+        failures.ShouldBeEmpty();
+
+        static IEnumerable<(string Name, TStyle Style)> InteractiveRoleStates<TStyle>(StyleStates<TStyle> set)
+            where TStyle : ControlStyle
+        {
+            yield return ("normal", set.Normal);
+
+            if (set.IsPointerOver is { } pointerOver)
+            {
+                yield return ("pointerOver", pointerOver);
+            }
+
+            if (set.FocusWithin is { } focusWithin)
+            {
+                yield return ("focusWithin", focusWithin);
+            }
+
+            if (set.Focused is { } focused)
+            {
+                yield return ("focused", focused);
+            }
+
+            if (set.Current is { } current)
+            {
+                yield return ("current", current);
+            }
+
+            if (set.Selected is { } selected)
+            {
+                yield return ("selected", selected);
+            }
+
+            if (set.Checked is { } isChecked)
+            {
+                yield return ("checked", isChecked);
+            }
+
+            if (set.Indeterminate is { } indeterminate)
+            {
+                yield return ("indeterminate", indeterminate);
+            }
+
+            if (set.Pressed is { } pressed)
+            {
+                yield return ("pressed", pressed);
+            }
+
+            if (set.Disabled is { } disabled)
+            {
+                yield return ("disabled", disabled);
+            }
+        }
+    }
+
     /// <summary>Verifies every Turbo Vision role colors its access key for the plane its captions
     /// actually sit on, and that each pairing clears the theme's floor: red on the gray bar and the
     /// gray control face, yellow on the blue input line, yellow on the green button, yellow on the
@@ -806,6 +948,62 @@ public sealed class CuratedThemesTests
     /// </remarks>
     private static double HotkeyContrastFloor(string slug) =>
         slug == "turbo-vision" ? 2.1 : _textContrastFloor;
+
+    /// <summary>Resolves the contrast floor an authored <c>button</c>, <c>toggle</c>, <c>item</c>,
+    /// or <c>panel</c> state's text must keep against its own resolved face background under one
+    /// bundled theme.</summary>
+    /// <remarks>
+    /// Disabled text keeps the same 3:1 subdued-but-legible floor
+    /// <see cref="EveryTheme_WhenDisabledTextResolves_RemainsDistinctAndReadableAtTrueColorAndIndexed256Depth"/>
+    /// already applies to <see cref="SemanticColor.DisabledText"/> elsewhere in this file, rather
+    /// than the ordinary AA floor: a disabled control is deliberately muted, not merely themed.
+    /// Turbo Vision reproduces Borland's own interactive bytes exactly: white on the green button
+    /// while pointer-over, focused, or pressed (0x2F) measures 3.11:1; white on the cyan toggle and
+    /// item row in those same states (0x3F) measures 2.87:1; and the button's current-item
+    /// foreground, bright cyan on the green face (0x2B), measures 2.54:1 at truecolor but only
+    /// 2.42:1 once xterm-256 quantizes bright cyan - all CGA pairings Borland shipped and this
+    /// theme exists to reproduce. It therefore carries the floor its dimmest authentic pairing sits
+    /// on at either depth, mirroring <see cref="HotkeyContrastFloor"/>.
+    /// </remarks>
+    private static double InteractiveTextContrastFloor(string slug, string state) =>
+        state == "disabled" ? 3 : slug == "turbo-vision" ? 2.4 : _textContrastFloor;
+
+    /// <summary>Names the exact (theme, role, state) triples whose text this file has never once
+    /// measured before this change, and which already fall under the ordinary AA floor today -
+    /// none of it introduced by, or owned by, the button/toggle/item/panel sections this change
+    /// gates. Every triple here resolves through the theme's own already-shipped <c>input</c> or
+    /// <c>control</c> section exactly as <see cref="StyleRoleCascadeTests"/> proves for every
+    /// bundled theme but Turbo Vision, so the underlying legacy pairing is the same one a fix would
+    /// have to land in <c>input</c>/<c>control</c> itself, not here. Two families make up the whole
+    /// set: "pressed" text on twelve themes' own <c>pressedControl</c> fill (as low as 1.36:1 on
+    /// default-light's gold-on-silver-gray pairing), and "normal"/"pointerOver"/"focused" text on
+    /// three themes' own passive <c>surface</c> fill (tokyo-night-day, solarized-dark, and
+    /// solarized-light, down to 3.20:1). Both families predate the four leaf role sections
+    /// entirely; this gate is simply the first to look at them at all.</summary>
+    private static readonly HashSet<(string Slug, string Role, string State)> _preexistingInheritedContrastGap =
+    [
+        ("default-light", "button", "pressed"), ("default-light", "toggle", "pressed"), ("default-light", "item", "pressed"),
+        ("tokyo-night", "button", "pressed"), ("tokyo-night", "toggle", "pressed"), ("tokyo-night", "item", "pressed"),
+        ("tokyo-night-day", "button", "normal"), ("tokyo-night-day", "button", "pointerOver"), ("tokyo-night-day", "button", "focused"), ("tokyo-night-day", "button", "pressed"),
+        ("tokyo-night-day", "toggle", "normal"), ("tokyo-night-day", "toggle", "pointerOver"), ("tokyo-night-day", "toggle", "focused"), ("tokyo-night-day", "toggle", "pressed"),
+        ("tokyo-night-day", "item", "normal"), ("tokyo-night-day", "item", "focused"), ("tokyo-night-day", "item", "pressed"),
+        ("tokyo-night-day", "panel", "normal"),
+        ("catppuccin-latte", "button", "pressed"), ("catppuccin-latte", "toggle", "pressed"), ("catppuccin-latte", "item", "pressed"),
+        ("gruvbox-dark", "button", "pressed"), ("gruvbox-dark", "toggle", "pressed"), ("gruvbox-dark", "item", "pressed"),
+        ("gruvbox-light", "button", "pressed"), ("gruvbox-light", "toggle", "pressed"), ("gruvbox-light", "item", "pressed"),
+        ("dracula", "button", "pressed"), ("dracula", "toggle", "pressed"), ("dracula", "item", "pressed"),
+        ("nord", "button", "pressed"), ("nord", "toggle", "pressed"), ("nord", "item", "pressed"),
+        ("monokai", "button", "pressed"), ("monokai", "toggle", "pressed"), ("monokai", "item", "pressed"),
+        ("solarized-dark", "button", "normal"), ("solarized-dark", "button", "pointerOver"), ("solarized-dark", "button", "focused"), ("solarized-dark", "button", "pressed"),
+        ("solarized-dark", "toggle", "normal"), ("solarized-dark", "toggle", "pointerOver"), ("solarized-dark", "toggle", "focused"), ("solarized-dark", "toggle", "pressed"),
+        ("solarized-dark", "item", "normal"), ("solarized-dark", "item", "focused"), ("solarized-dark", "item", "pressed"),
+        ("solarized-dark", "panel", "normal"),
+        ("solarized-light", "button", "normal"), ("solarized-light", "button", "focused"), ("solarized-light", "button", "pressed"),
+        ("solarized-light", "toggle", "normal"), ("solarized-light", "toggle", "focused"), ("solarized-light", "toggle", "pressed"),
+        ("solarized-light", "item", "normal"), ("solarized-light", "item", "focused"), ("solarized-light", "item", "pressed"),
+        ("solarized-light", "panel", "normal"),
+        ("one-dark", "button", "pressed"), ("one-dark", "toggle", "pressed"), ("one-dark", "item", "pressed")
+    ];
 
     /// <summary>Lists the ordinary planes one bundled theme's bar must not share a color with.</summary>
     /// <remarks>

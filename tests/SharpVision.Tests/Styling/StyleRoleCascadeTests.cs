@@ -8,7 +8,7 @@ namespace SharpVision.Tests.Styling;
 /// until a theme authors them, and win over that inheritance once it does.</summary>
 public sealed class StyleRoleCascadeTests
 {
-    private static readonly string[] _interactiveStates = ["pointerOver", "focusWithin", "focused", "pressed", "selected", "disabled"];
+    private static readonly string[] _interactiveStates = ["pointerOver", "focusWithin", "focused", "current", "checked", "pressed", "selected", "disabled"];
 
     /// <summary>Verifies every bundled theme that leaves <c>button</c> unauthored resolves the same
     /// chrome in every state as its <c>input</c> section, plus the code-owned padding - the exact

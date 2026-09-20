@@ -98,7 +98,12 @@ green selection bar (0x24), yellow on the green button (0x2E), the cyan cluster
 (0x3E), and the gray dialog face (0x7E). Those measure between 3.34:1 and 2.18:1
 on the CGA palette; the theme keeps the historical pairings on purpose, and its
 curated-theme tests pin that floor - against the bar, the selection fill, and
-every role's own face - rather than the AA one.
+every role's own face - rather than the AA one. Turbo Vision's interactive
+`button`, `toggle`, and `item` text, and its default button's caption, are
+likewise Borland's own bytes (0x2F, 0x3F, 0x2B): they measure 2.54:1 on the CGA
+palette, dropping to 2.42:1 once xterm-256 quantizes the button's current-item
+bright cyan, and the curated-theme tests pin a 2.4:1 floor for them rather than
+the 4.5:1 AA one.
 
 ### Access keys
 
