@@ -976,11 +976,13 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (IsFocused && date == ActiveDate)
         {
-            // Only replace the underline when the span left it unset: an authored markup
-            // underline (e.g. a curly underline from a custom-styled day) is never clobbered.
-            style = style.Underline == Underline.None
-                ? WithUnderline(style, actualStyle.ActiveDayUnderline)
-                : style;
+            // Only add the cue when the span carries no underline on either channel: an authored
+            // markup underline (e.g. a curly underline from a custom-styled day) is never clobbered,
+            // and a face whose literal attributes already request the legacy straight underline
+            // keeps it, since a cell style cannot carry both that flag and a typed variant.
+            var hasUnderline = style.Underline != Underline.None ||
+                (style.Attributes & TerminalAttributes.Underline) != 0;
+            style = hasUnderline ? style : WithUnderline(style, actualStyle.ActiveDayUnderline);
         }
 
         return style;

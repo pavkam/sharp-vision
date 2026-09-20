@@ -177,6 +177,37 @@ public sealed class CalendarSurfaceTests
         (surface.Cell(activeCell).Style.Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
     }
 
+    /// <summary>Verifies a face whose literal attributes already carry the legacy straight underline
+    /// keeps that attribute on the keyboard-focused active day instead of also receiving the typed
+    /// ActiveDayUnderline, which a cell style rejects alongside the legacy flag.</summary>
+    [Fact]
+    public async Task Surface_WhenFaceAuthorsLegacyUnderlineAttribute_KeepsItOnFocusedDateAsync()
+    {
+        // Arrange
+        var displayMonth = new DateOnly(2026, 7, 1);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = displayMonth,
+            Style = CalendarStyle.Default with
+            {
+                Face = CalendarStyle.Default.Face with { Attributes = TerminalAttributes.Underline }
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        var activeCell = CellFor(calendar.ActiveDate, displayMonth, calendar.FirstDayOfWeek);
+        (surface.Cell(activeCell).Style.Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.Underline);
+        surface.Cell(activeCell).Style.Underline.ShouldBe(Underline.None);
+    }
+
     /// <summary>Verifies a local style assigning a non-default ActiveDayUnderline renders that
     /// configured underline variant on the keyboard-focused active day. Mounted with an explicit
     /// authoritative StyledUnderlines override so the encoder keeps the typed variant on the wire
