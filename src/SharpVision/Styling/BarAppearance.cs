@@ -103,14 +103,16 @@ internal static class BarAppearance
         var keepsFace = face.Foreground is not null ||
             face.Attributes is not null ||
             face.Underline is not null ||
-            face.UnderlineColor is not null;
+            face.UnderlineColor is not null ||
+            face.AccessKeyColor is not null;
         return new AppearanceOverlay(
             keepsFace
                 ? new FaceOverlay(
                     foreground: face.Foreground,
                     attributes: face.Attributes,
                     underline: face.Underline,
-                    underlineColor: face.UnderlineColor)
+                    underlineColor: face.UnderlineColor,
+                    accessKeyColor: face.AccessKeyColor)
                 : null,
             overlay.Border,
             overlay.Shadow);
@@ -132,7 +134,8 @@ internal static class BarAppearance
                 background: background,
                 attributes: face?.Attributes,
                 underline: face?.Underline,
-                underlineColor: face?.UnderlineColor),
+                underlineColor: face?.UnderlineColor,
+                accessKeyColor: face?.AccessKeyColor),
             overlay.Border,
             overlay.Shadow);
     }

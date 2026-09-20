@@ -111,6 +111,55 @@ public sealed class CommandBarSurfaceTests
             TerminalPalette.Project(theme.ResolveColor(SemanticColor.PressedControl), colorDepth));
     }
 
+    /// <summary>Verifies a theme-authored <c>styles.input.pointerOver.face.accessKeyColor</c>
+    /// reaches a hovered command-bar item's marked mnemonic grapheme instead of leaving it stuck on
+    /// the normal hotkey color - the defect <see cref="BarAppearance.Rebase"/>'s positional overlay
+    /// rebuild previously dropped.</summary>
+    [Fact]
+    public async Task BarAppearance_WhenPointerOverAuthorsAccessKeyColor_RepaintsTheHoveredMnemonicAsync()
+    {
+        // Arrange
+        var theme = ThemeCatalog.Parse(ThemeJson.Create(
+            bar: "#345678",
+            inputStates: """, "pointerOver": { "face": { "accessKeyColor":"error" } } """));
+        var item = new CommandBarItem { Text = "&File" };
+        var bar = new CommandBar { Spacing = 1 };
+        bar.Items.Add(item);
+        var colorDepth = ColorDepth.TrueColor;
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = colorDepth }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            bar,
+            new Size(20, 1),
+            options,
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => surface.Application.Theme = theme, "apply the pointer-over access-key theme");
+        var caption = item.TextControl.ShouldNotBeNull();
+        var mnemonicPoint = new Point(caption.Bounds.X, caption.Bounds.Y);
+        var normalAccessKeyColor = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Hotkey), colorDepth);
+        var hoverAccessKeyColor = TerminalPalette.Project(theme.ResolveColor(SemanticColor.Error), colorDepth);
+        normalAccessKeyColor.ShouldNotBe(hoverAccessKeyColor);
+
+        // Assert the un-hovered mnemonic keeps the normal hotkey color
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(normalAccessKeyColor);
+
+        // Act hover
+        await surface.Pointer.MoveToAsync(item);
+
+        // Assert the hovered mnemonic uses the theme-authored pointer-over access-key color
+        item.IsPointerOver.ShouldBeTrue();
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(hoverAccessKeyColor);
+
+        // Act un-hover
+        await surface.Pointer.MoveToAsync(new Point(bar.Bounds.Right - 1, 0));
+
+        // Assert the mnemonic reverts to the normal hotkey color
+        item.IsPointerOver.ShouldBeFalse();
+        surface.Cell(mnemonicPoint).Style.Foreground.ShouldBe(normalAccessKeyColor);
+    }
+
     /// <summary>Verifies a CommandBar's unused and gap cells stay Bar-colored under the actual
     /// bundled Dark theme, where Bar differs from both Control and DisabledControl - proving the
     /// continuous background plane, and not a coincidentally-matching literal, is what fills the
