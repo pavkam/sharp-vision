@@ -39,10 +39,16 @@ each depth commits and shows. A changed direct assignment or user selection
 commits `Value`, synchronizes every retained part, and then raises one
 `ValueChanged` event with immutable `ColorChangedEventArgs`. Capability changes
 alter the presentation without raising a value event. No-op changes raise
-nothing. If `PropertyChanged(Value)` commits a newer color synchronously, the
-newer color owns every retained slider, swatch, value field, and typed event;
-the superseded transition publishes nothing further. All mutation of an attached
-control is dispatcher-affine.
+nothing. A hue or plane edit that cannot yet change the committed RGB - rotating
+hue on a grey, black, or white color, or raising saturation while value is zero,
+both zero-chroma cases where every hue or saturation maps to the same RGB - is
+retained by the plane and the hue slider instead of being derived back from that
+unchanged RGB, and takes effect the moment a later edit makes it expressible; a
+direct `Value` assignment that happens to resolve to the color already shown
+still re-derives every part canonically from RGB. If `PropertyChanged(Value)`
+commits a newer color synchronously, the newer color owns every retained slider,
+swatch, value field, and typed event; the superseded transition publishes
+nothing further. All mutation of an attached control is dispatcher-affine.
 
 `ColorPickerStyle : ControlStyle` is a secondary (part) style, not a primary
 themed control style: it owns no `styles.*` theme key of its own. It exposes

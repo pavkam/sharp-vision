@@ -310,7 +310,20 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 
     #region Synchronization
 
-    private bool Commit(Color requested)
+    private bool Commit(Color requested) => Commit(requested, retainPlaneSelectionOnNoChange: false);
+
+    // retainPlaneSelectionOnNoChange distinguishes a part edit that could not change the committed
+    // RGB (hue rotated on a grey/black/white color, or saturation raised at zero value - both zero
+    // chroma under ColorMath.FromHsv, so every hue or saturation maps to the identical RGB) from an
+    // external Value assignment or an RGB-sourced edit. Only the former must skip re-deriving the
+    // plane's selection and the hue slider from that unchanged RGB: ColorMath.ToHsv always reports
+    // hue zero and saturation zero for a zero-delta triple, so re-deriving here would silently
+    // discard the sub-value the user just set and snap the plane/slider back to zero. The caller
+    // already holds the authoritative sub-value - OnHueChanged and OnPlaneChanged write it onto
+    // Plane (and, for the slider, onto itself) before calling Commit - so nothing needs deriving.
+    // Construction and a direct Value assignment that happens to resolve to the current color still
+    // derive canonically from RGB, matching the documented external-assignment projection.
+    private bool Commit(Color requested, bool retainPlaneSelectionOnNoChange)
     {
         if (requested.IsTransparent)
         {
@@ -328,7 +341,7 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
                 out var transition,
                 nameof(Value)))
         {
-            SynchronizeParts();
+            SynchronizeParts(retainPlaneSelectionOnNoChange);
             return false;
         }
 
@@ -344,17 +357,22 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         return true;
     }
 
-    private void SynchronizeParts()
+    private void SynchronizeParts() => SynchronizeParts(retainPlaneSelection: false);
+
+    private void SynchronizeParts(bool retainPlaneSelection)
     {
         var rgb = _value.IsRgb ? _value : Color.Rgb(0, 0, 0);
-
-        rgb.ToHsv(out var hue, out var saturation, out var value);
         _synchronizing = true;
 
         try
         {
-            Plane.SetSelection(hue, saturation, value);
-            HueSlider.Value = hue;
+            if (!retainPlaneSelection)
+            {
+                rgb.ToHsv(out var hue, out var saturation, out var value);
+                Plane.SetSelection(hue, saturation, value);
+                HueSlider.Value = hue;
+            }
+
             RedSlider.Value = rgb.Red;
             GreenSlider.Value = rgb.Green;
             BlueSlider.Value = rgb.Blue;
@@ -378,7 +396,9 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
 
         if (!_synchronizing)
         {
-            _ = Commit(Color.FromHsv(Plane.Hue, Plane.Saturation, Plane.Value));
+            _ = Commit(
+                Color.FromHsv(Plane.Hue, Plane.Saturation, Plane.Value),
+                retainPlaneSelectionOnNoChange: true);
         }
     }
 
@@ -389,7 +409,9 @@ public sealed class ColorPicker: CompositeControlBase, IStyled<ColorPickerStyle>
         if (!_synchronizing)
         {
             Plane.SetSelection(eventArgs.Value, Plane.Saturation, Plane.Value);
-            _ = Commit(Color.FromHsv(eventArgs.Value, Plane.Saturation, Plane.Value));
+            _ = Commit(
+                Color.FromHsv(eventArgs.Value, Plane.Saturation, Plane.Value),
+                retainPlaneSelectionOnNoChange: true);
         }
     }
 

@@ -102,6 +102,128 @@ public sealed class ColorPickerInteractionTests
         picker.Value.ShouldBe(Color.FromHsv(10, saturation, value));
     }
 
+    /// <summary>Verifies a keyboard hue edit on an achromatic color (grey, black, or white) sticks
+    /// instead of snapping back to zero: every hue maps to the same RGB when chroma is zero, so the
+    /// committed color never changes, but the hue the user asked for must still be retained on the
+    /// plane and the slider rather than discarded.</summary>
+    [Theory]
+    [InlineData(128, 128, 128)]
+    [InlineData(0, 0, 0)]
+    [InlineData(255, 255, 255)]
+    public async Task HueSlider_WhenEditedByKeyboardOnAchromaticColor_RetainsHueAsync(int red, int green, int blue)
+    {
+        var picker = NewPicker();
+        picker.Value = Color.Rgb(red, green, blue);
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+        await using var surface = await MountAsync(picker, new Size(40, 18));
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(picker.HueSlider);
+
+        await surface.Keyboard.PressAsync(Code.End);
+
+        picker.HueSlider.Value.ShouldBe(359);
+        picker.Plane.Hue.ShouldBe(359);
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+
+        await surface.Keyboard.PressAsync(Code.Home);
+
+        picker.HueSlider.Value.ShouldBe(0);
+        picker.Plane.Hue.ShouldBe(0);
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        picker.HueSlider.Value.ShouldBe(1);
+        picker.Plane.Hue.ShouldBe(1);
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+        changes.ShouldBe(0, "no keystroke changes the committed RGB while chroma stays zero");
+    }
+
+    /// <summary>Verifies a pointer hue edit on an achromatic color sticks the same way the keyboard
+    /// path does, since both paths commit through the same picker synchronization.</summary>
+    [Theory]
+    [InlineData(128, 128, 128)]
+    [InlineData(0, 0, 0)]
+    [InlineData(255, 255, 255)]
+    public async Task HueSlider_WhenClickedOnAchromaticColor_RetainsHueAsync(int red, int green, int blue)
+    {
+        var picker = NewPicker();
+        picker.Value = Color.Rgb(red, green, blue);
+        var changes = 0;
+        picker.ValueChanged += (_, _) => changes++;
+        await using var surface = await MountAsync(picker, new Size(40, 18));
+        var bounds = picker.HueSlider.Bounds;
+
+        await surface.Pointer.ClickAsync(picker.HueSlider, new Point(bounds.Width - 1, 0));
+
+        picker.HueSlider.Value.ShouldBe(359);
+        picker.Plane.Hue.ShouldBe(359);
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+        changes.ShouldBe(0, "the click cannot change RGB while chroma stays zero");
+    }
+
+    /// <summary>Verifies a hue rotated onto a grey or white color while it cannot yet change the RGB
+    /// applies once a later saturation increase makes it expressible, instead of the discarded hue
+    /// reappearing as zero.</summary>
+    [Theory]
+    [InlineData(128, 128, 128)]
+    [InlineData(255, 255, 255)]
+    public async Task Plane_WhenSaturationRaisedAfterHueEditOnAchromaticColor_AppliesRetainedHueAsync(
+        int red,
+        int green,
+        int blue)
+    {
+        var picker = NewPicker();
+        picker.Value = Color.Rgb(red, green, blue);
+        await using var surface = await MountAsync(picker, new Size(40, 18));
+        await surface.Keyboard.PressAsync(Code.Tab);
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(picker.HueSlider);
+
+        await surface.Keyboard.PressAsync(Code.Right);
+
+        picker.Plane.Hue.ShouldBe(1);
+        picker.Value.ShouldBe(Color.Rgb(red, green, blue));
+
+        await surface.Keyboard.PressAsync(Code.Tab, Modifiers.Shift);
+        surface.ShouldHaveFocus(picker.Plane);
+
+        await surface.Keyboard.PressAsync(Code.End);
+
+        picker.Plane.Hue.ShouldBe(1);
+        picker.Plane.Saturation.ShouldBe(1);
+        picker.Value.ShouldNotBe(Color.Rgb(red, green, blue));
+        HueOf(picker.Value).ShouldBe(1);
+    }
+
+    /// <summary>Verifies raising the plane's saturation at pure black (value zero) sticks instead of
+    /// being forced back to zero, and the retained saturation tints the color once a later value
+    /// increase gives it something to multiply against.</summary>
+    [Fact]
+    public async Task Plane_WhenSaturationRaisedAtBlack_RetainsEditUntilValueMakesItExpressibleAsync()
+    {
+        var picker = NewPicker();
+        picker.Value = Color.Rgb(0, 0, 0);
+        await using var surface = await MountAsync(picker, new Size(40, 18));
+        await surface.Keyboard.PressAsync(Code.Tab);
+        surface.ShouldHaveFocus(picker.Plane);
+
+        await surface.Keyboard.PressAsync(Code.End);
+
+        picker.Plane.Saturation.ShouldBe(1);
+        picker.Plane.Value.ShouldBe(0);
+        picker.Value.ShouldBe(Color.Rgb(0, 0, 0));
+        picker.HexText.ShouldBe("#000000");
+
+        await surface.Keyboard.PressAsync(Code.Up);
+
+        picker.Plane.Saturation.ShouldBe(1);
+        picker.Value.ShouldBe(Color.Rgb(3, 0, 0));
+        picker.HexText.ShouldBe("#030000");
+    }
+
     /// <summary>Verifies each RGB slider's keyboard contract edits exactly its own channel, with
     /// Right, PageUp, End, and Home mapping to +1, +10, maximum, and minimum.</summary>
     [Theory]
