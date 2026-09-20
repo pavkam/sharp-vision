@@ -444,9 +444,6 @@ public sealed class CuratedThemesTests
 
             Luminance(highlight).ShouldBeGreaterThan(Luminance(shade), slug);
         }
-
-        static double Luminance(Color color) =>
-            (color.Red * 0.299) + (color.Green * 0.587) + (color.Blue * 0.114);
     }
 
     /// <summary>Verifies bundled themes never apply relief to interactive or floating chrome,
@@ -602,12 +599,14 @@ public sealed class CuratedThemesTests
     }
 
     /// <summary>Verifies every bundled Window profile uses a dedicated raised window surface,
-    /// keeping Window, Dialog, and MessageBox bodies distinct from the application backdrop. The
-    /// text on that surface is <see cref="SemanticColor.WindowText"/> when the desktop and the
-    /// dialogs share a polarity, or <see cref="SemanticColor.SurfaceText"/> - the color declared
-    /// for text on a raised surface - when they do not: Turbo Vision's light-gray dialogs over a
-    /// blue desktop cannot share one legible text color with the tooltips that sit on that
-    /// desktop, so the two keys carry different values there.</summary>
+    /// keeping Window, Dialog, and MessageBox bodies distinct from the application backdrop, and
+    /// that the text on that surface is <see cref="SemanticColor.SurfaceText"/> only when
+    /// <see cref="SemanticColor.Window"/> and <see cref="SemanticColor.WindowSurface"/> have
+    /// opposite polarity - one light, the other dark - and so cannot share one legible text
+    /// color; every other theme must use exactly <see cref="SemanticColor.WindowText"/>. Turbo
+    /// Vision's light-gray dialogs over a blue desktop are the sole bundled case with opposite
+    /// polarity, which is why it is the only theme that carries a different value for the two
+    /// keys.</summary>
     [Fact]
     public void EveryTheme_WhenWindowIsNormal_UsesDistinctWindowSurface()
     {
@@ -621,12 +620,25 @@ public sealed class CuratedThemesTests
                 SemanticColor.WindowSurface,
                 $"{slug} window background must use WindowSurface");
             windowFace.Foreground.IsSemantic.ShouldBeTrue($"{slug} window foreground must remain semantic");
-            windowFace.Foreground.SemanticColor.ShouldBeOneOf(
-                [SemanticColor.WindowText, SemanticColor.SurfaceText],
-                $"{slug} window foreground must use WindowText or SurfaceText");
+
+            var window = theme.ResolveColor(SemanticColor.Window);
+            var windowSurface = theme.ResolveColor(SemanticColor.WindowSurface);
+
+            if (HaveOppositePolarity(window, windowSurface))
+            {
+                windowFace.Foreground.SemanticColor.ShouldBeOneOf(
+                    [SemanticColor.WindowText, SemanticColor.SurfaceText],
+                    $"{slug} window foreground must use WindowText or SurfaceText when Window and WindowSurface have opposite polarity");
+            }
+            else
+            {
+                windowFace.Foreground.SemanticColor.ShouldBe(
+                    SemanticColor.WindowText,
+                    $"{slug} window foreground must use WindowText when Window and WindowSurface share a polarity");
+            }
 
             theme.Resolve(windowFace.Background).ShouldNotBe(
-                theme.ResolveColor(SemanticColor.Window),
+                window,
                 $"{slug} a Window must be visually distinct from the application backdrop");
         }
     }
@@ -843,6 +855,18 @@ public sealed class CuratedThemesTests
             ? normalized / 12.92
             : Math.Pow((normalized + 0.055) / 1.055, 2.4);
     }
+
+    /// <summary>Computes perceived brightness with the same 0.299R + 0.587G + 0.114B weighting
+    /// <c>ColorMath.Contrast</c> uses elsewhere in the framework, on the 0-255 byte scale.</summary>
+    private static double Luminance(Color color) =>
+        (color.Red * 0.299) + (color.Green * 0.587) + (color.Blue * 0.114);
+
+    /// <summary>Determines whether two colors sit on opposite sides of the mid-brightness point
+    /// (half of the 0-255 <see cref="Luminance"/> range), the file's own polarity threshold: one
+    /// reads as light and the other as dark, so no single text color is guaranteed legible on
+    /// both.</summary>
+    private static bool HaveOppositePolarity(Color first, Color second) =>
+        (Luminance(first) > 127.5) != (Luminance(second) > 127.5);
 
     /// <summary>Verifies pressed colors remain distinct from hover while focus uses decoration and
     /// active chrome rather than a competing face color.</summary>
