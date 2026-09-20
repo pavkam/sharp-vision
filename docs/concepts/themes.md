@@ -33,11 +33,13 @@ Unknown and duplicate fields are rejected. Embedded themes must carry complete
 metadata, `colorScheme` included; external documents fill in missing _or blank_
 identity metadata with `Custom`, `custom`, and dark. That leniency is keyed on
 embedded-versus-external, not on which load method was called, so one document
-gets one verdict from every entry point. `order` is a catalog concept rather
-than a theme one: `ThemeCatalogEntry.Order` carries it, and an external document
-has none. Programmatic `Theme` construction rejects an undefined `ColorScheme`
-value and null or blank identity and provenance metadata before publishing the
-theme. `ThemeCatalogEntry` rejects the same undefined color-scheme state before
+gets one verdict from every entry point. `colorScheme` accepts `dark` or `light`
+case-insensitively, the same leniency [Glyph families](#glyph-families)
+describes for `glyphs`. `order` is a catalog concept rather than a theme one:
+`ThemeCatalogEntry.Order` carries it, and an external document has none.
+Programmatic `Theme` construction rejects an undefined `ColorScheme` value and
+null or blank identity and provenance metadata before publishing the theme.
+`ThemeCatalogEntry` rejects the same undefined color-scheme state before
 publishing catalog metadata. A nonblank `slug` must be lowercase kebab case:
 ASCII letters and digits separated by single hyphens. The same portable grammar
 applies to parsed, programmatic, and catalog-entry slugs. `source` must be an

@@ -768,7 +768,7 @@ public static class ThemeCatalog
     {
         return string.IsNullOrWhiteSpace(value) && !required
             ? ColorScheme.Dark
-            : value switch
+            : value?.ToLowerInvariant() switch
             {
                 "dark" => ColorScheme.Dark,
                 "light" => ColorScheme.Light,
@@ -778,9 +778,9 @@ public static class ThemeCatalog
     }
 
     // Case-insensitive, matching ResolveSectionBorderGlyphStyle's identical string-to-static-
-    // instance leniency rather than ReadColorScheme's exact-case switch: "glyphs" is authored
-    // freely by any theme document, not just the fifteen curated ones ReadColorScheme's stricter
-    // metadata rules already assume complete, embedded documents for.
+    // instance leniency: every theme-authored enum-shaped value - "glyphs" included, and
+    // "colorScheme" alongside it - is matched this way, since none of them are free-form text a
+    // theme document owns the exact casing of.
     private static GlyphFamily ReadGlyphFamily(
         string? value,
         string source,

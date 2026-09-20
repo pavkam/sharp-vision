@@ -1024,6 +1024,43 @@ public sealed class ThemeCatalogTests
         ThemeCatalog.Parse(json).ColorScheme.ShouldBe(ColorScheme.Dark);
     }
 
+    /// <summary>Verifies every documented "colorScheme" name resolves to its matching scheme,
+    /// accepted case-insensitively like every other theme-authored enum-shaped value (see
+    /// <see cref="Parse_WhenGlyphsFieldNamesAFamily_Resolves"/>).</summary>
+    [Theory]
+    [InlineData("dark", ColorScheme.Dark)]
+    [InlineData("Dark", ColorScheme.Dark)]
+    [InlineData("DARK", ColorScheme.Dark)]
+    [InlineData("light", ColorScheme.Light)]
+    [InlineData("Light", ColorScheme.Light)]
+    [InlineData("LIGHT", ColorScheme.Light)]
+    public void Parse_WhenColorSchemeFieldVariesInCase_Resolves(string value, ColorScheme expected)
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"colorScheme\": \"dark\"",
+            $"\"colorScheme\": \"{value}\"",
+            StringComparison.Ordinal);
+
+        ThemeCatalog.Parse(json).ColorScheme.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies an unrecognized "colorScheme" value fails with a source-labelled
+    /// <see cref="InvalidDataException"/>, the same rejection every other malformed theme value
+    /// gets.</summary>
+    [Fact]
+    public void Parse_WhenColorSchemeFieldIsUnknown_ThrowsInvalidDataException()
+    {
+        var json = ThemeJson.Create().Replace(
+            "\"colorScheme\": \"dark\"",
+            "\"colorScheme\": \"dim\"",
+            StringComparison.Ordinal);
+
+        var exception = Should.Throw<InvalidDataException>(() => ThemeCatalog.Parse(json, "colorscheme-test"));
+
+        exception.Message.ShouldContain("colorscheme-test");
+        exception.Message.ShouldContain("colorScheme");
+    }
+
     /// <summary>Verifies missing or empty semantic sections are rejected.</summary>
     [Theory]
     [InlineData( /*lang=json,strict*/ """{"status":{}}""")]
