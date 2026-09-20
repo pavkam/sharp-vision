@@ -40,7 +40,7 @@ internal sealed class ThemeDocument
 
     /// <summary>Gets or sets the named glyph family selecting CheckBox, RadioButton, ScrollBar,
     /// Spinner, ProgressBar, and ChaseIndicator's code-owned presentation - one of "dots",
-    /// "blocks", "ascii", "shades", or "lines". Absent resolves to <see cref="GlyphFamily.Default"/>.</summary>
+    /// "blocks", "ascii", "shades", "lines", or "classic". Absent resolves to <see cref="GlyphFamily.Default"/>.</summary>
     [JsonPropertyName("glyphs")]
     public string? Glyphs { get; set; }
 
