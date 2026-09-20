@@ -202,13 +202,15 @@ the inherited `Face`/`Border`/`Shadow`:
 | `SelectedDayBackground` | `ControlColor` | `SemanticColor.SelectedControl` | The committed-selection background.                                                      |
 | `DisabledDayBackground` | `ControlColor` | `SemanticColor.DisabledControl` | The unavailable-date background.                                                         |
 | `ContentInset`          | `Thickness`    | One horizontal cell             | The internal content inset; consumed directly by the calendar, independent of `Padding`. |
+| `ActiveDayUnderline`    | `Underline`    | `Underline.Straight`            | The underline drawn on the keyboard-focused active day.                                  |
 
 Each color accepts either a concrete `Color` or a `SemanticColor` role, and
 every color and glyph member is required and validated (a transparent color or a
-non-single-cell glyph throws `ArgumentException`). A `with` expression creates a
-validated member-wise copy of `CalendarStyle.Default` or of any resolved style.
-Theme JSON remains semantic-only. Assigning `Style` replaces the entire
-Theme-owned day-grid presentation, and assigning `null` restores it; restyling
+non-single-cell glyph throws `ArgumentException`; an undefined `Underline` value
+throws `ArgumentOutOfRangeException`). A `with` expression creates a validated
+member-wise copy of `CalendarStyle.Default` or of any resolved style. Theme JSON
+remains semantic-only. Assigning `Style` replaces the entire Theme-owned
+day-grid presentation, and assigning `null` restores it; restyling
 `ContentInset` remeasures the control.
 
 > [!NOTE]
@@ -225,7 +227,9 @@ committed selection, and disabled/out-of-range state all override it — a
 selected today renders as selected, not as today. The marker reflects the date
 as of the control's last render and moves to the new date on the next redraw, so
 an idle Calendar keeps the previous day's marker across midnight until something
-repaints it. The focused active date renders with an underline.
+repaints it. The focused active date renders with `ActiveDayUnderline`,
+`Underline.Straight` by default; an authored markup underline on that date's
+face is never overridden, and `Underline.None` removes the cue entirely.
 
 ## Input details
 

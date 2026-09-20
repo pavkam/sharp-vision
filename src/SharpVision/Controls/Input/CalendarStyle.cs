@@ -48,7 +48,8 @@ public sealed record CalendarStyle: InputStyle
             SemanticColor.ActiveControl,
             SemanticColor.SelectedControl,
             SemanticColor.DisabledControl,
-            new Thickness(horizontal: 1, vertical: 0))
+            new Thickness(horizontal: 1, vertical: 0),
+            Underline.Straight)
         {
             // Forwarded from the fallback rather than left at the code-owned value the base
             // constructor supplies. Without this, DropDownGlyph would stay stuck at
@@ -79,7 +80,9 @@ public sealed record CalendarStyle: InputStyle
     /// <param name="selectedDayBackground">The non-transparent background for committed selection.</param>
     /// <param name="disabledDayBackground">The non-transparent background for unavailable dates.</param>
     /// <param name="contentInset">The non-negative internal content inset in cells.</param>
+    /// <param name="activeDayUnderline">The underline drawn on the keyboard-focused active day.</param>
     /// <exception cref="ArgumentException">A part foreground is transparent.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="activeDayUnderline"/> is unknown.</exception>
     [SetsRequiredMembers]
     public CalendarStyle(
         Face face,
@@ -96,7 +99,8 @@ public sealed record CalendarStyle: InputStyle
         ControlColor activeDayBackground,
         ControlColor selectedDayBackground,
         ControlColor disabledDayBackground,
-        Thickness contentInset) : base(face, border, shadow, InputStyle.Default.DropDownGlyph)
+        Thickness contentInset,
+        Underline activeDayUnderline) : base(face, border, shadow, InputStyle.Default.DropDownGlyph)
     {
         // Validated by parameter name here as well as in each init accessor. The accessor guards
         // the doors a constructor cannot see - a `with` expression and the theme overlay's
@@ -124,6 +128,7 @@ public sealed record CalendarStyle: InputStyle
         SelectedDayBackground = selectedDayBackground;
         DisabledDayBackground = disabledDayBackground;
         ContentInset = contentInset;
+        ActiveDayUnderline = activeDayUnderline;
     }
 
     /// <summary>Gets the standard calendar presentation.</summary>
@@ -260,4 +265,17 @@ public sealed record CalendarStyle: InputStyle
 
     /// <summary>Gets the internal content inset in terminal cells.</summary>
     public required Thickness ContentInset { get; init; }
+
+    /// <summary>Gets the underline drawn on the keyboard-focused active day, distinguishing the
+    /// keyboard cursor from selection and hover.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The replacement value is unknown.</exception>
+    public required Underline ActiveDayUnderline
+    {
+        get;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotDefined(value, nameof(value), "The underline style is unknown.");
+            field = value;
+        }
+    }
 }

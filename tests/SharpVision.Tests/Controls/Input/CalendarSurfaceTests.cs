@@ -136,7 +136,10 @@ public sealed class CalendarSurfaceTests
         await surface.Keyboard.PressAsync(Code.PageDown);
         await surface.Keyboard.PressAsync(Code.PageUp);
 
-        // Assert focused paging
+        // Assert focused paging. The mounted surface uses the default, non-authoritative terminal
+        // profile, so the encoder downgrades the resolved Underline.Straight cue to the legacy
+        // attribute (see Surface_WhenActiveDayUnderlineIsCustomized_RendersConfiguredUnderlineAsync
+        // for a mounted profile that keeps the typed variant on the wire).
         calendar.ActiveDate.ShouldBe(active);
         calendar.DisplayMonth.ShouldBe(new DateOnly(2026, 7, 1));
         (surface.Cell(new Point(22, 7)).Style.Attributes & TerminalAttributes.Underline)
@@ -145,6 +148,69 @@ public sealed class CalendarSurfaceTests
         // Act and assert Space activation
         await surface.Keyboard.CompleteCharacterAsync(new Rune(' '));
         calendar.Selection.ShouldBe(new DateInterval(active, active));
+    }
+
+    /// <summary>Verifies a local style setting ActiveDayUnderline to None leaves the keyboard-focused
+    /// active day without an underline, instead of falling back to the code-owned default.</summary>
+    [Fact]
+    public async Task Surface_WhenActiveDayUnderlineIsNone_RendersFocusedDateWithoutUnderlineAsync()
+    {
+        // Arrange
+        var displayMonth = new DateOnly(2026, 7, 1);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = displayMonth,
+            Style = CalendarStyle.Default with { ActiveDayUnderline = Underline.None }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        var activeCell = CellFor(calendar.ActiveDate, displayMonth, calendar.FirstDayOfWeek);
+        surface.Cell(activeCell).Style.Underline.ShouldBe(Underline.None);
+        (surface.Cell(activeCell).Style.Attributes & TerminalAttributes.Underline).ShouldBe(TerminalAttributes.None);
+    }
+
+    /// <summary>Verifies a local style assigning a non-default ActiveDayUnderline renders that
+    /// configured underline variant on the keyboard-focused active day. Mounted with an explicit
+    /// authoritative StyledUnderlines override so the encoder keeps the typed variant on the wire
+    /// instead of downgrading it to the legacy plain-underline attribute.</summary>
+    [Fact]
+    public async Task Surface_WhenActiveDayUnderlineIsCustomized_RendersConfiguredUnderlineAsync()
+    {
+        // Arrange
+        var displayMonth = new DateOnly(2026, 7, 1);
+        var calendar = new UiCalendar
+        {
+            Culture = CultureInfo.InvariantCulture,
+            DisplayMonth = displayMonth,
+            Style = CalendarStyle.Default with { ActiveDayUnderline = Underline.Paired }
+        };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with
+            {
+                StyledUnderlines = new Feature(CapabilitySupport.Supported, Origin.Override)
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            calendar,
+            new Size(32, 10),
+            options,
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Keyboard.PressAsync(Code.Tab);
+
+        // Assert
+        var activeCell = CellFor(calendar.ActiveDate, displayMonth, calendar.FirstDayOfWeek);
+        surface.Cell(activeCell).Style.Underline.ShouldBe(Underline.Paired);
     }
 
     /// <summary>Verifies a theme swap confined to the directly-resolved Accent role still repaints

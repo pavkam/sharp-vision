@@ -1976,8 +1976,25 @@ namespace SharpVision.Controls.Input
     }
     public sealed class CalendarStyle : SharpVision.Styling.InputStyle, System.IEquatable<SharpVision.Controls.Input.CalendarStyle>
     {
-        public CalendarStyle(SharpVision.Styling.Face face, SharpVision.Styling.Border border, SharpVision.Styling.Shadow shadow, SharpVision.Styling.ControlColor selectedDayColor, SharpVision.Styling.ControlColor todayMarkerColor, SharpVision.Styling.ControlColor outOfMonthDayColor, SharpVision.Styling.ControlColor weekdayHeaderColor, SharpVision.Styling.ControlColor disabledDayColor, SharpVision.Styling.ControlColor navigationColor, System.Text.Rune previousMonthGlyph, System.Text.Rune nextMonthGlyph, SharpVision.Styling.ControlColor activeDayBackground, SharpVision.Styling.ControlColor selectedDayBackground, SharpVision.Styling.ControlColor disabledDayBackground, SharpVision.Layout.Thickness contentInset) { }
+        public CalendarStyle(
+                    SharpVision.Styling.Face face,
+                    SharpVision.Styling.Border border,
+                    SharpVision.Styling.Shadow shadow,
+                    SharpVision.Styling.ControlColor selectedDayColor,
+                    SharpVision.Styling.ControlColor todayMarkerColor,
+                    SharpVision.Styling.ControlColor outOfMonthDayColor,
+                    SharpVision.Styling.ControlColor weekdayHeaderColor,
+                    SharpVision.Styling.ControlColor disabledDayColor,
+                    SharpVision.Styling.ControlColor navigationColor,
+                    System.Text.Rune previousMonthGlyph,
+                    System.Text.Rune nextMonthGlyph,
+                    SharpVision.Styling.ControlColor activeDayBackground,
+                    SharpVision.Styling.ControlColor selectedDayBackground,
+                    SharpVision.Styling.ControlColor disabledDayBackground,
+                    SharpVision.Layout.Thickness contentInset,
+                    SharpVision.Terminal.Protocols.Underline activeDayUnderline) { }
         public required SharpVision.Styling.ControlColor ActiveDayBackground { get; init; }
+        public required SharpVision.Terminal.Protocols.Underline ActiveDayUnderline { get; init; }
         public required SharpVision.Layout.Thickness ContentInset { get; init; }
         public required SharpVision.Styling.ControlColor DisabledDayBackground { get; init; }
         public required SharpVision.Styling.ControlColor DisabledDayColor { get; init; }

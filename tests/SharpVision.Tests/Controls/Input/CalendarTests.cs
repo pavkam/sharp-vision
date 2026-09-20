@@ -685,7 +685,23 @@ public sealed class CalendarTests
         calendar.ActualStyle.WeekdayHeaderColor.ShouldBe((ControlColor) SemanticColor.Muted);
         calendar.ActualStyle.DisabledDayColor.ShouldBe((ControlColor) SemanticColor.DisabledText);
         calendar.ActualStyle.ContentInset.ShouldBe(new Thickness(horizontal: 1, vertical: 0));
+        calendar.ActualStyle.ActiveDayUnderline.ShouldBe(Underline.Straight);
         calendar.Padding.ShouldBe(default);
+    }
+
+    /// <summary>Verifies CalendarStyle rejects an undefined ActiveDayUnderline value before it
+    /// replaces the resolved style, matching the validation ListViewStyle.CurrentUnderline
+    /// enforces for its own keyboard-current underline.</summary>
+    [Fact]
+    public void Style_WhenActiveDayUnderlineIsUndefined_ThrowsArgumentOutOfRangeException()
+    {
+        // Arrange
+        using var calendar = new UiCalendar();
+
+        // Act and assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(
+            () => calendar.Style = CalendarStyle.Default with { ActiveDayUnderline = (Underline) int.MaxValue });
+        calendar.Style.ShouldBeNull();
     }
 
     /// <summary>Verifies assigning a local style propagates to ActualStyle and reports one notification,

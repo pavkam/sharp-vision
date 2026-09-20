@@ -976,8 +976,10 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
 
         if (IsFocused && date == ActiveDate)
         {
+            // Only replace the underline when the span left it unset: an authored markup
+            // underline (e.g. a curly underline from a custom-styled day) is never clobbered.
             style = style.Underline == Underline.None
-                ? WithAttributes(style, style.Attributes | TerminalAttributes.Underline)
+                ? WithUnderline(style, actualStyle.ActiveDayUnderline)
                 : style;
         }
 
@@ -1009,12 +1011,12 @@ public sealed class Calendar: ControlBase, IStyled<CalendarStyle>
         source.Underline,
         source.UnderlineColor);
 
-    private static TerminalStyle WithAttributes(TerminalStyle source, TerminalAttributes attributes) => new(
+    private static TerminalStyle WithUnderline(TerminalStyle source, Underline underline) => new(
         source.Foreground,
         source.Background,
-        attributes,
+        source.Attributes,
         source.Hyperlink,
-        source.Underline,
+        underline,
         source.UnderlineColor);
 
     #endregion
