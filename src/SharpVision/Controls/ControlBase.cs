@@ -7415,10 +7415,11 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// <summary>Gets or sets whether this control stops ambient text appearance inheritance and
     /// an ancestor's continuous background plane from reaching it and its descendants.</summary>
     /// <remarks>
-    /// Floating surfaces (<see cref="Popup"/>, <see cref="Windows.Window"/>) set this so a
-    /// submenu or dialog whose logical parent sits inside a <see cref="Menu"/> or
-    /// <see cref="Display.StatusBar"/> paints its own opaque face instead of inheriting that bar's
-    /// plane as transparency over whatever content lies behind the surface.
+    /// Every floating surface (<see cref="Popup"/>, <see cref="Windows.Window"/>,
+    /// <see cref="Notifications.Toast"/>) sets this so a submenu or dialog whose logical parent
+    /// sits inside a <see cref="Menu"/> or <see cref="Display.StatusBar"/> paints its own opaque
+    /// face instead of inheriting that bar's plane as transparency over whatever content lies
+    /// behind the surface.
     /// </remarks>
     public bool IsAppearanceBoundary
     {

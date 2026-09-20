@@ -196,9 +196,10 @@ and shadow never inherit. A complete local face is authoritative and is never
 overwritten by ambient inheritance. An opaque face forms a natural inheritance
 boundary; set `IsAppearanceBoundary` when a transparent composition owner also
 needs to stop inheritance. The same boundary ends a continuous background plane
-(`ProvidesContinuousBackground`): `Popup` and `Window` set it, so a submenu or
-dialog logically owned by a menu bar item paints its own face rather than
-inheriting the bar's plane as transparency over the content behind the surface.
+(`ProvidesContinuousBackground`): every floating surface (`Popup`, `Window`,
+`Toast`) sets it, so a submenu or dialog logically owned by a menu bar item
+paints its own face rather than inheriting the bar's plane as transparency over
+the content behind the surface.
 
 Transparent is a valid background for composition. The foreground, underline,
 and access-key paint channels reject it. `Color.Default` remains an opaque

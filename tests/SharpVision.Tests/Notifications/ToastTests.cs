@@ -29,6 +29,39 @@ public sealed class ToastTests
         toast.IsFocusable.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a Toast opts out of ambient text-appearance inheritance by construction,
+    /// so a floating surface always starts fresh regardless of which theme is active.</summary>
+    [Fact]
+    public void Constructor_WhenCreated_IsAppearanceBoundary()
+    {
+        using var toast = new Toast();
+
+        toast.IsAppearanceBoundary.ShouldBeTrue();
+    }
+
+    /// <summary>Verifies a Toast nested under an ancestor that provides a continuous background
+    /// plane (a <see cref="Menu"/>, <see cref="StatusBar"/>, or <see cref="CommandBar"/>)
+    /// still paints its own opaque backdrop instead of letting that plane bleed through it. Unlike
+    /// <see cref="Popup"/> and <see cref="Window"/>, a Toast's own style always substitutes
+    /// <see cref="SemanticColor.Window"/> for a literally transparent resolved popup background
+    /// (see <c>ToastStyle.CreatePreset</c>), so it never satisfies AppearanceResolver's ambient
+    /// text-face inheritance gate on its own account - but without <see cref="ControlBase.IsAppearanceBoundary"/>,
+    /// <see cref="ControlBase.UsesContinuousBackground"/> would still treat this Toast as part of the
+    /// ancestor's plane and force its own unauthored background transparent, exactly the failure
+    /// mode <see cref="ControlBase.IsAppearanceBoundary"/> exists to stop at a floating surface.</summary>
+    [Fact]
+    public void ResolveAppearance_WhenAncestorProvidesContinuousBackground_PaintsOwnOpaqueBackdrop()
+    {
+        var provider = new ProbeContainer { ProvidesContinuousBackgroundOverride = true };
+        using var toast = new Toast();
+        provider.Children.Add(toast);
+        var expectedBackground = ThemeCatalog.Dark.ResolveColor(SemanticColor.Window);
+
+        var resolved = toast.ResolveAppearance(ThemeCatalog.Dark);
+
+        resolved.Face.Background.Literal.ShouldBe(expectedBackground);
+    }
+
     /// <summary>Verifies arbitrary content is the retained caller-replaceable child and style remains open-ended.</summary>
     [Fact]
     public void ContentAndStyle_WhenAssigned_RoundTripThroughPublicContract()

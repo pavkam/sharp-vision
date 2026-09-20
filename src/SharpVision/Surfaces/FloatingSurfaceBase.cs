@@ -48,6 +48,13 @@ public abstract class FloatingSurfaceBase: ContentControl
             OnSurfaceModalExited);
         _fadeTimer = new ControlTimer(_fadeRefreshInterval, OnFadeTimerTick);
         RegisterAttachmentParticipant(_fadeTimer);
+
+        // Every floating surface (Popup, Window, Toast, and every family built on them) is a
+        // top-level plane: it must never blend an ambient parent's Foreground/Attributes/Underline
+        // into its own resolved Face just because a custom theme happens to leave its own role's
+        // background transparent. Opting out here keeps that behavior correct regardless of which
+        // theme is active, for every current and future subclass.
+        IsAppearanceBoundary = true;
     }
 
     /// <summary>Initializes the one capture-aware close affordance owned by a concrete surface.</summary>

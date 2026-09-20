@@ -38,6 +38,16 @@ internal sealed class ProbeContainer: Container
     /// <summary>Gets or sets whether rendering clips owned descendants.</summary>
     internal bool ClipChildren { get; set; } = true;
 
+    /// <summary>Gets or sets whether this probe reports <see cref="ProvidesContinuousBackground"/>
+    /// as true, proving a descendant floating surface's <c>IsAppearanceBoundary</c> stops that
+    /// plane at the surface instead of letting it punch the surface's own unauthored background
+    /// transparent - the same continuous-plane contract a <see cref="Menu"/>, <see cref="StatusBar"/>,
+    /// or <see cref="CommandBar"/> establishes for real.</summary>
+    internal bool ProvidesContinuousBackgroundOverride { get; set; }
+
+    /// <inheritdoc/>
+    protected internal override bool ProvidesContinuousBackground => ProvidesContinuousBackgroundOverride;
+
     /// <summary>Gets how often rendering requested this container's own visual bounds.</summary>
     internal int VisualBoundsReads { get; private set; }
 
