@@ -102,6 +102,13 @@ internal sealed class OwnedControlSlot
     /// <param name="control">The non-null detached control.</param>
     public void Insert(int index, ControlBase control) => Registry.Insert(this, index, control);
 
+    /// <summary>Validates one candidate insertion without committing it.</summary>
+    /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
+    /// <param name="control">The non-null detached candidate.</param>
+    /// <remarks>See <see cref="OwnedControlRegistry.ValidateInsertCandidate"/> for the full contract.</remarks>
+    public void ValidateInsertCandidate(int index, ControlBase control) =>
+        Registry.ValidateInsertCandidate(this, index, control);
+
     /// <summary>Commits the sole permanent control without allowing later replacement.</summary>
     /// <param name="control">The non-null detached permanent control.</param>
     /// <remarks>A rejection before commit leaves initialization available. Once the edge commits,

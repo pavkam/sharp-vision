@@ -335,6 +335,34 @@ public abstract class ItemsControl: ControlBase
         GetItemsHost().Children.Insert(index, control);
     }
 
+    /// <summary>Validates one candidate <see cref="InsertItemControl"/> without committing it.</summary>
+    /// <remarks>
+    /// Runs the identical index-range and ownership-eligibility checks <see cref="InsertItemControl"/>
+    /// would run against the private presentation host, without realizing the control. This exists so
+    /// <see cref="ItemCollection{TItem}"/> - a sibling class in this assembly, not a subclass of this
+    /// type - can validate an insertion before its own pre-commit <see
+    /// cref="ItemCollection{TItem}.OnInserting"/> hook runs, so that hook always observes the
+    /// validated index and item its documentation promises. The subsequent
+    /// <see cref="InsertItemControl"/> call performs the identical validation again as part of
+    /// realizing the control; that repeated work is intentional, matching
+    /// <see cref="OwnedControlRegistry.ValidateInsertCandidate"/>'s own contract.
+    /// </remarks>
+    /// <param name="index">The insertion position from zero through <see cref="ItemControlCount"/>.</param>
+    /// <param name="control">The non-null detached candidate.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">The control cannot belong to the presentation host.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The presentation host is unavailable, the attached owner is accessed off-dispatcher, or an
+    /// ownership transaction is active.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">The owner, host, or control is disposed.</exception>
+    protected internal void ValidateItemControlInsert(int index, ControlBase control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        GetItemsHost().Children.ValidateInsert(index, control);
+    }
+
     /// <summary>Removes one identical realized control without disposing it.</summary>
     /// <param name="control">The non-null candidate.</param>
     /// <returns>True when the control was removed; false when it was not realized by this owner.</returns>

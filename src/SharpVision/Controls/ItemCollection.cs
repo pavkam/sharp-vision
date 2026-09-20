@@ -91,6 +91,7 @@ public abstract class ItemCollection<TItem>: IReadOnlyList<TItem>
     {
         ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutable();
+        _owner.ValidateItemControlInsert(index, item);
         OnInserting(index, item);
         _owner.InsertItemControl(index, item);
         OnInserted(index, item);

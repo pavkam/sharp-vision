@@ -87,6 +87,17 @@ public sealed class ControlCollection: IList<ControlBase>, IReadOnlyList<Control
     /// <inheritdoc/>
     public void Insert(int index, ControlBase item) => Slot.Insert(index, item);
 
+    /// <summary>Validates one candidate <see cref="Insert"/> without committing it.</summary>
+    /// <param name="index">The insertion position from zero through <see cref="Count"/>.</param>
+    /// <param name="item">The non-null detached candidate.</param>
+    /// <remarks>
+    /// This internal seam lets a framework caller - such as <see cref="ItemsControl"/>'s item-control
+    /// accessors - run its own logic between validation and the actual structural mutation, using
+    /// this collection's owning registry as the single authority for insertion eligibility. See
+    /// <see cref="OwnedControlRegistry.ValidateInsertCandidate"/> for the full contract.
+    /// </remarks>
+    internal void ValidateInsert(int index, ControlBase item) => Slot.ValidateInsertCandidate(index, item);
+
     /// <summary>Atomically assigns or clears the only child of a capacity-one collection.</summary>
     /// <param name="item">The new detached child, or null to clear the collection.</param>
     /// <exception cref="ArgumentException"><paramref name="item"/> cannot be owned by this control.</exception>

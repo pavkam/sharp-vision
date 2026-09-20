@@ -575,6 +575,45 @@ internal sealed class OwnedControlRegistry
         Commit(slot, next, ReleaseReason.Detached, notifyUnavailable: true);
     }
 
+    /// <summary>Validates one candidate insertion without committing it.</summary>
+    /// <remarks>
+    /// Runs the identical checks <see cref="Insert"/> performs before it commits an insertion - slot
+    /// registration, dispatcher affinity, transaction state, index range, and candidate eligibility
+    /// (duplicate, cycle, disposed, or already attached) - without changing the slot's committed
+    /// contents. A caller that must run its own logic between validation and the actual structural
+    /// mutation - such as a pre-commit collection hook that promises its caller a validated index and
+    /// item - calls this first, so that logic never observes an insertion the registry would go on to
+    /// reject. The subsequent call to <see cref="Insert"/> performs the identical validation again as
+    /// part of committing the change; that repeated work is intentional so this registry remains the
+    /// single, authoritative source of the eligibility rules and a caller can never bypass them by
+    /// validating without also inserting.
+    /// </remarks>
+    /// <param name="slot">The registered slot the candidate would be inserted into.</param>
+    /// <param name="index">The insertion position from zero through <paramref name="slot"/>'s current count.</param>
+    /// <param name="control">The non-null detached candidate.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="control"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the insertion range.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="slot"/> belongs to another registry, or the candidate cannot be owned by this slot.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">The owner is off-dispatcher or an ownership transaction is active.</exception>
+    /// <exception cref="ObjectDisposedException">The owner or candidate is disposed.</exception>
+    public void ValidateInsertCandidate(OwnedControlSlot slot, int index, ControlBase control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+
+        VerifySlot(slot);
+        Owner.VerifyMutable();
+        VerifyNotTransacting();
+
+        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint) index, (uint) slot.Count);
+
+        var next = new List<ControlBase>(slot.Items);
+        next.Insert(index, control);
+
+        ValidateSnapshot(slot, next);
+    }
+
     /// <summary>Replaces one candidate after validating the complete resulting slot.</summary>
     public void Replace(OwnedControlSlot slot, int index, ControlBase control)
     {

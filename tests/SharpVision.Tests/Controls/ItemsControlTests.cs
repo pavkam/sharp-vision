@@ -569,6 +569,70 @@ public sealed class ItemsControlTests
         collection.ShouldBe([existing]);
     }
 
+    /// <summary>Verifies <see cref="ItemCollection{TItem}.Insert"/> validates the insertion
+    /// position against the owner's realized controls before invoking the pre-commit
+    /// <see cref="ItemCollection{TItem}.OnInserting"/> hook, so that hook - whose documentation
+    /// promises a validated position - never observes an out-of-range index, and the collection's
+    /// committed content is left completely unchanged.</summary>
+    [Fact]
+    public void ItemCollection_WhenInsertingOutOfRangeIndex_ThrowsBeforeInvokingOnInserting()
+    {
+        var owner = new ProbeItemsControl();
+        var collection = new ProbeItemCollection(owner);
+        var existing = new ProbeControl();
+        collection.Add(existing);
+        var insertingCallsBeforeAttempt = collection.InsertingCalls.Count;
+
+        var candidate = new ProbeControl();
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => collection.Insert(2, candidate));
+
+        collection.ShouldBe([existing]);
+        collection.InsertingCalls.Count.ShouldBe(insertingCallsBeforeAttempt);
+    }
+
+    /// <summary>Verifies <see cref="ItemCollection{TItem}.Insert"/> validates that a candidate can
+    /// actually be owned by this collection's owner - rejecting one already realized by a different
+    /// item owner - before invoking the pre-commit <see cref="ItemCollection{TItem}.OnInserting"/>
+    /// hook, and leaves both collections' committed content completely unchanged.</summary>
+    [Fact]
+    public void ItemCollection_WhenInsertingItemOwnedByAnotherCollection_ThrowsBeforeInvokingOnInserting()
+    {
+        var firstOwner = new ProbeItemsControl();
+        var firstCollection = new ProbeItemCollection(firstOwner);
+        var item = new ProbeControl();
+        firstCollection.Add(item);
+
+        var secondOwner = new ProbeItemsControl();
+        var secondCollection = new ProbeItemCollection(secondOwner);
+
+        _ = Should.Throw<ArgumentException>(() => secondCollection.Insert(0, item));
+
+        secondCollection.ShouldBeEmpty();
+        secondCollection.InsertingCalls.ShouldBeEmpty();
+        firstCollection.ShouldBe([item]);
+    }
+
+    /// <summary>Verifies <see cref="ItemCollection{TItem}.Insert"/> rejects a disposed candidate
+    /// before invoking the pre-commit <see cref="ItemCollection{TItem}.OnInserting"/> hook, and
+    /// leaves the collection's committed content completely unchanged.</summary>
+    [Fact]
+    public void ItemCollection_WhenInsertingDisposedItem_ThrowsBeforeInvokingOnInserting()
+    {
+        var owner = new ProbeItemsControl();
+        var collection = new ProbeItemCollection(owner);
+        var existing = new ProbeControl();
+        collection.Add(existing);
+        var insertingCallsBeforeAttempt = collection.InsertingCalls.Count;
+
+        var disposed = new ProbeControl();
+        disposed.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => collection.Insert(1, disposed));
+
+        collection.ShouldBe([existing]);
+        collection.InsertingCalls.Count.ShouldBe(insertingCallsBeforeAttempt);
+    }
+
     /// <summary>Verifies <see cref="ItemsControl.OnItemFocused"/> resolves a descendant deep
     /// inside a realized item control to that item control itself, through
     /// <see cref="ItemsControl.FindItemControl"/>, rather than firing only when the item control

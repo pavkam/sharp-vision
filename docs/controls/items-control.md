@@ -199,15 +199,15 @@ notifications on the owner for exactly this reason.
 case: a derived collection that only needs to react before or after a
 default-path mutation commits, without replacing the mutation itself.
 
-| Member                                              | Type   | Default | Description                                                                              |
-| --------------------------------------------------- | ------ | ------- | ---------------------------------------------------------------------------------------- |
-| `OnInserting(int index, TItem item)`                | `void` | No-op   | Protected virtual; runs immediately before the default `Insert` path commits.            |
-| `OnInserted(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately after the default `Insert` path commits.             |
-| `OnRemoving(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately before the default `Remove`/`RemoveAt` path commits. |
-| `OnRemoved(int index, TItem item)`                  | `void` | No-op   | Protected virtual; runs immediately after the default `Remove`/`RemoveAt` path commits.  |
-| `OnMoved(int oldIndex, int newIndex)`               | `void` | No-op   | Protected virtual; runs immediately after the default `Move` path commits.               |
-| `OnReplaced(int index, TItem previous, TItem item)` | `void` | No-op   | Protected virtual; runs immediately after the default indexer setter commits.            |
-| `OnCleared()`                                       | `void` | No-op   | Protected virtual; runs immediately after the default `Clear` path commits.              |
+| Member                                              | Type   | Default | Description                                                                                                                                       |
+| --------------------------------------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OnInserting(int index, TItem item)`                | `void` | No-op   | Protected virtual; runs after `Insert` validates the index and the item's ownership eligibility, and immediately before the default path commits. |
+| `OnInserted(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately after the default `Insert` path commits.                                                                      |
+| `OnRemoving(int index, TItem item)`                 | `void` | No-op   | Protected virtual; runs immediately before the default `Remove`/`RemoveAt` path commits.                                                          |
+| `OnRemoved(int index, TItem item)`                  | `void` | No-op   | Protected virtual; runs immediately after the default `Remove`/`RemoveAt` path commits.                                                           |
+| `OnMoved(int oldIndex, int newIndex)`               | `void` | No-op   | Protected virtual; runs immediately after the default `Move` path commits.                                                                        |
+| `OnReplaced(int index, TItem previous, TItem item)` | `void` | No-op   | Protected virtual; runs immediately after the default indexer setter commits.                                                                     |
+| `OnCleared()`                                       | `void` | No-op   | Protected virtual; runs immediately after the default `Clear` path commits.                                                                       |
 
 ### ScrollableItemsControl
 

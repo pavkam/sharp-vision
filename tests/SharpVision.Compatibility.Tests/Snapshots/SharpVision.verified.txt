@@ -902,6 +902,7 @@ namespace SharpVision.Controls
         protected void RemoveItemControlAt(int index) { }
         protected void ReplaceItemControl(int index, SharpVision.Controls.ControlBase control) { }
         protected void ReplaceItemControls(System.Collections.Generic.IEnumerable<SharpVision.Controls.ControlBase> controls) { }
+        protected void ValidateItemControlInsert(int index, SharpVision.Controls.ControlBase control) { }
     }
     public sealed class LatestControlOperation
     {
