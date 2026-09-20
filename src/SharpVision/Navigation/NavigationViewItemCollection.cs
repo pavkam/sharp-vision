@@ -30,6 +30,7 @@ public sealed class NavigationViewItemCollection: IReadOnlyList<NavigationViewIt
     /// <exception cref="ObjectDisposedException">An attached owner or the item is disposed.</exception>
     public void Add(NavigationViewItem item)
     {
+        ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutation();
         _owner.AddItemCore(item);
     }
@@ -42,6 +43,7 @@ public sealed class NavigationViewItemCollection: IReadOnlyList<NavigationViewIt
     /// <exception cref="ObjectDisposedException">An attached owner is disposed.</exception>
     public bool Remove(NavigationViewItem item)
     {
+        ArgumentNullException.ThrowIfNull(item);
         _owner.VerifyMutation();
         return _owner.RemoveItemCore(item);
     }

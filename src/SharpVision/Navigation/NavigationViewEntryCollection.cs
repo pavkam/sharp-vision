@@ -31,8 +31,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
         get => _owner.GetItem(index, _isFooter);
         set
         {
-            _owner.VerifyMutation();
             ArgumentNullException.ThrowIfNull(value);
+            _owner.VerifyMutation();
             _owner.ReplaceEntryAt(index, value, _isFooter);
         }
     }
@@ -47,8 +47,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or item is disposed.</exception>
     public void Add(NavigationViewItem item)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
+        _owner.VerifyMutation();
         _owner.AddEntry(item, _isFooter);
     }
 
@@ -59,8 +59,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or group is disposed.</exception>
     public void Add(NavigationViewGroup group)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
+        _owner.VerifyMutation();
         _owner.AddEntry(group, _isFooter);
     }
 
@@ -71,8 +71,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or separator is disposed.</exception>
     public void Add(NavigationViewSeparator separator)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
+        _owner.VerifyMutation();
         _owner.AddEntry(separator, _isFooter);
     }
 
@@ -84,8 +84,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or item is disposed.</exception>
     public void Insert(int index, NavigationViewItem item)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
+        _owner.VerifyMutation();
         _owner.InsertEntry(index, item, _isFooter);
     }
 
@@ -97,8 +97,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or group is disposed.</exception>
     public void Insert(int index, NavigationViewGroup group)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
+        _owner.VerifyMutation();
         _owner.InsertEntry(index, group, _isFooter);
     }
 
@@ -110,8 +110,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner or separator is disposed.</exception>
     public void Insert(int index, NavigationViewSeparator separator)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
+        _owner.VerifyMutation();
         _owner.InsertEntry(index, separator, _isFooter);
     }
 
@@ -121,8 +121,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewItem item)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(item);
+        _owner.VerifyMutation();
         return _owner.RemoveEntry(item, _isFooter);
     }
 
@@ -132,8 +132,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewGroup group)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(group);
+        _owner.VerifyMutation();
         return _owner.RemoveEntry(group, _isFooter);
     }
 
@@ -143,8 +143,8 @@ public sealed class NavigationViewEntryCollection: IReadOnlyList<ControlBase>
     /// <exception cref="ObjectDisposedException">The owner is disposed.</exception>
     public bool Remove(NavigationViewSeparator separator)
     {
-        _owner.VerifyMutation();
         ArgumentNullException.ThrowIfNull(separator);
+        _owner.VerifyMutation();
         return _owner.RemoveEntry(separator, _isFooter);
     }
 

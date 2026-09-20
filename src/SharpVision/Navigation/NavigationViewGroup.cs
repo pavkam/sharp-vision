@@ -118,8 +118,8 @@ public sealed class NavigationViewGroup: ControlBase, IStyled<NavigationViewGrou
     /// <exception cref="ArgumentNullException"><paramref name="item"/> is null.</exception>
     internal void AddItemCore(NavigationViewItem item)
     {
-        VerifyMutable();
         ArgumentNullException.ThrowIfNull(item);
+        VerifyMutable();
 
         // Ownership is secured before any authored property is captured or
         // overwritten. A rejected insertion (duplicate, already attached,

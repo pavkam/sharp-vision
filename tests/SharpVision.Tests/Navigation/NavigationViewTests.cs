@@ -3069,6 +3069,37 @@ public sealed class NavigationViewTests
         _ = Should.Throw<ObjectDisposedException>(() => nav.VerticalOffset = 0);
     }
 
+    /// <summary>Verifies a disposed NavigationView's item collection still rejects a null
+    /// argument to Add, Insert, Remove, and the indexer setter with ArgumentNullException rather
+    /// than the owner's disposed-state check pre-empting that validation.</summary>
+    [Fact]
+    public void Items_WhenOwnerDisposedAndArgumentIsNull_ThrowsArgumentNullException()
+    {
+        var nav = new NavigationView();
+        nav.Dispose();
+
+        _ = Should.Throw<ArgumentNullException>(() => nav.Items.Add((NavigationViewItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => nav.Items.Insert(0, (NavigationViewItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => nav.Items.Remove((NavigationViewItem) null!));
+        _ = Should.Throw<ArgumentNullException>(() => nav.Items[0] = null!);
+    }
+
+    /// <summary>Verifies a disposed NavigationView's item collection still throws
+    /// ObjectDisposedException for Add, Insert, Remove, and the indexer setter once a non-null
+    /// candidate has cleared argument validation.</summary>
+    [Fact]
+    public void Items_WhenOwnerDisposedAndArgumentIsNotNull_ThrowsObjectDisposedException()
+    {
+        var nav = new NavigationView();
+        nav.Dispose();
+        var candidate = new NavigationViewItem { Text = "Candidate" };
+
+        _ = Should.Throw<ObjectDisposedException>(() => nav.Items.Add(candidate));
+        _ = Should.Throw<ObjectDisposedException>(() => nav.Items.Insert(0, candidate));
+        _ = Should.Throw<ObjectDisposedException>(() => nav.Items.Remove(candidate));
+        _ = Should.Throw<ObjectDisposedException>(() => nav.Items[0] = candidate);
+    }
+
     /// <summary>Verifies every NavigationView-declared settable property requires dispatcher
     /// affinity once attached.</summary>
     [Fact]
@@ -3104,6 +3135,33 @@ public sealed class NavigationViewTests
         _ = Should.Throw<ObjectDisposedException>(() => group.Header = "Group");
         _ = Should.Throw<ObjectDisposedException>(() => group.IsExpanded = false);
         _ = Should.Throw<ObjectDisposedException>(() => group.Style = NavigationViewGroupStyle.Default);
+    }
+
+    /// <summary>Verifies a disposed NavigationViewGroup's sub-item collection still rejects a
+    /// null argument to Add and Remove with ArgumentNullException rather than the owner's
+    /// disposed-state check pre-empting that validation.</summary>
+    [Fact]
+    public void GroupItems_WhenOwnerDisposedAndArgumentIsNull_ThrowsArgumentNullException()
+    {
+        var group = new NavigationViewGroup();
+        group.Dispose();
+
+        _ = Should.Throw<ArgumentNullException>(() => group.Items.Add(null!));
+        _ = Should.Throw<ArgumentNullException>(() => group.Items.Remove(null!));
+    }
+
+    /// <summary>Verifies a disposed NavigationViewGroup's sub-item collection still throws
+    /// ObjectDisposedException for Add and Remove once a non-null candidate has cleared argument
+    /// validation.</summary>
+    [Fact]
+    public void GroupItems_WhenOwnerDisposedAndArgumentIsNotNull_ThrowsObjectDisposedException()
+    {
+        var group = new NavigationViewGroup();
+        group.Dispose();
+        var candidate = new NavigationViewItem { Text = "Candidate" };
+
+        _ = Should.Throw<ObjectDisposedException>(() => group.Items.Add(candidate));
+        _ = Should.Throw<ObjectDisposedException>(() => group.Items.Remove(candidate));
     }
 
     /// <summary>Verifies every NavigationViewGroup-declared settable property requires dispatcher
