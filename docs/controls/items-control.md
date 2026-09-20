@@ -109,6 +109,19 @@ host owns item-specific layout. `ItemsControl` itself adds no scrolling
 behavior; a derived control with a private scrolling host uses
 [`ScrollableItemsControl`](#scrollableitemscontrol).
 
+`ItemsControl` projects the private presentation host as its
+[selectable-text](../concepts/text-selection.md#projection) aggregate, so
+enabling `IsTextSelectionEnabled` on an item owner projects every currently
+realized item's own retained content, in presentation order, without any further
+wiring from the derived control. A derived owner that wants a narrower
+projection - `TabControl` limits it to only the selected item - overrides
+`AddSelectableTextChildren` directly instead of composing with the base
+behavior, because the two projections are mutually exclusive. Only realized
+items ever contribute: an owner with windowed realization only ever projects
+rows currently materialized in the viewport, and a re-window while a drag
+selection is in progress cancels that selection because the controls it
+referenced are no longer retained.
+
 ## Inheritance
 
 ```mermaid

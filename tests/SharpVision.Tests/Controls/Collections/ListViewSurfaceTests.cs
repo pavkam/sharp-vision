@@ -1209,6 +1209,237 @@ public sealed class ListViewSurfaceTests
         restoredRail.Bounds.ShouldBe(baselineRailBounds);
     }
 
+    /// <summary>Verifies enabling text selection on the ListView itself - not on the template
+    /// content - projects a realized row's retained text, so a real pointer drag across the row
+    /// commits a non-empty ListView-owned range even though <see cref="ListItem.HitTest"/> keeps
+    /// hit testing on the pressable item wrapper the whole time.</summary>
+    [Fact]
+    public async Task Pointer_WhenListTextSelectionEnabledAndDragCrossesOneRow_CommitsNonEmptyRowRangeAsync()
+    {
+        // Arrange
+        List<ControlText> texts = [];
+        var changes = 0;
+        var list = new UiListView
+        {
+            Items = ["Alpha", "Beta"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            IsTextSelectionEnabled = true,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+                texts.Add(text);
+                return new Stack { Children = { text } };
+            }
+        };
+        list.TextSelectionChanged += (_, _) => changes++;
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act - drag past the end of "Alpha" using an absolute endpoint, since the row-relative
+        // overload cannot address a caret position past the text control's own last column.
+        await surface.Pointer.MoveToAsync(texts[0], new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(5, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        var (selection, copied) = await surface.Application.Dispatcher.InvokeAsync(
+            () => (list.TextSelection, list.CopySelectedText()),
+            TestContext.Current.CancellationToken);
+        selection.IsEmpty.ShouldBeFalse();
+        copied.ShouldBe("Alpha");
+        changes.ShouldBeGreaterThan(0);
+    }
+
+    /// <summary>Verifies a drag that starts on one realized row and ends on another commits a
+    /// range spanning both rows' projected text, proving the projection walks every realized row
+    /// rather than only the one the press began on.</summary>
+    [Fact]
+    public async Task Pointer_WhenListTextSelectionEnabledAndDragSpansTwoRows_CommitsRangeAcrossBothRowsAsync()
+    {
+        // Arrange
+        List<ControlText> texts = [];
+        var list = new UiListView
+        {
+            Items = ["Alpha", "Beta"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            IsTextSelectionEnabled = true,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+                texts.Add(text);
+                return new Stack { Children = { text } };
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act - press on row 0 and release past the end of row 1's text.
+        await surface.Pointer.MoveToAsync(texts[0], new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(4, 1));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        var copied = await surface.Application.Dispatcher.InvokeAsync(
+            () => list.CopySelectedText(),
+            TestContext.Current.CancellationToken);
+        copied.ShouldBe("AlphaBeta");
+    }
+
+    /// <summary>Verifies a plain click (no drag) on a row with ListView text selection enabled
+    /// still completes the row's own press-activation path, and that a drag past the shared
+    /// threshold instead starts the list's text-selection gesture and cancels the row press so no
+    /// invocation fires for it.</summary>
+    [Fact]
+    public async Task Pointer_WhenListTextSelectionEnabled_PlainClickInvokesRowButDragDoesNotAsync()
+    {
+        // Arrange
+        List<ControlText> texts = [];
+        var invoked = new List<int>();
+        var list = new UiListView
+        {
+            Items = ["Alpha", "Beta"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            IsTextSelectionEnabled = true,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+                texts.Add(text);
+                return new Stack { Children = { text } };
+            }
+        };
+        list.ItemInvoked += (_, eventArgs) => invoked.Add(eventArgs.Index);
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 2),
+            TestContext.Current.CancellationToken);
+
+        // Act - a plain click, with no intervening drag motion, still activates the row.
+        await surface.Pointer.ClickAsync(texts[0]);
+
+        // Assert - the press collapses any range at the pressed caret, the same as any other
+        // text-selection owner, but never expands into a range because no drag followed it.
+        invoked.ShouldBe([0]);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => list.TextSelection.IsEmpty,
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        // Act - a press-drag on the other row starts list text selection instead.
+        await surface.Pointer.MoveToAsync(texts[1], new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(4, 1));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert - the drag committed a range but never invoked the second row.
+        invoked.ShouldBe([0]);
+        (await surface.Application.Dispatcher.InvokeAsync(
+            () => list.TextSelection.IsEmpty,
+            TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    /// <summary>Verifies Ctrl+A on a focused text-selection-enabled ListView selects the complete
+    /// stream projected from every realized row, not merely the row nearest the caret.</summary>
+    [Fact]
+    public async Task Keyboard_WhenListTextSelectionEnabledAndFocused_ControlASelectsCompleteProjectedStreamAsync()
+    {
+        // Arrange
+        List<ControlText> texts = [];
+        var list = new UiListView
+        {
+            Items = ["Alpha", "Beta"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            IsTextSelectionEnabled = true,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+                texts.Add(text);
+                return new Stack { Children = { text } };
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 2),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => list.Focus().ShouldBeTrue(), "focus the list");
+
+        // Act
+        var controlA = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune('a'),
+            nativeCode: 0,
+            Modifiers.Control,
+            KeyAction.Press));
+        await surface.UpdateAsync(
+            () => _ = Router.Route(list, Events.Key, controlA),
+            "press Ctrl+A on the list");
+
+        // Assert
+        var (selection, copied) = await surface.Application.Dispatcher.InvokeAsync(
+            () => (list.TextSelection, list.CopySelectedText()),
+            TestContext.Current.CancellationToken);
+        selection.IsEmpty.ShouldBeFalse();
+        copied.ShouldBe("AlphaBeta");
+    }
+
+    /// <summary>Documents that the realized item wrapper, not template content, remains the
+    /// pointer hit target when the ListView itself does not opt into text selection: a template
+    /// control that enables text selection locally never receives the routed press, because
+    /// <see cref="ListItem.HitTest"/> always resolves to the wrapper and pointer routing never
+    /// descends into the wrapper's own owned content, so no selection occurs anywhere.</summary>
+    [Fact]
+    public async Task Pointer_WhenListTextSelectionDisabledButTemplateEnablesIt_WrapperOwnsPointerAndNoSelectionOccursAsync()
+    {
+        // Arrange
+        List<ControlText> texts = [];
+        var innerOwners = new List<Stack>();
+        var list = new UiListView
+        {
+            Items = ["Alpha"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = item =>
+            {
+                var text = new ControlText((string) item!);
+                texts.Add(text);
+                var inner = new Stack { IsTextSelectionEnabled = true, Children = { text } };
+                innerOwners.Add(inner);
+                return inner;
+            }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(10, 1),
+            TestContext.Current.CancellationToken);
+
+        // Act
+        await surface.Pointer.MoveToAsync(texts[0], new Point(0, 0));
+        await surface.Pointer.PressAsync();
+        await surface.Pointer.MovePressedToAsync(new Point(4, 0));
+        await surface.Pointer.ReleaseAsync();
+
+        // Assert
+        list.TextSelection.ShouldBe(default);
+        var (innerSelection, innerCopied) = await surface.Application.Dispatcher.InvokeAsync(
+            () => (innerOwners[0].TextSelection, innerOwners[0].CopySelectedText()),
+            TestContext.Current.CancellationToken);
+        innerSelection.ShouldBe(default);
+        innerCopied.ShouldBeEmpty();
+    }
+
     private static ControlText Add(List<ControlText> controls, ControlText control)
     {
         controls.Add(control);

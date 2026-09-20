@@ -9,6 +9,13 @@ namespace SharpVision.Text;
 /// nor geometry because they are absent from the current visual page. Aggregate nodes are traversed
 /// directly through their internal ordered-child seam; only leaf sources materialize snapshots, so
 /// validation and owned copies occur once at the requested root instead of once per retained depth.
+/// A node whose own <see cref="ControlBase.HasAuthoritativeTextSelectionProjection"/> is true is
+/// always treated as a leaf regardless of what <see cref="ControlBase.AddSelectableTextChildren"/>
+/// would otherwise report for it, so an authoritative composite control - one built over
+/// <see cref="CompositeControlBase"/>, whose inherited override would otherwise expose a
+/// private implementation root carrying no comparable semantic text - contributes its own
+/// <see cref="ControlBase.GetSelectableTextSnapshot"/> when some unrelated ancestor projects it,
+/// exactly as it does when asked for its own combined map directly.
 /// </remarks>
 internal static class SelectableTextAggregation
 {
@@ -68,7 +75,7 @@ internal static class SelectableTextAggregation
     {
         var children = new List<ControlBase>();
 
-        if (!aggregate.AddSelectableTextChildren(children))
+        if (aggregate.HasAuthoritativeTextSelectionProjection || !aggregate.AddSelectableTextChildren(children))
         {
             CollectLeaf(owner, aggregate, clip, text, glyphs, sources);
             return;
@@ -95,7 +102,7 @@ internal static class SelectableTextAggregation
 
             var nested = new List<ControlBase>();
 
-            if (child.AddSelectableTextChildren(nested))
+            if (!child.HasAuthoritativeTextSelectionProjection && child.AddSelectableTextChildren(nested))
             {
                 var childClip = child.ResolveSelectableTextDescendantClip(clip);
                 CollectChildren(owner, nested, childClip, text, glyphs, sources);

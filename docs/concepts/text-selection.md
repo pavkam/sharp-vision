@@ -28,6 +28,22 @@ geometry translated into owner-local coordinates. Clipping removes geometry, not
 semantic text. Framework chrome, generated scrollbars, and decoration do not
 become selectable unless their ownership role explicitly exposes them.
 
+A node whose own `HasAuthoritativeTextSelectionProjection` is true always stays
+a leaf of the walk, even when it inherits an `AddSelectableTextChildren`
+override that would otherwise decompose it - a `Document` or `CodeView` nested
+inside some unrelated enabled ancestor contributes its own authoritative
+snapshot rather than the private implementation root a shared composite base
+would otherwise expose, which carries no comparable semantic text of its own.
+
+An `ItemsControl` projects its private presentation host, so its own default
+projection walks every currently realized item control - and, in turn, each
+item's own content - in presentation order. A derived owner that narrows this to
+a subset of its items, such as `TabControl` projecting only its selected item,
+overrides the projection directly instead of composing with the base behavior.
+Windowed realization means only realized items ever contribute: a re-window
+while a drag selection is in progress cancels that selection because the
+controls it references stop being retained.
+
 The indexed selection map retains:
 
 - complete normalized text;

@@ -509,6 +509,29 @@ public abstract class ItemsControl: ControlBase
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Projects the private presentation host rather than individual realized items, so the host's
+    /// own <see cref="Container.AddSelectableTextChildren"/> override walks every currently realized
+    /// item control in presentation order, and each item control's own <see cref="ContentControl"/>
+    /// projection then walks into its template content. A derived owner that narrows this
+    /// projection - <see cref="Collections.TabControl"/> to only its selected
+    /// item, for example - overrides this member directly instead of calling the base
+    /// implementation, because the two projections are mutually exclusive: this member exists
+    /// specifically for owners that want every realized item to contribute. Only realized items
+    /// project; an owner with windowed realization, such as
+    /// <see cref="Collections.ListView"/>, therefore only ever offers rows
+    /// currently materialized in the viewport, and a re-window during an in-progress drag selection
+    /// cancels that selection because it stops referencing controls the drag no longer holds valid
+    /// geometry for.
+    /// </remarks>
+    protected internal override bool AddSelectableTextChildren(List<ControlBase> children)
+    {
+        ArgumentNullException.ThrowIfNull(children);
+        children.Add(GetItemsHost());
+        return true;
+    }
+
+    /// <inheritdoc/>
     protected override Size MeasureOverride(Constraint constraint)
     {
         var host = GetItemsHost();

@@ -218,6 +218,18 @@ but its row is not eligible for pointer activation, keyboard navigation, or
 selection. An empty `Items` snapshot has no active or selected row and renders
 only the ListView surface.
 
+Text inside realized rows is selected through the ListView's own
+`IsTextSelectionEnabled`, not through any selectable content the template itself
+enables: its projection walks every currently realized row's retained content,
+so enabling it on the ListView is what makes row text - a `Text`, a `Document`,
+or any other selectable descendant - selectable at all. A row's own selectable
+content is never reachable by pointer directly, because the wrapper remains the
+hit target described above, exactly like text inside a `Button`. A press-drag on
+a row that crosses the shared drag threshold starts the list's own
+text-selection drag and cancels the row's press, the same capture-transfer every
+other text-selection owner uses over a press-activation-enabled descendant; a
+plain click with no intervening drag still activates the row.
+
 `ListViewStyle` exposes `SelectedTextColor`, `SelectedBackground`, and
 `CurrentUnderline` in addition to the shared face, border, and shadow. The
 selected colors default to the theme's semantic selection roles, while the

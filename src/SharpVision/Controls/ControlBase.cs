@@ -9264,7 +9264,18 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
         !IsDisposed && _textSelectionCapabilityVersion == version && IsTextSelectionEnabled == value;
 
     /// <summary>Gets whether this control's own snapshot replaces retained-child aggregation.</summary>
-    protected virtual bool HasAuthoritativeTextSelectionProjection => false;
+    /// <remarks>
+    /// <see cref="GetTextSelectionMap"/> consults this directly when this control is asked for its
+    /// own combined map. It is <c>protected internal</c> rather than <c>protected</c> so
+    /// <see cref="SelectableTextAggregation"/> - a sibling class in this assembly, not a
+    /// subclass - can also consult it while walking a retained-child aggregate on behalf of some
+    /// unrelated ancestor: a true value there forces this control to remain an atomic leaf of that
+    /// walk, calling its own <see cref="GetSelectableTextSnapshot"/> instead of decomposing through
+    /// <see cref="AddSelectableTextChildren"/>, even when an inherited base implementation - such as
+    /// <see cref="CompositeControlBase.AddSelectableTextChildren"/> - would otherwise report true and
+    /// expose a private implementation root that carries no comparable semantic text of its own.
+    /// </remarks>
+    protected internal virtual bool HasAuthoritativeTextSelectionProjection => false;
 
     /// <summary>Creates the complete geometry projection used by common navigation and adornment.</summary>
     /// <returns>An owned semantic snapshot whose geometry may include cells outside the visible clip.</returns>

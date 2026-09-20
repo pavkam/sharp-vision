@@ -871,6 +871,7 @@ namespace SharpVision.Controls
         protected ItemsControl() { }
         protected int ItemControlCount { get; }
         protected SharpVision.Controls.RetainedPropertyOverrideService ItemPropertyOverrides { get; }
+        protected override bool AddSelectableTextChildren(System.Collections.Generic.List<SharpVision.Controls.ControlBase> children) { }
         protected override void ArrangeOverride(SharpVision.Terminal.Geometry.Rect bounds) { }
         protected void CancelSelectedItemPressActivation() { }
         protected void ClearItemControls() { }
