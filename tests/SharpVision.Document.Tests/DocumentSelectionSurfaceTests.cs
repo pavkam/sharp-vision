@@ -3,6 +3,8 @@
 
 namespace SharpVision.Document.Tests;
 
+using SharpVision.Controls.Collections;
+using SharpVision.Documents.Markdown;
 using SharpVision.Text;
 
 using Document = Controls.Document.Document;
@@ -2658,5 +2660,48 @@ public sealed class DocumentSelectionSurfaceTests
         await surface.Pointer.MovePressedToAsync(document, new Point(1, 0));
         surface.ShouldHaveCapture(document);
         await surface.Pointer.MovePressedToAsync(outside);
+    }
+
+    /// <summary>Verifies enabling text selection on an owning ListView - not on the row's own
+    /// <see cref="Document"/> - lets Ctrl+A on the focused list select the complete Markdown-parsed
+    /// prose realized inside its one row, proving the list's projection walks all the way through
+    /// its realized item wrapper and the item's own template content into a real leaf source.</summary>
+    [Fact]
+    public async Task Keyboard_WhenListTextSelectionEnabledProjectsMountedMarkdownRow_ControlACopiesTheProseAsync()
+    {
+        // Arrange
+        var document = new Document();
+        _ = document.Load("Some selectable prose.", new MarkdownDocumentReader());
+        var list = new ListView
+        {
+            Items = ["row"],
+            SelectionMode = ListSelectionMode.None,
+            RowHeight = Length.Auto,
+            IsTextSelectionEnabled = true,
+            ScrollBars = ScrollBars.None,
+            ItemTemplate = _ => new Stack { Children = { document } }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            list,
+            new Size(24, 3),
+            TestContext.Current.CancellationToken);
+        await surface.UpdateAsync(() => list.Focus().ShouldBeTrue(), "focus the list");
+
+        // Act
+        var controlA = new KeyEventArgs(new Stroke(
+            Code.Character,
+            new Rune('a'),
+            nativeCode: 0,
+            Modifiers.Control,
+            KeyAction.Press));
+        await surface.UpdateAsync(
+            () => _ = Router.Route(list, Events.Key, controlA),
+            "press Ctrl+A on the list");
+
+        // Assert
+        var copied = await surface.Application.Dispatcher.InvokeAsync(
+            () => list.CopySelectedText(),
+            TestContext.Current.CancellationToken);
+        copied.ShouldContain("Some selectable prose.");
     }
 }
