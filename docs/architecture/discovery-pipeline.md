@@ -48,7 +48,11 @@ strategies own precedence:
 - `QueryEvidenceAdapter` applies only validated, bounded query results.
 - `OverrideEvidenceAdapter` applies explicit final caller policy.
 - `DescriptionBackendEvidenceAdapter` and `EnvironmentBackendEvidenceAdapter`
-  produce redacted identity evidence for `TerminalBackendResolver`.
+  produce redacted identity evidence for `TerminalBackendResolver`. Both
+  suppress their identity candidates under a detected multiplexer, because a
+  multiplexer pane rewrites or preserves TERM in ways that no longer identify
+  the outer terminal, so description identity is narrowed the same way
+  environment identity already is.
 
 `DescriptionLoader`, `CapabilityDetector`, and `Negotiator` remain as
 compatibility facades. `CapabilityDetector` constructs an immutable context and

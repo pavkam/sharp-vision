@@ -62,7 +62,12 @@ snapshots through `DescriptionBackendEvidenceAdapter` and
 `EnvironmentBackendEvidenceAdapter`. Those adapters publish redacted
 `BackendEvidence` containing only the typed origin and backend kind. The
 resolver never reads process-global state, issues queries, or inspects semantic
-capability values. The most specific satisfied identity wins in this order:
+capability values. Both adapters suppress Kitty, iTerm2, and xterm-compatible
+identity whenever a multiplexer is detected in the same environment snapshot:
+a multiplexer pane's TERM — and therefore the description name resolved from
+it — no longer identifies the outer terminal, so description identity is
+suppressed exactly like environment identity, with no TERM_PROGRAM-style
+carve-out for iTerm2. The most specific satisfied identity wins in this order:
 
 1. Kitty;
 2. iTerm2;

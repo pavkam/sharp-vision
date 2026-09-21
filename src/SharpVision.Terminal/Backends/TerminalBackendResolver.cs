@@ -25,7 +25,7 @@ internal static class TerminalBackendResolver
 
             var adapters = new IBackendEvidenceAdapter[]
             {
-                new DescriptionBackendEvidenceAdapter(profile.Description),
+                new DescriptionBackendEvidenceAdapter(profile.Description, environment),
                 new EnvironmentBackendEvidenceAdapter(environment),
             };
             var evidence = new List<BackendEvidence>(adapters.Length);

@@ -137,6 +137,86 @@ public sealed class TerminalBackendResolverTests
         [new BackendEvidence(TerminalBackendKind.Kitty, BackendEvidenceOrigin.Description)]);
     }
 
+    /// <summary>Verifies a description named "xterm-kitty" — the pane-local TERM a tmux.conf
+    /// commonly preserves (<c>set -g default-terminal "xterm-kitty"</c>) — never reports Kitty
+    /// identity once TMUX proves the description name reflects a multiplexer pane rather than the
+    /// outer terminal.</summary>
+    [Fact]
+    public void Resolve_WhenTmuxEnvironmentVariableIsSetWithKittyDescriptionName_ReturnsGenericBackend()
+    {
+        // Arrange
+        var profile = new TerminalProfile(
+            new Description("xterm-kitty", DescriptionOrigin.BuiltIn, Suitability.Missing),
+            TerminalCapabilities.Conservative);
+        var environment = new Dictionary<string, string?> { ["TMUX"] = "/tmp/tmux-1000/default,1234,0" };
+
+        // Act
+        var resolution = profile.Resolve(environment);
+
+        // Assert
+        resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
+        resolution.Evidence.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies an xterm-family description name never reports xterm identity once STY
+    /// proves the description name reflects a GNU screen pane rather than the outer terminal.</summary>
+    [Fact]
+    public void Resolve_WhenStyEnvironmentVariableIsSetWithXtermFamilyDescriptionName_ReturnsGenericBackend()
+    {
+        // Arrange
+        var profile = new TerminalProfile(
+            new Description("xterm-256color", DescriptionOrigin.BuiltIn, Suitability.Missing),
+            TerminalCapabilities.Conservative);
+        var environment = new Dictionary<string, string?> { ["STY"] = "1234.pts-0.hostname" };
+
+        // Act
+        var resolution = profile.Resolve(environment);
+
+        // Assert
+        resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
+        resolution.Evidence.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a description named "iterm2" never reports iTerm2 identity under a
+    /// detected multiplexer, unlike TERM_PROGRAM-based environment recognition: a description has
+    /// no independent signal comparable to TERM_PROGRAM, so it gets no carve-out.</summary>
+    [Fact]
+    public void Resolve_WhenTmuxEnvironmentVariableIsSetWithIterm2DescriptionName_ReturnsGenericBackend()
+    {
+        // Arrange
+        var profile = new TerminalProfile(
+            new Description("iterm2", DescriptionOrigin.BuiltIn, Suitability.Missing),
+            TerminalCapabilities.Conservative);
+        var environment = new Dictionary<string, string?> { ["TMUX"] = "/tmp/tmux-1000/default,1234,0" };
+
+        // Act
+        var resolution = profile.Resolve(environment);
+
+        // Assert
+        resolution.Backend.ShouldBeSameAs(VtBackend.Instance);
+        resolution.Evidence.ShouldBeEmpty();
+    }
+
+    /// <summary>Verifies a kitty-named description still resolves Kitty identity when no
+    /// multiplexer is detected, confirming the new multiplexer gate narrows only multiplexer
+    /// sessions and leaves ordinary description recognition unchanged.</summary>
+    [Fact]
+    public void Resolve_WhenDescriptionContainsKittyFragmentWithoutMultiplexer_SelectsKitty()
+    {
+        // Arrange
+        var profile = new TerminalProfile(
+            new Description("xterm-kitty", DescriptionOrigin.BuiltIn, Suitability.Missing),
+            TerminalCapabilities.Conservative);
+
+        // Act
+        var resolution = profile.Resolve(new Dictionary<string, string?>());
+
+        // Assert
+        resolution.Backend.ShouldBeSameAs(KittyBackend.Instance);
+        resolution.Evidence.ShouldBe(
+        [new BackendEvidence(TerminalBackendKind.Kitty, BackendEvidenceOrigin.Description)]);
+    }
+
     /// <summary>Verifies a more specific Kitty candidate wins a conflicting iTerm2 candidate.</summary>
     [Fact]
     public void Resolve_WhenKittyAndIterm2EvidenceConflict_SelectsKitty()
@@ -251,7 +331,10 @@ public sealed class TerminalBackendResolverTests
         _ = Should.Throw<ArgumentNullException>(() => ((TerminalProfile) null!).Resolve(environment));
         _ = Should.Throw<ArgumentNullException>(() => TerminalProfile.Conservative.Resolve(null!));
         _ = Should.Throw<ArgumentNullException>(() => new EnvironmentBackendEvidenceAdapter(null!));
-        _ = Should.Throw<ArgumentNullException>(() => new DescriptionBackendEvidenceAdapter(null!));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            new DescriptionBackendEvidenceAdapter(null!, environment));
+        _ = Should.Throw<ArgumentNullException>(() => new DescriptionBackendEvidenceAdapter(
+            new Description("xterm-256color", DescriptionOrigin.BuiltIn, Suitability.Missing), null!));
         _ = Should.Throw<ArgumentNullException>(() => new BackendResolution(null!, []));
         _ = Should.Throw<ArgumentNullException>(() => new BackendResolution(VtBackend.Instance, null!));
     }
