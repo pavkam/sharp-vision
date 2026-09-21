@@ -84,7 +84,9 @@ forever. All other measure, arrange, and render requests propagate normally.
 
 The dispatcher processes pending work after input, resize, capability changes,
 posted callbacks, and completed terminal writes. It also checks for pending work
-before raising `Idle`.
+before raising `Idle`, both before and after the dispatcher's own idle
+subscribers run, so work a control deferred to that turn is laid out and
+rendered before the application reports itself idle.
 
 ```mermaid
 sequenceDiagram

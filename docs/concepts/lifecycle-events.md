@@ -153,10 +153,16 @@ diagnostics and force invalidation instead.
 
 `Idle` fires once per transition into a state with no ready or pending work,
 after input, timer callbacks, layout, and rendering, directly before the loop
-waits. `DispatcherTimer` posts coalesced ordinary dispatcher work and never
-emulates ticks by repeatedly invoking idle callbacks. A tick that invalidates
-rendering is followed by the normal render and frame-completion order before the
-next application idle transition.
+waits. It also follows any work a control deferred to the dispatcher's own idle
+turn - a drop-down committing its first row once its rows are arranged, a toast
+retiring - and the frame that work invalidated: the application performs the
+layout a drain left pending first, lets those deferred handlers run, and only
+announces `Idle` when that turn ends with nothing pending, so a subscriber never
+observes state the same turn is still about to change. `DispatcherTimer` posts
+coalesced ordinary dispatcher work and never emulates ticks by repeatedly
+invoking idle callbacks. A tick that invalidates rendering is followed by the
+normal render and frame-completion order before the next application idle
+transition.
 
 The dispatcher primitive enforces the empty ready/pending transition and the
 handler-posted-work rule. `Application` connects terminal input, layout, and

@@ -84,6 +84,7 @@ public sealed class Application:
     private bool _layoutSinceLastRender;
     private bool _rendererInvalidationPending;
     private bool _startedRaised;
+    private bool _idleTurnProcessedInvalidation;
     private bool _raisingStopping;
     private bool _forcedWhileRaising;
 
@@ -233,6 +234,7 @@ public sealed class Application:
             TerminalDiagnostics = Session.Diagnostics;
             _initializeModalKey = InitializeModalKey;
             Dispatcher.Idle += OnIdle;
+            Dispatcher.IdlePublished += OnIdlePublished;
             Dispatcher.UnhandledException += OnDispatcherUnhandled;
             // Only ever raised for a real Unix console whose builder wired a job-control SIGCONT
             // resume through Session.ResumeAsync() - see ConsoleApplicationBuilder.Build() and
@@ -2519,6 +2521,15 @@ public sealed class Application:
         Report(eventArgs.Exception);
     }
 
+    // One dispatcher idle publication reaches this application twice: OnIdle, first in the
+    // Dispatcher.Idle multicast because the application subscribes before any control does, and
+    // OnIdlePublished once every other Idle subscriber has run. The framework's own controls
+    // defer dispatcher-affine work to Dispatcher.Idle - a drop-down commits its first row there,
+    // once the rows it just published have been arranged - and that work must both follow the
+    // layout this turn performs and precede the application's announcement that nothing is
+    // pending, or a consumer settling on Idle observes a row selected but not yet current and a
+    // frame the deferred commit is about to invalidate. So the pre-pass below only performs the
+    // layout and render a drain left pending, and the announcement waits for OnIdlePublished.
     private void OnIdle(object? sender, EventArgs eventArgs)
     {
         if (!_startedRaised || _stopping)
@@ -2528,6 +2539,29 @@ public sealed class Application:
 
         if (!IsRendering && !Suspended() && Root.Pending != Invalidation.None)
         {
+            ProcessInvalidation();
+            _idleTurnProcessedInvalidation = true;
+        }
+    }
+
+    private void OnIdlePublished(object? sender, EventArgs eventArgs)
+    {
+        if (_idleTurnProcessedInvalidation)
+        {
+            // The pre-pass performed layout or started a frame this turn; the frame's own
+            // completion re-arms idle detection, and that later turn announces idleness.
+            _idleTurnProcessedInvalidation = false;
+            return;
+        }
+
+        if (!_startedRaised || _stopping)
+        {
+            return;
+        }
+
+        if (!IsRendering && !Suspended() && Root.Pending != Invalidation.None)
+        {
+            // Deferred framework work that ran after the pre-pass invalidated the tree.
             ProcessInvalidation();
             return;
         }

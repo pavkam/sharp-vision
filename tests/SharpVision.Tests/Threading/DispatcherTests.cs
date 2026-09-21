@@ -357,6 +357,55 @@ public sealed class DispatcherTests
         secondRan.ShouldBeTrue();
     }
 
+    /// <summary>Verifies IdlePublished runs once per idle publication, on the dispatcher thread,
+    /// only after every Idle subscriber of that publication - including one subscribed after
+    /// it - has run.</summary>
+    [Fact]
+    public async Task IdlePublished_WhenIdleIsPublished_RunsAfterEveryIdleSubscriberInTheSameTurnAsync()
+    {
+        using var releaseGate = new ManualResetEventSlim(initialState: false);
+        await using var dispatcher = Dispatcher.StartPaused(releaseGate);
+        List<string> order = [];
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.IdlePublished += (_, _) =>
+        {
+            order.Add(dispatcher.CheckAccess() ? "published" : "published off-thread");
+            _ = published.TrySetResult();
+        };
+        dispatcher.Idle += (_, _) => order.Add("first");
+        dispatcher.Idle += (_, _) => order.Add("second");
+
+        releaseGate.Set();
+
+        await published.Task.WaitAsync(TestContext.Current.CancellationToken);
+        order.ShouldBe(["first", "second", "published"]);
+    }
+
+    /// <summary>Verifies an Idle subscriber that throws neither skips IdlePublished nor hides its
+    /// failure from the dispatcher's unhandled exception policy.</summary>
+    [Fact]
+    public async Task IdlePublished_WhenAnIdleSubscriberThrows_StillRunsAndReportsTheFailureAsync()
+    {
+        using var releaseGate = new ManualResetEventSlim(initialState: false);
+        await using var dispatcher = Dispatcher.StartPaused(releaseGate);
+        var failure = new InvalidOperationException("idle");
+        var observed = new TaskCompletionSource<Exception>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        dispatcher.UnhandledException += (_, eventArgs) =>
+        {
+            eventArgs.IsHandled = true;
+            _ = observed.TrySetResult(eventArgs.Exception);
+        };
+        dispatcher.Idle += (_, _) => throw failure;
+        dispatcher.IdlePublished += (_, _) => _ = published.TrySetResult();
+
+        releaseGate.Set();
+
+        (await observed.Task.WaitAsync(TestContext.Current.CancellationToken)).ShouldBeSameAs(failure);
+        await published.Task.WaitAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies shutdown cancels a queued function invocation, remains idempotent, and
     /// preserves the caller-supplied token identity on the resulting cancellation - not a
     /// disconnected fabricated one.</summary>

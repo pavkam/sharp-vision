@@ -30,7 +30,9 @@ sequenceDiagram
 Each wake drains posted work, terminal input, and coalesced system events. It
 then performs any required layout, renders at most one coalesced frame, raises
 frame-complete callbacks, and fires `Idle` once immediately before waiting. Work
-posted by an `Idle` handler starts another drain without a polling delay.
+posted by an `Idle` handler starts another drain without a polling delay, and
+the application announces its own `Idle` only after every dispatcher idle
+subscriber of that turn has run and left nothing pending.
 
 No application callback runs while an internal lock is held. Event dispatch uses
 a snapshot route, so a tree mutation affects later events rather than the

@@ -64,6 +64,20 @@ public sealed class Dispatcher: IAsyncDisposable
     /// </remarks>
     public event EventHandler? Idle;
 
+    /// <summary>Raised once per <see cref="Idle"/> publication, on the dispatcher thread, after
+    /// every <see cref="Idle"/> subscriber of that publication has run.</summary>
+    /// <remarks>
+    /// Framework components defer dispatcher-affine work to <see cref="Idle"/> - a drop-down
+    /// committing its first row once its rows are arranged, a toast retiring - and subscribe after
+    /// the application has, so those handlers run later in the same multicast than the
+    /// application's own. The application therefore decides whether a drain really left nothing
+    /// pending from here, once that deferred work has had its turn, rather than from its own
+    /// <see cref="Idle"/> handler, which would announce idleness to consumers before the state
+    /// those handlers are about to change has settled. Every subscriber runs to completion even
+    /// when an earlier subscriber throws; only the first exception is captured and reported.
+    /// </remarks>
+    internal event EventHandler? IdlePublished;
+
     /// <summary>Raised for a fire-and-observe callback failure.</summary>
     /// <remarks>
     /// The event runs on the dispatcher thread outside the queue lock. Leaving
@@ -580,6 +594,18 @@ public sealed class Dispatcher: IAsyncDisposable
                     {
                         EventPublication.Publish<EventHandler>(
                             Idle,
+                            () => true,
+                            handler => handler(this, EventArgs.Empty));
+                    }
+                    catch (Exception exception)
+                    {
+                        Report(exception);
+                    }
+
+                    try
+                    {
+                        EventPublication.Publish<EventHandler>(
+                            IdlePublished,
                             () => true,
                             handler => handler(this, EventArgs.Empty));
                     }

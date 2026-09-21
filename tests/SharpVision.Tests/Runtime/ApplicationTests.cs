@@ -5877,6 +5877,59 @@ public sealed class ApplicationTests
         await application.StopAsync(TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Verifies the application announces <c>Idle</c> only after a framework handler that
+    /// deferred work to <see cref="Dispatcher.Idle"/> has run and the frame that work invalidated
+    /// has rendered. Such handlers subscribe after the application does, so they run later in the
+    /// same idle publication; announcing from the application's own handler let a consumer settle
+    /// on a row already selected but not yet current, one frame behind the deferred commit.</summary>
+    [Fact]
+    public async Task Idle_WhenADispatcherIdleHandlerInvalidatesAControl_IsAnnouncedAfterThatWorkAndItsFrameAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var probe = new ProbeControl { Content = "a".AsMemory() };
+        await using Application application = new(probe, terminal, terminal, TerminalOptions.Minimal);
+        var frames = 0;
+        var settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        application.FrameRendered += (_, _) => frames++;
+        application.Idle += (_, _) => _ = settled.TrySetResult();
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await settled.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Subscribed as dispatcher work so the very next idle publication is the one observed,
+        // and subscribed after the application's own handlers, exactly as a control's deferred
+        // work is.
+        var framesBefore = 0;
+        var deferredRan = false;
+        var observed = new TaskCompletionSource<(bool DeferredRan, int Frames)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        await application.Dispatcher.InvokeAsync(
+            () =>
+            {
+                framesBefore = frames;
+                application.Dispatcher.Idle += (_, _) =>
+                {
+                    if (deferredRan)
+                    {
+                        return;
+                    }
+
+                    deferredRan = true;
+                    probe.Content = "b".AsMemory();
+                    probe.InvalidateKernel(InvalidationImpact.Render);
+                };
+                application.Idle += (_, _) => _ = observed.TrySetResult((deferredRan, frames));
+            },
+            TestContext.Current.CancellationToken);
+
+        var (ranBeforeIdle, framesAtIdle) = await observed.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        ranBeforeIdle.ShouldBeTrue();
+        framesAtIdle.ShouldBe(framesBefore + 1);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a control invalidated directly from an <c>Idle</c> handler - an ordinary
     /// property mutation, not queued dispatcher work - is rendered promptly instead of being
     /// stranded until unrelated dispatcher work happens to arrive and re-arm idle detection.

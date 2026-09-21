@@ -141,7 +141,11 @@ non-idle. When both ready and pending work reach zero, `Idle` runs once on the
 owner thread. Work posted by that handler drains before the next wait, and the
 loop blocks on a condition variable rather than polling. Every `Idle` subscriber
 runs to completion even when an earlier subscriber throws, and only the first
-exception is captured and reported.
+exception is captured and reported. Subscribers run in subscription order, so
+the framework's own controls, which subscribe after the application has, run
+later in the same publication than the application's handler; the application
+therefore announces its own `Idle` only once the dispatcher reports that the
+whole publication has completed, after that deferred work has had its turn.
 
 `Application` holds a pending lease while renderer I/O is incomplete. The lease
 may be released from a renderer continuation, but frame and lifecycle callbacks
