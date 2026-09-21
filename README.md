@@ -86,6 +86,21 @@ dotnet add package SharpVision.FigletFonts
 
 It accepts the matching `SharpVision` version or later.
 
+The optional `SharpVision.Document` package adds rich flowing documents,
+interactive forms, and Markdown:
+
+```bash
+dotnet add package SharpVision.Document
+```
+
+The optional `SharpVision.SyntaxHighlighting` package adds read-only,
+selectable, foldable syntax-highlighted code display driven by
+Kate/KSyntaxHighlighting-format definitions:
+
+```bash
+dotnet add package SharpVision.SyntaxHighlighting
+```
+
 ## Find your way around
 
 | You want to…                               | Start here                                                                                                                                                                                                                                                                                                                                                  |
@@ -98,13 +113,17 @@ It accepts the matching `SharpVision` version or later.
 | Understand ownership and runtime flow      | [Architecture map](docs/architecture/index.md#architecture-map)                                                                                                                                                                                                                                                                                             |
 | See complete applications                  | [Showcase](docs/architecture/showcase.md#overview), [text editor](examples/TextEditor/README.md#sharpvision-text-editor), [Snake](examples/Snake/README.md#sharpvision-snake), [Process Monitor](examples/ProcessMonitor/README.md#sharpvision-process-monitor), and [Terminal Debugger](examples/TerminalDebugger/README.md#sharpvision-terminal-debugger) |
 
-The repository has three main pieces:
+The repository has five main pieces:
 
 - `SharpVision.Terminal` owns transport, terminal protocols, capabilities,
   Unicode cell geometry, input, buffers, and rendering.
 - `SharpVision` owns the application runtime, controls, layout, focus, routed
   input, styling, scrolling, menus, popups, and windows.
+- `SharpVision.Document` provides rich flowing documents, interactive forms, and
+  Markdown.
 - `SharpVision.FigletFonts` provides the optional font catalog.
+- `SharpVision.SyntaxHighlighting` provides read-only, selectable, foldable
+  syntax-highlighted code display.
 
 The
 [project structure specification](docs/architecture/project-structure.md#overview)
