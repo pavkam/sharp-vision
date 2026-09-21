@@ -283,6 +283,28 @@ public sealed class ProtocolRouter: IDisposable
                 }
             }
 
+            if (_multiplexerLength > 0 && _multiplexerLength < prefix.Length &&
+                value != prefix[_multiplexerLength])
+            {
+                // The candidate matched the route's reply prefix up to this point, but this byte
+                // diverges. Both configured routes' reply prefixes begin with Escape (screen:
+                // ESC P ESC; tmux: ESC P t m u x ;), so a stray Escape immediately preceding a
+                // genuine wrapped reply must not be flushed together with that reply's own leading
+                // Escape byte — doing so would consume the real envelope's opening byte and the
+                // reply would never be recognized. Flush only the bytes already matched (the
+                // diverging byte itself is never written into the buffer), then reuse the
+                // overflow-recovery decision above: a byte that cannot itself start a fresh
+                // candidate passes straight through to the decoder, otherwise execution falls
+                // through below to reseed one at this byte's own raw offset.
+                FlushMultiplexerCandidate();
+
+                if (value != prefix[0])
+                {
+                    DecodeByte(value);
+                    continue;
+                }
+            }
+
             if (_multiplexerLength == 0)
             {
                 // The first candidate byte of a possible wrapped reply — this is the earliest
@@ -297,11 +319,6 @@ public sealed class ProtocolRouter: IDisposable
 
             if (_multiplexerLength <= prefix.Length)
             {
-                if (!prefix.StartsWith(_multiplexerCandidate.AsSpan(0, _multiplexerLength)))
-                {
-                    FlushMultiplexerCandidate();
-                }
-
                 continue;
             }
 

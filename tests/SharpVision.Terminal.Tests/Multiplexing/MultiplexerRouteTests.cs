@@ -823,6 +823,41 @@ public sealed class MultiplexerRouteTests
         }
     }
 
+    /// <summary>Verifies a stray Escape immediately preceding a wrapped tmux reply does not
+    /// consume the reply's own leading Escape byte: both configured routes' reply prefixes begin
+    /// with Escape, so the candidate matcher must flush only the bytes it already matched and let
+    /// the diverging byte reseed its own candidate instead of swallowing the genuine envelope.</summary>
+    [Fact]
+    public void Route_WhenTmuxReplyFollowsStrayEscape_UnwrapsAtEverySplit()
+    {
+        var route = new MultiplexerRoute(ActivePolicy([MultiplexerKind.Tmux]));
+        var wrapped = new ArrayBufferWriter<byte>();
+        route.TryWriteCapabilityQueries(wrapped, "\u001bP1+r524742=3234\u001b\\"u8).ShouldBeTrue();
+        var input = new byte[wrapped.WrittenCount + 1];
+        input[0] = ControlBytes.Escape;
+        wrapped.WrittenSpan.CopyTo(input.AsSpan(1));
+
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
+
+            // The stray Escape only resolves into its own keystroke once the reply's own leading
+            // Escape byte reaches the decoder and disambiguates it — see
+            // InputDecoder.DecodeCoreByte's _escapePending handling of a byte that follows Escape.
+            sink.Strokes.ShouldHaveSingleItem($"split {split}")
+                .Code.ShouldBe(Code.Escape);
+            sink.CapabilityResponses.ShouldHaveSingleItem($"split {split}")
+                .Items.ShouldContainKey(CapabilityName.DirectColor);
+            sink.Sequences.ShouldBeEmpty($"split {split}");
+            router.Route("\u001b[1:x"u8);
+            sink.Diagnostics.ShouldHaveSingleItem($"split {split}")
+                .Offset.ShouldBe(input.Length + 5);
+        }
+    }
+
     /// <summary>Verifies a fabricated Screen-wrapped DCS is consumed without leaking either ST at every split.</summary>
     [Fact]
     public void Route_WhenScreenEnvelopeContainsInnerDcs_RejectsWithoutInputLeakAtEverySplit()
@@ -999,6 +1034,39 @@ public sealed class MultiplexerRouteTests
             sink.Diagnostics.ShouldBeEmpty($"split {split}");
             sink.Text.ShouldBeEmpty($"split {split}");
             sink.Strokes.ShouldBeEmpty($"split {split}");
+            sink.Sequences.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies a stray Escape immediately preceding a wrapped Screen CSI reply does not
+    /// consume the reply's own leading Escape byte, for the same reason as the tmux sibling above:
+    /// the Screen route's reply prefix also begins with Escape.</summary>
+    [Fact]
+    public void Route_WhenScreenEnvelopeFollowsStrayEscape_UnwrapsAtEverySplit()
+    {
+        var route = new MultiplexerRoute(ActivePolicy([MultiplexerKind.Screen]));
+        var wrapped = new ArrayBufferWriter<byte>();
+        GnuScreenWriter.WritePassthrough(wrapped, "\u001b[?1;2c"u8);
+        var input = new byte[wrapped.WrittenCount + 1];
+        input[0] = ControlBytes.Escape;
+        wrapped.WrittenSpan.CopyTo(input.AsSpan(1));
+
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
+
+            // The stray Escape only resolves into its own keystroke once the reply's own leading
+            // Escape byte reaches the decoder and disambiguates it — see
+            // InputDecoder.DecodeCoreByte's _escapePending handling of a byte that follows Escape.
+            sink.Strokes.ShouldHaveSingleItem($"split {split}")
+                .Code.ShouldBe(Code.Escape);
+            sink.Responses.ShouldHaveSingleItem($"split {split}")
+                .Kind.ShouldBe(ResponseKind.PrimaryAttributes);
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+            sink.Text.ShouldBeEmpty($"split {split}");
             sink.Sequences.ShouldBeEmpty($"split {split}");
         }
     }
