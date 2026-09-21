@@ -69,18 +69,20 @@ public sealed record ConsoleRunOptions
     public bool ClipboardPasteEvents { get; init; }
 
     /// <summary>Gets the positive finite deadline for one clipboard operation. Default is 30 seconds.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 2,147,483,647 milliseconds, the dispatcher timer limit that clipboard deadlines are scheduled
+    /// through.</exception>
     public TimeSpan ClipboardOperationTimeout
     {
         get;
         init
         {
-            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(int.MaxValue))
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     value,
-                    "The clipboard operation timeout must be positive and finite.");
+                    "The clipboard operation timeout must be positive and within the dispatcher timer limit.");
             }
 
             field = value;
@@ -203,18 +205,19 @@ public sealed record ConsoleRunOptions
     } = 16 * 1024;
 
     /// <summary>Gets the lone-Escape ambiguity timeout. Default is 50 ms.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 4,294,967,294 milliseconds, the finite session timer limit.</exception>
     public TimeSpan EscapeTimeout
     {
         get;
         init
         {
-            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(uint.MaxValue - 1))
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     value,
-                    "The Escape timeout must be positive and finite.");
+                    "The Escape timeout must be positive and within the finite timer limit.");
             }
 
             field = value;

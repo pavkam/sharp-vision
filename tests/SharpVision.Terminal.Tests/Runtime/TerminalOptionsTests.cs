@@ -69,8 +69,24 @@ public sealed class TerminalOptionsTests
             new TerminalOptions { ClipboardOperationTimeout = TimeSpan.Zero });
         var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
             new TerminalOptions { ClipboardOperationTimeout = Timeout.InfiniteTimeSpan });
+        var beyondTimer = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new TerminalOptions
+            {
+                ClipboardOperationTimeout = TimeSpan.FromMilliseconds(int.MaxValue) + TimeSpan.FromMilliseconds(1)
+            });
 
         zero.ParamName.ShouldBe("value");
         infinite.ParamName.ShouldBe("value");
+        beyondTimer.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies a clipboard deadline at the dispatcher timer limit is still accepted, so the
+    /// derived clipboard query limits can always be built from it.</summary>
+    [Fact]
+    public void ClipboardOperationTimeout_WhenValueIsAtTimerLimit_IsAccepted()
+    {
+        var options = new TerminalOptions { ClipboardOperationTimeout = TimeSpan.FromMilliseconds(int.MaxValue) };
+
+        options.ClipboardOperationTimeout.ShouldBe(TimeSpan.FromMilliseconds(int.MaxValue));
     }
 }

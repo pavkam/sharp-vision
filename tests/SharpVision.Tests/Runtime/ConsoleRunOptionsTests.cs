@@ -196,9 +196,15 @@ public sealed class ConsoleRunOptionsTests
             new ConsoleRunOptions { ClipboardOperationTimeout = TimeSpan.Zero });
         var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
             new ConsoleRunOptions { ClipboardOperationTimeout = Timeout.InfiniteTimeSpan });
+        var beyondTimer = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions
+            {
+                ClipboardOperationTimeout = TimeSpan.FromMilliseconds(int.MaxValue) + TimeSpan.FromMilliseconds(1)
+            });
 
         zero.ParamName.ShouldBe("value");
         infinite.ParamName.ShouldBe("value");
+        beyondTimer.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies opting into Ctrl+C as input maps to host control-key capture.</summary>
@@ -412,9 +418,12 @@ public sealed class ConsoleRunOptionsTests
             new ConsoleRunOptions { EscapeTimeout = TimeSpan.Zero });
         var infinite = Should.Throw<ArgumentOutOfRangeException>(() =>
             new ConsoleRunOptions { EscapeTimeout = Timeout.InfiniteTimeSpan });
+        var beyondTimer = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new ConsoleRunOptions { EscapeTimeout = TimeSpan.FromMilliseconds(uint.MaxValue) });
 
         zero.ParamName.ShouldBe("value");
         infinite.ParamName.ShouldBe("value");
+        beyondTimer.ParamName.ShouldBe("value");
     }
 
     /// <summary>Verifies a non-positive paste byte limit is rejected before the console is opened.</summary>

@@ -116,18 +116,20 @@ public sealed record TerminalOptions
 
     /// <summary>Gets the positive finite deadline for one clipboard read or acknowledged write.</summary>
     /// <remarks>The default is 30 seconds so an interactive terminal permission prompt can be answered.</remarks>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 2,147,483,647 milliseconds, the dispatcher timer limit that clipboard deadlines are scheduled
+    /// through.</exception>
     public TimeSpan ClipboardOperationTimeout
     {
         get;
         init
         {
-            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(int.MaxValue))
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     value,
-                    "The clipboard operation timeout must be positive and finite.");
+                    "The clipboard operation timeout must be positive and within the dispatcher timer limit.");
             }
 
             field = value;
