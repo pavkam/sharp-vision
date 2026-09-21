@@ -530,6 +530,46 @@ public sealed class NcursesProviderTests
         result.Diagnostics.ShouldContain(value => value.Code == (DescriptionDiagnosticCode) expected && value.Capability == "bold");
     }
 
+    /// <summary>Verifies a request-scoped <see cref="ProgramLimits.MaxProgramBytes"/> tightened below a
+    /// capability string's length rejects that string during compilation even though the default limits
+    /// accept it, proving <see cref="DescriptionRequest.ProgramLimits"/> reaches program compilation
+    /// instead of a fixed built-in ceiling.</summary>
+    [Fact]
+    public void Load_WhenProgramLimitsTightenMaxProgramBytes_DiagnosesCapabilityStringDefaultLimitsAccept()
+    {
+        var native = ReadyNative();
+        native.SetString("bold", NativeString.Present("0123456789"u8));
+        var tightLimits = ProgramLimits.Default with { MaxProgramBytes = 8 };
+
+        var result = new Provider(_ => native).Load(
+            new DescriptionRequest(
+                "fixture",
+                DescriptionPlatform.Unix,
+                1,
+                DescriptionLimits.Default,
+                programLimits: tightLimits));
+
+        _ = result.Profile.ShouldNotBeNull();
+        result.Profile.Programs.Has("bold").ShouldBeFalse();
+        result.Diagnostics.ShouldContain(
+            value => value.Code == DescriptionDiagnosticCode.InvalidProgram && value.Capability == "bold");
+    }
+
+    /// <summary>Verifies a request built without an explicit <see cref="ProgramLimits"/> still compiles a
+    /// capability string within the ordinary default byte ceiling, unaffected by threading the new
+    /// per-request parameter through the native provider.</summary>
+    [Fact]
+    public void Load_WhenProgramLimitsAreDefault_AcceptsCapabilityStringWithinDefaultBounds()
+    {
+        var native = ReadyNative();
+        native.SetString("bold", NativeString.Present("0123456789"u8));
+
+        var result = new Provider(_ => native).Load(Request("fixture"));
+
+        _ = result.Profile.ShouldNotBeNull();
+        result.Profile.Programs.Has("bold").ShouldBeTrue();
+    }
+
     /// <summary>Verifies required malformed and padded programs produce their exact unsuitable result.</summary>
     [Theory]
     [InlineData("%", Suitability.Incomplete, (int) DescriptionDiagnosticCode.InvalidProgram)]

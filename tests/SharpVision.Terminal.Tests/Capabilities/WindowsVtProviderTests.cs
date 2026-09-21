@@ -121,6 +121,38 @@ public sealed class WindowsVtProviderTests
             windowsVirtualTerminal: true));
     }
 
+    /// <summary>Verifies an omitted <see cref="ProgramLimits"/> argument defaults the request's
+    /// property to <see cref="ProgramLimits.Default"/>, mirroring the existing <see cref="ParserLimits"/>
+    /// default handling.</summary>
+    [Fact]
+    public void Constructor_WhenProgramLimitsIsNotSupplied_DefaultsToProgramLimitsDefault()
+    {
+        var request = new DescriptionRequest(
+            "fixture",
+            DescriptionPlatform.Unix,
+            outputFileDescriptor: 1,
+            DescriptionLimits.Default);
+
+        request.ProgramLimits.ShouldBe(ProgramLimits.Default);
+    }
+
+    /// <summary>Verifies an explicitly supplied <see cref="ProgramLimits"/> argument round-trips
+    /// through the request's property instead of being replaced by the default.</summary>
+    [Fact]
+    public void Constructor_WhenProgramLimitsIsSupplied_RoundTripsIt()
+    {
+        var programLimits = ProgramLimits.Default with { MaxProgramBytes = 128 };
+
+        var request = new DescriptionRequest(
+            "fixture",
+            DescriptionPlatform.Unix,
+            outputFileDescriptor: 1,
+            DescriptionLimits.Default,
+            programLimits: programLimits);
+
+        request.ProgramLimits.ShouldBe(programLimits);
+    }
+
     /// <summary>Verifies caller limits still bound deterministic built-in profile construction.</summary>
     [Fact]
     public void Load_WhenKeyMapExceedsConfiguredLimit_ReturnsProviderFailure()
@@ -178,6 +210,30 @@ public sealed class WindowsVtProviderTests
 
         result.Status.ShouldBe(DescriptionLoadStatus.Loaded);
         _ = result.Profile.ShouldNotBeNull();
+    }
+
+    /// <summary>Verifies a request-scoped <see cref="ProgramLimits.MaxProgramBytes"/> tightened below one
+    /// of the fixed canonical program lengths rejects the whole load, even though the default limits
+    /// compile every canonical program without issue, proving <see cref="DescriptionRequest.ProgramLimits"/>
+    /// reaches program compilation instead of a fixed built-in ceiling.</summary>
+    [Fact]
+    public void Load_WhenProgramLimitsTightenMaxProgramBytes_RejectsLoadThatDefaultLimitsAccept()
+    {
+        var provider = new WindowsVtProvider();
+        var tightLimits = ProgramLimits.Default with { MaxProgramBytes = 8 };
+        var request = new DescriptionRequest(
+            "windows-vt",
+            DescriptionPlatform.Windows,
+            outputFileDescriptor: 1,
+            DescriptionLimits.Default,
+            windowsVirtualTerminal: true,
+            programLimits: tightLimits);
+
+        var result = provider.Load(request);
+
+        result.Status.ShouldBe(DescriptionLoadStatus.ProviderFailed);
+        result.Profile.ShouldBeNull();
+        result.Diagnostics.ShouldContain(item => item.Code == DescriptionDiagnosticCode.InvalidProgram);
     }
 
     /// <summary>Verifies a request is required.</summary>

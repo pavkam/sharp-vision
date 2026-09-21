@@ -89,7 +89,11 @@ stated. A caller value above a hard ceiling is rejected before lookup. A
 provider value above its applicable limit rejects that description before any
 command is compiled or emitted. The configured ncurses native-library search
 order accepts only non-null, non-blank candidates and is copied into the
-immutable limit profile before lookup.
+immutable limit profile before lookup. `ProgramLimits` is carried per lookup
+request alongside `DescriptionLimits` and the key-sequence `ParserLimits`,
+defaulting to `ProgramLimits.Default` when a caller supplies none, so a
+provider always compiles capability strings against the requested ceiling
+instead of a fixed built-in one.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |

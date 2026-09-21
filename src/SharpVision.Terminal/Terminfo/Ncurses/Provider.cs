@@ -195,14 +195,19 @@ internal sealed class Provider: IDescriptionProvider
     {
         var flags = ReadFlags(native, diagnostics);
         var numbers = ReadNumbers(native, diagnostics);
-        var strings = ReadStrings(native, request.Limits, diagnostics);
-        var rgbValid = ValidateRgb(native, numbers.GetValueOrDefault("colors", -1), request.Limits, diagnostics);
+        var strings = ReadStrings(native, request.Limits, request.ProgramLimits, diagnostics);
+        var rgbValid = ValidateRgb(
+            native,
+            numbers.GetValueOrDefault("colors", -1),
+            request.Limits,
+            request.ProgramLimits,
+            diagnostics);
         if (checked(environmentBytes + SnapshotSize(flags, numbers, strings)) >
             request.Limits.MaxDescriptionSnapshotBytes)
         {
             throw new ArgumentException("The accepted terminal-description snapshot exceeds its byte limit.");
         }
-        var programs = CompilePrograms(strings, diagnostics, out var paddedRequired);
+        var programs = CompilePrograms(strings, request.ProgramLimits, diagnostics, out var paddedRequired);
         SynthesizeDirectColorPrograms(programs);
         var keyMap = CreateKeyMap(strings, request.Limits, request.ParserLimits, diagnostics);
         var programSet = new Programs(programs);
@@ -288,6 +293,7 @@ internal sealed class Provider: IDescriptionProvider
     private static Dictionary<string, byte[]> ReadStrings(
         INative native,
         DescriptionLimits limits,
+        ProgramLimits programLimits,
         List<DescriptionDiagnostic> diagnostics)
     {
         var values = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -295,7 +301,7 @@ internal sealed class Provider: IDescriptionProvider
 
         foreach (var name in NcursesNames.Strings)
         {
-            var value = native.GetString(name, ProgramLimits.Default.MaxProgramBytes);
+            var value = native.GetString(name, programLimits.MaxProgramBytes);
 
             if (value.Status == NativeStringStatus.WrongType)
             {
@@ -329,6 +335,7 @@ internal sealed class Provider: IDescriptionProvider
 
     private static Dictionary<string, DescriptionProgram> CompilePrograms(
         IReadOnlyDictionary<string, byte[]> strings,
+        ProgramLimits programLimits,
         List<DescriptionDiagnostic> diagnostics,
         out bool paddedRequired)
     {
@@ -350,7 +357,7 @@ internal sealed class Provider: IDescriptionProvider
                     continue;
                 }
 
-                programs.Add(pair.Key, pair.Value.Compile(ProgramLimits.Default));
+                programs.Add(pair.Key, pair.Value.Compile(programLimits));
             }
             catch (NotSupportedException)
             {
@@ -653,11 +660,12 @@ internal sealed class Provider: IDescriptionProvider
         INative native,
         int colors,
         DescriptionLimits limits,
+        ProgramLimits programLimits,
         List<DescriptionDiagnostic> diagnostics)
     {
         var flag = native.GetFlag("RGB");
         var number = native.GetNumber("RGB");
-        var text = native.GetString("RGB", ProgramLimits.Default.MaxProgramBytes);
+        var text = native.GetString("RGB", programLimits.MaxProgramBytes);
 
         if (text.Status == NativeStringStatus.OverLimit)
         {

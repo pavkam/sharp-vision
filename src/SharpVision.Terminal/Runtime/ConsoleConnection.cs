@@ -306,13 +306,18 @@ public sealed class ConsoleConnection: IAsyncDisposable
     /// </param>
     /// <param name="limits">The finite lookup and compilation limits, or null for defaults.</param>
     /// <param name="parserLimits">The finite limits bounding provider-sourced key-sequence parsing, or null for defaults.</param>
+    /// <param name="programLimits">
+    /// The finite limits bounding provider-sourced capability-string bytes and their compiled terminfo parameter
+    /// programs, or null for defaults.
+    /// </param>
     /// <returns>The typed status, optional owned profile, and immutable redacted diagnostics.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The live Unix terminal name exceeds the configured UTF-8 bound.</exception>
     public DescriptionResult ResolveDescription(
         TerminalProfile? explicitProfile = null,
         bool allowAnsiFallback = false,
         DescriptionLimits? limits = null,
-        ParserLimits? parserLimits = null)
+        ParserLimits? parserLimits = null,
+        ProgramLimits? programLimits = null)
     {
         if (explicitProfile is not null)
         {
@@ -343,7 +348,8 @@ public sealed class ConsoleConnection: IAsyncDisposable
             limits ?? DescriptionLimits.Default,
             allowAnsiFallback: allowAnsiFallback,
             windowsVirtualTerminal: WindowsVirtualTerminal,
-            parserLimits: parserLimits);
+            parserLimits: parserLimits,
+            programLimits: programLimits);
 
         return (_descriptionLoader ?? new DescriptionLoader()).Load(request);
     }

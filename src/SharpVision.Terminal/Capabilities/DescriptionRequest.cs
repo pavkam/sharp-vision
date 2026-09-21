@@ -17,6 +17,10 @@ internal sealed class DescriptionRequest
     /// <param name="parserLimits">
     /// The finite limits bounding provider-sourced key-sequence parsing, or <see langword="null"/> for defaults.
     /// </param>
+    /// <param name="programLimits">
+    /// The finite limits bounding provider-sourced capability-string bytes and their compiled terminfo parameter
+    /// programs, or <see langword="null"/> for defaults.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="limits"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="terminalName"/> is blank, or <paramref name="windowsVirtualTerminal"/> is true for a
@@ -33,7 +37,8 @@ internal sealed class DescriptionRequest
         TerminalProfile? explicitProfile = null,
         bool allowAnsiFallback = false,
         bool windowsVirtualTerminal = false,
-        ParserLimits? parserLimits = null)
+        ParserLimits? parserLimits = null,
+        ProgramLimits? programLimits = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(terminalName);
         ArgumentNullException.ThrowIfNull(limits);
@@ -65,6 +70,7 @@ internal sealed class DescriptionRequest
         AllowAnsiFallback = allowAnsiFallback;
         WindowsVirtualTerminal = windowsVirtualTerminal;
         ParserLimits = parserLimits ?? ParserLimits.Default;
+        ProgramLimits = programLimits ?? ProgramLimits.Default;
     }
 
     /// <summary>Gets the exact requested database name.</summary>
@@ -81,6 +87,12 @@ internal sealed class DescriptionRequest
 
     /// <summary>Gets the finite limits bounding provider-sourced key-sequence parsing.</summary>
     public ParserLimits ParserLimits { get; }
+
+    /// <summary>
+    /// Gets the finite limits bounding provider-sourced capability-string bytes and their compiled terminfo
+    /// parameter programs.
+    /// </summary>
+    public ProgramLimits ProgramLimits { get; }
 
     /// <summary>Gets the complete caller-owned replacement profile, when supplied.</summary>
     public TerminalProfile? ExplicitProfile { get; }

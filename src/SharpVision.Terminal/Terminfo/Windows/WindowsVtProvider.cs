@@ -114,7 +114,7 @@ internal sealed class WindowsVtProvider: IDescriptionProvider
 
         try
         {
-            var programs = CreatePrograms(ProgramLimits.Default);
+            var programs = CreatePrograms(request.ProgramLimits);
             var keyMap = CreateKeyMap();
             var capabilities = TerminalCapabilities.Conservative with
             {
