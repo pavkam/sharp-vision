@@ -228,8 +228,10 @@ selected today renders as selected, not as today. The marker reflects the date
 as of the control's last render and moves to the new date on the next redraw, so
 an idle Calendar keeps the previous day's marker across midnight until something
 repaints it. The focused active date renders with `ActiveDayUnderline`,
-`Underline.Straight` by default; an authored markup underline on that date's
-face is never overridden, and `Underline.None` removes the cue entirely.
+`Underline.Straight` by default; an authored underline on that date's face —
+whether the typed markup channel or the face's own legacy
+`TerminalAttributes.Underline` bit — is never overridden, and `Underline.None`
+removes the cue entirely.
 
 ## Input details
 

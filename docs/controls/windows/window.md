@@ -229,7 +229,10 @@ retained entry is unavailable, the manager searches the owned tree for an older
 Window marked by the same activation lifetime. Only when no previously active
 Window remains available does activation clear. The default Window profile maps
 `IsActive` onto its existing `FocusWithin` appearance contribution, changing
-only the frame foreground to `SemanticColor.ActiveBorder`. `ContainsFocus` and
+only the frame foreground to `SemanticColor.ActiveBorder` — unless the active
+theme's own `focusWithin` state already authors that border foreground itself,
+in which case the theme's value wins outright (see
+[Shared chrome](../../concepts/styling.md#shared-chrome)). `ContainsFocus` and
 `IsFocused` keep their independent keyboard-focus meanings.
 
 Activation notifications are serialized: reentrant activation supersedes the
