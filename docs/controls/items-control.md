@@ -37,9 +37,10 @@ calls `base.OnItemControlsChanged(change)` to keep the parameterless overload
 running for that change. `Menu` and `CommandBar` use those facts for selection
 and current-item repair instead of reconstructing the mutation from the final
 list; `ListView` instead repairs eligibility through each realized item's own
-`AvailabilityChanged` event (see [`ListView`](collections/list-view.md)), and a
-consumer-derived owner has the same `OnItemControlsChanged(OwnedControlChange)`
-seam available for the same purpose.
+`AvailabilityChanged` event (see [`ListView`](collections/list-view.md)),
+`Table` repairs its row selection through its own `RepairSelectionForRows` path,
+and a consumer-derived owner has the same
+`OnItemControlsChanged(OwnedControlChange)` seam available for the same purpose.
 
 Beyond structural change notification, `ItemsControl` also wires three
 `ControlBase` ancestor hooks - `OnDescendantFocused`, `OnDescendantAccessKey`,

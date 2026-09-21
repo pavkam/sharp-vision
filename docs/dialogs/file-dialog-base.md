@@ -113,10 +113,12 @@ through this base.
   the parent directory. Backspace matches a plain command after ignoring Caps
   Lock and Num Lock; Control, Alt, Super, Hyper, Meta, and larger chords remain
   unhandled. The Button disables once `FileSystem.GetParent` reports no parent.
-- Pressing Enter in `PathInput` raises its `Submitted` event, which calls
-  `Navigate` on the canonicalized text unless `TryAcceptTypedDirectory` accepts
-  it as a final selection instead. The base implementation always declines, so
-  `Navigate` runs unless a derivative overrides the hook.
+- Pressing Enter in `PathInput` raises its `Submitted` event. When the typed
+  text canonicalizes to an existing directory, `TryAcceptTypedDirectory`
+  receives that canonical path and may accept it as a final selection; the base
+  implementation always declines. Otherwise the handler calls `Navigate` with
+  the typed text, and `Navigate` canonicalizes it through `FileSystem` before
+  loading.
 - Changing the filter selection or the `HiddenToggle` state each start a
   replacement directory load through the same guarded pipeline as navigation.
 - `FileList`'s selection change calls the abstract `OnListSelectionChanged`

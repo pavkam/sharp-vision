@@ -471,6 +471,15 @@ export function validateDialogSectionSpine(headings) {
     }
 
     const problems = [];
+    const duplicated = required.filter(
+        (name) => texts.indexOf(name) !== texts.lastIndexOf(name),
+    );
+
+    if (duplicated.length > 0) {
+        problems.push(
+            `${duplicated.map((name) => `"${name}"`).join(", ")} must appear exactly once`,
+        );
+    }
 
     if (texts[0] !== "Overview") {
         problems.push(`first H2 is "${texts[0]}", expected "Overview"`);

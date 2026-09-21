@@ -69,19 +69,20 @@ contract.
 
 `SharpVision.Terminal` grants `InternalsVisibleTo` to its own test and probe
 assemblies, to the UI test assembly, and to `SharpVision` itself. The UI project
-uses that grant for exactly one seam:
-`TerminalCanvas.DrawWithCurrentFrameDissolve`, which `FloatingSurfaceBase` calls
-to implement the shared entrance/exit dissolve (see
-[Floating surfaces](../concepts/floating-surfaces.md#layout-and-drawing-boundaries))
-— everything else the UI layer needs crosses through a designed public seam
-instead.
+uses that grant sparingly, only where an internal terminal primitive has no
+public facade: `TerminalCanvas.DrawWithCurrentFrameDissolve`, which
+`FloatingSurfaceBase` calls to implement the shared entrance/exit dissolve (see
+[Floating surfaces](../concepts/floating-surfaces.md#layout-and-drawing-boundaries));
+`JobControlSignals.Register`, which `ConsoleApplicationBuilder` calls to wire
+job-control suspend and resume; and the `GraphemeBreak` classification that
+`Edit` consults for grapheme-aware cursor movement. Everything else the UI layer
+needs crosses through a designed public seam instead.
 
 The UI project otherwise consumes the terminal project like any external
 consumer, through public API only. The default is a public seam; friend access
-is a deliberate, narrow exception for that one low-level rendering primitive. If
-a capability is not expressible publicly without leaking low-level machinery,
-the terminal project publishes a focused facade that owns that machinery
-instead.
+is a deliberate, narrow exception for those few low-level primitives. If a
+capability is not expressible publicly without leaking low-level machinery, the
+terminal project publishes a focused facade that owns that machinery instead.
 
 The following two seams are additional public facades built for this purpose,
 not the only way the UI layer reaches into the terminal project:

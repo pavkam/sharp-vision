@@ -563,6 +563,38 @@ test("validateDialogSectionSpine_WhenOrderIsCorrect_ReturnsNull", () => {
     assert.equal(validateDialogSectionSpine(headings), null);
 });
 
+test("validateDialogSectionSpine_WhenOverviewIsDuplicated_ReportsAViolation", () => {
+    const headings = [
+        "Overview",
+        "API",
+        "Interaction",
+        "Overview",
+        "Example",
+        "Expected behavior",
+    ].map((text, line) => ({ text, line }));
+
+    const result = validateDialogSectionSpine(headings);
+
+    assert.notEqual(result, null);
+    assert.match(result, /"Overview" must appear exactly once/);
+});
+
+test("validateDialogSectionSpine_WhenInteractionIsDuplicated_ReportsAViolation", () => {
+    const headings = [
+        "Overview",
+        "API",
+        "Interaction",
+        "Interaction",
+        "Example",
+        "Expected behavior",
+    ].map((text, line) => ({ text, line }));
+
+    const result = validateDialogSectionSpine(headings);
+
+    assert.notEqual(result, null);
+    assert.match(result, /"Interaction" must appear exactly once/);
+});
+
 test("validateDialogSectionSpine_WhenOptionalTopicSectionsAreInterspersed_ReturnsNull", () => {
     // Mirrors the real shape of file-picker-dialog.md and save-file-dialog.md: extra H2s ("Theming",
     // "Presentation and ownership", "Errors and threading") land both before and after Interaction,
