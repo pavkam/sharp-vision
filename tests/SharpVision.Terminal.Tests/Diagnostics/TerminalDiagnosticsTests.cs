@@ -118,6 +118,41 @@ public sealed class TerminalDiagnosticsTests
         route.CanRouteBell.ShouldBeTrue();
     }
 
+    /// <summary>Verifies clipboard-paste-event authorization re-reads pane visibility live from the
+    /// retained multiplexer route instead of freezing the routing decision at snapshot construction.</summary>
+    [Fact]
+    public void ClipboardPasteEventsAuthorized_WhenPaneVisibilityChangesOnSamePolicy_TracksLive()
+    {
+        // Arrange
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.Visible,
+            paneVisible: true,
+            MultiplexingOperation.Clipboard);
+        var options = TerminalOptions.Minimal with
+        {
+            ClipboardPasteEvents = true,
+            Multiplexing = policy
+        };
+        var capabilities = TerminalCapabilities.Conservative with
+        {
+            KittyClipboard = new Feature(CapabilitySupport.Supported, Origin.Query)
+        };
+
+        // Act
+        var modes = new TerminalModeDiagnostics(options, capabilities);
+
+        // Assert
+        modes.ClipboardPasteEventsAuthorized.ShouldBeTrue();
+
+        policy.PaneVisible = false;
+        modes.ClipboardPasteEventsAuthorized.ShouldBeFalse();
+
+        policy.PaneVisible = true;
+        modes.ClipboardPasteEventsAuthorized.ShouldBeTrue();
+    }
+
     /// <summary>Verifies effective optional modes follow capability authority and keyboard fallback order.</summary>
     [Fact]
     public void Constructor_WhenOptionalModesAreConfigured_ReportsOnlyPermittedModesAsEnabled()

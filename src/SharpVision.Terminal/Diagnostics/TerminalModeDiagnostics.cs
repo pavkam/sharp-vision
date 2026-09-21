@@ -11,7 +11,8 @@ using Runtime;
 [PublicAPI]
 public sealed class TerminalModeDiagnostics
 {
-    private readonly bool _clipboardRouteAvailable;
+    private readonly MultiplexerRoute? _clipboardRoute;
+    private readonly bool _clipboardCapabilityAuthorized;
 
     /// <summary>Initializes one mode snapshot from validated runtime options and capabilities.</summary>
     /// <param name="options">The non-null session options.</param>
@@ -32,15 +33,14 @@ public sealed class TerminalModeDiagnostics
         ModifyOtherKeysLevel = options.ModifyOtherKeys;
         ClipboardPasteEventsConfigured = options.ClipboardPasteEvents;
         var policy = options.Multiplexing ?? options.Negotiation?.Multiplexing;
-        _clipboardRouteAvailable = policy is not { Layers.Count: > 0 } ||
-                                   new MultiplexerRoute(policy).CanRouteClipboard;
+        _clipboardRoute = policy is { Layers.Count: > 0 } ? new MultiplexerRoute(policy) : null;
+        _clipboardCapabilityAuthorized = capabilities.KittyClipboard.Authoritative;
         var authorization = ClassifyAuthorization(this, capabilities);
         FocusReportingAuthorized = authorization.FocusReporting;
         BracketedPasteAuthorized = authorization.BracketedPaste;
         MouseAuthorized = authorization.Mouse;
         KittyKeyboardAuthorized = authorization.KittyKeyboard;
         ModifyOtherKeysAuthorized = authorization.ModifyOtherKeys;
-        ClipboardPasteEventsAuthorized = authorization.ClipboardPasteEvents;
     }
 
     private TerminalModeDiagnostics(TerminalModeDiagnostics source, TerminalCapabilities capabilities)
@@ -54,7 +54,8 @@ public sealed class TerminalModeDiagnostics
         KittyKeyboardEnhancements = source.KittyKeyboardEnhancements;
         ModifyOtherKeysLevel = source.ModifyOtherKeysLevel;
         ClipboardPasteEventsConfigured = source.ClipboardPasteEventsConfigured;
-        _clipboardRouteAvailable = source._clipboardRouteAvailable;
+        _clipboardRoute = source._clipboardRoute;
+        _clipboardCapabilityAuthorized = capabilities.KittyClipboard.Authoritative;
         AlternateScreenActive = source.AlternateScreenActive;
         CursorHiddenActive = source.CursorHiddenActive;
         var authorization = ClassifyAuthorization(this, capabilities);
@@ -63,7 +64,6 @@ public sealed class TerminalModeDiagnostics
         MouseAuthorized = authorization.Mouse;
         KittyKeyboardAuthorized = authorization.KittyKeyboard;
         ModifyOtherKeysAuthorized = authorization.ModifyOtherKeys;
-        ClipboardPasteEventsAuthorized = authorization.ClipboardPasteEvents;
     }
 
     private TerminalModeDiagnostics(
@@ -91,8 +91,8 @@ public sealed class TerminalModeDiagnostics
         ModifyOtherKeysLevel = source.ModifyOtherKeysLevel;
         ModifyOtherKeysAuthorized = source.ModifyOtherKeysAuthorized;
         ClipboardPasteEventsConfigured = source.ClipboardPasteEventsConfigured;
-        ClipboardPasteEventsAuthorized = source.ClipboardPasteEventsAuthorized;
-        _clipboardRouteAvailable = source._clipboardRouteAvailable;
+        _clipboardRoute = source._clipboardRoute;
+        _clipboardCapabilityAuthorized = source._clipboardCapabilityAuthorized;
         AlternateScreenActive = alternateScreenActive;
         CursorHiddenActive = cursorHiddenActive;
         FocusReportingActive = focusReportingActive;
@@ -166,8 +166,15 @@ public sealed class TerminalModeDiagnostics
     /// <summary>Gets whether Kitty clipboard paste notifications were requested.</summary>
     public bool ClipboardPasteEventsConfigured { get; }
 
-    /// <summary>Gets whether current evidence and routing authorize clipboard paste notifications.</summary>
-    public bool ClipboardPasteEventsAuthorized { get; }
+    /// <summary>Gets whether current evidence and routing authorize clipboard paste notifications. This
+    /// re-reads the retained multiplexer route's <see cref="MultiplexerRoute.CanRouteClipboard"/> on every
+    /// access, because the underlying <see cref="MultiplexingPolicy.PaneVisible"/> is mutated live by the
+    /// running application as outer-terminal focus reports arrive; caching this value at snapshot
+    /// construction would keep reporting a stale answer for the rest of the session.</summary>
+    public bool ClipboardPasteEventsAuthorized =>
+        ClipboardPasteEventsConfigured &&
+        _clipboardCapabilityAuthorized &&
+        (_clipboardRoute is null || _clipboardRoute.CanRouteClipboard);
 
     /// <summary>Gets whether clipboard-paste-event enable bytes were written and flushed successfully.</summary>
     public bool ClipboardPasteEventsActive { get; }
@@ -232,8 +239,7 @@ public sealed class TerminalModeDiagnostics
         bool BracketedPaste,
         bool Mouse,
         bool KittyKeyboard,
-        bool ModifyOtherKeys,
-        bool ClipboardPasteEvents) ClassifyAuthorization(
+        bool ModifyOtherKeys) ClassifyAuthorization(
         TerminalModeDiagnostics source,
         TerminalCapabilities capabilities)
     {
@@ -247,9 +253,6 @@ public sealed class TerminalModeDiagnostics
         var modifyOtherKeys = !kittyKeyboard &&
                               source.ModifyOtherKeysLevel.HasValue &&
                               capabilities.XtermKeyboard.Authoritative;
-        var clipboardPasteEvents = source.ClipboardPasteEventsConfigured &&
-                                   capabilities.KittyClipboard.Authoritative &&
-                                   source._clipboardRouteAvailable;
-        return (focus, paste, mouse, kittyKeyboard, modifyOtherKeys, clipboardPasteEvents);
+        return (focus, paste, mouse, kittyKeyboard, modifyOtherKeys);
     }
 }
