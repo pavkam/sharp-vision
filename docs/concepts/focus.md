@@ -74,6 +74,7 @@ sequenceDiagram
         FocusManager-->>Caller: false (no commit)
     else change proceeds
         FocusManager->>FocusManager: Focused = control<br/>Previous.IsFocused = false; New.IsFocused = true
+        FocusManager->>FocusManager: retain latest keyboard reveal intent
         FocusManager->>Previous: LostFocus
         FocusManager->>Previous: FocusLeft (self)
         FocusManager->>PrevAncestors: FocusLeft (deepest first, up to but excluding the common ancestor)
@@ -82,7 +83,6 @@ sequenceDiagram
         FocusManager->>New: FocusEntered (self)
         FocusManager->>New: GotFocus
         FocusManager->>FocusManager: Gained?.Invoke(changed)
-        FocusManager->>FocusManager: retain latest keyboard reveal intent
         FocusManager-->>Caller: true while the target stays valid after callbacks
     end
 ```
