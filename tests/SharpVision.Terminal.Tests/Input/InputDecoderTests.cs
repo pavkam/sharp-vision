@@ -3800,6 +3800,34 @@ public sealed class InputDecoderTests
             "\u001b[?4m\u001b[>4;2m\u001b[>4m"u8.ToArray());
     }
 
+    /// <summary>Verifies every valid modifyOtherKeys level is encoded with exact bytes.</summary>
+    /// <param name="level">The level from zero through three.</param>
+    /// <param name="expected">The exact expected sequence.</param>
+    [Theory]
+    [InlineData(0, "\u001b[>4;0m")]
+    [InlineData(1, "\u001b[>4;1m")]
+    [InlineData(3, "\u001b[>4;3m")]
+    public void Set_WhenLevelIsValid_WritesExactBytes(int level, string expected)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        XtermModifyOtherKeys.Set(writer, level);
+
+        destination.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(expected));
+    }
+
+    /// <summary>Verifies levels outside zero through three are rejected before writing.</summary>
+    [Fact]
+    public void Set_WhenLevelIsOutOfRange_ThrowsArgumentOutOfRangeException()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+        var writer = new ProtocolWriter(destination);
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => XtermModifyOtherKeys.Set(writer, -1));
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => XtermModifyOtherKeys.Set(writer, 4));
+    }
+
     /// <summary>Verifies legacy and CSI-u compatible forms preserve scalar and modifiers.</summary>
     [Theory]
     [InlineData("\u001b[27;3;120~")]

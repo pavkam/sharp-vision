@@ -19,6 +19,12 @@ public sealed class Osc52Tests
     [InlineData(Selection.Secondary, 'q')]
     [InlineData(Selection.Select, 's')]
     [InlineData(Selection.Cut0, '0')]
+    [InlineData(Selection.Cut1, '1')]
+    [InlineData(Selection.Cut2, '2')]
+    [InlineData(Selection.Cut3, '3')]
+    [InlineData(Selection.Cut4, '4')]
+    [InlineData(Selection.Cut5, '5')]
+    [InlineData(Selection.Cut6, '6')]
     [InlineData(Selection.Cut7, '7')]
     public void Write_WhenSelectionIsKnown_WritesIdentifier(
         Selection selection,

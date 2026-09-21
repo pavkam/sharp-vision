@@ -85,6 +85,20 @@ public sealed class KittyClipboardWriterTests
     }
 
     /// <summary>
+    /// Verifies a single-chunk small payload produces the exact literal packet.
+    /// </summary>
+    [Fact]
+    public void WriteData_WhenPayloadIsSmall_WritesExactBytes()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+
+        KittyClipboardWriter.WriteData(new ProtocolWriter(destination), "text/plain"u8, "A"u8);
+
+        destination.WrittenSpan.ToArray().ShouldBe(
+            "\u001b]5522;type=wdata:mime=dGV4dC9wbGFpbg==;QQ==\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>
     /// Verifies every raw chunk is independently padded and no larger than 4096 bytes.
     /// </summary>
     /// <param name="size">The binary MIME data size.</param>
@@ -126,6 +140,22 @@ public sealed class KittyClipboardWriterTests
             {
                 encoded[^1].ShouldBe((byte) '=');
             }
+        }
+
+        var bytes = destination.WrittenSpan;
+        var header = "\u001b]5522;type=wdata:mime=YXBwbGljYXRpb24vb2N0ZXQtc3RyZWFt;"u8;
+        bytes[..header.Length].ToArray().ShouldBe(header.ToArray());
+
+        var firstChunkRawLength = Math.Min(4096, size);
+        var firstChunkEncodedLength = (firstChunkRawLength + 2) / 3 * 4;
+        var firstPayloadEnd = header.Length + firstChunkEncodedLength;
+        var terminator = "\u001b\\"u8;
+        bytes.Slice(firstPayloadEnd, terminator.Length).ToArray().ShouldBe(terminator.ToArray());
+
+        if (size > 4_096)
+        {
+            var secondPacketStart = firstPayloadEnd + terminator.Length;
+            bytes.Slice(secondPacketStart, header.Length).ToArray().ShouldBe(header.ToArray());
         }
     }
 

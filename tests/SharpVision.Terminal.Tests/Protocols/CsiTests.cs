@@ -42,18 +42,34 @@ public sealed class CsiTests
     }
 
     /// <summary>
-    /// Verifies erase commands and their target values.
+    /// Verifies every valid erase command and area combination.
     /// </summary>
-    [Fact]
-    public void Erase_WhenAreasAreValid_WritesExactBytes()
+    /// <param name="isDisplay">Whether the display, rather than the line, is erased.</param>
+    /// <param name="area">The area to erase.</param>
+    /// <param name="expected">The exact expected sequence.</param>
+    [Theory]
+    [InlineData(true, EraseArea.After, "\u001b[0J")]
+    [InlineData(true, EraseArea.Before, "\u001b[1J")]
+    [InlineData(true, EraseArea.All, "\u001b[2J")]
+    [InlineData(true, EraseArea.Scrollback, "\u001b[3J")]
+    [InlineData(false, EraseArea.After, "\u001b[0K")]
+    [InlineData(false, EraseArea.Before, "\u001b[1K")]
+    [InlineData(false, EraseArea.All, "\u001b[2K")]
+    public void Erase_WhenAreasAreValid_WritesExactBytes(bool isDisplay, EraseArea area, string expected)
     {
         var destination = new ArrayBufferWriter<byte>();
         var writer = new ProtocolWriter(destination);
 
-        Csi.EraseDisplay(writer, EraseArea.Scrollback);
-        Csi.EraseLine(writer, EraseArea.All);
+        if (isDisplay)
+        {
+            Csi.EraseDisplay(writer, area);
+        }
+        else
+        {
+            Csi.EraseLine(writer, area);
+        }
 
-        destination.WrittenSpan.ToArray().ShouldBe("\u001b[3J\u001b[2K"u8.ToArray());
+        destination.WrittenSpan.ToArray().ShouldBe(Encoding.ASCII.GetBytes(expected));
     }
 
     /// <summary>
