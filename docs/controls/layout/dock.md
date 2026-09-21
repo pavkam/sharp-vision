@@ -22,6 +22,7 @@ classDiagram
 | Member                    | Type                | Default                              | Description                                                                   |
 | ------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | Inherited `Children`      | `ControlCollection` | Empty                                | Owns controls in edge-consumption order.                                      |
+| Inherited `AutoScroll`    | `bool`              | `false`                              | Turns overflowing dock content into a clipped scrolling viewport.             |
 | `LastChildFills`          | `bool`              | `true`                               | Gives the final non-collapsed child the remaining rectangle.                  |
 | `Spacing`                 | `int`               | `0`                                  | Non-negative cells inserted after each consumed non-final child.              |
 | Inherited `Border`        | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.  |
@@ -71,6 +72,17 @@ If a later Percent sibling could see a Star's real rendered share, the Percent's
 resolution would depend on a value that in turn depends on it, with no stable
 answer. Declaring a Star before or after a Percent sibling that claims the same
 nominal share therefore produces the same split either way.
+
+When `AutoScroll` arms the axis a child docks along, that axis has no real
+ceiling to allocate within — the extent is however much the content needs, and
+scrolling covers the rest — so a `Percent` child on that axis resolves against
+the visible `Viewport` instead of the space remaining at its turn, matching the
+[automatic scrollbar algorithm](../../concepts/scrolling.md#automatic-scrollbar-algorithm).
+Unlike `Grid` and `Stack`, whose Star children abandon proportional division and
+fall back to their own intrinsic size on an armed axis, a Dock Star child keeps
+dividing its axis's leftover space with its Star siblings by weight — only the
+pool it divides changes, from the sequential-consumption remainder to the
+visible `Viewport`. An unarmed dock axis is unaffected.
 
 Setting the attached side validates the enum value and dispatcher affinity
 before any state changes, and it invalidates measure only when the child

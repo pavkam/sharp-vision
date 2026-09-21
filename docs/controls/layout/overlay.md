@@ -22,6 +22,7 @@ classDiagram
 | Member                    | Type                | Default                              | Description                                                                   |
 | ------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | Inherited `Children`      | `ControlCollection` | Empty                                | Owns overlapping controls in stable collection order.                         |
+| Inherited `AutoScroll`    | `bool`              | `false`                              | Turns overflowing overlay content into a clipped scrolling viewport.          |
 | `ClipToBounds`            | `bool`              | `true`                               | Clips descendant drawing and hit testing to the overlay bounds.               |
 | Inherited `Border`        | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.  |
 | Inherited `ResetBorder()` | `void`              | —                                    | Returns the local border to Theme ownership.                                  |
@@ -67,6 +68,17 @@ desired size; coordinates expressed purely as percentages cannot manufacture an
 intrinsic bound. Saturated arithmetic keeps extreme offsets deterministic. A
 trailing-anchored child wider or taller than the content box may receive a
 negative origin and is then clipped by the normal policy.
+
+When `AutoScroll` arms an axis, that axis's arrangement bounds are inflated to
+`Math.Max(Extent, Viewport)`, so a percentage offset and an unanchored
+proportional extent on that axis resolve against the visible `Viewport` instead
+of that inflated box — resolving against the inflated box would make the
+percentage depend on a value it itself helped inflate. Physical placement — the
+origin and far edge a child actually renders at — still spans the real content
+box; only the percentage/proportional resolution basis changes, matching the
+same viewport-relative contract [Grid](grid.md#layout-algorithm),
+[Stack](stack.md#behavior), and [Dock](dock.md#layout-algorithm) use for their
+own scrolling axes.
 
 [`Window`](../windows/window.md#layout-and-positioning) implements the internal
 `IOverlayPositionConstraint` interface (see the
