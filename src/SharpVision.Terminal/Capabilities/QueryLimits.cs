@@ -31,8 +31,11 @@ public sealed record QueryLimits
         init => field = RequirePositive(value, nameof(MaxConcurrentQueries));
     } = 32;
 
-    /// <summary>Gets the deadline applied to a terminal query before safe fallback.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative, or infinite.</exception>
+    /// <summary>Gets the deadline applied to a terminal query before safe fallback. Bounded at
+    /// 2,147,483,647 milliseconds (<see cref="int.MaxValue"/>), the tighter of the
+    /// millisecond ceilings among the timers that ultimately schedule this deadline.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">The value is zero, negative, infinite, or
+    /// exceeds 2,147,483,647 milliseconds.</exception>
     public TimeSpan QueryTimeout
     {
         get;
@@ -79,11 +82,13 @@ public sealed record QueryLimits
 
     private static TimeSpan RequireFinitePositive(TimeSpan value, string parameterName)
     {
-        return value > TimeSpan.Zero && value != Timeout.InfiniteTimeSpan
+        return value > TimeSpan.Zero
+            && value != Timeout.InfiniteTimeSpan
+            && value <= TimeSpan.FromMilliseconds(int.MaxValue)
             ? value
             : throw new ArgumentOutOfRangeException(
                 parameterName,
                 value,
-                "The query timeout must be finite and positive.");
+                "The query timeout must be positive and within the dispatcher timer millisecond limit.");
     }
 }

@@ -37,18 +37,19 @@ public sealed record InputOptions
     } = TimeSpan.FromSeconds(10);
 
     /// <summary>Gets the lone-Escape ambiguity timeout.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 4,294,967,294 milliseconds, the finite session timer limit.</exception>
     public TimeSpan EscapeTimeout
     {
         get;
         init
         {
-            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(uint.MaxValue - 1))
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     value,
-                    "The Escape timeout must be positive and finite.");
+                    "The Escape timeout must be positive and within the finite timer limit.");
             }
 
             field = value;
@@ -56,18 +57,19 @@ public sealed record InputOptions
     } = TimeSpan.FromMilliseconds(50);
 
     /// <summary>Gets the fallback key-sequence ambiguity timeout.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not positive and finite.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or exceeds
+    /// 4,294,967,294 milliseconds, the finite session timer limit.</exception>
     public TimeSpan KeyMatcherTimeout
     {
         get;
         init
         {
-            if (value <= TimeSpan.Zero || value == Timeout.InfiniteTimeSpan)
+            if (value <= TimeSpan.Zero || value > TimeSpan.FromMilliseconds(uint.MaxValue - 1))
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     value,
-                    "The key-matcher timeout must be positive and finite.");
+                    "The key-matcher timeout must be positive and within the finite timer limit.");
             }
 
             field = value;

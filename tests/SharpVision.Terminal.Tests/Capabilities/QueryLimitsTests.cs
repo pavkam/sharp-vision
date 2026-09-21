@@ -22,6 +22,20 @@ public sealed class QueryLimitsTests
         _ = Should.Throw<ArgumentOutOfRangeException>(static () => new QueryLimits { QueryTimeout = TimeSpan.Zero });
         _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
             new QueryLimits { QueryTimeout = Timeout.InfiniteTimeSpan });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new QueryLimits { QueryTimeout = TimeSpan.FromMilliseconds(int.MaxValue).Add(TimeSpan.FromMilliseconds(1)) });
+    }
+
+    /// <summary>
+    /// Verifies that a <see cref="QueryLimits.QueryTimeout"/> at the dispatcher timer's
+    /// millisecond ceiling is accepted rather than rejected as out of range.
+    /// </summary>
+    [Fact]
+    public void QueryTimeout_WhenAtDispatcherTimerBound_IsAccepted()
+    {
+        var limits = new QueryLimits { QueryTimeout = TimeSpan.FromMilliseconds(int.MaxValue) };
+
+        limits.QueryTimeout.ShouldBe(TimeSpan.FromMilliseconds(int.MaxValue));
     }
 
     /// <summary>

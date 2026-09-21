@@ -22,6 +22,34 @@ public sealed class InputOptionsTests
         exception.ParamName.ShouldBe("value");
     }
 
+    /// <summary>Verifies the Escape ambiguity timeout always has a usable finite session
+    /// timer.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(4294967295)]
+    public void EscapeTimeout_WhenOutsideTimerRange_ThrowsArgumentOutOfRangeException(long milliseconds)
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new InputOptions { EscapeTimeout = TimeSpan.FromMilliseconds(milliseconds) });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
+    /// <summary>Verifies the fallback key-sequence ambiguity timeout always has a usable finite
+    /// session timer.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(4294967295)]
+    public void KeyMatcherTimeout_WhenOutsideTimerRange_ThrowsArgumentOutOfRangeException(long milliseconds)
+    {
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+            new InputOptions { KeyMatcherTimeout = TimeSpan.FromMilliseconds(milliseconds) });
+
+        exception.ParamName.ShouldBe("value");
+    }
+
     /// <summary>Verifies an undefined enum value is rejected at construction instead of being
     /// silently accepted, matching the sibling <c>TerminalOptions.Coordinates</c> and
     /// <c>ConsoleRunOptions.MouseCoordinates</c> properties.</summary>
