@@ -67,17 +67,24 @@ contract.
 
 ### Friend access
 
-`SharpVision.Terminal` grants `InternalsVisibleTo` only to its own test and
-probe assemblies and to the UI test assembly. It deliberately does **not** grant
-it to `SharpVision`.
+`SharpVision.Terminal` grants `InternalsVisibleTo` to its own test and probe
+assemblies, to the UI test assembly, and to `SharpVision` itself. The UI project
+uses that grant for exactly one seam:
+`TerminalCanvas.DrawWithCurrentFrameDissolve`, which `FloatingSurfaceBase` calls
+to implement the shared entrance/exit dissolve (see
+[Floating surfaces](../concepts/floating-surfaces.md#layout-and-drawing-boundaries))
+— everything else the UI layer needs crosses through a designed public seam
+instead.
 
-The UI project consumes the terminal project exactly like any external consumer,
-through public API only. That constraint is load-bearing: whenever the UI layer
-needs something, the answer is a designed public seam, not friend access. If a
-capability is not expressible publicly without leaking low-level machinery, the
-terminal project publishes a focused facade that owns that machinery instead.
+The UI project otherwise consumes the terminal project like any external
+consumer, through public API only. The default is a public seam; friend access
+is a deliberate, narrow exception for that one low-level rendering primitive. If
+a capability is not expressible publicly without leaking low-level machinery,
+the terminal project publishes a focused facade that owns that machinery
+instead.
 
-Two such seams provide this boundary:
+The following two seams are additional public facades built for this purpose,
+not the only way the UI layer reaches into the terminal project:
 
 | UI need                          | Public seam                                    | Stays internal                                                    |
 | -------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
