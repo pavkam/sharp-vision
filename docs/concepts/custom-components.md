@@ -71,13 +71,17 @@ synchronous queue rejection; both re-check the captured attachment and lease
 before running anything.
 
 Framework controls that compose a dispatcher-owned resource register that
-resource once during construction as an attachment participant. The framework
-then supplies every committed dispatcher attachment, publishes detachment only
-after invalidating the old attachment, and performs final disposal exactly once.
-Participants run in registration order, and one failure does not skip later
-required lifecycle work. This seam is for owned resources such as an animation
-timer; concrete controls keep playback and visual policy in their own hooks
-rather than forwarding the same attachment plumbing.
+resource once during construction, through
+[`RegisterAttachmentParticipant`](../controls/control.md#owner-bound-helpers),
+as an attachment participant. The framework then supplies every committed
+dispatcher attachment, publishes detachment only after invalidating the old
+attachment, and performs final disposal exactly once. Participants run in
+registration order, and one failure does not skip later required lifecycle work.
+This seam is for owned resources such as an animation timer -
+[`ControlTimer`](../controls/control.md#owner-bound-helpers) is the shared
+participant behind any dispatcher-affine repeating callback; concrete controls
+keep playback and visual policy in their own hooks rather than forwarding the
+same attachment plumbing.
 
 Framework press and drag behaviors use a separate control-owned lifecycle
 participant seam. A control registers each composed behavior once; direct focus
@@ -91,17 +95,32 @@ explicit `HandleDrag`-routed release/leave, the drag's `isAvailable` predicate
 turning false, or one of the three automatic notifications above) ended the
 drag.
 
+`ControlBase` exposes several such one-shot opt-in capabilities beyond the drag
+lifecycle above - [`EnablePopup`](../controls/control.md#api) for an
+owner-managed popup and [`EnablePressActivation`](../controls/control.md#api)
+for pointer-press and Enter/Space keyboard activation, alongside
+[`EnableDrag`](../controls/control.md#api) itself.
+[`EnterOwnedModal`](../controls/control.md#modal-sessions) follows a related but
+distinct shape: it opts a control into entering one modal scope through its
+attached `ModalityManager`, called through a caller-owned `ModalSession` on
+every entry rather than once from the constructor. `PopupModalTracker` and
+`FloatingSurfaceBase` both compose it instead of driving `ModalityManager`
+directly.
+
 ### Choosing a role
 
-| Need                                                                                                                      | Base role                                         | Public ownership surface                                                         |
-| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
-| New leaf behavior or custom drawing                                                                                       | `ControlBase`                                     | None unless the type explicitly provides one                                     |
-| General-purpose multi-child layout                                                                                        | [`Container`](../controls/container.md#overview)  | `Children`                                                                       |
-| One caller-owned replaceable visual                                                                                       | `ContentControl`                                  | `Content`                                                                        |
-| Content plus an independent replaceable header                                                                            | `HeaderedContentControl`                          | `Content`, `Header`, `HeaderText`                                                |
-| Reusable component built from existing controls                                                                           | `CompositeControlBase`                            | None; its root is private                                                        |
-| Typed data/semantic collection with realized visuals                                                                      | `ItemsControl`                                    | The type's semantic collection, never the host                                   |
-| IsFocusable value editor, popup-backed input, or activating single text caption, opting into only the needed capabilities | [`InputBase`](../controls/input-base.md#overview) | Whatever the concrete control needs; `EnableCaption` alone gives `Text` (string) |
+| Need                                                                                                                      | Base role                                                                                | Public ownership surface                                                               |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| New leaf behavior or custom drawing                                                                                       | `ControlBase`                                                                            | None unless the type explicitly provides one                                           |
+| General-purpose multi-child layout                                                                                        | [`Container`](../controls/container.md#overview)                                         | `Children`                                                                             |
+| One caller-owned replaceable visual                                                                                       | `ContentControl`                                                                         | `Content`                                                                              |
+| Content plus an independent replaceable header                                                                            | `HeaderedContentControl`                                                                 | `Content`, `Header`, `HeaderText`                                                      |
+| Reusable component built from existing controls                                                                           | `CompositeControlBase`                                                                   | None; its root is private                                                              |
+| Composite whose private implementation tree includes one bounded, two-axis scrolling container                            | [`ScrollableCompositeControlBase`](../controls/scrollable-composite-control.md#overview) | None; root and scroll host are private                                                 |
+| Typed data/semantic collection with realized visuals                                                                      | `ItemsControl`                                                                           | The type's semantic collection, never the host                                         |
+| IsFocusable value editor, popup-backed input, or activating single text caption, opting into only the needed capabilities | [`InputBase`](../controls/input-base.md#overview)                                        | Whatever the concrete control needs; `EnableCaption` alone gives `Text` (string)       |
+| Nullable-`decimal` field edited through a transient buffer (percentage, duration, currency-like value)                    | [`NumericInputBase`](../controls/input/numeric-input-base.md#overview)                   | Whatever `InputBase` capabilities are enabled, plus `Value`/`Minimum`/`Maximum`/`Step` |
+| Segmented calendar/clock field edited per digit (date, time, or combined)                                                 | [`TemporalInputBase<TValue>`](../controls/input/temporal-input-base.md#overview)         | Whatever `InputBase` capabilities are enabled, plus `Value`/`Minimum`/`Maximum`        |
 
 Concrete shipped controls are sealed, with three documented exceptions: `Popup`,
 `ContextMenu`, and `Window`. Each stays unsealed only because the library itself
@@ -177,6 +196,17 @@ helpers. The host's `Children` collection never becomes public API. `ListView`,
 `Menu`, and `Table` follow this pattern; `Table` keeps its scrolling cell
 presenter private and exposes only `Rows`, `Columns`, and delegated scroll
 state.
+
+A realized item's focus, access-key, and direct-disposal notifications arrive
+through [`OnItemFocused`](../controls/items-control.md#api),
+[`OnItemAccessKey`](../controls/items-control.md#api), and
+[`OnItemDisposalRequested`](../controls/items-control.md#api) - the item-scoped
+counterparts `ItemsControl` wires from the inherited
+[`OnDescendantFocused`](../controls/control.md#api),
+[`OnDescendantAccessKey`](../controls/control.md#api), and
+[`OnDescendantDisposalRequested`](../controls/control.md#api) ancestor hooks. A
+derived owner reacts to what happened to one specific realized item this way
+instead of a `FindAncestor<TOwner>()`-and-relay override on every item type.
 
 A typed collection over one `ItemsControl` owner - one `IReadOnlyList<TItem>`
 publishing that owner's realized items - derives from
