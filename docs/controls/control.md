@@ -1161,11 +1161,15 @@ scope - closing one submenu chain and immediately opening a sibling, for
 example - is never erased by cleanup that still believes the old scope is
 current.
 
-`Menu`, `PopupModalTracker`, and `FloatingSurfaceBase` all compose
-`EnterOwnedModal` instead of each driving `ModalityManager.Enter` and a
-`ModalSession` by hand; a third-party control that needs its own exclusive modal
-presentation follows the same pattern instead of reimplementing that identity
-tracking against the raw manager.
+`PopupModalTracker` and `FloatingSurfaceBase` compose `EnterOwnedModal` instead
+of driving `ModalityManager.Enter` and a `ModalSession` by hand; a third-party
+control that needs its own exclusive modal presentation follows the same pattern
+instead of reimplementing that identity tracking against the raw manager. `Menu`
+cannot use `EnterOwnedModal`: reopening a menu must restore focus to whatever
+control owned it before entry, and `EnterOwnedModal` only ever enters through
+`ModalityManager.Enter`, which has no previous-focus parameter. `Menu` instead
+drives its own `ModalSession` against `ModalityManager.EnterRestoringFocusTo`,
+an internal implementation detail that restores that previous focus on exit.
 
 ## Appearance extension point
 
