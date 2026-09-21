@@ -161,11 +161,12 @@ not the inner pane's `TERM`. An unrouted native Windows connection accepts the
 built-in `windows-vt` description name as the same hint instead, because `TERM`
 is essentially never set there and an unrecognized XTGETTCAP request is safely
 consumed like any other unknown DCS. A matched status reply proves xterm
-enhanced-key support. Validated positive `RGB` data may replace default or
-environment-only semantic color depth with query evidence; database, prior
-query, and override evidence win. An explicit `Settings.ColorDepth` suppresses
-the XTGETTCAP registration and bytes entirely, so the slot remains available to
-the bounded batch.
+enhanced-key support. Validated positive `RGB` data may replace default,
+environment-only, or database-only semantic color depth with query evidence;
+only prior-query and override evidence win, per the
+[color-evidence lattice](../architecture/capabilities.md#runtime-negotiator). An
+explicit `Settings.ColorDepth` suppresses the XTGETTCAP registration and bytes
+entirely, so the slot remains available to the bounded batch.
 
 One absolute exclusive deadline is captured before the first registration and
 shared by every emitted query. Out-of-order replies observed strictly before it
