@@ -46,14 +46,17 @@ builds one labeled block and places every live specimen in a standard
 `GroupBox`, and `DocSection(heading, examples...)` groups related examples under
 one subheading - it is the mandatory middle layer, so an example is never nested
 directly in a page. The controls themselves own the surface, foreground, border,
-shadow, multi-part, and visual-state defaults; ordinary control pages never
-assign those appearance values or supply a decorative initial color to repair a
-specimen. The dedicated Border, Shadow, and Styling concept pages assign only
-the exact property they teach. Specimens and their optional code surfaces
-stretch across the available reading column; an optional source excerpt begins
-in a collapsed `C# recipe` expander, so it stays available without permanently
-consuming viewport height. `DocCard`, `DocRow`, and `DocColumn` are composition
-shorthands for framing and arranging specimens.
+shadow, multi-part, and visual-state defaults; an ordinary page never assigns an
+appearance value to repair or decorate a specimen. A page may assign a
+specimen's own `Style` (its complete style record, and only that) inside a
+clearly labelled style-teaching `DocSection` - one whose heading or description
+names the style type or property being demonstrated. The dedicated Border,
+Shadow, and Styling concept pages assign only the exact property they teach.
+Specimens and their optional code surfaces stretch across the available reading
+column; an optional source excerpt begins in a collapsed `C# recipe` expander,
+so it stays available without permanently consuming viewport height. `DocCard`,
+`DocRow`, and `DocColumn` are composition shorthands for framing and arranging
+specimens.
 
 Every chart page provides two or three recipe-backed examples covering distinct
 scale, color, legend, or grouping behavior. At least one example on each page

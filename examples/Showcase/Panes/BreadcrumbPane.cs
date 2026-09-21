@@ -85,14 +85,6 @@ internal sealed class BreadcrumbPane: CompositeControlBase
         var itemDesign = new BreadcrumbItem
         {
             Text = "界 Des&ign 🚀",
-            Style = BreadcrumbItemStyle.Default with
-            {
-                Face = BreadcrumbItemStyle.Default.Face with
-                {
-                    Foreground = SemanticColor.Accent,
-                    Attributes = TerminalAttributes.Bold
-                }
-            },
             CommandParameter = "design-system"
         };
         itemDesign.Invoked += (_, eventArgs) =>
@@ -189,9 +181,9 @@ internal sealed class BreadcrumbPane: CompositeControlBase
                     "path.Items.Add(item);\n" +
                     "item.PerformInvoke();")),
             new DocSection(
-                "📐",
-                "Automatic overflow",
-                "Finite width preserves complete entries and separators. The retained overflow trigger projects omitted available sources without reparenting them.",
+                "🎨",
+                "Overflow and style customization",
+                "Finite width preserves complete entries and separators. The retained overflow trigger projects omitted available sources without reparenting them. A local `BreadcrumbStyle` assignment demonstrates the separator glyph, color, and spacing properties.",
                 new DocExample(
                     "Automatic overflow",
                     "This 18-cell path keeps the current suffix and exposes earlier available locations through one menu. Its local style uses an accent slash with two cells before it and none after it.",
