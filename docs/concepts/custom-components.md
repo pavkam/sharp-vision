@@ -103,9 +103,8 @@ for pointer-press and Enter/Space keyboard activation, alongside
 [`EnterOwnedModal`](../controls/control.md#modal-sessions) follows a related but
 distinct shape: it opts a control into entering one modal scope through its
 attached `ModalityManager`, called through a caller-owned `ModalSession` on
-every entry rather than once from the constructor. `PopupModalTracker` and
-`FloatingSurfaceBase` both compose it instead of driving `ModalityManager`
-directly.
+every entry rather than once from the constructor; the linked section lists
+which shipped types compose it.
 
 ### Choosing a role
 

@@ -55,6 +55,10 @@ classDiagram
 | `OnScrollHostScrollChanged(ScrollChangedEventArgs)`                       | `void`                                 | No-op            | Protected virtual; runs after the bridge refreshes cached properties.                                          |
 | `TextSelectionPageDistance()`                                             | `int`                                  | Host-derived     | Protected override; the host's `Math.Max(1, Viewport.Height - PageOverlap)` once installed.                    |
 
+`TextSelectionPageDistance()` is floored at one row so a Page Up or Page Down
+selection step always moves the caret even when the viewport is shorter than
+`PageOverlap`.
+
 `Extent`, `Viewport`, `HorizontalOffset`, `ScrollBars`, and `ScrollBy` are
 `virtual` so a derived component can widen, restrict, or fully replace one axis
 without losing the shared forwarding contract for the others - `Document` widens
