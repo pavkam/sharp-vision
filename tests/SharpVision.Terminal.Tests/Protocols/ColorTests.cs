@@ -184,4 +184,30 @@ public sealed class ColorTests
     }
 
     #endregion
+
+    #region Formatting
+
+    /// <summary>Verifies the RGB description keeps invariant ASCII digits for the component
+    /// values even when the current culture would otherwise substitute native digit
+    /// glyphs.</summary>
+    [Fact]
+    public void ToString_WhenCultureUsesNonAsciiDigits_UsesInvariantDigits()
+    {
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            var color = Color.Rgb(12, 34, 56);
+
+            color.ToString().ShouldBe("Color { Rgb = (12, 34, 56) }");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    #endregion
 }

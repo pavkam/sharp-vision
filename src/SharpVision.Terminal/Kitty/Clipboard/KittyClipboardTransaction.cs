@@ -212,7 +212,9 @@ public sealed class KittyClipboardTransaction: IDisposable
     /// <summary>Returns a structural description without ID, MIME, or data.</summary>
     /// <returns>A redacted transaction description.</returns>
     public override string ToString() =>
-        $"KittyClipboardTransaction operation={_operation} state={State} bytes={_totalBytes}";
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"KittyClipboardTransaction operation={_operation} state={State} bytes={_totalBytes}");
 
     private bool IsTerminal => State is
         KittyClipboardTransactionState.Completed or

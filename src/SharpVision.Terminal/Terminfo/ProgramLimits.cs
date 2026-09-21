@@ -29,7 +29,11 @@ public sealed record ProgramLimits
     public int MaxProgramBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 1_048_576, nameof(MaxProgramBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 1_048_576, nameof(MaxProgramBytes));
+            field = value;
+        }
     } = 65_536;
 
     /// <summary>Gets the maximum compiled operations retained for one terminfo program.</summary>
@@ -38,7 +42,11 @@ public sealed record ProgramLimits
     public int MaxProgramOperations
     {
         get;
-        init => field = RequireBoundedPositive(value, 16_384, nameof(MaxProgramOperations));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 16_384, nameof(MaxProgramOperations));
+            field = value;
+        }
     } = 2_048;
 
     /// <summary>Gets the maximum evaluation-stack depth for one terminfo expansion.</summary>
@@ -47,7 +55,11 @@ public sealed record ProgramLimits
     public int MaxProgramStackDepth
     {
         get;
-        init => field = RequireBoundedPositive(value, 256, nameof(MaxProgramStackDepth));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 256, nameof(MaxProgramStackDepth));
+            field = value;
+        }
     } = 64;
 
     /// <summary>Gets the maximum raw output bytes produced by one terminfo expansion.</summary>
@@ -56,7 +68,11 @@ public sealed record ProgramLimits
     public int MaxProgramOutputBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 1_048_576, nameof(MaxProgramOutputBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 1_048_576, nameof(MaxProgramOutputBytes));
+            field = value;
+        }
     } = 65_536;
 
     /// <summary>Gets the maximum raw bytes accepted in one terminfo string parameter.</summary>
@@ -65,16 +81,10 @@ public sealed record ProgramLimits
     public int MaxStringParameterBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 1_048_576, nameof(MaxStringParameterBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 1_048_576, nameof(MaxStringParameterBytes));
+            field = value;
+        }
     } = 65_536;
-
-    private static int RequireBoundedPositive(int value, int maximum, string parameterName)
-    {
-        return value is > 0 && value <= maximum
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                $"The limit must be positive and no greater than {maximum}.");
-    }
 }

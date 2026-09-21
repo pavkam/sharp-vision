@@ -28,7 +28,11 @@ public sealed record ParserLimits
     public int MaxParameterBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxParameterBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxParameterBytes));
+            field = value;
+        }
     } = 256;
 
     /// <summary>Gets the maximum retained ESC, CSI, or DCS intermediate bytes.</summary>
@@ -37,7 +41,11 @@ public sealed record ParserLimits
     public int MaxIntermediateBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxIntermediateBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxIntermediateBytes));
+            field = value;
+        }
     } = 16;
 
     /// <summary>Gets the maximum retained OSC, DCS, APC, PM, or SOS payload bytes.</summary>
@@ -46,7 +54,11 @@ public sealed record ParserLimits
     public int MaxStringBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxStringBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxStringBytes));
+            field = value;
+        }
     } = 1_048_576;
 
     /// <summary>Gets whether BEL may terminate an incoming OSC string.</summary>
@@ -58,14 +70,4 @@ public sealed record ParserLimits
     /// never reinterpreted as a C1 introducer.
     /// </remarks>
     public bool AcceptEightBitControls { get; init; }
-
-    private static int RequirePositive(int value, string parameterName)
-    {
-        return value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                "The limit must be positive.");
-    }
 }

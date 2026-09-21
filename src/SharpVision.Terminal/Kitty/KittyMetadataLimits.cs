@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Kitty;
 
-using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Defines finite limits for one delimited Kitty protocol metadata section.</summary>
 /// <remarks>
@@ -28,20 +28,14 @@ public sealed record KittyMetadataLimits
 
     /// <summary>Gets the maximum metadata bytes accepted in one Kitty protocol message.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
-    [NonNegativeValue]
+    [ValueRange(1, int.MaxValue)]
     public int MaxMetadataBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxMetadataBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxMetadataBytes));
+            field = value;
+        }
     } = 8_192;
-
-    private static int RequirePositive(int value, string parameterName)
-    {
-        return value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                "The limit must be positive.");
-    }
 }

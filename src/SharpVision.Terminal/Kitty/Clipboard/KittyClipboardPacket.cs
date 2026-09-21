@@ -288,7 +288,9 @@ public sealed class KittyClipboardPacket
 
         return $"KittyClipboardPacket valid={Valid} operation={Operation} status={ReplyStatus} " +
                $"selection={Selection} id={(Id is null ? "none" : "set")} " +
-               $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}";
+               string.Create(
+                   CultureInfo.InvariantCulture,
+                   $"mimeBytes={Mime.Length} payloadBytes={Data.Length} unknown={unknown}");
     }
 
     [Pure]

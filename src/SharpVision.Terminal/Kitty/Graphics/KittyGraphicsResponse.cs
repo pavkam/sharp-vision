@@ -159,7 +159,9 @@ public sealed class KittyGraphicsResponse
     /// <summary>Returns only structural state and identifiers, never the terminal error message.</summary>
     /// <returns>A redaction-safe description.</returns>
     public override string ToString() =>
-        $"KittyGraphicsResponse valid={Valid} image={ImageId} placement={PlacementId} success={Succeeded}";
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"KittyGraphicsResponse valid={Valid} image={ImageId} placement={PlacementId} success={Succeeded}");
 
     [Pure]
     private static KittyGraphicsResponse Invalid(DiagnosticCode code, int discardedBytes) => new(

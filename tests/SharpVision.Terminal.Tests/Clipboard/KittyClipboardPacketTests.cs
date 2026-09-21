@@ -223,4 +223,27 @@ public sealed class KittyClipboardPacketTests
         packet.Valid.ShouldBeFalse();
         packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidMetadata);
     }
+
+    /// <summary>Verifies the redacted packet description keeps invariant ASCII digits for the
+    /// byte counts even when the current culture would otherwise substitute native digit
+    /// glyphs.</summary>
+    [Fact]
+    public void ToString_WhenCultureUsesNonAsciiDigits_UsesInvariantDigits()
+    {
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            var packet = KittyClipboardPacket.Parse(
+                "5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==:id=req-1;AAEC"u8);
+
+            packet.ToString().ShouldContain("mimeBytes=10 payloadBytes=3");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

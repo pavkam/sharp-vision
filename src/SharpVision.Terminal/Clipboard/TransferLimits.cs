@@ -3,7 +3,7 @@
 
 namespace SharpVision.Terminal.Clipboard;
 
-using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Defines finite limits for OSC 52 and Kitty OSC 5522 clipboard transfers.</summary>
 /// <remarks>
@@ -34,29 +34,27 @@ public sealed record TransferLimits
     /// high-level builder API.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
-    [NonNegativeValue]
+    [ValueRange(1, int.MaxValue)]
     public int MaxClipboardBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxClipboardBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxClipboardBytes));
+            field = value;
+        }
     } = 16_777_216;
 
     /// <summary>Gets the maximum OSC 5522 metadata bytes accepted in one packet.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The value is not positive.</exception>
-    [NonNegativeValue]
+    [ValueRange(1, int.MaxValue)]
     public int MaxMetadataBytes
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxMetadataBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxMetadataBytes));
+            field = value;
+        }
     } = 8_192;
-
-    private static int RequirePositive(int value, string parameterName)
-    {
-        return value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                "The limit must be positive.");
-    }
 }

@@ -28,7 +28,11 @@ public sealed record QueryLimits
     public int MaxConcurrentQueries
     {
         get;
-        init => field = RequirePositive(value, nameof(MaxConcurrentQueries));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(MaxConcurrentQueries));
+            field = value;
+        }
     } = 32;
 
     /// <summary>Gets the deadline applied to a terminal query before safe fallback. Bounded at
@@ -48,7 +52,11 @@ public sealed record QueryLimits
     public int MaxCapabilityItems
     {
         get;
-        init => field = RequireBoundedPositive(value, 256, nameof(MaxCapabilityItems));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 256, nameof(MaxCapabilityItems));
+            field = value;
+        }
     } = 32;
 
     /// <summary>Gets the maximum decoded bytes accepted for one XTGETTCAP value.</summary>
@@ -57,28 +65,12 @@ public sealed record QueryLimits
     public int MaxCapabilityValueBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 65_536, nameof(MaxCapabilityValueBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 65_536, nameof(MaxCapabilityValueBytes));
+            field = value;
+        }
     } = 4_096;
-
-    private static int RequirePositive(int value, string parameterName)
-    {
-        return value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                "The limit must be positive.");
-    }
-
-    private static int RequireBoundedPositive(int value, int maximum, string parameterName)
-    {
-        return value is > 0 && value <= maximum
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                $"The limit must be positive and no greater than {maximum}.");
-    }
 
     private static TimeSpan RequireFinitePositive(TimeSpan value, string parameterName)
     {

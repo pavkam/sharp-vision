@@ -70,7 +70,11 @@ public sealed record DescriptionLimits
     public int MaxTerminalNameBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 1_024, nameof(MaxTerminalNameBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 1_024, nameof(MaxTerminalNameBytes));
+            field = value;
+        }
     } = 128;
 
     /// <summary>Gets the maximum entries accepted in one terminal database path list.</summary>
@@ -79,7 +83,11 @@ public sealed record DescriptionLimits
     public int MaxDescriptionPathEntries
     {
         get;
-        init => field = RequireBoundedPositive(value, 256, nameof(MaxDescriptionPathEntries));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 256, nameof(MaxDescriptionPathEntries));
+            field = value;
+        }
     } = 64;
 
     /// <summary>Gets the maximum UTF-8 bytes accepted in one database path.</summary>
@@ -88,7 +96,11 @@ public sealed record DescriptionLimits
     public int MaxDescriptionPathBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 32_768, nameof(MaxDescriptionPathBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 32_768, nameof(MaxDescriptionPathBytes));
+            field = value;
+        }
     } = 4_096;
 
     /// <summary>Gets the maximum owned environment and accepted-description snapshot bytes.</summary>
@@ -97,7 +109,11 @@ public sealed record DescriptionLimits
     public int MaxDescriptionSnapshotBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 16_777_216, nameof(MaxDescriptionSnapshotBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 16_777_216, nameof(MaxDescriptionSnapshotBytes));
+            field = value;
+        }
     } = 1_048_576;
 
     /// <summary>Gets the maximum exact key byte sequences retained from one description.</summary>
@@ -106,7 +122,11 @@ public sealed record DescriptionLimits
     public int MaxDescriptionKeyBindings
     {
         get;
-        init => field = RequireBoundedPositive(value, 1_024, nameof(MaxDescriptionKeyBindings));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 1_024, nameof(MaxDescriptionKeyBindings));
+            field = value;
+        }
     } = 256;
 
     /// <summary>Gets the maximum bits accepted in one RGB component descriptor.</summary>
@@ -115,7 +135,11 @@ public sealed record DescriptionLimits
     public int MaxDescriptionRgbComponentBits
     {
         get;
-        init => field = RequireBoundedPositive(value, 63, nameof(MaxDescriptionRgbComponentBits));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 63, nameof(MaxDescriptionRgbComponentBits));
+            field = value;
+        }
     } = 16;
 
     /// <summary>Gets the maximum UTF-8 bytes accepted in one legacy termcap environment variable.</summary>
@@ -124,7 +148,11 @@ public sealed record DescriptionLimits
     public int MaxTermcapVariableBytes
     {
         get;
-        init => field = RequireBoundedPositive(value, 4_096, nameof(MaxTermcapVariableBytes));
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNotPositiveOrGreaterThan(value, 4_096, nameof(MaxTermcapVariableBytes));
+            field = value;
+        }
     } = 1_023;
 
     /// <summary>
@@ -165,15 +193,5 @@ public sealed record DescriptionLimits
         }
 
         return Array.AsReadOnly(copy);
-    }
-
-    private static int RequireBoundedPositive(int value, int maximum, string parameterName)
-    {
-        return value is > 0 && value <= maximum
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                parameterName,
-                value,
-                $"The limit must be positive and no greater than {maximum}.");
     }
 }

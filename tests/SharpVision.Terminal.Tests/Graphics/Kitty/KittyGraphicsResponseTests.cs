@@ -269,4 +269,26 @@ public sealed class KittyGraphicsResponseTests
             response.Message.ShouldBe("ENOENT:image missing");
         }
     }
+
+    /// <summary>Verifies the redacted structural description keeps invariant ASCII digits for
+    /// the numeric identifiers even when the current culture would otherwise substitute native
+    /// digit glyphs.</summary>
+    [Fact]
+    public void ToString_WhenCultureUsesNonAsciiDigits_UsesInvariantDigits()
+    {
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            var response = KittyGraphicsResponse.Parse("Gi=1234,p=5678;OK"u8);
+
+            response.ToString().ShouldBe("KittyGraphicsResponse valid=True image=1234 placement=5678 success=True");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

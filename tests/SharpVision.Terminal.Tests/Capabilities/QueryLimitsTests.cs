@@ -53,4 +53,28 @@ public sealed class QueryLimitsTests
         limits.QueryTimeout.ShouldBeGreaterThan(TimeSpan.Zero);
         limits.QueryTimeout.ShouldBeLessThan(TimeSpan.FromMinutes(1));
     }
+
+    /// <summary>
+    /// Verifies the bounded-limit exception message keeps invariant ASCII digits even when
+    /// the current culture would otherwise substitute native digit glyphs.
+    /// </summary>
+    [Fact]
+    public void MaxCapabilityItems_WhenCultureUsesNonAsciiDigits_MessageUsesInvariantDigits()
+    {
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            var exception = Should.Throw<ArgumentOutOfRangeException>(static () =>
+                new QueryLimits { MaxCapabilityItems = 0 });
+
+            exception.Message.ShouldContain("256");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

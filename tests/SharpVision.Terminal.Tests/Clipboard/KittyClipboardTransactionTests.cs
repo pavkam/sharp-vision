@@ -337,4 +337,28 @@ public sealed class KittyClipboardTransactionTests
 
     private static ClipboardPacket Packet(string wire) =>
         ClipboardPacket.Parse(Encoding.ASCII.GetBytes(wire));
+
+    /// <summary>Verifies the redacted transaction description keeps invariant ASCII digits for
+    /// the accumulated byte count even when the current culture would otherwise substitute
+    /// native digit glyphs.</summary>
+    [Fact]
+    public void ToString_WhenCultureUsesNonAsciiDigits_UsesInvariantDigits()
+    {
+        var previous = CultureInfo.CurrentCulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
+
+            using var transaction = KittyClipboardTransaction.Read();
+            _ = transaction.Accept(Packet("5522;type=read:status=OK"));
+            _ = transaction.Accept(Packet("5522;type=read:status=DATA:mime=dGV4dC9wbGFpbg==;MTIzNA=="));
+
+            transaction.ToString().ShouldContain("bytes=4");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 }

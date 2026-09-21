@@ -82,12 +82,11 @@ public sealed record InputOptions
     public int MaxPasteBytes
     {
         get;
-        init => field = value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(
-                nameof(value),
-                value,
-                "The paste limit must be positive.");
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, nameof(value));
+            field = value;
+        }
     } = 16 * 1024 * 1024;
 
     /// <summary>Gets protocol parser limits used by the decoder.</summary>

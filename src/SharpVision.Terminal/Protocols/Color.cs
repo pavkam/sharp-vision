@@ -177,7 +177,7 @@ public readonly record struct Color
             : IsTransparent
                 ? "Color { Transparent }"
                 : IsRgb
-                    ? $"Color {{ Rgb = ({Red}, {Green}, {Blue}) }}"
+                    ? string.Create(CultureInfo.InvariantCulture, $"Color {{ Rgb = ({Red}, {Green}, {Blue}) }}")
                     : "Color { Unknown }";
 
     private static void ValidateComponent(int value, string parameterName)
