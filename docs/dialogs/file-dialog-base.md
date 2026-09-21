@@ -98,7 +98,52 @@ touching the real filesystem; `FilePickerDialog` and `SaveFileDialog` both
 expose an `internal` constructor overload for exactly this purpose, and a
 third-party derivative can offer the same seam on its own public constructor.
 
-## Deriving
+## Interaction
+
+`FilePickerDialog` and `SaveFileDialog` document their own accept-specific
+interaction - double-click/Enter commit semantics, selection remap on a filter
+or hidden-entry change, and, for `SaveFileDialog`, the overwrite-confirmation
+flow - alongside the shared behavior below; see
+[FilePickerDialog](file-picker-dialog.md#interaction) and
+[SaveFileDialog](save-file-dialog.md#interaction). This page documents only the
+navigation, keyboard, cancel, and loading behavior every file dialog shares
+through this base.
+
+- The bordered `↑` Button, and Backspace pressed in `FileList`, both navigate to
+  the parent directory. Backspace matches a plain command after ignoring Caps
+  Lock and Num Lock; Control, Alt, Super, Hyper, Meta, and larger chords remain
+  unhandled. The Button disables once `FileSystem.GetParent` reports no parent.
+- Pressing Enter in `PathInput` raises its `Submitted` event, which calls
+  `Navigate` on the canonicalized text unless `TryAcceptTypedDirectory` accepts
+  it as a final selection instead. The base implementation always declines, so
+  `Navigate` runs unless a derivative overrides the hook.
+- Changing the filter selection or the `HiddenToggle` state each start a
+  replacement directory load through the same guarded pipeline as navigation.
+- `FileList`'s selection change calls the abstract `OnListSelectionChanged`
+  hook. Invoking a directory row (Enter, double-click, or whatever
+  `ItemInvocation` `FileList` is configured with) always navigates into it
+  instead of reaching a hook; invoking a file row calls the abstract
+  `OnFileItemInvoked` hook instead. This base never decides what invoking a file
+  does - that is entirely a derivative's own accept behavior.
+- A derivative's own `ShowAsync` factory passes `GetModalFocusTarget()` as the
+  control focused when the modal scope begins. This base itself moves focus once
+  more, from inside `CommitLoad` after the first successful directory load
+  commits: if focus is still on `PathInput` at that point, it moves to
+  `GetInitialLoadFocusTarget()`. A later load never moves focus again.
+- The shared Cancel Button is constructed with `IsCancel = true` and wired to
+  call `Cancel()` on click, so it also activates on Escape through the owning
+  `Window`'s own cancel-button lookup. This base never wires a default
+  (`IsDefault`) accept button itself; a derivative marks its own accept Button
+  `IsDefault` to receive the same Enter-anywhere activation for its own accept
+  path (see [Example](#example)). Tab and Shift+Tab stay confined to the modal
+  `Window`, exactly as every other modal dialog.
+- Every `BeginLoad` cancels the previous outstanding request before starting a
+  new one, and `IsLoading` publishes `true` for its duration. Detaching or
+  disposing the dialog also cancels any outstanding request. A cancelled request
+  is dropped silently: it never publishes a status message, entries, or
+  `IsLoading = false` for the superseded lease.
+
+## Example
 
 A third-party file dialog calls the base constructor, builds its own
 dialog-specific controls, calls `Initialize()`, and implements the eight
