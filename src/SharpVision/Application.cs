@@ -734,7 +734,10 @@ public sealed class Application:
     /// this application tears down its terminal-bound resources, ahead of <see cref="Session"/>
     /// and the host lease, inside <see cref="DisposeTerminalResourcesAsync"/>.
     /// </summary>
-    /// <param name="resource">The non-null resource to dispose first.</param>
+    /// <param name="resource">
+    /// The non-null resource to dispose first. Disposed immediately instead when the terminal
+    /// resources have already been torn down.
+    /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="resource"/> is null.</exception>
     /// <remarks>
     /// <see cref="ConsoleApplicationBuilder.Build"/> is the only current caller, registering the
@@ -753,6 +756,16 @@ public sealed class Application:
     {
         ArgumentNullException.ThrowIfNull(resource);
         Debug.Assert(_terminalBoundResource is null, "Only one terminal-bound resource is registered at a time.");
+
+        // Terminal resources are already torn down, so the one ordering this registration exists
+        // to provide can no longer be honored: dispose the resource right away rather than hold a
+        // reference nothing will ever release.
+        if (Volatile.Read(ref _terminalBoundResourceDisposed) != 0)
+        {
+            resource.Dispose();
+            return;
+        }
+
         _terminalBoundResource = resource;
     }
 

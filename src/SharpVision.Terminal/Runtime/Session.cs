@@ -28,6 +28,18 @@ public sealed class Session: IAsyncDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly List<Lease> _leases = [];
     private readonly Lock _lifecycle = new();
+    // Serializes the three lease walks - CleanupAsync's final reverse walk, SuspendAsync's
+    // reverse walk, and ReplayLeasesAsync's forward walk - so no two ever write to the transport
+    // at once. SnapshotLeases' _cleanupStarted gate refuses a job-control walk whose snapshot is
+    // taken after cleanup began, but a walk that took its snapshot just before that flag flipped
+    // would otherwise keep writing concurrently with cleanup's own walk over the same leases,
+    // and two concurrent walks could each observe the title push as still on the stack and both
+    // pop it. Holding this across the whole walk, snapshot included, closes both windows: a walk
+    // in flight finishes (bounded by CleanupTimeout) before the next one takes its snapshot, and
+    // that next snapshot then observes the flag and the title state the finished walk left behind.
+    // Never disposed: a SemaphoreSlim that never exposes its wait handle owns no native resource,
+    // and a job-control signal can still call into a walk after DisposeAsync has returned.
+    private readonly SemaphoreSlim _walkGate = new(1, 1);
     // Identity-bearing, not a boolean. The flag is necessarily static - AsyncLocal must be shared
     // to be observed across the await chain - so a bool cannot say *which* session is running, and
     // every Session in the process saw every other Session's run.
@@ -1600,6 +1612,10 @@ public sealed class Session: IAsyncDisposable
     /// </summary>
     /// <param name="gateOnCleanupStarted">True to refuse with an empty snapshot once cleanup has begun.</param>
     /// <returns>The snapshot, or an empty array when the call was refused.</returns>
+    /// <remarks>
+    /// Always called with <see cref="_walkGate"/> held, so a snapshot is never taken while another
+    /// walk is still writing against its own.
+    /// </remarks>
     private Lease[] SnapshotLeases(bool gateOnCleanupStarted)
     {
         lock (_lifecycle)
@@ -1625,6 +1641,31 @@ public sealed class Session: IAsyncDisposable
     /// by the time this call takes its snapshot - see <see cref="SnapshotLeases"/>.
     /// </param>
     private async ValueTask WriteLeaseDisableWalkAsync(
+        bool clearAfterward,
+        Action<Exception> recordFailure,
+        bool gateOnCleanupStarted)
+    {
+        await _walkGate.WaitAsync().ConfigureAwait(false);
+
+        try
+        {
+            await WriteLeaseDisableWalkCoreAsync(clearAfterward, recordFailure, gateOnCleanupStarted)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = _walkGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// The body of <see cref="WriteLeaseDisableWalkAsync"/>, run while <see cref="_walkGate"/> is
+    /// held so its snapshot and every write it makes are ordered after any walk already in flight.
+    /// </summary>
+    /// <param name="clearAfterward">True to clear the live lease list once the walk finishes.</param>
+    /// <param name="recordFailure">Invoked with each write failure; never rethrown.</param>
+    /// <param name="gateOnCleanupStarted">True to refuse outright once cleanup has begun.</param>
+    private async ValueTask WriteLeaseDisableWalkCoreAsync(
         bool clearAfterward,
         Action<Exception> recordFailure,
         bool gateOnCleanupStarted)
@@ -1729,6 +1770,24 @@ public sealed class Session: IAsyncDisposable
     /// is still replayed unconditionally.
     /// </remarks>
     internal async ValueTask ReplayLeasesAsync()
+    {
+        await _walkGate.WaitAsync().ConfigureAwait(false);
+
+        try
+        {
+            await ReplayLeasesCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = _walkGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// The body of <see cref="ReplayLeasesAsync"/>, run while <see cref="_walkGate"/> is held so
+    /// its snapshot and every write it makes are ordered after any walk already in flight.
+    /// </summary>
+    private async ValueTask ReplayLeasesCoreAsync()
     {
         var snapshot = SnapshotLeases(gateOnCleanupStarted: true);
 

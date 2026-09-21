@@ -3461,17 +3461,21 @@ public sealed class SessionTests
         transport.Close();
         await transport.GateEntered.WaitAsync(TestContext.Current.CancellationToken);
 
-        await session.SuspendAsync();
+        var suspending = session.SuspendAsync().AsTask();
 
-        // Assert - the racing suspend found cleanup already under way and wrote nothing.
-        session.LastSuspendException.ShouldBeNull();
+        // Assert - the racing suspend waits behind cleanup's walk instead of writing alongside it.
+        await Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken);
+        suspending.IsCompleted.ShouldBeFalse();
         transport.JoinedWrites.ShouldBe("enter");
 
         transport.Release();
+        await suspending;
         await running;
 
-        // Assert - cleanup's own walk still wrote the lease's disable bytes exactly once.
+        // Assert - cleanup's own walk wrote the lease's disable bytes exactly once, and the suspend,
+        // admitted only once that walk had finished, found cleanup under way and wrote nothing.
         transport.JoinedWrites.ShouldBe("enterexit");
+        session.LastSuspendException.ShouldBeNull();
         session.LastCleanupException.ShouldBeNull();
     }
 
@@ -3513,6 +3517,113 @@ public sealed class SessionTests
         session.LastResumeException.ShouldBeNull();
 
         await session.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies a SIGCONT arriving while the session's own final reverse walk is still draining
+    /// the lease list replays nothing: the resume is admitted only once that walk has finished,
+    /// then finds cleanup under way, so it never re-enables a lease cleanup is disabling, and
+    /// cleanup's own walk still writes that lease's disable bytes exactly once.
+    /// </summary>
+    [Fact]
+    public async Task ResumeAsync_WhenRacingCleanupAsync_ReplaysNothingAsync()
+    {
+        // Arrange
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using GatedWriteTransport transport = new() { PauseWriteAt = 2 };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        transport.JoinedWrites.ShouldBe("enter");
+
+        // Act - closing input ends the read loop, so RunAsync's own finally starts CleanupAsync's
+        // reverse walk; its one lease's disable write is the second write overall and pauses there,
+        // proof that _cleanupStarted is already set by the time the racing resume below runs.
+        transport.Close();
+        await transport.GateEntered.WaitAsync(TestContext.Current.CancellationToken);
+
+        var resuming = session.ResumeAsync().AsTask();
+
+        // Assert - the racing resume waits behind cleanup's walk instead of replaying alongside it.
+        await Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken);
+        resuming.IsCompleted.ShouldBeFalse();
+        transport.JoinedWrites.ShouldBe("enter");
+
+        transport.Release();
+        await resuming;
+        await running;
+
+        // Assert - the resume, admitted only once cleanup's walk had finished, found cleanup under
+        // way and replayed nothing.
+        session.LastResumeException.ShouldBeNull();
+
+        // Assert - cleanup's own walk still wrote the lease's disable bytes exactly once, and no
+        // re-enable ever slipped in between.
+        transport.JoinedWrites.ShouldBe("enterexit");
+        session.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies the opposite interleaving of the race above: a SIGTSTP whose reverse walk took its
+    /// snapshot before final cleanup began, and is still writing when cleanup starts, is not raced
+    /// by cleanup's own walk. The two walks are serialized, so cleanup's disable bytes only ever
+    /// follow the suspend's, never interleave with them.
+    /// </summary>
+    [Fact]
+    public async Task SuspendAsync_WhenCleanupStartsMidWalk_FinishesBeforeCleanupWalksAsync()
+    {
+        // Arrange
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using GatedWriteTransport transport = new() { PauseWriteAt = 2 };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        transport.JoinedWrites.ShouldBe("enter");
+
+        // Act - the suspend's one disable write is the second write overall and pauses there, with
+        // its snapshot already taken while no cleanup was under way; closing input then ends the
+        // read loop, so RunAsync's own finally starts CleanupAsync while the suspend is mid-walk.
+        var suspending = session.SuspendAsync().AsTask();
+        await transport.GateEntered.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+
+        // Assert - cleanup's walk waits behind the paused suspend rather than writing alongside it.
+        await Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken);
+        transport.JoinedWrites.ShouldBe("enter");
+        running.IsCompleted.ShouldBeFalse();
+
+        transport.Release();
+        await suspending;
+        await running;
+
+        // Assert - the suspend's disable bytes landed first, then cleanup's own, each exactly once.
+        transport.JoinedWrites.ShouldBe("enterexitexit");
+        session.LastSuspendException.ShouldBeNull();
+        session.LastCleanupException.ShouldBeNull();
     }
 
     /// <summary>
