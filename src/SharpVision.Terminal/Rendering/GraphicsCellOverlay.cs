@@ -10,6 +10,8 @@ internal sealed class GraphicsCellOverlay
 
     /// <summary>Initializes an empty overlay matching one active frame.</summary>
     /// <param name="frame">The non-null borrowed semantic frame.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="frame"/> is null.</exception>
+    /// <exception cref="ObjectDisposedException">The frame is disposed.</exception>
     public GraphicsCellOverlay(Frame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);

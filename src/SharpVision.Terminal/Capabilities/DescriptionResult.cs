@@ -28,6 +28,9 @@ public sealed class DescriptionResult
     public IReadOnlyList<DescriptionDiagnostic> Diagnostics { get; }
 
     /// <summary>Creates one loaded result.</summary>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="profile"/> or <paramref name="diagnostics"/> is null.
+    /// </exception>
     [Pure]
     internal static DescriptionResult Loaded(
         TerminalProfile profile,
@@ -55,6 +58,7 @@ public sealed class DescriptionResult
         diagnostics ?? Array.Empty<DescriptionDiagnostic>());
 
     /// <summary>Creates one failed-provider result.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="diagnostics"/> is null.</exception>
     [Pure]
     internal static DescriptionResult ProviderFailed(
         IReadOnlyList<DescriptionDiagnostic> diagnostics)

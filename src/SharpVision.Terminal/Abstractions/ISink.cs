@@ -20,6 +20,7 @@ public interface ISink: IProtocolSink
 
     /// <summary>Publishes one immutable redacted terminal diagnostic refinement.</summary>
     /// <param name="value">The non-null diagnostic snapshot.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
     /// <remarks>
     /// The default implementation accepts and ignores diagnostics so an existing runtime sink
     /// does not need to opt into observability it does not consume.

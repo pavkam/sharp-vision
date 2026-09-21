@@ -29,6 +29,7 @@ internal interface IGraphicsBackend: IDisposable
 
     /// <summary>Accepts an asynchronous Kitty graphics response relevant to retained ownership.</summary>
     /// <param name="response">The non-null decoded response.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="response"/> is null.</exception>
     public void Accept(KittyGraphicsResponse response) => ArgumentNullException.ThrowIfNull(response);
 
     /// <summary>Prepares a finite transaction without producing terminal output.</summary>

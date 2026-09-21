@@ -19,6 +19,7 @@ public readonly struct Paste
     /// <summary>Transfers an already isolated array into a paste value.</summary>
     /// <param name="owned">The non-null isolated payload.</param>
     /// <returns>The paste owning <paramref name="owned"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="owned"/> is null.</exception>
     internal static Paste Take(byte[] owned)
     {
         ArgumentNullException.ThrowIfNull(owned);
