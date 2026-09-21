@@ -426,6 +426,7 @@ flowchart TD
     TrueColorCheck -->|No| Declared{"declared tier"}
     Declared -->|"TrueColor or Indexed256"| Indexed256["Indexed256"]
     Declared -->|Basic16| Basic16["Basic16"]
+    Declared -->|Monochrome| Mono
 ```
 
 Basic16 and Indexed256 share this one completeness gate — the `setaf`/`setab`
