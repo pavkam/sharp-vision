@@ -161,10 +161,14 @@ flowchart TD
     H -->|No| J["deliveryTarget = hoverTarget"]
     I --> M["Publish hover enter/exit along the resolved path"]
     J --> M
-    M --> N{"Snapshot still valid? (same modality/scope as hit test; target still eligible)"}
+    M --> M1{"Physical leaf under a surface that suppresses interaction? (see floating-surfaces.md#ownership-elevation-and-modality)"}
+    M1 -->|Yes| M2["Complete press, break click chain, return null"]
+    M1 -->|No| N{"Snapshot still valid? (same modality/scope as hit test; target still eligible)"}
     N -->|No| O["Abort: break click chain, return null"]
     N -->|Yes| P{"Scope active, hit outside every plane, and uncaptured?"}
-    P -->|Yes| Q{"Wheel, or Press with primary button?"}
+    P -->|Yes| LD{"Press action? Try light dismiss on the youngest eligible non-modal surface (see floating-surfaces.md#ownership-elevation-and-modality)"}
+    LD -->|"Consumed"| T
+    LD -->|"Not consumed, or not a Press"| Q{"Wheel, or Press with primary button?"}
     Q -->|Yes| R["RequestDismiss: Dismiss policy raises DismissRequested; Ignore raises nothing"]
     Q -->|No| S["Consume silently"]
     R --> T["Break click chain, return null"]

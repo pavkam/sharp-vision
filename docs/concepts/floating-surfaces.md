@@ -278,7 +278,11 @@ retains the live scope, while the application
 [`ModalityManager`](modality.md#overview) owns confinement, outside interaction,
 nested-scope order, capture cleanup, and focus restoration. `Window.ShowModal`
 defaults to `OutsideInteraction.Ignore`, while ordinary `Popup` opening defaults
-to dismissal. `Flyout` manages light dismissal without a modal scope, and
+to dismissal. `Popup` exposes light dismissal through `ConfigureLightDismiss`;
+`Flyout` configures it from its own constructor, and `ContextMenu` configures it
+on the `Popup` it composes, so each manages dismissal without a modal scope.
+`PointerManager` lets the youngest eligible light-dismiss registrant consume one
+outside-plane press before a modal scope's own `RequestDismiss` policy runs.
 `Tooltip` never enters modality or pointer targeting.
 
 ## Layout and drawing boundaries
