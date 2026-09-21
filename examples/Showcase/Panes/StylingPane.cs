@@ -78,7 +78,9 @@ internal sealed class StylingPane: CompositeControlBase
             LineSpacing = 1
         };
         styleRoles.Children.Add(new Button { Text = "&Button role" });
+        styleRoles.Children.Add(new Button { Text = "&Filled button role", Style = ButtonStyle.Filled });
         styleRoles.Children.Add(new CheckBox { Text = "&Toggle role", IsChecked = true });
+        styleRoles.Children.Add(new RadioButton { Text = "&Radio toggle role", IsChecked = true });
         styleRoles.Children.Add(new DocRow(
             new Text("Item role:"),
             new ListView
@@ -169,9 +171,9 @@ internal sealed class StylingPane: CompositeControlBase
                 "<info>ButtonStyle</info>, <info>ToggleStyle</info>, <info>ItemStyle</info>, and <info>PanelStyle</info> generalize a presentation role shared by several controls rather than one control's own appearance.",
                 new DocExample(
                     "Button, toggle, item, and panel role controls",
-                    "<info>Button</info>'s own style type is the <info>button</info> role directly. <info>CheckBox</info> falls back to the <info>toggle</info> role, <info>ListView</info> falls back to the <info>item</info> role, and an unstyled layout panel such as this <info>Stack</info> paints the passive <info>panel</info> role behind its children.",
+                    "<info>Button</info>'s own style type is the <info>button</info> role directly. <info>ButtonStyle.Filled</info> swaps the button face for its shadowed preset without leaving the role. <info>CheckBox</info> and <info>RadioButton</info> fall back to the <info>toggle</info> role, <info>ListView</info> falls back to the <info>item</info> role, and an unstyled layout panel such as this <info>Stack</info> paints the passive <info>panel</info> role behind its children.",
                     styleRoles,
-                    "var button = new Button { Text = \"&Button role\" };\nvar toggle = new CheckBox { Text = \"&Toggle role\" };"),
+                    "var button = new Button { Text = \"&Button role\" };\nvar filled = new Button { Text = \"&Filled button role\", Style = ButtonStyle.Filled };\nvar toggle = new CheckBox { Text = \"&Toggle role\" };\nvar radio = new RadioButton { Text = \"&Radio toggle role\" };"),
                 new DocExample(
                     "Bounded Face.AccessKeyColor",
                     "Each specimen changes only the marked access-key grapheme's color, leaving the rest of its role's Face untouched.",
