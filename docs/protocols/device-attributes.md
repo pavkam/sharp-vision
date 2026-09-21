@@ -60,8 +60,10 @@ values stay immutable, and timeouts never promote unknown support.
 and xterm modifyOtherKeys (`CSI > 4 ; Pv m`) values.
 `XtermResponses.TryMetricsCsi` accepts only the xterm window-operation reports
 `CSI 4 ; height ; width t`, `CSI 6 ; height ; width t`, and
-`CSI 8 ; height ; width t`; both extents must be from 1 through 65535 before a
-`MetricsResponse` is constructed. `XtermResponses.TryOsc` owns `PaletteResponse`
+`CSI 8 ; height ; width t`; both extents must be positive and representable by a
+signed 32-bit `Size`, matching the
+[window metrics contract](xterm.md#window-metrics), before a `MetricsResponse`
+is constructed. `XtermResponses.TryOsc` owns `PaletteResponse`
 values for OSC 4, OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB
 components are validated and normalized to 16-bit values before publication. The
 [runtime router](runtime-routing.md#overview) delivers those typed values
