@@ -71,6 +71,57 @@ internal sealed class StylingPane: CompositeControlBase
 
         var elementStates = CreateElementStates();
 
+        var styleRoles = new Wrap
+        {
+            Width = Length.Percent(100),
+            Spacing = 2,
+            LineSpacing = 1
+        };
+        styleRoles.Children.Add(new Button { Text = "&Button role" });
+        styleRoles.Children.Add(new CheckBox { Text = "&Toggle role", IsChecked = true });
+        styleRoles.Children.Add(new DocRow(
+            new Text("Item role:"),
+            new ListView
+            {
+                Width = Length.Cells(14),
+                Height = Length.Cells(2),
+                Items = new object?[] { "Row one", "Row two" }
+            }));
+        styleRoles.Children.Add(new DocCard(
+            new Stack { Spacing = 1, Children = { new Text("Panel role plane") } }));
+
+        var accessKeyColors = new Wrap
+        {
+            Width = Length.Percent(100),
+            Spacing = 2,
+            LineSpacing = 1
+        };
+        accessKeyColors.Children.Add(new Button
+        {
+            Text = "&Warning access key",
+            Style = ButtonStyle.Filled with
+            {
+                Face = ButtonStyle.Filled.Face with { AccessKeyColor = SemanticColor.Warning }
+            }
+        });
+        accessKeyColors.Children.Add(new CheckBox
+        {
+            Text = "S&uccess access key",
+            IsChecked = true,
+            Style = CheckBoxStyle.Default with
+            {
+                Face = CheckBoxStyle.Default.Face with { AccessKeyColor = SemanticColor.Success }
+            }
+        });
+        accessKeyColors.Children.Add(new RadioButton
+        {
+            Text = "&Info access key",
+            Style = RadioButtonStyle.Default with
+            {
+                Face = RadioButtonStyle.Default.Face with { AccessKeyColor = SemanticColor.Info }
+            }
+        });
+
         return new DocPage(
             Title,
             "<info>Styling</info> combines concrete terminal colors with theme-resolved semantic colors and complete Face, Border, and Shadow values.",
@@ -111,7 +162,21 @@ internal sealed class StylingPane: CompositeControlBase
                 new DocExample(
                     "Composite, block-glyph, and fractional shadows",
                     "The three modes preserve content, replace footprint cells, or use half-row block geometry respectively.",
-                    shadows)));
+                    shadows)),
+            new DocSection(
+                "🏷",
+                "Style roles",
+                "<info>ButtonStyle</info>, <info>ToggleStyle</info>, <info>ItemStyle</info>, and <info>PanelStyle</info> generalize a presentation role shared by several controls rather than one control's own appearance.",
+                new DocExample(
+                    "Button, toggle, item, and panel role controls",
+                    "<info>Button</info>'s own style type is the <info>button</info> role directly. <info>CheckBox</info> falls back to the <info>toggle</info> role, <info>ListView</info> falls back to the <info>item</info> role, and an unstyled layout panel such as this <info>Stack</info> paints the passive <info>panel</info> role behind its children.",
+                    styleRoles,
+                    "var button = new Button { Text = \"&Button role\" };\nvar toggle = new CheckBox { Text = \"&Toggle role\" };"),
+                new DocExample(
+                    "Bounded Face.AccessKeyColor",
+                    "Each specimen changes only the marked access-key grapheme's color, leaving the rest of its role's Face untouched.",
+                    accessKeyColors,
+                    "button.Style = ButtonStyle.Filled with\n{\n    Face = ButtonStyle.Filled.Face with { AccessKeyColor = SemanticColor.Warning }\n};")));
     }
 
     private static DocRow CreateColorSample(string caption, Color background)
