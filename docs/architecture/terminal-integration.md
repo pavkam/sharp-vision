@@ -157,7 +157,9 @@ dispatch and recovery.
 - Shutdown disables acquired terminal modes in reverse order, disposes session
   transport/resize resources, and restores the platform console lease last. A
   Unix restore discards unread terminal input before re-enabling canonical echo,
-  preventing a partial mouse report from leaking into the resumed shell.
+  preventing a partial mouse report from leaking into the resumed shell. A
+  Windows restore flushes the console input buffer between restoring the output
+  and input console modes, for the same reason.
 - A cleanup failure never replaces an earlier application or transport failure.
 
 ## Expected behavior

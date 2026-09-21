@@ -262,7 +262,9 @@ none of these modes and stays byte-quiet.
 `ConsoleRunOptions` is an immutable `record` with a validating `init` accessor
 for each bounded property. `ConsoleApplicationBuilder` exposes one fluent setter
 per property (each returning `this`) plus a `ConfigureOptions` escape hatch that
-replaces the accumulated options wholesale.
+replaces the accumulated options wholesale. `NegotiationDisabled` is the one
+exception: it has no dedicated setter and changes only as a side effect of
+`WithoutNegotiation()` (sets it) and `UseNegotiation(...)` (clears it).
 
 | Property                      | Type                        | Default                                                                        |
 | ----------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
@@ -281,11 +283,14 @@ replaces the accumulated options wholesale.
 | `Capabilities`                | `Capabilities?`             | `null` (detect and negotiate at startup)                                       |
 | `ColorDepth`                  | `ColorDepth?`               | `null` (use the detected depth)                                                |
 | `Negotiation`                 | `NegotiationOptions?`       | `null` (default startup negotiation from the environment)                      |
+| `NegotiationDisabled`         | `bool`                      | `false`                                                                        |
+| `DiagnosticPromotions`        | `DiagnosticPromotion`       | `DiagnosticPromotion.None`                                                     |
 | `CleanupTimeout`              | `TimeSpan`                  | `1` second                                                                     |
 | `ReadBufferSize`              | `int`                       | `16 * 1024` (16 KiB)                                                           |
 | `EscapeTimeout`               | `TimeSpan`                  | `50` ms                                                                        |
 | `MaxPasteBytes`               | `int`                       | `16 * 1024 * 1024` (16 MiB)                                                    |
 | `TransferLimits`              | `TransferLimits`            | `TransferLimits.Default`                                                       |
+| `ParserLimits`                | `ParserLimits`              | `ParserLimits.Default`                                                         |
 | `ResizeInterval`              | `TimeSpan`                  | `100` ms                                                                       |
 | `TreatControlCAsInput`        | `bool`                      | `false`                                                                        |
 | `UseEnvironmentSizeOverrides` | `bool`                      | `false`                                                                        |
@@ -313,6 +318,15 @@ A transport whose cancellation completes asynchronously therefore delays exit by
 at most this budget, and a transport that never completes forfeits its pooled
 read array rather than stalling shutdown. Custom transports that complete
 cancellation promptly never observe either delay.
+
+`TransferLimits` and `ParserLimits` bound clipboard transfers together.
+`TransferLimits.MaxClipboardBytes` (default 16 MiB) caps the decoded clipboard
+payload, but the raw base64-encoded OSC 52 / Kitty OSC 5522 sequence must first
+fit within `ParserLimits.MaxStringBytes` (default 1 MiB), which bounds every
+OSC/DCS/APC/PM/SOS wire buffer before decoding ever happens. Because base64
+inflates the payload by roughly 4/3, raising `MaxClipboardBytes` alone has no
+effect above approximately 768 KiB unless `ParserLimits` is raised as well, for
+example via `ConsoleApplicationBuilder.UseParserLimits`.
 
 `ConsoleRunOptions.ToTerminalOptions(TerminalProfile)` maps these properties
 onto the Terminal-layer `Options` record consumed by `Session` (the complete
@@ -421,8 +435,9 @@ rules, which that document owns.
 
 Platform restoration failure is reported, never discarded. Both mode leases
 always attempt every restore - Unix replays the captured `tcgetattr` state, and
-Windows restores the input handle and then the output handle even when the input
-restore failed - and then throw the first failure.
+Windows restores the output handle, then flushes unread console input, then
+restores the input handle, attempting each of those three steps even when an
+earlier one failed - and then throw the first failure.
 `ConsoleConnection.DisposeAsync` lets that failure propagate, and `Application`
 folds it into `LastCleanupException` without replacing the primary `Failure`. A
 terminal left raw, without echo, or with modified Windows console modes is
@@ -473,9 +488,11 @@ The two streams have different owners, so the transport is constructed with
 itself and must close it during ordinary shutdown, while standard output belongs
 to the process and is only borrowed. Disposing the transport therefore closes
 the tty descriptor, and a completed lifecycle leaves nothing open. Windows keeps
-a shared `leaveOpen: true`, which is correct there because
-`Console.OpenStandardInput` and `Console.OpenStandardOutput` both wrap
-process-owned handles.
+a shared `leaveOpen: true`, which is correct there because both streams wrap
+handles from `RuntimeInterop.GetStandardHandle` rather than owning a descriptor
+of their own: `WindowsConsoleInputStream` reads through `ReadConsoleW` and
+`WindowsConsoleOutputStream` writes through `WriteConsoleW`, and neither one
+ever opens or closes the underlying console handle.
 
 If construction fails partway, `Open` unwinds in exact reverse order - resize
 source, transport, tty stream, then the raw-mode lease - because the resize
@@ -508,6 +525,18 @@ mouse coordinates are unavailable on that path. A mode read or write failure
 throws `IOException` wrapping a `Win32Exception`
 (`Marshal.GetLastPInvokeError()`), mirroring the existing Unix
 `Native.GetDimensions` failure shape.
+
+The opened streams are UTF-8 aware regardless of the process's console code
+page: `WindowsConsoleInputStream` reads through `ReadConsoleW` and transcodes
+UTF-16 to UTF-8, and `WindowsConsoleOutputStream` transcodes UTF-8 to UTF-16
+before writing through `WriteConsoleW`, bypassing the code-page-dependent
+`ReadFile`/`WriteFile`/`ReadConsoleA`/`WriteConsoleA` paths that would otherwise
+drop or garble non-ASCII input and output on a console that has not run
+`chcp 65001`. On restore, `WindowsConsoleMode.Dispose` calls
+`FlushConsoleInputBuffer` between restoring the output mode and restoring the
+input mode, discarding any negotiation reply, mouse report, or focus event that
+arrived after this process's last read so it cannot be delivered to the resumed
+shell as literal keystrokes - mirroring the Unix lease's `TCSAFLUSH` discard.
 
 The Windows path is validated beyond its unit-tested mode-flag computation and
 P/Invoke boundary shape: a real ConPTY-backed fixture drives `ConsoleHost.Open`
