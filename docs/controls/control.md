@@ -777,11 +777,11 @@ grandparent of the item, not its direct parent - so an items collection detaches
 a directly disposed item through its own removal path the same way a direct
 owner already could. An override must not throw, for the same reason
 `OnDirectDisposalRequested` must not. These hooks and
-`OnParentChanged(Control?, Control?)` always observe committed ownership state.
-`OnUnavailable` is the guarded pre-commit exception described under
-[children and ownership](#children-and-ownership): manager state is already
-clear, while parent and inherited context still describe the coherent old tree.
-`OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` are
+`OnParentChanged(ControlBase? previous, ControlBase? current)` always observe
+committed ownership state. `OnUnavailable` is the guarded pre-commit exception
+described under [children and ownership](#children-and-ownership): manager state
+is already clear, while parent and inherited context still describe the coherent
+old tree. `OnFocusChanged`, `OnLostPointerCapture`, and `OnUnavailable` are
 component-policy hooks, not framework-cleanup extension points: their
 non-virtual callers settle mandatory selection and manager state first, and
 their base implementations are invariant assertions only.

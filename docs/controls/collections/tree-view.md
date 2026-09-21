@@ -209,6 +209,7 @@ no disposed entry remains reachable through `Items` or `Children`.
 
 | Member                                   | Type                                               | Default              | Description                                                                              |
 | ---------------------------------------- | -------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| `TreeViewItem()`                         | —                                                  | —                    | Initializes an item with an empty header.                                                |
 | `TreeViewItem(header)`                   | —                                                  | —                    | Initializes an item with the given display text; rejects a null header.                  |
 | `Header`                                 | `string`                                           | `""`                 | Non-null display text; rejects null and a value containing a terminal control character. |
 | `IsExpanded`                             | `bool`                                             | `true`               | Whether child items are visible.                                                         |

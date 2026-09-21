@@ -53,7 +53,7 @@ classDiagram
 | `HandleScrollKey(KeyEventArgs, bool)`                                     | `bool`                                 | —                | Protected; maps and applies one keyboard navigation stroke through the host.                                   |
 | `HandleScrollWheel(PointerEventArgs)`                                     | `bool`                                 | —                | Protected; maps and applies one wheel record through the host.                                                 |
 | `OnScrollHostScrollChanged(ScrollChangedEventArgs)`                       | `void`                                 | No-op            | Protected virtual; runs after the bridge refreshes cached properties.                                          |
-| `TextSelectionPageDistance()`                                             | `int`                                  | Host-derived     | Protected override; the host's `Viewport.Height - PageOverlap` once installed.                                 |
+| `TextSelectionPageDistance()`                                             | `int`                                  | Host-derived     | Protected override; the host's `Math.Max(1, Viewport.Height - PageOverlap)` once installed.                    |
 
 `Extent`, `Viewport`, `HorizontalOffset`, `ScrollBars`, and `ScrollBy` are
 `virtual` so a derived component can widen, restrict, or fully replace one axis

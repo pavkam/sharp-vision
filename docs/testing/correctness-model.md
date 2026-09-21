@@ -137,9 +137,9 @@ When a test genuinely needs state a type does not expose, add a documented
 assembly, so the member is directly readable without reflection. An `internal`
 seam is not production surface: `PublicApiGenerator` excludes it, it appears in
 no `.verified.txt` snapshot, and no consumer can observe it. Document on the
-member which invariant it exists to prove — `KeySequenceMatcher.RetainsStorage`,
-`Frame.CurrentMutationRevision`, and `Session.Backend` are established uses of
-this pattern.
+member which invariant it exists to prove —
+`ProtocolRouter.DecoderInvocationCount`, `Frame.CurrentMutationRevision`, and
+`Session.Backend` are established uses of this pattern.
 
 A shape assertion is allowed only inside a test that exercises the behavior the
 shape protects, and only for a fact the snapshot cannot express, such as
