@@ -4,6 +4,7 @@
 namespace SharpVision.Tests.Runtime;
 
 using System.Buffers;
+using System.Reflection;
 
 using SharpVision.Runtime;
 
@@ -411,6 +412,64 @@ public sealed class TerminalServicesTests
         poppedTitleStack.ShouldBeTrue();
     }
 
+    /// <summary>Verifies a job-control resume re-posts the application's own title text as its own
+    /// exact-byte write, once a title has already been set - the fix for the title otherwise
+    /// silently and permanently reverting to whatever the pre-application title was. The session's
+    /// own lease replay separately re-pushes the title stack as it does for every other lease; this
+    /// write is the title text itself, and it carries no push of its own.</summary>
+    [Fact]
+    public async Task SetTitle_WhenSessionResumesAfterJobControlStop_RepostsTitleTextAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var firstTitleWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var repostedTitleWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.SequenceEqual("\u001b[22;0t\u001b]2;resumed\u001b\\"u8))
+            {
+                _ = firstTitleWritten.TrySetResult();
+            }
+            else if (memory.Span.SequenceEqual("\u001b]2;resumed\u001b\\"u8))
+            {
+                _ = repostedTitleWritten.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        application.Terminal.SetTitle("resumed");
+        await firstTitleWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.Session.ResumeAsync();
+        await repostedTitleWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Verifies a job-control resume that occurs before any title was ever set writes
+    /// nothing: the retained title bytes a resume would re-post start out empty, so there is
+    /// nothing for <c>RepostTitleAfterResume</c> to write.</summary>
+    [Fact]
+    public async Task SetTitle_WhenNeverCalledBeforeSessionResumes_WritesNoTitleBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        await application.Session.ResumeAsync();
+        await application.Dispatcher.InvokeAsync(static () => { }, TestContext.Current.CancellationToken);
+
+        var wroteTitleBytes = terminal.Writes.Any(static write =>
+            write.AsSpan().IndexOf("\u001b]2;"u8) >= 0 ||
+            write.AsSpan().IndexOf("\u001b[22;0t"u8) >= 0 ||
+            write.AsSpan().IndexOf("\u001b[23;0t"u8) >= 0);
+        wroteTitleBytes.ShouldBeFalse();
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+    }
+
     /// <summary>Verifies a session that never sets a title never touches the title stack, leaving
     /// the outer terminal's title bar - or a nested multiplexer pane's - exactly as it found
     /// it.</summary>
@@ -513,6 +572,55 @@ public sealed class TerminalServicesTests
             write.AsSpan().IndexOf("\u001b[22;0t"u8) >= 0 ||
             write.AsSpan().IndexOf("\u001b[23;0t"u8) >= 0);
         touchedTitleStack.ShouldBeFalse();
+    }
+
+    /// <summary>Verifies that when the session's <c>ConfirmTitleLease</c> call refuses a
+    /// reservation whose push already reached the out-of-band queue - the narrow window a
+    /// session-originated fault can open between reservation and confirmation - the already
+    /// computed pop bytes are posted immediately instead of leaving the title stack one entry
+    /// deep, so long as the application itself is not yet stopping.</summary>
+    [Fact]
+    public async Task SetTitle_WhenConfirmationFailsBeforeStopBegins_PostsThePopBytesAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(20, 6)));
+        var titleWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var poppedAfterConfirmFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        terminal.Written += memory =>
+        {
+            if (memory.Span.SequenceEqual("[22;0t]2;first\\"u8))
+            {
+                _ = titleWritten.TrySetResult();
+            }
+            else if (memory.Span.SequenceEqual("[23;0t"u8))
+            {
+                _ = poppedAfterConfirmFailure.TrySetResult();
+            }
+        };
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+        await application.StartAsync(TestContext.Current.CancellationToken);
+
+        // Lands this call deterministically inside the otherwise-unobservable window the real bug
+        // lives in - between the combined push+title bytes reaching the out-of-band queue and the
+        // confirmation that would otherwise record their matching pop - without actually starting
+        // the session's own reverse cleanup or touching the application's own stopping state, so
+        // the failure is isolated to exactly the one call this test exercises.
+        var cleanupStartedField = typeof(Session).GetField(
+            "_cleanupStarted", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        ((TerminalServices) application.Terminal).OnTitlePostedBeforeConfirmForTests = () =>
+            cleanupStartedField.SetValue(application.Session, true);
+
+        application.Terminal.SetTitle("first");
+        await titleWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await poppedAfterConfirmFailure.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        // The pop reached the wire exactly once - immediately after the failed confirmation above
+        // - and reverse cleanup during Stop never had a lease to unwind, since ConfirmTitleLease
+        // never recorded one, so it never writes a second one.
+        var popCount = terminal.Writes.Count(static write => write.AsSpan().SequenceEqual("[23;0t"u8));
+        popCount.ShouldBe(1);
     }
 
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>

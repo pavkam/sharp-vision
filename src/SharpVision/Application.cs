@@ -1058,12 +1058,17 @@ public sealed class Application:
     /// own remarks already describe for "a resumed session": the terminal may have shown unrelated
     /// content (the shell's own prompt, another program) for the entire time this process was
     /// stopped, so the renderer's cached idea of the screen can no longer be trusted for a
-    /// differential update.
+    /// differential update. Also re-posts the application's own title text: the same lease replay
+    /// that restores the screen's optional modes re-pushes whatever title was displayed
+    /// immediately before the stop, which is the pre-application title rather than this
+    /// application's own once a title had ever been set, so without this the title bar would
+    /// silently and permanently revert.
     /// </summary>
     /// <remarks>
     /// Runs on whatever arbitrary thread raised <see cref="Session.Resumed"/> -
     /// documented on that event as an arbitrary signal-handling thread for the job-control path,
-    /// never this instance's own dispatcher thread - so this only ever queues the actual repaint, matching how
+    /// never this instance's own dispatcher thread - so this only ever queues the actual repaint and
+    /// title repost, matching how
     /// <see cref="RequestCooperativeStop"/> marshals a process signal onto the dispatcher. Must not
     /// throw: it is invoked from inside <c>JobControlSignals.InvokeResume</c>'s own top-level
     /// catch-all, but nothing here should rely on that as its only safety net.
@@ -1081,6 +1086,7 @@ public sealed class Application:
             {
                 if (!_stopping)
                 {
+                    _terminalServices.RepostTitleAfterResume();
                     RefreshScreen();
                 }
             }).AsTask());

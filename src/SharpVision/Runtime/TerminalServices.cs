@@ -22,6 +22,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     // SetTitle is rare enough that a plain lock around its whole decide-build-enqueue sequence
     // costs nothing, and it is what keeps that sequence atomic - see PostTitle.
     private readonly Lock _titleGate = new();
+    // Guarded by _titleGate. The exact routed title-only bytes - never the push - from the most
+    // recently posted SetTitle call, retained so a job-control resume can re-post the
+    // application's own title text; see RepostTitleAfterResume. Empty until the first title is
+    // ever posted, and cleared on Dispose.
+    private ReadOnlyMemory<byte> _lastPostedTitle;
     private ProgramExpander? _expander;
     private KittyClipboardTransaction? _kittyPasteTransaction;
     private DispatcherTimer? _kittyPasteTimeoutTimer;
@@ -198,7 +203,10 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// was active before this application ever touched it. Titles set through this OSC path and
     /// through the described <c>tsl</c>/<c>fsl</c> path both funnel through here, so both get the
     /// identical push/pop treatment: the stack controls restore whatever the title bar showed
-    /// before, independent of which mechanism wrote it.
+    /// before, independent of which mechanism wrote it. Also retains <paramref name="routedTitle"/>
+    /// under <see cref="_titleGate"/> once it actually reaches the out-of-band queue, so
+    /// <see cref="RepostTitleAfterResume"/> can re-send this exact title text after a job-control
+    /// resume.
     /// </summary>
     /// <param name="routedTitle">The complete, already routed title-setting bytes.</param>
     /// <remarks>
@@ -220,7 +228,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         {
             if (!TryReserveTitleStackPush(out var routedPush, out var routedPop))
             {
-                _application.PostOutOfBand(routedTitle);
+                if (_application.TryPostOutOfBand(routedTitle))
+                {
+                    _lastPostedTitle = routedTitle;
+                }
+
                 return;
             }
 
@@ -230,7 +242,27 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
 
             if (_application.TryPostOutOfBand(combined.WrittenMemory))
             {
-                _ = _application.Session.ConfirmTitleLease(routedPush.Span, routedPop.Span);
+                _lastPostedTitle = routedTitle;
+
+                // A regression seam only: lets a test land the session's reverse cleanup exactly
+                // inside the otherwise-unobservable window between the line above and the
+                // ConfirmTitleLease call below, instead of relying on real thread scheduling to hit
+                // it. Never assigned outside tests, so this is a no-op in production.
+                OnTitlePostedBeforeConfirmForTests?.Invoke();
+
+                if (!_application.Session.ConfirmTitleLease(routedPush.Span, routedPop.Span))
+                {
+                    // Reverse cleanup began in the narrow window between the reservation and this
+                    // confirmation: the push above already reached the out-of-band queue, but the
+                    // session will now never record - and so never unwind - a matching pop for it.
+                    // The pop bytes were already computed for exactly this call, so post them here
+                    // directly instead of leaving the stack one entry deep. This is the same
+                    // best-effort call every other late out-of-band write already goes through:
+                    // when the application is not yet stopping it reaches the wire and balances the
+                    // stack; once _stopping is observed, PostOutOfBand's own gate drops it exactly
+                    // like the title write it would have paired with.
+                    _application.PostOutOfBand(routedPop);
+                }
             }
             else
             {
@@ -241,6 +273,36 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
                 // exactly like every other out-of-band write attempted after stopping begins.
                 _application.Session.ReleaseTitleLease();
             }
+        }
+    }
+
+    /// <summary>
+    /// Re-posts the last successfully posted title-only bytes, with no accompanying push, after a
+    /// job-control resume finishes replaying this session's leases. A SIGCONT resume's stack replay
+    /// re-pushes whatever title was displayed immediately before the stop - the pre-application
+    /// title, once a title had ever been set, since the earlier push already moved it below this
+    /// application's own - so without this the terminal or tab title silently reverts and stays
+    /// reverted for the remainder of the run even though the application still believes its title
+    /// is set. Re-asserting the title text is safe regardless of whether the stop was ever caught,
+    /// unlike the stack push itself, which must happen at most once per session.
+    /// </summary>
+    /// <remarks>
+    /// A byte-quiet no-op when no title has ever been posted, and permanently byte-quiet once
+    /// <see cref="Dispose"/> has cleared the retained bytes. Posts through the same best-effort
+    /// <see cref="Application.PostOutOfBand"/> path every other title write uses, so a resume
+    /// racing the application's own stop silently drops this exactly like any other late
+    /// out-of-band write.
+    /// </remarks>
+    internal void RepostTitleAfterResume()
+    {
+        lock (_titleGate)
+        {
+            if (_lastPostedTitle.IsEmpty)
+            {
+                return;
+            }
+
+            _application.PostOutOfBand(_lastPostedTitle);
         }
     }
 
@@ -647,7 +709,8 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         ScheduleKittyTimeout(transaction);
     }
 
-    /// <summary>Tears down the clipboard work this instance owns.</summary>
+    /// <summary>Tears down the clipboard work this instance owns and clears the retained title
+    /// bytes so <see cref="RepostTitleAfterResume"/> becomes permanently byte-quiet.</summary>
     /// <remarks>
     /// Without this the deadline timer outlives the application. DispatcherTimer.Start arms the
     /// underlying ITimer <em>periodically</em>, and once the dispatcher has stopped OnElapsed posts
@@ -676,6 +739,11 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
         CancelPendingKittyPasteTransaction();
         CancelPendingKittyTransaction();
         CancelPendingOsc52Request();
+
+        lock (_titleGate)
+        {
+            _lastPostedTitle = default;
+        }
     }
 
     /// <summary>Gets whether the most recent <see cref="Dispose"/> call observed itself running on
@@ -688,6 +756,14 @@ internal sealed class TerminalServices: ITerminalServices, IBell, IClipboard, IN
     /// deadline timer. This regression seam proves shutdown releases the timer without reflecting
     /// over private runtime state.</summary>
     internal bool HasPendingKittyTimeoutForTests => _kittyTimeoutTimer is not null;
+
+    /// <summary>Gets or sets a regression seam invoked synchronously from <see cref="PostTitle"/>
+    /// immediately after the combined push and title bytes are posted to the out-of-band queue but
+    /// before the matching <see cref="Terminal.Runtime.Session.ConfirmTitleLease"/> call, so a test
+    /// can deterministically land the session's reverse cleanup inside that otherwise-unobservable
+    /// window rather than relying on real thread scheduling to hit it. Never assigned outside
+    /// tests, so this is always null - and this member a no-op - in production.</summary>
+    internal Action? OnTitlePostedBeforeConfirmForTests { get; set; }
 
     /// <summary>Arms one OSC 52 read and its deadline, superseding any request still outstanding.</summary>
     /// <param name="selection">The selection being queried.</param>

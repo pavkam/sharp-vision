@@ -1652,6 +1652,44 @@ public sealed class SessionTests
         session.TryReserveTitleLease().ShouldBeFalse();
     }
 
+    /// <summary>Verifies a confirmation attempted once a run's reverse cleanup has already finished
+    /// is refused rather than silently recorded - the confirm-side counterpart to
+    /// <see cref="TryReserveTitleLease_WhenTheRunHasAlreadyCleanedUp_ReturnsFalseAsync"/>, covering
+    /// the narrow window a session-originated fault can open between a caller's successful
+    /// reservation and its confirmation: the push bytes already reached the application's
+    /// out-of-band queue, but cleanup began before the confirmation that would have recorded a
+    /// matching pop lease for them.</summary>
+    [Fact]
+    public async Task ConfirmTitleLease_WhenTheRunHasAlreadyCleanedUpAfterReservation_ReturnsFalseAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        Session? session = null;
+        var push = "\u001b[22;0t"u8.ToArray();
+        var pop = "\u001b[23;0t"u8.ToArray();
+        var sink = new RuntimeSink
+        {
+            // Reserves the slot only, leaving the confirmation for after this run's cleanup has
+            // already finished - matching a caller whose push bytes reached the out-of-band queue
+            // while a session-originated fault started cleanup independently of that caller.
+            OnResize = () => session!.TryReserveTitleLease().ShouldBeTrue()
+        };
+        await using Session ownedSession = new(transport, resize, sink, TerminalOptions.Minimal);
+        session = ownedSession;
+        var running = ownedSession.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        resize.Resize(new Dimensions(new Size(80, 24)));
+        await sink.ResizeReceived.Task.WaitAsync(TestContext.Current.CancellationToken);
+        transport.Close();
+        await running;
+
+        // Assert
+        session.ConfirmTitleLease(push, pop).ShouldBeFalse();
+    }
+
     /// <summary>
     /// Verifies resize is delivered with pixels before later closure.
     /// </summary>

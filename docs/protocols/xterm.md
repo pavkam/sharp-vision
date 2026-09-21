@@ -106,7 +106,10 @@ omits the push, since the terminal's stack already holds the title that predates
 the application. A terminal without a title stack ignores both controls, so no
 capability gate beyond title support itself is required. An approved multiplexer
 route wraps the push and pop the same way it wraps the title itself, as two
-independent passthrough envelopes.
+independent passthrough envelopes. A job-control resume re-pushes that same
+pre-application title through the session's own lease replay, so the runtime
+also re-asserts the application's own title text at that point, independent of
+the stack push, which never repeats after the first time.
 
 ## Compatibility boundaries
 
