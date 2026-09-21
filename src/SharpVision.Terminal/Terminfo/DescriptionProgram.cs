@@ -141,13 +141,46 @@ internal readonly struct DescriptionProgram
                 producesOutput |= operation.Code switch
                 {
                     TerminfoOperation.Literal => operation.Secondary > 0,
-                    TerminfoOperation.FormatNumber or TerminfoOperation.FormatCharacter => true,
+                    TerminfoOperation.FormatNumber => IsProvablyNonEmptyFormatNumber(operation),
+                    TerminfoOperation.FormatCharacter => true,
                     _ => false
                 };
             }
 
             return producesOutput;
         }
+    }
+
+    /// <summary>
+    /// Determines whether one compiled <see cref="TerminfoOperation.FormatNumber"/> instruction is
+    /// proven to emit at least one output byte for every possible parameter value, mirroring
+    /// <c>Interpreter.FormatNumber</c>'s C printf semantics.
+    /// </summary>
+    /// <param name="operation">The compiled formatted-numeric instruction to inspect.</param>
+    /// <returns>
+    /// <see langword="true"/> when an explicit zero precision cannot make the conversion collapse
+    /// to zero digits and zero padding for a zero-value parameter.
+    /// </returns>
+    /// <remarks>
+    /// A numeric conversion compiled with an explicit zero precision (<c>%.0d</c>, <c>%.0x</c>)
+    /// produces no digits at all when its parameter is exactly zero, matching C's printf. That
+    /// collapse is prevented only when a positive width forces padding, an explicit sign or
+    /// leading-space flag forces a character, or the conversion is octal with the alternate flag,
+    /// which forces at least one leading zero digit. An unspecified or positive precision never
+    /// collapses, because the natural digit expansion of any magnitude, including zero, is always
+    /// at least one digit.
+    /// </remarks>
+    private static bool IsProvablyNonEmptyFormatNumber(TerminfoOperation operation)
+    {
+        var conversion = (byte) operation.Operand;
+        var width = operation.Secondary;
+        var precision = TerminfoFormatLayout.UnpackPrecision(operation.Tertiary);
+        var flags = TerminfoFormatLayout.UnpackFlags(operation.Tertiary);
+
+        return precision != 0 ||
+            width > 0 ||
+            (flags & (TerminfoFormatLayout.ShowSign | TerminfoFormatLayout.LeadingSpace)) != 0 ||
+            (conversion == (byte) 'o' && (flags & TerminfoFormatLayout.Alternate) != 0);
     }
 
     /// <summary>Gets the immutable compiled instructions.</summary>

@@ -14,11 +14,6 @@ internal sealed class Interpreter
 {
     private const byte _numeric = 0;
     private const byte _string = 1;
-    private const int _alternate = 1 << 0;
-    private const int _zeroPad = 1 << 1;
-    private const int _leftAligned = 1 << 2;
-    private const int _showSign = 1 << 3;
-    private const int _leadingSpace = 1 << 4;
 
     private readonly ProgramLimits _limits;
     private readonly byte[] _output;
@@ -721,8 +716,8 @@ internal sealed class Interpreter
             (byte) 'x' or (byte) 'X' => 16,
             _ => 10
         };
-        var precision = UnpackPrecision(operation.Tertiary);
-        var flags = operation.Tertiary & 0xff;
+        var precision = TerminfoFormatLayout.UnpackPrecision(operation.Tertiary);
+        var flags = TerminfoFormatLayout.UnpackFlags(operation.Tertiary);
         var negative = conversion == (byte) 'd' && value < 0;
         var magnitude = negative ? (uint) -(long) value : unchecked((uint) value);
         var digitCount = 0;
@@ -745,7 +740,7 @@ internal sealed class Interpreter
 
         var precisionZeros = Math.Max(0, precision - digitCount);
 
-        if (conversion == (byte) 'o' && (flags & _alternate) != 0)
+        if (conversion == (byte) 'o' && (flags & TerminfoFormatLayout.Alternate) != 0)
         {
             if (value == 0 && digitCount == 0)
             {
@@ -758,12 +753,12 @@ internal sealed class Interpreter
         }
 
         var prefixLength = PrefixLength(conversion, value, flags);
-        var signLength = negative || (flags & (_showSign | _leadingSpace)) != 0 ? 1 : 0;
+        var signLength = negative || (flags & (TerminfoFormatLayout.ShowSign | TerminfoFormatLayout.LeadingSpace)) != 0 ? 1 : 0;
         var contentLength = signLength + prefixLength + precisionZeros + digitCount;
         var width = Math.Max(0, operation.Secondary);
         var padding = Math.Max(0, width - contentLength);
-        var left = (flags & _leftAligned) != 0;
-        var zero = (flags & _zeroPad) != 0 && !left && precision < 0;
+        var left = (flags & TerminfoFormatLayout.LeftAligned) != 0;
+        var zero = (flags & TerminfoFormatLayout.ZeroPad) != 0 && !left && precision < 0;
 
         EnsureOutput(outputLength, contentLength + padding);
 
@@ -776,11 +771,11 @@ internal sealed class Interpreter
         {
             _output[outputLength++] = (byte) '-';
         }
-        else if ((flags & _showSign) != 0)
+        else if ((flags & TerminfoFormatLayout.ShowSign) != 0)
         {
             _output[outputLength++] = (byte) '+';
         }
-        else if ((flags & _leadingSpace) != 0)
+        else if ((flags & TerminfoFormatLayout.LeadingSpace) != 0)
         {
             _output[outputLength++] = (byte) ' ';
         }
@@ -804,18 +799,18 @@ internal sealed class Interpreter
     private void FormatCharacter(TerminfoOperation operation, int value, ref int outputLength)
     {
         var width = Math.Max(1, operation.Secondary);
-        var flags = operation.Tertiary & 0xff;
+        var flags = TerminfoFormatLayout.UnpackFlags(operation.Tertiary);
         var padding = width - 1;
         EnsureOutput(outputLength, width);
 
-        if ((flags & _leftAligned) == 0)
+        if ((flags & TerminfoFormatLayout.LeftAligned) == 0)
         {
             AppendRepeated((byte) ' ', padding, ref outputLength);
         }
 
         _output[outputLength++] = unchecked((byte) value);
 
-        if ((flags & _leftAligned) != 0)
+        if ((flags & TerminfoFormatLayout.LeftAligned) != 0)
         {
             AppendRepeated((byte) ' ', padding, ref outputLength);
         }
@@ -823,11 +818,11 @@ internal sealed class Interpreter
 
     private void FormatString(TerminfoOperation operation, ReadOnlyMemory<byte> value, ref int outputLength)
     {
-        var precision = UnpackPrecision(operation.Tertiary);
+        var precision = TerminfoFormatLayout.UnpackPrecision(operation.Tertiary);
         var length = precision < 0 ? value.Length : Math.Min(value.Length, precision);
         var width = Math.Max(0, operation.Secondary);
         var padding = Math.Max(0, width - length);
-        var left = (operation.Tertiary & _leftAligned) != 0;
+        var left = (operation.Tertiary & TerminfoFormatLayout.LeftAligned) != 0;
         EnsureOutput(outputLength, length + padding);
 
         if (!left)
@@ -845,7 +840,7 @@ internal sealed class Interpreter
 
     private static int PrefixLength(byte conversion, int value, int flags)
     {
-        return (flags & _alternate) == 0
+        return (flags & TerminfoFormatLayout.Alternate) == 0
             ? 0
             : conversion switch
             {
@@ -856,7 +851,7 @@ internal sealed class Interpreter
 
     private void AppendPrefix(byte conversion, int value, int flags, ref int outputLength)
     {
-        if ((flags & _alternate) == 0 || value == 0)
+        if ((flags & TerminfoFormatLayout.Alternate) == 0 || value == 0)
         {
             return;
         }
@@ -908,8 +903,6 @@ internal sealed class Interpreter
         Array.Copy(_stagedStaticStrings, _staticStrings, _staticStrings.Length);
         Array.Copy(_stagedStaticKinds, _staticKinds, _staticKinds.Length);
     }
-
-    private static int UnpackPrecision(int packed) => (packed >> 8) - 1;
 
     private static ArgumentException WrongParameterKind() =>
         new("A terminfo operation received a parameter or variable of the wrong kind.");

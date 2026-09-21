@@ -246,4 +246,37 @@ public sealed class TerminfoCompilerTests
     }
 
     #endregion
+
+    #region Non-empty numeric expansion proof
+
+    /// <summary>
+    /// Verifies the compile-time non-empty proof accounts for printf zero-precision numeric
+    /// conversions: an explicit zero precision collapses to zero output bytes for a zero-value
+    /// parameter unless a positive width, an explicit sign or leading-space flag, or the octal
+    /// alternate-form flag forces at least one byte regardless of the digit expansion.
+    /// </summary>
+    /// <param name="template">The single formatted-numeric directive under test.</param>
+    /// <param name="expected">Whether the directive is provably non-empty for every parameter value.</param>
+    [Theory]
+    [InlineData("%p1%.0d", false)]
+    [InlineData("%p1%.0x", false)]
+    [InlineData("%p1%#.0o", true)]
+    [InlineData("%p1%:+.0d", true)]
+    [InlineData("%p1%5.0d", true)]
+    [InlineData("%p1%d", true)]
+    public void HasProvablyNonEmptyNumericExpansion_WhenFormatNumberDirectiveCompiles_MatchesPrintfZeroPrecisionSemantics(
+        string template,
+        bool expected)
+    {
+        // Arrange
+        var bytes = Encoding.UTF8.GetBytes(template);
+
+        // Act
+        var program = bytes.Compile(ProgramLimits.Default);
+
+        // Assert
+        program.HasProvablyNonEmptyNumericExpansion.ShouldBe(expected);
+    }
+
+    #endregion
 }

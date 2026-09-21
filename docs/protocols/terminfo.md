@@ -229,7 +229,12 @@ Cursor state programs use the stricter static contract. Compiler metadata MUST
 prove non-empty output for every execution of exact zero-parameter `civis`,
 `cnorm`, and `Se`, and exact one-parameter `Ss`; a representative probe cannot
 admit a conditional, variable-dependent, or otherwise fallible cursor program.
-Both members of each visibility or shape pair must satisfy that contract. Once
+The proof accounts for a `printf`-style numeric conversion compiled with an
+explicit zero precision (`%.0d`, `%.0x`): such a conversion produces no output
+bytes for a zero-value parameter unless a positive width, an explicit sign or
+leading-space flag, or the octal alternate-form flag forces at least one byte
+regardless of the digit expansion. Both members of each visibility or shape
+pair must satisfy that contract. Once
 admitted, a requested cursor transition is part of frame correctness: any
 unexpected live expansion failure aborts the staged frame before transport and
 leaves the prior semantic frame committed for retry.

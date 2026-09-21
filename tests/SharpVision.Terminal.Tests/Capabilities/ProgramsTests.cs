@@ -50,6 +50,7 @@ public sealed class ProgramsTests
     [InlineData("setdf", "%p1%d")]
     [InlineData("op", "%p1%d")]
     [InlineData("Ss", "\u001b[2 q")]
+    [InlineData("Ss", "%p1%.0d")]
     [InlineData("Se", "%{1}%PA")]
     [InlineData("Setulc", "%{1}%PA")]
     public void Has_WhenRendererContractCannotExecute_IsFalse(string name, string source)

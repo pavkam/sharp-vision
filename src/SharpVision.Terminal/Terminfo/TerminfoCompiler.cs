@@ -6,12 +6,6 @@ namespace SharpVision.Terminal.Terminfo;
 /// <summary>Compiles the bounded ncurses terminfo parameter language into immutable instructions.</summary>
 internal static class TerminfoCompiler
 {
-    private const int _flagAlternate = 1 << 0;
-    private const int _flagZeroPad = 1 << 1;
-    private const int _flagLeft = 1 << 2;
-    private const int _flagSign = 1 << 3;
-    private const int _flagSpace = 1 << 4;
-
     #region Compilation
 
     extension(ReadOnlySpan<byte> source)
@@ -354,11 +348,11 @@ internal static class TerminfoCompiler
             {
                 var flag = directive switch
                 {
-                    (byte) '#' => _flagAlternate,
-                    (byte) '0' => _flagZeroPad,
-                    (byte) '-' => _flagLeft,
-                    (byte) '+' => _flagSign,
-                    (byte) ' ' => _flagSpace,
+                    (byte) '#' => TerminfoFormatLayout.Alternate,
+                    (byte) '0' => TerminfoFormatLayout.ZeroPad,
+                    (byte) '-' => TerminfoFormatLayout.LeftAligned,
+                    (byte) '+' => TerminfoFormatLayout.ShowSign,
+                    (byte) ' ' => TerminfoFormatLayout.LeadingSpace,
                     _ => 0
                 };
 
@@ -428,7 +422,10 @@ internal static class TerminfoCompiler
             (byte) 's' => TerminfoOperation.FormatString,
             _ => TerminfoOperation.FormatNumber
         };
-        AddOperation(operations, new TerminfoOperation(code, directive, width, PackFormat(flags, precision)), limits);
+        AddOperation(
+            operations,
+            new TerminfoOperation(code, directive, width, TerminfoFormatLayout.Pack(flags, precision)),
+            limits);
     }
 
     [SuppressMessage(
@@ -583,9 +580,6 @@ internal static class TerminfoCompiler
 
     private static bool IsConversion(byte value) =>
         value is (byte) 'd' or (byte) 'o' or (byte) 'x' or (byte) 'X' or (byte) 'c' or (byte) 's';
-
-    private static int PackFormat(int flags, int precision) =>
-        flags | ((precision + 1) << 8);
 
     private static void AddOperation(List<TerminfoOperation> operations, TerminfoOperation operation, ProgramLimits limits)
     {
