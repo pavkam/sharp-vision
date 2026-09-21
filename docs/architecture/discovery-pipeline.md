@@ -71,8 +71,8 @@ narrowing them for a detected multiplexer or a remote connection.
 ```mermaid
 flowchart TD
     Start["Apply(environment)"] --> Kitty{"TERM contains kitty?"}
-    Kitty -->|Yes| KittyHints["Hint 12 features: SynchronizedOutput, FocusReporting, BracketedPaste, PixelMouse, CellMouse, KittyKeyboard, Osc52, KittyClipboard, KittyGraphics, StyledUnderlines, UnderlineColor, Overline"]
-    Kitty -->|No| Xterm{"TERM contains xterm?"}
+    Kitty -->|Yes| KittyHints["Hint 13 features: SynchronizedOutput, GraphemeClustering, FocusReporting, BracketedPaste, PixelMouse, CellMouse, KittyKeyboard, Osc52, KittyClipboard, KittyGraphics, StyledUnderlines, UnderlineColor, Overline"]
+    Kitty -->|No| Xterm{"TERM identifies the xterm family (TerminalNames.IsXtermFamily)?"}
     Xterm -->|Yes| XtermHints["Hint 8 features: FocusReporting, BracketedPaste, CellMouse, XtermKeyboard, Osc52, StyledUnderlines, UnderlineColor, Overline"]
     Xterm -->|No| Iterm
     XtermHints --> Iterm{"TERM_PROGRAM is iTerm.app?"}
@@ -92,13 +92,15 @@ The xterm check and the iTerm2 check are independent siblings, not a chained
 `else if`: a genuine iTerm2 session reports `TERM=xterm-256color` by default, so
 it receives the xterm hint set and its own `ItermImages` hint together. Only
 Kitty is mutually exclusive with the rest of the tree, because
-`TERM=xterm-kitty` never also contains `xterm`. This exact exclusivity was the
-source of two real bugs: an initial version let a stale `TERM_PROGRAM=iTerm.app`
-add the `ItermImages` hint even on a genuine Kitty session, and the fix that
-followed over-corrected by chaining the iTerm2 check as a third `else if`
-sibling of the kitty/xterm chain, which wrongly made iTerm2 mutually exclusive
-with xterm too and dropped the `ItermImages` hint from real iTerm2 sessions
-(which report `TERM=xterm-256color` and matched the xterm branch first).
+`TerminalNames.IsXtermFamily` explicitly excludes any name containing `kitty`,
+so `TERM=xterm-kitty` never matches the xterm family despite containing the
+literal substring `xterm`. This exact exclusivity was the source of two real
+bugs: an initial version let a stale `TERM_PROGRAM=iTerm.app` add the
+`ItermImages` hint even on a genuine Kitty session, and the fix that followed
+over-corrected by chaining the iTerm2 check as a third `else if` sibling of the
+kitty/xterm chain, which wrongly made iTerm2 mutually exclusive with xterm too
+and dropped the `ItermImages` hint from real iTerm2 sessions (which report
+`TERM=xterm-256color` and matched the xterm branch first).
 
 ## Runtime diagnostics snapshot
 
