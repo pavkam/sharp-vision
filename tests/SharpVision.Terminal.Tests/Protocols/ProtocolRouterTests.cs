@@ -295,8 +295,9 @@ public sealed class ProtocolRouterTests
     [Fact]
     public void Route_WhenCursorPositionReplyIsFragmentedAndQueryIsOutstanding_DeliversTypedResponse()
     {
-        // Arrange
-        var bytes = Encoding.UTF8.GetBytes("\u001b[12;34R");
+        // Arrange. The modifier field stays inside the legacy 1 through 16 range: a larger value
+        // in this grammar is reported as malformed rather than decoded as a fabricated key.
+        var bytes = Encoding.UTF8.GetBytes("\u001b[12;3R");
 
         // Act / Assert
         for (var split = 0; split <= bytes.Length; split++)
@@ -323,8 +324,9 @@ public sealed class ProtocolRouterTests
     [Fact]
     public void Route_WhenCursorPositionShapeArrivesWithNoQueryOutstanding_DeliversKeyNotResponse()
     {
-        // Arrange
-        var bytes = Encoding.UTF8.GetBytes("\u001b[12;34R");
+        // Arrange. The modifier field stays inside the legacy 1 through 16 range: a larger value
+        // in this grammar is reported as malformed rather than decoded as a fabricated key.
+        var bytes = Encoding.UTF8.GetBytes("\u001b[12;3R");
 
         // Act / Assert
         for (var split = 0; split <= bytes.Length; split++)
@@ -337,6 +339,7 @@ public sealed class ProtocolRouterTests
             sink.Responses.ShouldBeEmpty($"The key differed at split {split}.");
             var stroke = sink.Strokes.ShouldHaveSingleItem($"The key differed at split {split}.");
             stroke.Code.ShouldBe(Code.F3);
+            stroke.Modifiers.ShouldBe(Modifiers.Alt);
         }
     }
 

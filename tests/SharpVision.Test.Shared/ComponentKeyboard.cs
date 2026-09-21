@@ -69,11 +69,11 @@ public sealed class ComponentKeyboard
                 (Code.Right, _) => ModifiedCursorAsync(code, modifiers, 'C', "press"),
                 (Code.Home, Modifiers.None) => _surface.SendAsync("\u001b[H"u8.ToArray(), "press Home"),
                 (Code.Home, _) => _surface.SendAsync(
-                    Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}H"),
+                    Encoding.ASCII.GetBytes($"\u001b[1;{CursorModifiers(modifiers)}H"),
                     $"press {modifiers}+Home"),
                 (Code.End, Modifiers.None) => _surface.SendAsync("\u001b[F"u8.ToArray(), "press End"),
                 (Code.End, _) => _surface.SendAsync(
-                    Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}F"),
+                    Encoding.ASCII.GetBytes($"\u001b[1;{CursorModifiers(modifiers)}F"),
                     $"press {modifiers}+End"),
                 (Code.PageUp, Modifiers.None) => _surface.SendAsync("\u001b[5~"u8.ToArray(), "press PageUp"),
                 (Code.PageDown, Modifiers.None) => _surface.SendAsync("\u001b[6~"u8.ToArray(), "press PageDown"),
@@ -112,7 +112,7 @@ public sealed class ComponentKeyboard
 
     private Task ModifiedCursorAsync(Code code, Modifiers modifiers, char final, string action) =>
         _surface.SendAsync(
-            Encoding.ASCII.GetBytes($"\u001b[1;{KittyModifiers(modifiers)}{final}"),
+            Encoding.ASCII.GetBytes($"\u001b[1;{CursorModifiers(modifiers)}{final}"),
             $"{action} {modifiers}+{code}");
 
     private Task RepeatCursorAsync(Code code, char final) =>
@@ -126,6 +126,21 @@ public sealed class ComponentKeyboard
             $"repeat {code}");
 
     private static int KittyModifiers(Modifiers modifiers) => 1 + (int) modifiers;
+
+    /// <summary>
+    /// Encodes the modifier field of a cursor or editing key. The legacy CSI grammar only carries
+    /// Shift, Alt, Control, and Meta (values 1 through 16); any other flag such as Super, Hyper,
+    /// CapsLock, or NumLock is expressible only through the Kitty grammar, so those strokes carry a
+    /// press event sub-field exactly as a Kitty terminal would send them.
+    /// </summary>
+    private static string CursorModifiers(Modifiers modifiers)
+    {
+        var encoded = KittyModifiers(modifiers);
+
+        return encoded <= 16
+            ? FormattableString.Invariant($"{encoded}")
+            : FormattableString.Invariant($"{encoded}:1");
+    }
 
     /// <summary>Types non-empty printable text through its owned UTF-8 terminal bytes.</summary>
     /// <param name="value">The non-null text containing no terminal controls.</param>

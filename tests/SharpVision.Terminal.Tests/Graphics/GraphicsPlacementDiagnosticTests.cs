@@ -19,7 +19,7 @@ public sealed class GraphicsPlacementDiagnosticTests
                 GraphicsPlacementSkipReason.FormatNotEncodable);
         };
 
-        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("ImageIdentity");
+        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("imageIdentity");
     }
 
     /// <summary>Verifies an unknown fallback classification cannot enter a diagnostic snapshot.</summary>
@@ -33,6 +33,6 @@ public sealed class GraphicsPlacementDiagnosticTests
                 (GraphicsPlacementSkipReason) 999);
         };
 
-        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("Reason");
+        action.ShouldThrow<ArgumentOutOfRangeException>().ParamName.ShouldBe("reason");
     }
 }
