@@ -13,8 +13,9 @@ enabled.
 
 `TERM` and `TMUX` indicate a multiplexer context, not outer-terminal features.
 Capabilities use conservative filtering unless explicit queries survive or the
-caller overrides the outer profile. Correlated replies must return to the
-requesting pane.
+caller overrides the outer profile; color depth follows its own documented
+[color-evidence lattice](../architecture/capabilities.md#overview) instead of
+this filtering. Correlated replies must return to the requesting pane.
 
 Terminal replies normally return as ordinary raw input. A real tmux 3.7
 pseudoterminal corroborates this: tmux forwards a DCS-family reply (DECRQSS,

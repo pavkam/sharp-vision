@@ -75,6 +75,27 @@ public sealed class DiscoveryPipelineTests
     }
 
     /// <summary>
+    /// Verifies a detected tmux context never narrows ColorDepth: color evidence follows its
+    /// own lattice, so COLORTERM still raises depth to true color even though tmux narrows
+    /// other vendor capabilities under the same environment.
+    /// </summary>
+    [Fact]
+    public void Detect_WhenTmuxAndColortermArePresent_ColorDepthStaysTrueColor()
+    {
+        var environment = new Dictionary<string, string?>()
+        {
+            ["TERM"] = "tmux-256color",
+            ["TMUX"] = "/tmp/tmux-1000/default,1,0",
+            ["COLORTERM"] = "truecolor"
+        };
+
+        var capabilities = DiscoveryPipeline.Default.Detect(
+            new DiscoveryContext(TerminalCapabilities.Conservative, environment));
+
+        capabilities.ColorDepth.ShouldBe(ColorDepth.TrueColor);
+    }
+
+    /// <summary>
     /// Verifies screen narrows vendor clipboard protocols independently of SSH handling.
     /// </summary>
     [Fact]

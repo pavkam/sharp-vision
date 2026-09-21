@@ -7,9 +7,11 @@ Primary source:
 accessed 2026-07-20. Screen recognizes a VT/ANSI subset and can pass a DCS
 payload to the host terminal without interpretation.
 
-Screen may filter, reinterpret, or limit modern mouse, OSC, color, and graphics
+Screen may filter, reinterpret, or limit modern mouse, OSC, and graphics
 features. A `TERM` value associated with screen selects a conservative profile;
 outer-terminal behavior requires explicit override or verified passthrough.
+Color depth is exempt from this narrowing and instead follows its own
+documented [color-evidence lattice](../architecture/capabilities.md#overview).
 
 ## DCS framing limit
 
