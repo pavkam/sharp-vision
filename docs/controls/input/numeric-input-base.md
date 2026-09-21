@@ -71,9 +71,13 @@ culture-specific currency formatting. `FormatBufferValue(decimal)`,
 `ValidateValueAssignment(decimal)`, `ValidateCulture(CultureInfo)`,
 `ProjectFocusedDisplay()`, and `ResolveBufferIndexAtColumn(int)` default to an
 identity or no-op implementation; a derivative overrides only the ones its own
-policy actually needs - `NumberInput` overrides none of them, while
-`CurrencyInput` overrides all five to compose its currency symbol and pattern
-around the buffer's currency-agnostic core text.
+policy actually needs - `NumberInput` overrides one of them
+(`ValidateValueAssignment`, to reject a fractional candidate while `Mode` is
+`Integer`), while `CurrencyInput` overrides four of the five
+(`FormatBufferValue`, `ValidateCulture`, `ProjectFocusedDisplay`, and
+`ResolveBufferIndexAtColumn`) to compose its currency symbol and pattern around
+the buffer's currency-agnostic core text; neither overrides
+`ValidateValueAssignment`.
 
 ## Keyboard
 

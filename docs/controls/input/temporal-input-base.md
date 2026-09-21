@@ -89,9 +89,11 @@ arithmetic over `TimeOnly`, and `DateTimeInput` from both over `DateTime`.
 `ReservesDropDownIndicator`, and `ActivateFirstSegmentOnFocus` default to an
 identity, no-op, or `false` implementation; a derivative overrides only the ones
 its own policy actually needs - `TimeInput` overrides `ResolveDigitEntrySeed()`
-to seed `TimeOnly.MinValue` rather than the current clock, while `DateInput` and
-`DateTimeInput` override `SynchronizeValue`, `SynchronizeBounds`, and
-`SynchronizeCulture` to keep an owned Calendar popup current and override
+to seed `TimeOnly.MinValue` rather than the current clock, `DateInput` overrides
+`ClearValue()` so an already-empty value is a no-op instead of the base's
+guarded no-op-on-empty requirement, and `DateInput` and `DateTimeInput` override
+`SynchronizeValue`, `SynchronizeBounds`, and `SynchronizeCulture` to keep an
+owned Calendar popup current and override
 `ResolvePopupCommand()`/`ReservesDropDownIndicator` for that popup's disclosure
 key and column. `TemporalSegmentKind` (`Month`, `Day`, `Year`, `Hour`, `Minute`,
 `Second`, `FractionalSecond`, `AmPmDesignator`) is public so an out-of-assembly

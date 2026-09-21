@@ -284,9 +284,9 @@ public abstract class TemporalInputBase<TValue>: InputBase
     }
 
     /// <summary>Clears the complete value to null when <see cref="AllowNull"/> allows it. The base
-    /// implementation additionally requires a present value, matching every derivative except one
-    /// whose own clearing policy admits an already-empty value as a no-op through this same
-    /// call.</summary>
+    /// implementation additionally requires a present value, matching every derivative except
+    /// <see cref="DateInput"/>, whose own clearing policy admits an already-empty value as a no-op
+    /// through this same call.</summary>
     /// <returns>True when the value actually changed.</returns>
     protected virtual bool ClearValue() => AllowNull && _state.Value.HasValue && _state.SetValue(null);
 
