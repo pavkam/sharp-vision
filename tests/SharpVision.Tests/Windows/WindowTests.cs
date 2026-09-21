@@ -987,6 +987,65 @@ public sealed class WindowTests
         invoked.ShouldBe([first, second, first]);
     }
 
+    /// <summary>Verifies the cached resolution ResolveDefaultButton exposes is stable across
+    /// repeated calls while nothing changes, and updates correctly after every distinct kind of
+    /// change that can move it: the IsDefault flag itself, the candidate's own IsEnabled, an
+    /// ancestor's IsEnabled, a same-parent reorder that adds and removes nothing, reparenting a
+    /// candidate to a different position in ownership order, and detaching the currently resolved
+    /// candidate outright.</summary>
+    [Fact]
+    public void ResolveDefaultButton_WhenEachTriggerKindChangesTheTree_UpdatesTheCachedResolution()
+    {
+        var buttonA = new Button { IsDefault = true };
+        var buttonB = new Button { IsDefault = true };
+        var innerStack = new Stack { Children = { buttonA, buttonB } };
+        var otherStack = new Stack();
+        var outerPanel = new Stack { Children = { innerStack, otherStack } };
+        var window = new Window { Content = outerPanel };
+
+        // No changes: repeated calls return the same instance.
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: the IsDefault flag itself.
+        buttonA.IsDefault = false;
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonB);
+        buttonA.IsDefault = true;
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: the candidate's own IsEnabled.
+        buttonA.IsEnabled = false;
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonB);
+        buttonA.IsEnabled = true;
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: an ancestor's IsEnabled - neither candidate's own facts change, and with both
+        // candidates beneath the disabled ancestor, no descendant remains eligible at all.
+        innerStack.IsEnabled = false;
+        window.ResolveDefaultButton().ShouldBeNull();
+        innerStack.IsEnabled = true;
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: a same-parent reorder that adds and removes nothing, so neither button's own
+        // lifecycle events nor OnParentChanged ever fire for it.
+        innerStack.Children.Move(0, 1);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonB);
+        innerStack.Children.Move(0, 1);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: reparenting the current default to a position later in ownership order.
+        _ = innerStack.Children.Remove(buttonA);
+        otherStack.Children.Add(buttonA);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonB);
+        _ = otherStack.Children.Remove(buttonA);
+        innerStack.Children.Insert(0, buttonA);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonA);
+
+        // Trigger: detaching the currently resolved candidate outright.
+        _ = innerStack.Children.Remove(buttonA);
+        window.ResolveDefaultButton().ShouldBeSameAs(buttonB);
+    }
+
     /// <summary>Verifies handled keys and non-press strokes do not invoke Window fallbacks.</summary>
     [Fact]
     public void Dispatch_WhenKeyIsHandledOrNotPress_IgnoresFallbackButton()

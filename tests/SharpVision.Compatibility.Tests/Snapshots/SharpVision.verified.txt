@@ -619,8 +619,10 @@ namespace SharpVision.Controls
         protected virtual void OnCapabilitiesChanged(SharpVision.Terminal.Capabilities.TerminalCapabilities previous, SharpVision.Terminal.Capabilities.TerminalCapabilities current) { }
         protected virtual void OnCellMetricsChanged(SharpVision.Terminal.Geometry.CellMetrics? previous, SharpVision.Terminal.Geometry.CellMetrics? current) { }
         protected virtual bool? OnDescendantAccessKey(SharpVision.Controls.ControlBase descendant, System.Text.Rune key) { }
+        protected virtual void OnDescendantAvailabilityChanged(SharpVision.Controls.ControlBase descendant) { }
         protected virtual bool OnDescendantDisposalRequested(SharpVision.Controls.ControlBase descendant) { }
         protected virtual void OnDescendantFocused(SharpVision.Controls.ControlBase descendant) { }
+        protected virtual void OnDescendantOwnershipChanged(SharpVision.Controls.ControlBase owner) { }
         protected virtual void OnDetached() { }
         protected virtual void OnDirectDisposalRequested() { }
         protected virtual void OnDisposed() { }
@@ -1929,7 +1931,6 @@ namespace SharpVision.Controls.Input
         protected override SharpVision.Styling.ChromeRenderOptions GetChromeRenderOptions() { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }
-        protected override void OnParentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
         protected override void OnPressedChanged(bool pressed) { }
         protected override void OnRenderContent(SharpVision.Terminal.Rendering.TerminalCanvas canvas) { }
         protected override void OnUnavailable(SharpVision.Input.ReleaseReason reason) { }
@@ -5765,6 +5766,9 @@ namespace SharpVision.Windows
         protected override SharpVision.Styling.AppearanceStates GetDefaultAppearanceStates(SharpVision.Styling.Theme? theme) { }
         protected override SharpVision.Terminal.Geometry.Size MeasureOverride(SharpVision.Layout.Constraint constraint) { }
         protected override void OnAttached() { }
+        protected override void OnContentChanged(SharpVision.Controls.ControlBase? previous, SharpVision.Controls.ControlBase? current) { }
+        protected override void OnDescendantAvailabilityChanged(SharpVision.Controls.ControlBase descendant) { }
+        protected override void OnDescendantOwnershipChanged(SharpVision.Controls.ControlBase owner) { }
         protected override void OnDragEnded() { }
         protected override void OnDragMoved(SharpVision.Input.DragMove move) { }
         protected override void OnEvent(SharpVision.Input.RoutedEventArgs eventArgs) { }

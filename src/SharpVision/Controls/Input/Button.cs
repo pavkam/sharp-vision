@@ -28,13 +28,6 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
         EnableCommand();
         _style = InitializeStyle(ButtonStyle.Definition);
         VerticalAlignment = VerticalAlignment.Center;
-
-        // Only this button's own availability can move the owning Window's resolved default
-        // button (Window.ResolveDefaultButton only ever considers IsDefault candidates), so a
-        // sibling IsDefault button may need to repaint its Current cue when this one becomes or
-        // stops being eligible - a fact it cannot detect from its own unchanged state.
-        EnabledChanged += OnDefaultCandidateAvailabilityChanged;
-        VisibilityChanged += OnDefaultCandidateAvailabilityChanged;
     }
 
     /// <summary>Gets or sets the complete local presentation, or null for theme ownership.</summary>
@@ -102,8 +95,10 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
 
                 // This button's own cache is cleared above; a sibling IsDefault descendant whose
                 // own facts did not change may still need to move its Current cue now that the
-                // window's resolution has a new or one fewer candidate to consider.
-                FindAncestor<Window>()?.InvalidateDefaultButtonCues();
+                // window's resolution has a new or one fewer candidate to consider. No ancestor
+                // hook observes this flag (unlike IsEnabled/Visibility and ownership order), so
+                // this remains the only notification path for it.
+                FindAncestor<Window>()?.InvalidateDefaultButtonResolution();
             }
         }
     }
@@ -205,55 +200,12 @@ public sealed class Button: InputBase, IStyled<ButtonStyle>
     /// <see cref="Window"/>'s default-button resolution moves to or away from this
     /// instance.</summary>
     /// <remarks>
-    /// The internal seam <see cref="Window.InvalidateDefaultButtonCues()"/> needs: this
+    /// The internal seam <see cref="Window.InvalidateDefaultButtonResolution()"/> needs: this
     /// button's own facts may be unchanged, so nothing else already invalidates its cache, and
     /// <see cref="ControlBase.InvalidateVisualState"/> stays protected because Window does not
     /// derive from Button.
     /// </remarks>
     internal void InvalidateDefaultButtonCue() => InvalidateVisualState();
-
-    private void OnDefaultCandidateAvailabilityChanged(object? sender, EventArgs eventArgs)
-    {
-        _ = sender;
-        _ = eventArgs;
-
-        // A non-default button's own availability never enters Window.ResolveDefaultButton's
-        // predicate, so only a candidate that carries the flag can move the resolution.
-        if (IsDefault)
-        {
-            FindAncestor<Window>()?.InvalidateDefaultButtonCues();
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnParentChanged(ControlBase? previous, ControlBase? current)
-    {
-        base.OnParentChanged(previous, current);
-
-        if (!IsDefault)
-        {
-            return;
-        }
-
-        // Reparenting can add this candidate to one window's resolution and remove it from
-        // another's, so both ownership chains - the one being left and the one being joined -
-        // need their default-button cues re-evaluated.
-        FindWindowAncestor(previous)?.InvalidateDefaultButtonCues();
-        FindWindowAncestor(current)?.InvalidateDefaultButtonCues();
-    }
-
-    private static Window? FindWindowAncestor(ControlBase? control)
-    {
-        for (var candidate = control; candidate is not null; candidate = candidate.Parent)
-        {
-            if (candidate is Window window)
-            {
-                return window;
-            }
-        }
-
-        return null;
-    }
 
     // The shadowed face shifts while pressed; a press that cannot activate shows no shift either.
     private bool IsFacePressed => IsPressed && IsCommandExecutable;

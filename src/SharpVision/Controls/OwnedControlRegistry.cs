@@ -1170,6 +1170,11 @@ internal sealed class OwnedControlRegistry
             {
                 var committedChange = change.CreateChange();
                 ExceptionAggregation.Capture(() => change.Slot.PublishChanged(committedChange), ref failure);
+
+                // A pure reorder (Added and Removed both empty) still reaches this point - it is
+                // exactly the case an owned-control insert/remove notification cannot express, and
+                // the one an ancestor otherwise has no way to learn about at all.
+                ExceptionAggregation.Capture(change.Slot.Registry.Owner.NotifyDescendantOwnershipChanged, ref failure);
             }
 
             void AddPlan(ContextTransitionPlan plan)

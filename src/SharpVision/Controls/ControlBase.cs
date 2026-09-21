@@ -781,6 +781,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             Invalidate(invalidation);
             InvalidateDescendants(invalidation);
             ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(NotifyDescendantAvailabilityChanged, ref failure);
 
             if (value != Visibility.Visible)
             {
@@ -847,6 +848,7 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
             InvalidateVisualState();
             InvalidateDescendantsVisualState();
             ExceptionDispatchInfo? failure = null;
+            ExceptionAggregation.Capture(NotifyDescendantAvailabilityChanged, ref failure);
 
             if (!value)
             {
@@ -4335,6 +4337,72 @@ public abstract class ControlBase: INotifyPropertyChanged, IDisposable, ISelecta
     /// implementation does nothing.
     /// </remarks>
     protected internal virtual void OnDescendantFocused(ControlBase descendant) => _ = descendant;
+
+    /// <summary>Notifies an ancestor that one of its descendants just committed a change to its own
+    /// <see cref="IsEnabled"/> or <see cref="Visibility"/>.</summary>
+    /// <param name="descendant">The control whose own <see cref="IsEnabled"/> or
+    /// <see cref="Visibility"/> property just changed.</param>
+    /// <remarks>
+    /// Called on every ancestor of <paramref name="descendant"/>, nearest first, from the same
+    /// <see cref="IsEnabled"/> or <see cref="Visibility"/> setter that already invalidates
+    /// <paramref name="descendant"/>'s own descendants' visual state, immediately after that
+    /// invalidation commits. That local cascade only reaches <paramref name="descendant"/>'s own
+    /// descendants; this reaches every ancestor exactly once instead, so a collection whose own
+    /// derived state depends on the availability of something other than its direct child - not
+    /// only <paramref name="descendant"/> itself, but anything <paramref name="descendant"/> owns,
+    /// however many levels down - can react even though none of those affected controls raised an
+    /// event of their own. An override must not throw: this call is exception-aggregated with the
+    /// setter's other post-commit notifications, so a thrown exception here does not suppress the
+    /// property-changed or *Changed event still owed to other subscribers, but it does still
+    /// surface once every notification for this transition has run. The default implementation
+    /// does nothing.
+    /// </remarks>
+    protected internal virtual void OnDescendantAvailabilityChanged(ControlBase descendant) => _ = descendant;
+
+    /// <summary>Walks every ancestor of this control, nearest first, offering each one
+    /// <see cref="OnDescendantAvailabilityChanged(ControlBase)"/> after this control's own
+    /// <see cref="IsEnabled"/> or <see cref="Visibility"/> change committed.</summary>
+    private void NotifyDescendantAvailabilityChanged()
+    {
+        for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            ancestor.OnDescendantAvailabilityChanged(this);
+        }
+    }
+
+    /// <summary>Notifies an ancestor that one of its descendants' owned-control order or membership
+    /// just committed a change.</summary>
+    /// <param name="owner">
+    /// The control whose registered owned-control slot just committed an insert, remove, replace,
+    /// or reorder - the control whose own children (or single content) a caller last enumerated
+    /// through <see cref="OwnedControlCount"/>/<see cref="OwnedControlAt(int)"/> no longer match
+    /// what that enumeration would return now.
+    /// </param>
+    /// <remarks>
+    /// Called on every ancestor of <paramref name="owner"/>, nearest first, once per registered
+    /// slot that committed a structural change - including a pure reorder that adds and removes
+    /// nothing, such as <see cref="ControlCollection"/>'s internal <c>Move</c>, which changes
+    /// ownership order without raising any insert, remove, or <see cref="OnParentChanged"/>
+    /// notification for the reordered controls themselves. An owner reacting to changes in its own
+    /// owned controls already has a narrower, owner-specific hook for that
+    /// (<see cref="Container.OnChildrenChanged"/>, <see cref="ContentControl.OnContentChanged"/>);
+    /// this hook exists for an ancestor that is not itself that owner and so cannot see the change
+    /// any other way. An override must not throw, for the same reason and with the same
+    /// aggregation guarantee as <see cref="OnDescendantAvailabilityChanged"/>. The default
+    /// implementation does nothing.
+    /// </remarks>
+    protected internal virtual void OnDescendantOwnershipChanged(ControlBase owner) => _ = owner;
+
+    /// <summary>Walks every ancestor of this control, nearest first, offering each one
+    /// <see cref="OnDescendantOwnershipChanged(ControlBase)"/> after one of this control's
+    /// registered owned-control slots committed a structural change.</summary>
+    internal void NotifyDescendantOwnershipChanged()
+    {
+        for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            ancestor.OnDescendantOwnershipChanged(this);
+        }
+    }
 
     /// <summary>Responds after this control's physical pointer-over state commits.</summary>
     /// <param name="isPointerOver">Whether the physical pointer is over this control or one of its descendants.</param>

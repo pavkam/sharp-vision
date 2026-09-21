@@ -768,6 +768,12 @@ public sealed class WindowSurfaceTests
         surface.Cell(new Point(4, 0)).Style.Foreground.ShouldBe(TerminalPalette.Project(Color.Rgb(200, 210, 220), ColorDepth.Basic16));
     }
 
+    /// <summary>Gets the absolute screen position of a mounted control's arranged top-left cell.
+    /// <see cref="ControlBase.Bounds"/> is already root-relative (see the parent-relative
+    /// <see cref="ControlBase.LocalBounds"/> for the alternative), matching how
+    /// <see cref="ComponentSurface.ResolvePointAsync(ControlBase)"/> reads it directly.</summary>
+    private static Point AbsolutePosition(ControlBase control) => new(control.Bounds.X, control.Bounds.Y);
+
     private static Theme WithColor(SemanticColor role, Color value)
     {
         var source = ThemeCatalog.Dark;
@@ -1726,6 +1732,217 @@ public sealed class WindowSurfaceTests
 
         // Assert activation moved back with the cue
         firstClicks.ShouldBe(2);
+        secondClicks.ShouldBe(1);
+    }
+
+    /// <summary>Verifies disabling an intermediate container - not the default button itself -
+    /// still moves the Current cue to a sibling IsDefault candidate whose own IsEnabled,
+    /// Visibility, and IsDefault never changed. Neither button's own EnabledChanged nor
+    /// VisibilityChanged fires for this, so only Window's ancestor-facing
+    /// OnDescendantAvailabilityChanged hook can make the cue and Enter's own activation target
+    /// agree here.</summary>
+    [Fact]
+    public async Task Render_WhenAnAncestorOfADefaultButtonIsDisabled_MovesTheCurrentCueWithEnterActivationAsync()
+    {
+        // Arrange
+        var firstClicks = 0;
+        var secondClicks = 0;
+        var first = new Button { Text = "First", IsDefault = true };
+        var second = new Button { Text = "Second", IsDefault = true };
+        first.Click += (_, _) => firstClicks++;
+        second.Click += (_, _) => secondClicks++;
+        var panel = new Stack { Children = { first } };
+        var content = new Stack { Children = { panel, second } };
+        var window = new Window { Content = content, Width = Length.Cells(14), Height = Length.Cells(8) };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(18, 10),
+            options,
+            ThemeCatalog.Load("turbo-vision"),
+            TestContext.Current.CancellationToken);
+
+        // Assert only the first candidate in ownership order paints the current face - captured
+        // from the rendered cells themselves (not a fresh GetAppearanceState() call, which stays
+        // correct even when the render never repainted) so a later comparison actually proves the
+        // repaint happened.
+        var currentForeground = surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground;
+        var normalForeground = surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground;
+        currentForeground.ShouldNotBe(normalForeground);
+
+        // Act disable the panel that owns the current default button - not the button itself
+        await surface.UpdateAsync(() => panel.IsEnabled = false, "disable the panel owning the first default button");
+
+        // Assert the rendered cue actually moved onto the second candidate's cells, even though
+        // neither button's own IsEnabled, Visibility, or IsDefault changed
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+        surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground.ShouldNotBe(currentForeground);
+
+        // Act Enter now targets the second candidate
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(second).ShouldBeTrue(), "focus the second button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert only the current candidate activated
+        firstClicks.ShouldBe(0);
+        secondClicks.ShouldBe(1);
+
+        // Act clear focus so the next cue comparison is not confounded by the focused-button
+        // face the Enter test above left behind, then re-enable the panel
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(null), "clear focus before checking the recovered cue");
+        await surface.UpdateAsync(() => panel.IsEnabled = true, "re-enable the panel");
+
+        // Assert the rendered cue moved back
+        surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(normalForeground);
+
+        // Act Enter after recovery
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(first).ShouldBeTrue(), "refocus the first button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation followed the cue back
+        firstClicks.ShouldBe(1);
+        secondClicks.ShouldBe(1);
+    }
+
+    /// <summary>Verifies hiding an intermediate container - not the default button itself - moves
+    /// the Current cue to a sibling IsDefault candidate the same way disabling it does, since
+    /// Window's ancestor-facing OnDescendantAvailabilityChanged hook fires from both the IsEnabled
+    /// and the Visibility setter.</summary>
+    [Fact]
+    public async Task Render_WhenAnAncestorOfADefaultButtonIsHidden_MovesTheCurrentCueWithEnterActivationAsync()
+    {
+        // Arrange
+        var firstClicks = 0;
+        var secondClicks = 0;
+        var first = new Button { Text = "First", IsDefault = true };
+        var second = new Button { Text = "Second", IsDefault = true };
+        first.Click += (_, _) => firstClicks++;
+        second.Click += (_, _) => secondClicks++;
+        var panel = new Stack { Children = { first } };
+        var content = new Stack { Children = { panel, second } };
+        var window = new Window { Content = content, Width = Length.Cells(14), Height = Length.Cells(8) };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(18, 10),
+            options,
+            ThemeCatalog.Load("turbo-vision"),
+            TestContext.Current.CancellationToken);
+
+        // Assert only the first candidate in ownership order paints the current face - captured
+        // from the rendered cells themselves so a later comparison actually proves the repaint
+        // happened, not merely that a fresh GetAppearanceState() call would compute the right answer.
+        var currentForeground = surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground;
+        var normalForeground = surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground;
+        currentForeground.ShouldNotBe(normalForeground);
+
+        // Act hide the panel that owns the current default button - not the button itself
+        await surface.UpdateAsync(() => panel.Visibility = Visibility.Hidden, "hide the panel owning the first default button");
+
+        // Assert the rendered cue actually moved onto the second candidate's cells, even though
+        // neither button's own IsEnabled, Visibility, or IsDefault changed
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+
+        // Act Enter now targets the second candidate
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(second).ShouldBeTrue(), "focus the second button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert only the current candidate activated
+        firstClicks.ShouldBe(0);
+        secondClicks.ShouldBe(1);
+
+        // Act clear focus so the next cue comparison is not confounded by the focused-button
+        // face the Enter test above left behind, then show the panel again
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(null), "clear focus before checking the recovered cue");
+        await surface.UpdateAsync(() => panel.Visibility = Visibility.Visible, "show the panel again");
+
+        // Assert the rendered cue moved back
+        surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(normalForeground);
+
+        // Act Enter after recovery
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(first).ShouldBeTrue(), "refocus the first button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation followed the cue back
+        firstClicks.ShouldBe(1);
+        secondClicks.ShouldBe(1);
+    }
+
+    /// <summary>Verifies reordering two IsDefault siblings within their one shared parent - which
+    /// adds and removes nothing, so neither button's own lifecycle events nor OnParentChanged ever
+    /// fire - still moves the Current cue and Enter's own activation target together, through
+    /// Window's ancestor-facing OnDescendantOwnershipChanged hook.</summary>
+    [Fact]
+    public async Task Render_WhenTwoDefaultButtonsAreReordered_MovesTheCurrentCueWithEnterActivationAsync()
+    {
+        // Arrange
+        var firstClicks = 0;
+        var secondClicks = 0;
+        var first = new Button { Text = "First", IsDefault = true };
+        var second = new Button { Text = "Second", IsDefault = true };
+        first.Click += (_, _) => firstClicks++;
+        second.Click += (_, _) => secondClicks++;
+        var content = new Stack { Children = { first, second } };
+        var window = new Window { Content = content, Width = Length.Cells(14), Height = Length.Cells(8) };
+        var options = TerminalOptions.Minimal with
+        {
+            Capabilities = TerminalCapabilities.Conservative with { ColorDepth = ColorDepth.TrueColor }
+        };
+        await using var surface = await ComponentSurface.MountAsync(
+            window,
+            new Size(18, 10),
+            options,
+            ThemeCatalog.Load("turbo-vision"),
+            TestContext.Current.CancellationToken);
+
+        // Assert only the first candidate in ownership order paints the current face - captured
+        // from the rendered cells themselves so a later comparison actually proves the repaint
+        // happened, not merely that a fresh GetAppearanceState() call would compute the right
+        // answer. A pure reorder raises no insert, remove, or OnParentChanged notification for
+        // either button, so the position is recomputed after each move rather than cached.
+        var currentForeground = surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground;
+        var normalForeground = surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground;
+        currentForeground.ShouldNotBe(normalForeground);
+
+        // Act reorder the two siblings within their one shared parent - neither button's own
+        // IsDefault, IsEnabled, or Visibility changes
+        await surface.UpdateAsync(() => content.Children.Move(1, 0), "move the second button before the first");
+
+        // Assert the rendered cue moved purely from the ownership-order change, onto the
+        // reordered candidate's new screen position
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+        surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground.ShouldNotBe(currentForeground);
+
+        // Act Enter now targets the reordered candidate
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(second).ShouldBeTrue(), "focus the reordered second button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation followed the reordered cue
+        firstClicks.ShouldBe(0);
+        secondClicks.ShouldBe(1);
+
+        // Act clear focus so the next cue comparison is not confounded by the focused-button
+        // face the Enter test above left behind, then reorder back
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(null), "clear focus before checking the recovered cue");
+        await surface.UpdateAsync(() => content.Children.Move(0, 1), "move the first button back before the second");
+
+        // Assert the rendered cue moved back
+        surface.Cell(AbsolutePosition(first.TextControl!)).Style.Foreground.ShouldBe(currentForeground);
+        surface.Cell(AbsolutePosition(second.TextControl!)).Style.Foreground.ShouldBe(normalForeground);
+
+        // Act Enter after the reorder is undone
+        await surface.UpdateAsync(() => surface.Application.Focus.Focus(first).ShouldBeTrue(), "refocus the first button");
+        await surface.Keyboard.PressAsync(Code.Enter);
+
+        // Assert activation followed the cue back
+        firstClicks.ShouldBe(1);
         secondClicks.ShouldBe(1);
     }
 

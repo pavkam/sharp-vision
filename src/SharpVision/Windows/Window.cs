@@ -33,6 +33,13 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     private bool _resizePointerOver;
     private bool _isShowingModal;
 
+    // Cleared (with the resolved reference itself) by InvalidateDefaultButtonResolution and
+    // recomputed lazily by ResolveDefaultButton, so the potentially deep subtree walk runs only at
+    // the small number of commit points that can move the answer, never on the far more frequent
+    // per-render reads every IsDefault descendant makes through IsEffectiveDefault.
+    private bool _defaultButtonResolutionDirty = true;
+    private Button? _resolvedDefaultButton;
+
     #region Construction and properties
 
     /// <inheritdoc/>
@@ -70,6 +77,16 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         // IsAppearanceBoundary is set once, generically, in the FloatingSurfaceBase constructor -
         // a Window is a top-level floating surface and must never blend an ambient parent's
         // appearance into its own resolved Face.
+
+        // OnDescendantAvailabilityChanged only ever reaches an ANCESTOR of the control whose
+        // IsEnabled or Visibility changed - this Window's own such change has no further ancestor
+        // to notify it, yet it cascades EffectiveIsEnabled/EffectiveIsVisible to every descendant
+        // candidate exactly like an intermediate container's change does. Without this, hiding or
+        // disabling this Window (a Collapsed Window awaiting ShowModal, for example) and later
+        // reversing that leaves the cached resolution stale forever, since nothing else ever
+        // invalidates it for this Window's own transition.
+        EnabledChanged += (_, _) => InvalidateDefaultButtonResolution();
+        VisibilityChanged += (_, _) => InvalidateDefaultButtonResolution();
     }
 
     /// <summary>Gets the retained close-chrome hover detail used to prove reconciliation with the
@@ -1427,9 +1444,27 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
     /// bit, so a window with several <see cref="Button.IsDefault"/> descendants paints the cue on
     /// exactly the one Enter would activate, never on more than one, and never on a disabled or
     /// hidden one even while it keeps the flag.
+    /// <para>
+    /// The answer is cached against <see cref="InvalidateDefaultButtonResolution"/>'s dirty flag
+    /// rather than walked fresh on every call - <see cref="Button.GetAppearanceState"/> reads this
+    /// (through <see cref="IsEffectiveDefault"/>) several times per render for every
+    /// <see cref="Button.IsDefault"/> descendant, and a full subtree walk on each of those reads
+    /// would scale with both the render count and the tree size for no benefit, since the answer
+    /// only ever changes at one of the small number of commit points that already call
+    /// <see cref="InvalidateDefaultButtonResolution"/>.
+    /// </para>
     /// </remarks>
     [Pure]
-    internal Button? ResolveDefaultButton() => FindButton(this, static candidate => candidate.IsDefault);
+    internal Button? ResolveDefaultButton()
+    {
+        if (_defaultButtonResolutionDirty)
+        {
+            _resolvedDefaultButton = FindButton(this, static candidate => candidate.IsDefault);
+            _defaultButtonResolutionDirty = false;
+        }
+
+        return _resolvedDefaultButton;
+    }
 
     /// <summary>Gets whether the given button is the one <see cref="ResolveDefaultButton"/>
     /// currently resolves.</summary>
@@ -1444,20 +1479,37 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         return ReferenceEquals(ResolveDefaultButton(), button);
     }
 
-    /// <summary>Repaints the <see cref="VisualState.Current"/> cue on every descendant
-    /// <see cref="Button.IsDefault"/> button, so it reflects a resolution change even for a
-    /// button whose own facts (<see cref="ControlBase.EffectiveIsEnabled"/>,
-    /// <see cref="ControlBase.EffectiveIsVisible"/>, <see cref="Button.IsDefault"/>) did not
-    /// themselves change.</summary>
+    /// <summary>Marks this window's cached <see cref="ResolveDefaultButton"/> answer stale and
+    /// repaints the <see cref="VisualState.Current"/> cue on every descendant
+    /// <see cref="Button.IsDefault"/> button, so each one re-evaluates the resolution and repaints
+    /// if the answer changed - including a button whose own facts
+    /// (<see cref="ControlBase.EffectiveIsEnabled"/>, <see cref="ControlBase.EffectiveIsVisible"/>,
+    /// <see cref="Button.IsDefault"/>) did not themselves change.</summary>
     /// <remarks>
     /// Keeping several <see cref="Button.IsDefault"/> descendants legal means the resolved
     /// default can move from one to another purely because a sibling's flag, availability, or
-    /// ownership changed - a fact each affected button cannot detect from its own state alone.
-    /// A <see cref="Button"/> calls this on its owning window whenever <see cref="Button.IsDefault"/>,
-    /// its own enabled or visible state, or its ownership commits, so every candidate re-evaluates
-    /// <see cref="ResolveDefaultButton"/> and repaints if the answer changed.
+    /// ownership changed - a fact each affected button cannot detect from its own state alone, and
+    /// this window is the only place that can see all of them at once. This single internal seam
+    /// is the complete set of reasons the resolution can move:
+    /// <list type="bullet">
+    /// <item><description>A <see cref="Button"/> calls this directly on its owning window from its
+    /// own <see cref="Button.IsDefault"/> setter - no ancestor hook observes that property.</description></item>
+    /// <item><description><see cref="OnDescendantAvailabilityChanged"/> calls this whenever any
+    /// descendant's own <see cref="ControlBase.IsEnabled"/> or <see cref="ControlBase.Visibility"/>
+    /// changes, however far above the affected candidate that descendant sits - an intermediate
+    /// container losing eligibility removes every <see cref="Button.IsDefault"/> button beneath it
+    /// from consideration without any of those buttons' own facts changing.</description></item>
+    /// <item><description><see cref="OnDescendantOwnershipChanged"/> calls this whenever any
+    /// descendant owner's owned-control order or membership commits - a reorder that adds or
+    /// removes nothing still changes which candidate ownership order finds first.</description></item>
+    /// </list>
     /// </remarks>
-    internal void InvalidateDefaultButtonCues() => InvalidateDefaultButtonCues(this);
+    internal void InvalidateDefaultButtonResolution()
+    {
+        _defaultButtonResolutionDirty = true;
+        _resolvedDefaultButton = null;
+        InvalidateDefaultButtonCues(this);
+    }
 
     private static void InvalidateDefaultButtonCues(ControlBase control)
     {
@@ -1472,6 +1524,49 @@ public class Window: FloatingSurfaceBase, IOverlayPositionConstraint
         {
             InvalidateDefaultButtonCues(control.OwnedControlAt(index));
         }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// A descendant's own <see cref="ControlBase.IsEnabled"/> or <see cref="ControlBase.Visibility"/>
+    /// change already repaints itself and its own descendants through the ordinary state cascade;
+    /// this override exists for the case that cascade cannot reach - a <see cref="Button.IsDefault"/>
+    /// candidate that sits outside <paramref name="descendant"/>'s own subtree but whose Current cue
+    /// still depends on whether <paramref name="descendant"/> remains eligible. See
+    /// <see cref="InvalidateDefaultButtonResolution"/> for the complete set of triggers this joins.
+    /// </remarks>
+    protected internal override void OnDescendantAvailabilityChanged(ControlBase descendant)
+    {
+        base.OnDescendantAvailabilityChanged(descendant);
+        InvalidateDefaultButtonResolution();
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// A same-parent reorder (<c>Children.Move</c>, for example) adds and removes nothing, so
+    /// neither a child's own lifecycle events nor <see cref="ControlBase.OnParentChanged"/> ever
+    /// fire for it - yet ownership order is exactly what <see cref="ResolveDefaultButton"/> walks,
+    /// so this override is the only signal available that the answer may have moved. See
+    /// <see cref="InvalidateDefaultButtonResolution"/> for the complete set of triggers this joins.
+    /// </remarks>
+    protected internal override void OnDescendantOwnershipChanged(ControlBase owner)
+    {
+        base.OnDescendantOwnershipChanged(owner);
+        InvalidateDefaultButtonResolution();
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// <see cref="OnDescendantOwnershipChanged"/> reaches every other owner's structural change in
+    /// this Window's subtree, but never this Window's own <see cref="ContentControl.Content"/> slot - that slot's
+    /// owner is this Window itself, not one of its ancestors. Replacing the complete <see cref="ContentControl.Content"/>
+    /// subtree can just as easily add or remove an <see cref="Button.IsDefault"/> candidate as any
+    /// other structural change, so this override closes that one remaining gap.
+    /// </remarks>
+    protected override void OnContentChanged(ControlBase? previous, ControlBase? current)
+    {
+        base.OnContentChanged(previous, current);
+        InvalidateDefaultButtonResolution();
     }
 
     #endregion
