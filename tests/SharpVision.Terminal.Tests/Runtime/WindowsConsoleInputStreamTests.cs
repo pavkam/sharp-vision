@@ -40,4 +40,88 @@ public sealed class WindowsConsoleInputStreamTests
         _ = Should.Throw<NotSupportedException>(() => stream.SetLength(0));
         _ = Should.Throw<NotSupportedException>(() => stream.Write([], 0, 0));
     }
+
+    /// <summary>
+    /// Verifies a cancellation that lands before the pooled thread reaches the native call is
+    /// caught by the stream's own pre-call check, so that call is never issued. This is the
+    /// narrower race window the cancellation registration's pending-I/O abort alone cannot close,
+    /// because it has no pending I/O left to abort until the native call has actually started.
+    /// </summary>
+    [Fact]
+    public async Task ReadAsync_WhenCancelledBeforeNativeReadStarts_ThrowsWithoutInvokingNativeReadAsync()
+    {
+        var invoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        ReadConsoleDelegate fakeRead;
+
+        unsafe
+        {
+            fakeRead = (_, _, _, out charsRead) =>
+            {
+                _ = invoked.TrySetResult();
+                charsRead = 0;
+
+                // A real ReadConsoleW blocks until input arrives; sleeping here rather than
+                // returning immediately turns a lost race into an unmistakable failure (the
+                // bounded wait below elapses first) instead of a silent false pass, without
+                // leaking a blocked thread forever if that ever happens.
+                Thread.Sleep(TimeSpan.FromSeconds(5));
+                return true;
+            };
+        }
+
+        using var stream = new WindowsConsoleInputStream(0, fakeRead, static _ => true);
+        using var cts = new CancellationTokenSource();
+        var buffer = new byte[4];
+
+        var read = stream.ReadAsync(buffer, cts.Token).AsTask();
+        cts.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => read.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        invoked.Task.IsCompleted.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a cancellation that lands while the native read is already in flight still
+    /// cancels the read, via the registration's pending-I/O cancellation path rather than the
+    /// pre-call check that only helps when the call has not started yet.
+    /// </summary>
+    [Fact]
+    public async Task ReadAsync_WhenCancelledWhileNativeReadIsInFlight_ThrowsViaCancelPendingIoAsync()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelPendingIoCalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        ReadConsoleDelegate fakeRead;
+
+        unsafe
+        {
+            fakeRead = (_, _, _, out charsRead) =>
+            {
+                _ = started.TrySetResult();
+                release.Task.GetAwaiter().GetResult();
+                charsRead = 0;
+                return false;
+            };
+        }
+
+        bool CancelPendingIo(nint handle)
+        {
+            _ = handle;
+            _ = cancelPendingIoCalled.TrySetResult();
+            _ = release.TrySetResult();
+            return true;
+        }
+
+        using var stream = new WindowsConsoleInputStream(0, fakeRead, CancelPendingIo);
+        using var cts = new CancellationTokenSource();
+        var buffer = new byte[4];
+
+        var read = stream.ReadAsync(buffer, cts.Token).AsTask();
+        await started.Task;
+        cts.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => read);
+        cancelPendingIoCalled.Task.IsCompleted.ShouldBeTrue();
+    }
 }

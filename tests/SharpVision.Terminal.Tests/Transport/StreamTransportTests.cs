@@ -553,4 +553,33 @@ public sealed class StreamTransportTests
         _ = await Should.ThrowAsync<IOException>(async () =>
             await transport.ReadAsync(new byte[1], TestContext.Current.CancellationToken));
     }
+
+    /// <summary>
+    /// Verifies the read-drain-timeout abandon documented above never disposes the input stream
+    /// when it was left open, so an abandoned non-cooperative read is left exactly as stuck as it
+    /// would be with no read-drain timeout at all - the asymmetry <c>WindowsConsoleHost</c> relies
+    /// on when it constructs its transport with <c>leaveOpen: true</c>, since disposing the
+    /// stream out from under the read is the only safety net that unblocks it, and that net does
+    /// not apply to a stream this transport does not own.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_WhenReadIgnoresCancellationAndInputIsLeftOpen_AbandonsItWithoutDisposingInputAsync()
+    {
+        var input = new BlockingReadStream(ignoresCancellation: true);
+        var transport = new StreamTransport(
+            input,
+            Stream.Null,
+            leaveInputOpen: true,
+            leaveOutputOpen: true,
+            readDrainTimeout: TimeSpan.FromMilliseconds(50));
+        var read = transport.ReadAsync(new byte[4], TestContext.Current.CancellationToken).AsTask();
+        await input.FirstStarted;
+
+        await transport.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+
+        input.DisposeCount.ShouldBe(0);
+        read.IsCompleted.ShouldBeFalse();
+    }
 }

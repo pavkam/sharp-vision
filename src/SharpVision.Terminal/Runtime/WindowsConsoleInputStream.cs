@@ -38,12 +38,22 @@ namespace SharpVision.Terminal.Runtime;
 /// remainder of the test session instead of observing its own 200ms-later cancellation before this
 /// was added.
 /// </para>
+/// <para>
+/// That registration only aborts a read the pooled thread has already started - if cancellation
+/// instead lands in the narrow window between the registration and the pooled thread reaching the
+/// native call, <c>CancelIoEx</c> finds no pending I/O to abort and the read that starts afterwards
+/// would otherwise block with no further cancellation attempt. <see cref="ReadConsoleOnce"/>
+/// therefore also checks the token immediately before issuing that call, so this window is closed
+/// from both ends.
+/// </para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsConsoleInputStream: Stream
 {
     private readonly nint _handle;
     private readonly ConsoleUtf16ToUtf8Transcoder _transcoder = new();
+    private readonly ReadConsoleDelegate _readConsole;
+    private readonly Func<nint, bool> _cancelPendingIo;
 
     // Sized generously enough that ordinary keyboard input and pastes transcode in one native
     // call; a read larger than this simply spans more native calls and drains through the pending
@@ -52,7 +62,26 @@ internal sealed class WindowsConsoleInputStream: Stream
 
     /// <summary>Initializes the stream over the raw console input handle.</summary>
     /// <param name="handle">The process's standard console input handle.</param>
-    public WindowsConsoleInputStream(nint handle) => _handle = handle;
+    /// <param name="readConsole">
+    /// The native console-read boundary, or null for the real native call. Tests supply this so a
+    /// cancellation that lands before the pooled thread reaches the native call can be forced
+    /// deterministically and observed as never issuing that call, which cannot be provoked
+    /// against a real console.
+    /// </param>
+    /// <param name="cancelPendingIo">
+    /// The pending-I/O cancellation boundary, or null for the real native call. Tests supply this
+    /// so the cancellation-registration path can be exercised and observed without a real console
+    /// handle.
+    /// </param>
+    public unsafe WindowsConsoleInputStream(
+        nint handle,
+        ReadConsoleDelegate? readConsole = null,
+        Func<nint, bool>? cancelPendingIo = null)
+    {
+        _handle = handle;
+        _readConsole = readConsole ?? RuntimeInterop.TryReadConsole;
+        _cancelPendingIo = cancelPendingIo ?? RuntimeInterop.TryCancelPendingIo;
+    }
 
     /// <inheritdoc/>
     public override bool CanRead => true;
@@ -99,17 +128,21 @@ internal sealed class WindowsConsoleInputStream: Stream
         }
 
         using var registration = cancellationToken.Register(
-            static state => RuntimeInterop.TryCancelPendingIo((nint) state!),
-            _handle);
+            static state => ((WindowsConsoleInputStream) state!).CancelPendingRead(),
+            this);
 
         while (true)
         {
-            // CancellationToken.None: cancellation is handled entirely by the registration above
+            // CancellationToken.None: cancellation is primarily handled by the registration above
             // asking the OS to abort the pending native read, not by the framework's own
-            // before-the-fact check, which cannot interrupt a read already in flight. A pooled
+            // before-the-fact check, which cannot interrupt a read already in flight. The real
+            // token is still threaded through to ReadConsoleOnce itself, which checks it
+            // immediately before issuing the native call - closing the narrower race where
+            // cancellation lands after this registration but before the pooled thread reaches
+            // that call, when CancelIoEx would find no pending I/O left to abort. A pooled
             // Task.Run is deliberate, not an oversight - see the class remarks.
             var (succeeded, charsRead, error) = await Task.Run(
-                ReadConsoleOnce,
+                () => ReadConsoleOnce(cancellationToken),
                 CancellationToken.None).ConfigureAwait(false);
 
             if (!succeeded)
@@ -166,23 +199,40 @@ internal sealed class WindowsConsoleInputStream: Stream
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
     /// <summary>Issues one blocking native read on the calling (pooled) thread.</summary>
+    /// <param name="cancellationToken">
+    /// The caller's cancellation token, checked immediately before the native call so a
+    /// cancellation that lands after the <c>ReadAsync</c> registration but before this pooled
+    /// thread reaches that call is still caught, rather than starting a read nothing can then
+    /// abort.
+    /// </param>
     /// <returns>
     /// Whether the call succeeded, the number of code units read on success, and the Win32 error
     /// captured immediately on failure - captured here, rather than after crossing back onto the
     /// awaiting continuation, because the last Win32 error is thread-local and this call may
-    /// resume on a different thread.
+    /// resume on a different thread. Cancellation observed before the native call is reported as
+    /// a failure with <see cref="RuntimeInterop.ErrorOperationAborted"/> so the caller's existing
+    /// post-read handling turns it into <see cref="OperationCanceledException"/> without ever
+    /// issuing the native call.
     /// </returns>
-    private (bool Succeeded, uint CharsRead, int Error) ReadConsoleOnce()
+    private (bool Succeeded, uint CharsRead, int Error) ReadConsoleOnce(CancellationToken cancellationToken)
     {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return (false, 0, RuntimeInterop.ErrorOperationAborted);
+        }
+
         unsafe
         {
             fixed (char* pointer = _nativeBuffer)
             {
-                var succeeded = RuntimeInterop.TryReadConsole(_handle, pointer, (uint) _nativeBuffer.Length, out var charsRead);
+                var succeeded = _readConsole(_handle, pointer, (uint) _nativeBuffer.Length, out var charsRead);
                 var error = succeeded ? 0 : Marshal.GetLastPInvokeError();
 
                 return (succeeded, charsRead, error);
             }
         }
     }
+
+    /// <summary>Asks the OS to abort this stream's pending native read, if any.</summary>
+    private void CancelPendingRead() => _cancelPendingIo(_handle);
 }
