@@ -51,10 +51,20 @@ tmux side is narrower: only non-empty `TMUX` or a `TERM=tmux-*` prefix matches,
 never a bare `TERM=tmux`. Either path detects only the nearest inner layer and
 cannot prove outer-terminal support.
 
-Startup routes Kitty keyboard status, DA1, DA2, DEC mode reports, cell or window
-metrics, and the trailing `CSI 6 n` fence because those are CSI sequences. It
-neither writes nor registers OSC 4/10/11, XTGETTCAP, or DECRQSS, so omitted
-families consume no query slot and cannot hold publication until the deadline.
+Startup sends the Kitty keyboard status query, DEC private-mode probes
+(synchronized output, grapheme clustering, focus, bracketed paste, and mouse),
+window/cell geometry, DECRQSS `modifyOtherKeys`, and the trailing `CSI 6 n`
+cursor-position fence raw to the nearest terminal — Screen itself — never
+through the Screen wrap, the same local/outer split
+[tmux uses](tmux.md#routing-policy) (see also the
+[multiplexer boundary](../architecture/capabilities.md#multiplexer-boundary)).
+Only `DA1`, `DA2`, and the clipboard mode 5522 probe are addressed to the
+explicit outer terminal and wrapped through Screen's DCS relay, because those
+are the only CSI-shaped queries in that group; every other outer-route family —
+OSC palette/default color, XTGETTCAP, iTerm2 capabilities, and Kitty graphics —
+is string-terminated and is omitted before registration rather than wrapped,
+since Screen's first ST would end its DCS relay early. Omitted families consume
+no query slot and cannot hold publication until the deadline.
 
 > [!NOTE]
 >
