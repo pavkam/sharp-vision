@@ -796,6 +796,33 @@ public sealed class ProtocolRouterTests
         }
     }
 
+    /// <summary>Verifies a capability query rejected for exceeding a bound does not poison the
+    /// router instance: routing a valid capability query afterward on the same router still
+    /// delivers a typed response.</summary>
+    [Fact]
+    public void Route_WhenRejectedQueryPrecedesValidQueryOnSameRouter_DeliversTheValidResponse()
+    {
+        var limits = QueryLimits.Default with
+        {
+            MaxCapabilityItems = 1,
+            MaxCapabilityValueBytes = 2
+        };
+        var sink = new RecordingProtocolSink();
+        using var router = new ProtocolRouter(
+            sink,
+            TerminalInputOptions.Default with { QueryLimits = limits });
+
+        router.Route(Encoding.ASCII.GetBytes("\u001bP1+r524742=323435\u001b\\"));
+
+        sink.CapabilityResponses.ShouldBeEmpty();
+        _ = sink.Sequences.ShouldHaveSingleItem();
+
+        router.Route("\u001bP1+r524742=3234\u001b\\"u8);
+
+        sink.CapabilityResponses.ShouldHaveSingleItem()
+            .Items[CapabilityName.DirectColor].Length.ShouldBe(2);
+    }
+
     /// <summary>Verifies identity-less failure remains typed and adjacent input recovers at every split.</summary>
     [Fact]
     public void Route_WhenCapabilityRequestFails_DeliversFailureAtEverySplit()

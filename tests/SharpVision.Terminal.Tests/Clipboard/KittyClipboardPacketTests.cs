@@ -167,6 +167,22 @@ public sealed class KittyClipboardPacketTests
     }
 
     /// <summary>
+    /// Verifies a payload whose decoded length is exactly one byte past the
+    /// configured clipboard limit is rejected, proving the boundary check rejects
+    /// the first excess byte rather than only grossly oversized payloads.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenPayloadExceedsClipboardLimitByOne_ReturnsInvalid()
+    {
+        var limits = TransferLimits.Default with { MaxClipboardBytes = 2 };
+
+        var packet = KittyClipboardPacket.Parse("5522;type=wdata;AAEC"u8, limits);
+
+        packet.Valid.ShouldBeFalse();
+        packet.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.InvalidBase64);
+    }
+
+    /// <summary>
     /// Verifies validity never depends on whether the payload is materialized.
     /// </summary>
     /// <param name="input">A representative valid or malformed packet.</param>
@@ -245,5 +261,22 @@ public sealed class KittyClipboardPacketTests
         {
             CultureInfo.CurrentCulture = previous;
         }
+    }
+
+    /// <summary>
+    /// Verifies metadata whose length is exactly the configured limit is accepted,
+    /// proving the bound rejects only metadata that exceeds the limit rather than
+    /// metadata that reaches it.
+    /// </summary>
+    [Fact]
+    public void Parse_WhenMetadataIsAtLimit_ReturnsValid()
+    {
+        var metadata = "type=read"u8;
+        var limits = TransferLimits.Default with { MaxMetadataBytes = metadata.Length };
+
+        var packet = KittyClipboardPacket.Parse("5522;type=read"u8, limits);
+
+        packet.Valid.ShouldBeTrue();
+        packet.Operation.ShouldBe(KittyClipboardOperation.Read);
     }
 }

@@ -176,6 +176,21 @@ public sealed class KittyGraphicsResponseTests
         response.Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
     }
 
+    /// <summary>Verifies a reply whose length is exactly MaxMetadataBytes is accepted, proving the
+    /// bound rejects only payloads that exceed the limit rather than payloads that reach it.</summary>
+    [Fact]
+    public void Parse_WhenReplyIsAtMetadataLimit_ReturnsValid()
+    {
+        var wire = "Gi=1;OK"u8;
+        var limits = KittyMetadataLimits.Default with { MaxMetadataBytes = wire.Length };
+
+        var response = KittyGraphicsResponse.Parse(wire, limits);
+
+        response.Valid.ShouldBeTrue();
+        response.ImageId.ShouldBe(1U);
+        response.Succeeded.ShouldBeTrue();
+    }
+
     /// <summary>Verifies InputOptions.KittyMetadataLimits - not InputOptions.TransferLimits -
     /// bounds the graphics APC response reached through the full decoder (KittyGraphicsResponse.Parse
     /// previously borrowed the clipboard-domain TransferLimits type through a local alias).</summary>

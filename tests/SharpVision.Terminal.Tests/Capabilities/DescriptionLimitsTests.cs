@@ -82,6 +82,46 @@ public sealed class DescriptionLimitsTests
         limits.NcursesLibraryNames.ShouldNotBeEmpty();
     }
 
+    /// <summary>Verifies every bounded limit rejects one past its documented ceiling and accepts
+    /// the ceiling itself, so an off-by-one in the bound check cannot pass unnoticed.</summary>
+    [Fact]
+    public void Limits_WhenConstructed_RequireBoundedPositiveValues()
+    {
+        // Arrange / Act / Assert
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxTerminalNameBytes = 1_025 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxDescriptionPathEntries = 257 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxDescriptionPathBytes = 32_769 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxDescriptionSnapshotBytes = 16_777_217 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxDescriptionKeyBindings = 1_025 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxDescriptionRgbComponentBits = 64 });
+        _ = Should.Throw<ArgumentOutOfRangeException>(static () =>
+            new DescriptionLimits { MaxTermcapVariableBytes = 4_097 });
+
+        var ceilings = DescriptionLimits.Default with
+        {
+            MaxTerminalNameBytes = 1_024,
+            MaxDescriptionPathEntries = 256,
+            MaxDescriptionPathBytes = 32_768,
+            MaxDescriptionSnapshotBytes = 16_777_216,
+            MaxDescriptionKeyBindings = 1_024,
+            MaxDescriptionRgbComponentBits = 63,
+            MaxTermcapVariableBytes = 4_096
+        };
+        ceilings.MaxTerminalNameBytes.ShouldBe(1_024);
+        ceilings.MaxDescriptionPathEntries.ShouldBe(256);
+        ceilings.MaxDescriptionPathBytes.ShouldBe(32_768);
+        ceilings.MaxDescriptionSnapshotBytes.ShouldBe(16_777_216);
+        ceilings.MaxDescriptionKeyBindings.ShouldBe(1_024);
+        ceilings.MaxDescriptionRgbComponentBits.ShouldBe(63);
+        ceilings.MaxTermcapVariableBytes.ShouldBe(4_096);
+    }
+
     /// <summary>
     /// Verifies the default candidate order tries the current platform's own library naming
     /// convention first, so the loop in <c>NcursesLibrary.Open</c> does not exhaust every

@@ -187,6 +187,26 @@ public sealed class QueryTrackerTests
     }
 
     /// <summary>
+    /// Verifies a query rejected by the concurrency limit does not poison the
+    /// tracker instance: once the occupying query is matched and its slot frees,
+    /// the same tracker accepts a subsequent registration.
+    /// </summary>
+    [Fact]
+    public void TryRegister_WhenSlotFreesAfterRejection_AcceptsNextQuery()
+    {
+        var limits = QueryLimits.Default with { MaxConcurrentQueries = 1 };
+        var tracker = new QueryTracker(limits);
+        tracker.TryRegister(QueryKind.PrimaryAttributes, null, out _).ShouldBeTrue();
+
+        tracker.TryRegister(QueryKind.CursorPosition, null, out _).ShouldBeFalse();
+
+        tracker.Match(QueryKind.PrimaryAttributes).ShouldBe(QueryMatch.Matched);
+
+        tracker.TryRegister(QueryKind.CursorPosition, null, out _).ShouldBeTrue();
+        tracker.ActiveCount.ShouldBe(1);
+    }
+
+    /// <summary>
     /// Verifies duplicate, cancelled, and timed-out responses are distinguished.
     /// </summary>
     [Fact]
