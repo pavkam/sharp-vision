@@ -34,10 +34,12 @@ immutable committed delta - copied old/new orders, entering and leaving
 identities, affected indices, normalized mutation kind (including
 `DirectDisposal` for a child that disposed itself), and release reason - and
 calls `base.OnItemControlsChanged(change)` to keep the parameterless overload
-running for that change. `ListView`, `Table`, `Menu`, and `CommandBar` use those
-facts for selection and current-item repair instead of reconstructing the
-mutation from the final list; a consumer-derived owner has the same seam
-available for the same purpose.
+running for that change. `Menu` and `CommandBar` use those facts for selection
+and current-item repair instead of reconstructing the mutation from the final
+list; `ListView` instead repairs eligibility through each realized item's own
+`AvailabilityChanged` event (see [`ListView`](collections/list-view.md)), and a
+consumer-derived owner has the same `OnItemControlsChanged(OwnedControlChange)`
+seam available for the same purpose.
 
 Beyond structural change notification, `ItemsControl` also wires three
 `ControlBase` ancestor hooks - `OnDescendantFocused`, `OnDescendantAccessKey`,
