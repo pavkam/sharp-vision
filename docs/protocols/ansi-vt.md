@@ -60,9 +60,13 @@ control and BackTab spellings.
 
 The generic VT/xterm key grammar is not a universal decoder fallback. It belongs
 only to `TerminalProfile.CreateAnsi`, while the Windows VT description owns its
-finite fixed map and ncurses profiles own their database strings. Exact
-described signatures override generic ANSI key meanings, but registered replies,
-paste framing, mouse/focus reports, and Kitty keyboard events retain precedence.
+finite fixed map and ncurses profiles own their database strings.
+Cursor/function-key forms shared with the enhanced Kitty grammar are consumed by
+that grammar (or, absent Kitty disambiguation, by the explicit built-in
+ANSI-compatible grammar) before a described key lookup - a database string
+cannot shadow them. A described signature is authoritative for every other ANSI
+key meaning, and registered replies, paste framing, mouse/focus reports, and
+Kitty keyboard events retain precedence over both.
 
 The fixed map requires application mode only because it contains SS3 cursor,
 Home, and End bindings (`ESC O A`–`D`, `H`, and `F`). SS3 F1–F4 spellings

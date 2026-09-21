@@ -32,9 +32,11 @@ flowchart TD
 
 The active terminal profile's key map is copied into immutable input options
 when `Session` constructs its router. CSI, SS3, Escape, and control callbacks
-first run registered reply, paste, mouse, focus, and Kitty consumers, then exact
-described-key signatures, then the explicit ANSI compatibility grammar when that
-built-in profile selected it. Non-signature description strings use a bounded
+first run registered reply, paste, mouse, focus, and Kitty `u`-event consumers,
+then the legacy/enhanced cursor-key grammar for the shared cursor/function-key
+finals when the built-in ANSI profile or Kitty disambiguation applies, then
+exact described-key signatures, then the explicit ANSI compatibility grammar's
+tilde-key fallback. Non-signature description strings use a bounded
 longest-match trie before ordinary text decoding. An unmatched retained prefix
 is replayed once through the ordinary decoder, preserving byte order and
 recovery.

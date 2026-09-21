@@ -341,8 +341,13 @@ dialects - the Linux virtual console's `kf1`-`kf5` (`ESC [ [ A` through
 rxvt-unicode's Shift-modified navigation keys (`ESC [ 2 $` for Shift+Insert and
 its siblings, a `$` outside the legal CSI final-byte range) - not a general
 relaxation: a string that only exceeds the active parameter or intermediate
-limit, rather than being unrepresentable at every limit, is still rejected. In
-ground state, an Escape byte joins the trie's byte-prefix matching only while
+limit, rather than being unrepresentable at every limit, is still rejected. A
+raw-escape candidate is further rejected when it matches a reserved
+CSI/OSC/DCS/APC introducer the decoder already owns outright (private-mode,
+DA1/DA2, or SGR/X10 mouse-report CSI prefixes, bracketed-paste markers, or a
+bare OSC/DCS/APC introducer) - this is not a general relaxation of the
+parser-control-prefix rule, only a closed exception for the two named dialects.
+In ground state, an Escape byte joins the trie's byte-prefix matching only while
 the active key map owns at least one raw-escape binding. A byte that then
 diverges mid-sequence is replayed through ordinary handling unchanged, one call
 frame later, and every multi-byte grammar reached that way (`CSI`, SS3, Kitty,
@@ -362,12 +367,18 @@ workspace, and remains idempotent; no described-key byte storage survives that
 ownership boundary.
 
 Input precedence is fixed: registered typed replies, paste framing, mouse and
-focus reports, and Kitty keyboard events consume their grammar before a
-described key lookup. A complete described signature then wins over the optional
-generic legacy grammar. That generic grammar is enabled only by the explicit
+focus reports, and Kitty `u`-event keyboard events consume their grammar before
+anything else. For the ten shared cursor/function-key finals (and, once Kitty
+keyboard disambiguation is active, tilde-form functional keys and the keypad
+`Begin`/`Z` forms), the enhanced Kitty-disambiguated grammar or the explicit
+built-in ANSI-compatibility grammar - whichever applies - is consumed next,
+before a described key lookup, so a database string cannot shadow enhanced or
+legacy cursor-key input. A described KeyMap signature is authoritative for every
+other CSI/SS3 shape, and for these same shapes whenever neither the built-in
+ANSI profile nor Kitty disambiguation applies. Generic VT/xterm meanings for
+strings the active database did not describe are supplied only by the explicit
 built-in ANSI compatibility profile; arbitrary database profiles do not inherit
-xterm meanings for strings they did not describe. A lone Escape retains the
-finite input Escape deadline.
+them. A lone Escape retains the finite input Escape deadline.
 
 Database color fidelity is effective only as a complete directional contract.
 Indexed color requires both `setaf` and `setab` plus a complete default-color
