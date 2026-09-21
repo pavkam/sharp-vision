@@ -3346,5 +3346,263 @@ public sealed class SessionTests
         _ = await Should.ThrowAsync<OperationCanceledException>(running);
     }
 
+    /// <summary>
+    /// Verifies a SIGTSTP arriving once this session is fully disposed - reverse cleanup already
+    /// ran as part of its own run's completion - is refused outright rather than writing through an
+    /// already-disposed transport and recording a spurious failure.
+    /// </summary>
+    [Fact]
+    public async Task SuspendAsync_WhenSessionAlreadyDisposed_WritesNothingAndLeavesLastSuspendExceptionNullAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        var session = new Session(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+        await session.DisposeAsync();
+
+        var writesBeforeSuspend = transport.JoinedWrites;
+
+        // Act
+        await session.SuspendAsync();
+
+        // Assert
+        transport.JoinedWrites.ShouldBe(writesBeforeSuspend);
+        session.LastSuspendException.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies a SIGTSTP racing a genuinely concurrent final cleanup - the suspend's own walk
+    /// arriving while the session's own reverse walk is still writing - is refused
+    /// entirely rather than writing a lease's disable bytes a second time. <see
+    /// cref="GatedWriteTransport"/> pauses cleanup's own disable write until the suspend has
+    /// already observed <c>_cleanupStarted</c>, which is what makes the race deterministic instead
+    /// of depending on scheduling luck.
+    /// </summary>
+    [Fact]
+    public async Task SuspendAsync_WhenRacingCleanupAsync_WritesEachLeaseDisableByteExactlyOnceAsync()
+    {
+        // Arrange
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using GatedWriteTransport transport = new() { PauseWriteAt = 2 };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        transport.JoinedWrites.ShouldBe("enter");
+
+        // Act - closing input ends the read loop, so RunAsync's own finally starts CleanupAsync's
+        // reverse walk; its one lease's disable write is the second write overall and pauses there,
+        // proof that _cleanupStarted is already set by the time the racing suspend below runs.
+        transport.Close();
+        await transport.GateEntered.WaitAsync(TestContext.Current.CancellationToken);
+
+        await session.SuspendAsync();
+
+        // Assert - the racing suspend found cleanup already under way and wrote nothing.
+        session.LastSuspendException.ShouldBeNull();
+        transport.JoinedWrites.ShouldBe("enter");
+
+        transport.Release();
+        await running;
+
+        // Assert - cleanup's own walk still wrote the lease's disable bytes exactly once.
+        transport.JoinedWrites.ShouldBe("enterexit");
+        session.LastCleanupException.ShouldBeNull();
+    }
+
+    /// <summary>
+    /// Verifies a SIGCONT arriving once this session is fully cleaned up writes nothing - the
+    /// leases it would otherwise replay were already unwound and cleared, and nothing new should
+    /// reach an already-torn-down transport.
+    /// </summary>
+    [Fact]
+    public async Task ResumeAsync_WhenCleanupAlreadyStarted_WritesNothingAsync()
+    {
+        // Arrange
+        var transport = new SessionTransport();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        var session = new Session(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        transport.Close();
+        await running;
+
+        var writesAfterCleanup = transport.JoinedWrites;
+
+        // Act
+        await session.ResumeAsync();
+
+        // Assert
+        transport.JoinedWrites.ShouldBe(writesAfterCleanup);
+        session.LastResumeException.ShouldBeNull();
+
+        await session.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies a SIGCONT with no preceding <see cref="Session.SuspendAsync"/> - the resume that
+    /// still follows an uncatchable SIGSTOP - replays an ordinary lease's enable bytes again but
+    /// writes no second title-stack push, since the title was never popped in the first place.
+    /// </summary>
+    [Fact]
+    public async Task ResumeAsync_WithoutPriorSuspendAsync_ReEnablesOrdinaryLeaseWithoutRepushingTitleAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        var push = "[22;0t"u8.ToArray();
+        var pop = "[23;0t"u8.ToArray();
+        session.TryReserveTitleLease().ShouldBeTrue();
+        session.ConfirmTitleLease(push, pop).ShouldBeTrue();
+
+        transport.JoinedWrites.ShouldBe("enter");
+
+        // Act
+        await session.ResumeAsync();
+
+        // Assert - the ordinary lease replays its enable bytes again; the title lease, never
+        // popped, writes no second push.
+        transport.JoinedWrites.ShouldBe("enterenter");
+        session.LastResumeException.ShouldBeNull();
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
+    /// <summary>
+    /// Verifies a matched suspend/resume cycle pops the title lease exactly once, in the same
+    /// reverse order as every other lease, and pushes it exactly once back, in original order -
+    /// the title-stack balance <see cref="Session.ConfirmTitleLease"/>'s own remarks depend on.
+    /// </summary>
+    [Fact]
+    public async Task SuspendAsync_ThenResumeAsync_PopsTitleOnceAndPushesOnceAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var profile = Profile(new Dictionary<string, DescriptionProgram>
+        {
+            ["smcup"] = new DescriptionProgram("enter"u8),
+            ["rmcup"] = new DescriptionProgram("exit"u8)
+        });
+        await using Session session = new(
+            transport,
+            resize,
+            sink,
+            TerminalOptions.Minimal with { Profile = profile, AlternateScreen = true });
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        var push = "[22;0t"u8.ToArray();
+        var pop = "[23;0t"u8.ToArray();
+        session.TryReserveTitleLease().ShouldBeTrue();
+        session.ConfirmTitleLease(push, pop).ShouldBeTrue();
+
+        // Act
+        await session.SuspendAsync();
+        await session.ResumeAsync();
+
+        // Assert - the title pops once, after the alternate screen's own disable, then pushes
+        // once, before the alternate screen's own re-enable.
+        transport.JoinedWrites.ShouldBe("enter[23;0texitenter[22;0t");
+        session.LastSuspendException.ShouldBeNull();
+        session.LastResumeException.ShouldBeNull();
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="Session.Resumed"/> isolates its subscribers: a first handler that throws
+    /// no longer starves a second handler registered after it, and the exception is recorded in
+    /// <see cref="Session.LastResumeException"/> rather than lost to the signal-handling thread's
+    /// own silent catch.
+    /// </summary>
+    [Fact]
+    public async Task ResumeAsync_WhenFirstResumedHandlerThrows_StillInvokesLaterHandlersAndRecordsExceptionAsync()
+    {
+        // Arrange
+        await using SessionTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
+        using var cancellation = new CancellationTokenSource();
+        var running = session.RunAsync(cancellation.Token).AsTask();
+        await transport.FirstRead.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        var thrown = new InvalidOperationException("boom");
+        var secondRan = false;
+        session.Resumed += (_, _) => throw thrown;
+        session.Resumed += (_, _) => secondRan = true;
+
+        // Act
+        await session.ResumeAsync();
+
+        // Assert
+        secondRan.ShouldBeTrue();
+        session.LastResumeException.ShouldBeSameAs(thrown);
+
+        // Cleanup
+        await cancellation.CancelAsync();
+        _ = await Should.ThrowAsync<OperationCanceledException>(running);
+    }
+
     #endregion
 }

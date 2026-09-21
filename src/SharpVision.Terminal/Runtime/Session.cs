@@ -50,6 +50,22 @@ public sealed class Session: IAsyncDisposable
     // if it did not, would never be visited by a walk whose bounds are already fixed - either way
     // its pop would never run.
     private bool _cleanupStarted;
+    // The index within _leases of the title lease, once ConfirmTitleLease adds it - null until
+    // then. _leases only ever grows (aside from CleanupAsync's own final Clear), so an index
+    // recorded here stays valid for the rest of this run: it is how the shared disable/replay
+    // walks below single out the one lease whose enable bytes are a non-idempotent stack push
+    // rather than an idempotent DEC-mode set, without giving Lease itself any identity.
+    private int? _titleLeaseIndex;
+    // Whether the title lease's push is currently believed to be on the terminal's title stack,
+    // set true by ConfirmTitleLease. The reverse disable walk (SuspendAsync and CleanupAsync alike)
+    // clears this only once it actually writes the title's pop, and skips that pop entirely when
+    // it is already clear - which is what keeps a suspend followed by a cleanup, with no
+    // intervening resume, from popping the same stack entry twice. The forward replay walk
+    // (ReplayLeasesAsync) mirrors this: it re-pushes the title only while this is clear, and sets
+    // it back once it does, so an unmatched SIGCONT - one with no preceding SuspendAsync, such as
+    // a SIGSTOP a debugger or orchestrator sent instead - never leaks a second push for a lease
+    // that was never popped in the first place.
+    private bool _titlePushOnStack;
 
     #region Construction and lifecycle
 
@@ -166,7 +182,9 @@ public sealed class Session: IAsyncDisposable
     /// terminal having possibly shown unrelated content while this process was stopped. Raised
     /// synchronously on whatever thread called <see cref="ResumeAsync"/>, which for the job-control
     /// path is an arbitrary signal-handling thread rather than the application's own dispatcher -
-    /// a subscriber must marshal accordingly and must not throw.
+    /// a subscriber must marshal accordingly. Each subscriber is invoked in isolation, so one that
+    /// throws no longer starves the subscribers registered after it; its exception is not
+    /// propagated but is recorded in <see cref="LastResumeException"/>, first failure sticking.
     /// </summary>
     public event EventHandler? Resumed;
 
@@ -743,6 +761,8 @@ public sealed class Session: IAsyncDisposable
                 return false;
             }
 
+            _titleLeaseIndex = _leases.Count;
+            _titlePushOnStack = true;
             _leases.Add(new Lease(enable, disable));
             return true;
         }
@@ -1536,8 +1556,12 @@ public sealed class Session: IAsyncDisposable
             _cleanupStarted = true;
         }
 
-        await WriteLeaseDisableWalkAsync(clearAfterward: true, exception => LastCleanupException ??= exception)
-            .ConfigureAwait(false);
+        // This is the call that just set the flag above, so it must never itself refuse on it -
+        // gateOnCleanupStarted stays false here and true everywhere else this shared walk is used.
+        await WriteLeaseDisableWalkAsync(
+            clearAfterward: true,
+            exception => LastCleanupException ??= exception,
+            gateOnCleanupStarted: false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1550,29 +1574,62 @@ public sealed class Session: IAsyncDisposable
     /// a suspend is not final, so a title-stack push arriving after this call still needs to reach
     /// <see cref="ConfirmTitleLease"/> normally.
     /// </summary>
+    /// <remarks>
+    /// Refuses outright, writing nothing, once <see cref="_cleanupStarted"/> is already set:
+    /// <see cref="JobControlSignals"/> stays registered for the whole shutdown sequence, so a
+    /// SIGTSTP can still arrive while <see cref="CleanupAsync"/>'s own reverse walk is draining the
+    /// same lease list. Without this gate, that arrival would run a second, concurrent walk against
+    /// a live transport that <see cref="CleanupAsync"/> is already unwinding - and, once the
+    /// transport is later disposed, would throw <see cref="ObjectDisposedException"/> into
+    /// <see cref="LastSuspendException"/> for a suspend nothing meaningful could still restore.
+    /// </remarks>
     internal ValueTask SuspendAsync() =>
-        WriteLeaseDisableWalkAsync(clearAfterward: false, exception => LastSuspendException ??= exception);
+        WriteLeaseDisableWalkAsync(
+            clearAfterward: false,
+            exception => LastSuspendException ??= exception,
+            gateOnCleanupStarted: true);
+
+    /// <summary>
+    /// Takes a snapshot of the active lease list under <see cref="_lifecycle"/>, refusing with an
+    /// empty snapshot when <paramref name="gateOnCleanupStarted"/> is true and reverse cleanup has
+    /// already begun - the same point where <see cref="TryReserveTitleLease"/> and
+    /// <see cref="ConfirmTitleLease"/> already refuse a late caller, extended here to the two
+    /// job-control walks below. <see cref="CleanupAsync"/>'s own call passes false, since it is the
+    /// call that just set <see cref="_cleanupStarted"/> and must still proceed against the full,
+    /// unfiltered list.
+    /// </summary>
+    /// <param name="gateOnCleanupStarted">True to refuse with an empty snapshot once cleanup has begun.</param>
+    /// <returns>The snapshot, or an empty array when the call was refused.</returns>
+    private Lease[] SnapshotLeases(bool gateOnCleanupStarted)
+    {
+        lock (_lifecycle)
+        {
+            return gateOnCleanupStarted && _cleanupStarted ? [] : [.. _leases];
+        }
+    }
 
     /// <summary>
     /// Writes every active lease's disable bytes in reverse acquisition order against a snapshot of
     /// the lease list taken under <see cref="_lifecycle"/>, optionally clearing the live list
-    /// afterward. Shared by <see cref="CleanupAsync"/> (which clears) and <see cref="SuspendAsync"/>
-    /// (which does not), so the two best-effort reverse walks - final shutdown and a SIGTSTP
-    /// suspend - stay identical apart from that one difference. The snapshot, rather than reading
-    /// the live list by index, is what keeps this walk safe even when <see cref="SuspendAsync"/>
-    /// runs concurrently with a legitimate <see cref="ConfirmTitleLease"/> call adding to the same
-    /// list on another thread - <see cref="CleanupAsync"/>'s own <see cref="_cleanupStarted"/> gate
-    /// already rules that race out for the final walk, but nothing rules it out for a mid-run
-    /// suspend.
+    /// afterward. Shared by <see cref="CleanupAsync"/> (which clears and never gates) and
+    /// <see cref="SuspendAsync"/> (which does not clear and always gates), so the two best-effort
+    /// reverse walks - final shutdown and a SIGTSTP suspend - stay identical apart from those two
+    /// parameters. The snapshot, rather than reading the live list by index, is what keeps this
+    /// walk safe even when <see cref="SuspendAsync"/> runs concurrently with a legitimate
+    /// <see cref="ConfirmTitleLease"/> call adding to the same list on another thread.
     /// </summary>
-    private async ValueTask WriteLeaseDisableWalkAsync(bool clearAfterward, Action<Exception> recordFailure)
+    /// <param name="clearAfterward">True to clear the live lease list once the walk finishes.</param>
+    /// <param name="recordFailure">Invoked with each write failure; never rethrown.</param>
+    /// <param name="gateOnCleanupStarted">
+    /// True to refuse outright, writing nothing, when <see cref="_cleanupStarted"/> is already set
+    /// by the time this call takes its snapshot - see <see cref="SnapshotLeases"/>.
+    /// </param>
+    private async ValueTask WriteLeaseDisableWalkAsync(
+        bool clearAfterward,
+        Action<Exception> recordFailure,
+        bool gateOnCleanupStarted)
     {
-        Lease[] snapshot;
-
-        lock (_lifecycle)
-        {
-            snapshot = [.. _leases];
-        }
+        var snapshot = SnapshotLeases(gateOnCleanupStarted);
 
         var timeout = new CancellationTokenSource(
             _options.CleanupTimeout,
@@ -1585,10 +1642,37 @@ public sealed class Session: IAsyncDisposable
             // attempting later restores even when one terminal write fails.
             for (var index = snapshot.Length - 1; index >= 0; index--)
             {
+                if (index == _titleLeaseIndex)
+                {
+                    bool onStack;
+
+                    lock (_lifecycle)
+                    {
+                        onStack = _titlePushOnStack;
+                    }
+
+                    // The title's push already left the stack - by an earlier suspend this walk
+                    // never saw a matching resume for, or by this same walk itself if it is being
+                    // retried. Popping again here would unbalance the terminal's own title stack,
+                    // so this one lease is skipped while every other lease still unwinds normally.
+                    if (!onStack)
+                    {
+                        continue;
+                    }
+                }
+
                 try
                 {
                     await WriteAsync(snapshot[index].Disable, timeout.Token)
                         .ConfigureAwait(false);
+
+                    if (index == _titleLeaseIndex)
+                    {
+                        lock (_lifecycle)
+                        {
+                            _titlePushOnStack = false;
+                        }
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -1633,22 +1717,51 @@ public sealed class Session: IAsyncDisposable
     /// Best-effort like every other lease walk in this class: one failed write does not stop the
     /// rest from being attempted.
     /// </summary>
+    /// <remarks>
+    /// Refuses outright, writing nothing, once <see cref="_cleanupStarted"/> is already set - a
+    /// SIGCONT that arrives after reverse cleanup has begun has nothing left to re-enable, and the
+    /// leases it would otherwise replay against may already be mid-unwind on another thread. The
+    /// title lease gets a second, narrower gate: its enable bytes are a non-idempotent stack push,
+    /// so they are only replayed while <see cref="_titlePushOnStack"/> is clear, meaning a prior
+    /// disable walk actually popped it. An unmatched resume - one with no preceding
+    /// <see cref="SuspendAsync"/>, such as the SIGCONT that follows an uncatchable SIGSTOP - finds
+    /// the title still on the stack and correctly writes no second push, while every ordinary lease
+    /// is still replayed unconditionally.
+    /// </remarks>
     internal async ValueTask ReplayLeasesAsync()
     {
-        Lease[] snapshot;
-
-        lock (_lifecycle)
-        {
-            snapshot = [.. _leases];
-        }
+        var snapshot = SnapshotLeases(gateOnCleanupStarted: true);
 
         using var timeout = new CancellationTokenSource(_options.CleanupTimeout, _timeProvider);
 
-        foreach (var lease in snapshot)
+        for (var index = 0; index < snapshot.Length; index++)
         {
+            if (index == _titleLeaseIndex)
+            {
+                bool onStack;
+
+                lock (_lifecycle)
+                {
+                    onStack = _titlePushOnStack;
+                }
+
+                if (onStack)
+                {
+                    continue;
+                }
+            }
+
             try
             {
-                await WriteAsync(lease.Enable, timeout.Token).ConfigureAwait(false);
+                await WriteAsync(snapshot[index].Enable, timeout.Token).ConfigureAwait(false);
+
+                if (index == _titleLeaseIndex)
+                {
+                    lock (_lifecycle)
+                    {
+                        _titlePushOnStack = true;
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -1666,7 +1779,37 @@ public sealed class Session: IAsyncDisposable
     internal async ValueTask ResumeAsync()
     {
         await ReplayLeasesAsync().ConfigureAwait(false);
-        Resumed?.Invoke(this, EventArgs.Empty);
+        RaiseResumed();
+    }
+
+    /// <summary>
+    /// Invokes every <see cref="Resumed"/> subscriber in registration order, isolating each from
+    /// the others' failures so one throwing handler cannot starve the handlers registered after it.
+    /// Mirrors <see cref="ReplayLeasesAsync"/>'s own "record the first failure, keep going" walk in
+    /// this same method - the canonical per-subscriber isolation helper for every other runtime
+    /// event lives in the <c>SharpVision</c> assembly, which this assembly cannot reference, so this
+    /// is a small inlined equivalent scoped to this one event.
+    /// </summary>
+    private void RaiseResumed()
+    {
+        var handler = Resumed;
+
+        if (handler is null)
+        {
+            return;
+        }
+
+        foreach (var subscriber in handler.GetInvocationList())
+        {
+            try
+            {
+                ((EventHandler) subscriber).Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception exception)
+            {
+                LastResumeException ??= exception;
+            }
+        }
     }
 
     private async ValueTask WriteAsync(
