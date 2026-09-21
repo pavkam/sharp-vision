@@ -79,10 +79,10 @@ public sealed class InterpreterTests
     public void Write_WhenIncrementDirectiveHasNoSuppliedParameters_DoesNotThrow()
     {
         // Arrange / Act
-        var actual = Expand("[%iX", []);
+        var actual = Expand("\u001b[%iX", []);
 
         // Assert
-        actual.ShouldBe("[X");
+        actual.ShouldBe("\u001b[X");
     }
 
     /// <summary>Verifies decimal constants, character constants, and literal percent output.</summary>

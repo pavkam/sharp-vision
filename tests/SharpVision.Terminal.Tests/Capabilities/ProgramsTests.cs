@@ -13,10 +13,10 @@ public sealed class ProgramsTests
     {
         var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            [CapabilityNames.Cup] = new DescriptionProgram("[%i%p1%d;%p2%dH"u8),
-            [CapabilityNames.Sgr0] = new DescriptionProgram("[0m"u8),
-            [CapabilityNames.El] = new DescriptionProgram("[K"u8),
-            [CapabilityNames.Ed] = new DescriptionProgram("[J"u8)
+            [CapabilityNames.Cup] = new DescriptionProgram("\u001b[%i%p1%d;%p2%dH"u8),
+            [CapabilityNames.Sgr0] = new DescriptionProgram("\u001b[0m"u8),
+            [CapabilityNames.El] = new DescriptionProgram("\u001b[K"u8),
+            [CapabilityNames.Ed] = new DescriptionProgram("\u001b[J"u8)
         });
 
         programs.FullScreenReady.ShouldBeTrue();
@@ -98,7 +98,7 @@ public sealed class ProgramsTests
     {
         var programs = new Programs(new Dictionary<string, DescriptionProgram>
         {
-            ["hpa"] = new DescriptionProgram("[%i%p1%dG"u8)
+            ["hpa"] = new DescriptionProgram("\u001b[%i%p1%dG"u8)
         });
         var interpreter = new Interpreter(ProgramLimits.Default);
         var destination = new ArrayBufferWriter<byte>();
@@ -107,7 +107,7 @@ public sealed class ProgramsTests
         var written = programs.TryWrite("hpa", [7], interpreter, destination);
 
         written.ShouldBeTrue();
-        destination.WrittenSpan.ToArray().ShouldBe("[8G"u8.ToArray());
+        destination.WrittenSpan.ToArray().ShouldBe("\u001b[8G"u8.ToArray());
     }
 
     /// <summary>Verifies "ed" is a fully first-class intrinsic capability like its sibling "el":
