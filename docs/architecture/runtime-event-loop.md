@@ -485,6 +485,12 @@ exception is retained - inlined locally rather than routed through
 section owns the full suspend/resume sequence, including where the title-stack
 push is skipped and why the resumed application forces a repaint.
 
+All three walks - final cleanup, suspend, and replay - run one at a time behind
+a single session-level gate, so a walk still writing when the next one is
+requested finishes first, each bounded by `CleanupTimeout`, and every snapshot
+observes the lease list and title-stack state the previous walk left behind. A
+suspend or replay admitted only after final cleanup began writes nothing.
+
 ### Run and disposal interleaving
 
 This section is normative for how `Session.RunAsync` and `Session.DisposeAsync`
