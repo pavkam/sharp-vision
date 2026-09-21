@@ -51,8 +51,8 @@ using System.Runtime.InteropServices;
 [SupportedOSPlatform("macos")]
 internal sealed class JobControlSignals: IDisposable
 {
-    private PosixSignalRegistration? _suspend;
-    private PosixSignalRegistration? _resume;
+    private IDisposable? _suspend;
+    private IDisposable? _resume;
 
     private JobControlSignals()
     {
@@ -86,15 +86,38 @@ internal sealed class JobControlSignals: IDisposable
     /// <param name="raiseStop">The non-null boundary that stops the process once <paramref name="onSuspend"/> finishes.</param>
     /// <returns>A scope that unregisters both handlers when disposed.</returns>
     /// <exception cref="ArgumentNullException">A required delegate is null.</exception>
-    internal static JobControlSignals Register(Action onSuspend, Action onResume, Action raiseStop)
+    internal static JobControlSignals Register(Action onSuspend, Action onResume, Action raiseStop) =>
+        Register(onSuspend, onResume, raiseStop, CreatePosixSignalRegistration);
+
+    /// <summary>
+    /// Registers with an injected registration factory in place of <see cref="PosixSignalRegistration.Create"/>,
+    /// so a test can make either signal's registration fail without touching a real signal, and
+    /// assert that the other registration is unwound rather than leaked.
+    /// </summary>
+    /// <param name="onSuspend">The non-null suspend callback - see <see cref="Register(Action, Action)"/>.</param>
+    /// <param name="onResume">The non-null resume callback - see <see cref="Register(Action, Action)"/>.</param>
+    /// <param name="raiseStop">The non-null boundary that stops the process once <paramref name="onSuspend"/> finishes.</param>
+    /// <param name="createRegistration">
+    /// The non-null factory invoked once per signal, in place of <see cref="PosixSignalRegistration.Create"/>.
+    /// </param>
+    /// <returns>A scope that unregisters both handlers when disposed.</returns>
+    /// <exception cref="ArgumentNullException">A required delegate is null.</exception>
+    internal static JobControlSignals Register(
+        Action onSuspend,
+        Action onResume,
+        Action raiseStop,
+        Func<PosixSignal, Action<PosixSignalContext>, IDisposable> createRegistration)
     {
         ArgumentNullException.ThrowIfNull(onSuspend);
         ArgumentNullException.ThrowIfNull(onResume);
         ArgumentNullException.ThrowIfNull(raiseStop);
+        ArgumentNullException.ThrowIfNull(createRegistration);
 
-        var scope = new JobControlSignals
+        var scope = new JobControlSignals();
+
+        try
         {
-            _suspend = PosixSignalRegistration.Create(PosixSignal.SIGTSTP, context =>
+            scope._suspend = createRegistration(PosixSignal.SIGTSTP, context =>
             {
                 // See the type remarks: SIGTSTP's default disposition is a no-op in the runtime's
                 // own native handler once any managed handler is registered, so Cancel here is
@@ -102,16 +125,34 @@ internal sealed class JobControlSignals: IDisposable
                 // is.
                 context.Cancel = true;
                 InvokeSuspend(onSuspend, raiseStop);
-            }),
-            _resume = PosixSignalRegistration.Create(PosixSignal.SIGCONT, context =>
+            });
+            scope._resume = createRegistration(PosixSignal.SIGCONT, context =>
             {
                 context.Cancel = true;
                 InvokeResume(onResume);
-            })
-        };
+            });
+        }
+        catch
+        {
+            // Unwind whatever was already registered before the failing create, mirroring
+            // UnixConsoleHost.Open's reverse-order unwind for partial construction - otherwise the
+            // earlier registration's native handler leaks for the process lifetime with no scope
+            // left to dispose it.
+            scope.Dispose();
+
+            throw;
+        }
 
         return scope;
     }
+
+    /// <summary>The production registration factory: <see cref="PosixSignalRegistration.Create"/> unchanged.</summary>
+    /// <param name="signal">The signal to register a handler for.</param>
+    /// <param name="handler">The handler to invoke when the signal is observed.</param>
+    /// <returns>The registration created for <paramref name="signal"/>.</returns>
+    private static PosixSignalRegistration CreatePosixSignalRegistration(
+        PosixSignal signal, Action<PosixSignalContext> handler) =>
+        PosixSignalRegistration.Create(signal, handler);
 
     /// <summary>
     /// Runs the suspend callback and then raises the stop signal, swallowing any exception from

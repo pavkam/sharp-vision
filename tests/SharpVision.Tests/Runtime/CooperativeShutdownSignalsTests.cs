@@ -104,4 +104,155 @@ public sealed class CooperativeShutdownSignalsTests
         Should.NotThrow(() =>
             CooperativeShutdownSignals.InvokeTerminationSignal(() => faulted.Task, isWindows: true));
     }
+
+    /// <summary>Verifies the injectable-factory <c>Register</c> overload calls the factory once per
+    /// signal, in construction order, and that disposing the returned scope disposes every one of
+    /// them exactly once - the baseline the throwing-factory tests below build on.</summary>
+    [Fact]
+    public void Register_WhenObserveCtrlCIsFalse_CallsFactoryForTerminationSignalsAndDisposesThemOnScopeDispose()
+    {
+        // Arrange
+        var requestedSignals = new List<PosixSignal>();
+        var leases = new List<ConsoleApplicationRestoreLease>();
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            requestedSignals.Add(signal);
+            var lease = new ConsoleApplicationRestoreLease();
+            leases.Add(lease);
+
+            return lease;
+        }
+
+        // Act
+        var scope = CooperativeShutdownSignals.Register(
+            observeCtrlC: false, static () => Task.CompletedTask, CreateRegistration);
+
+        // Assert - registered before disposal, and not yet disposed.
+        requestedSignals.ShouldBe([PosixSignal.SIGTERM, PosixSignal.SIGHUP]);
+        leases.ShouldAllBe(lease => lease.Disposals == 0);
+
+        scope.Dispose();
+
+        leases.ShouldAllBe(lease => lease.Disposals == 1);
+    }
+
+    /// <summary>Verifies the injectable-factory <c>Register</c> overload also registers Ctrl+C's
+    /// Unix signals, in order, after the always-on termination signals, and that scope disposal
+    /// unregisters all four.</summary>
+    [Fact]
+    public void Register_WhenObserveCtrlCIsTrue_CallsFactoryForEveryUnixSignalInOrder()
+    {
+        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Checks the Unix SIGINT/SIGQUIT registration path.");
+
+        // Arrange
+        var requestedSignals = new List<PosixSignal>();
+        var leases = new List<ConsoleApplicationRestoreLease>();
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            requestedSignals.Add(signal);
+            var lease = new ConsoleApplicationRestoreLease();
+            leases.Add(lease);
+
+            return lease;
+        }
+
+        // Act
+        var scope = CooperativeShutdownSignals.Register(
+            observeCtrlC: true, static () => Task.CompletedTask, CreateRegistration);
+
+        // Assert
+        requestedSignals.ShouldBe([PosixSignal.SIGTERM, PosixSignal.SIGHUP, PosixSignal.SIGINT, PosixSignal.SIGQUIT]);
+
+        scope.Dispose();
+
+        leases.ShouldAllBe(lease => lease.Disposals == 1);
+    }
+
+    /// <summary>Verifies that when the second registration (<c>SIGHUP</c>) fails, the first
+    /// (<c>SIGTERM</c>) is disposed exactly once instead of leaking, and the original exception
+    /// propagates unchanged rather than being replaced by a disposal failure.</summary>
+    [Fact]
+    public void Register_WhenSecondRegistrationThrows_DisposesEarlierRegistrationAndRethrowsOriginalException()
+    {
+        // Arrange
+        var expected = new InvalidOperationException("native handler allocation failed");
+        var leases = new List<ConsoleApplicationRestoreLease>();
+        var callCount = 0;
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            callCount++;
+
+            if (callCount == 2)
+            {
+                throw expected;
+            }
+
+            var lease = new ConsoleApplicationRestoreLease();
+            leases.Add(lease);
+
+            return lease;
+        }
+
+        // Act
+        var actual = Should.Throw<InvalidOperationException>(() =>
+            CooperativeShutdownSignals.Register(observeCtrlC: false, static () => Task.CompletedTask, CreateRegistration));
+
+        // Assert
+        actual.ShouldBeSameAs(expected);
+        leases.Count.ShouldBe(1);
+        leases[0].Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Verifies that when the fourth registration (<c>SIGQUIT</c>, the last one Ctrl+C
+    /// observation adds) fails, every earlier registration - <c>SIGTERM</c>, <c>SIGHUP</c>, and
+    /// <c>SIGINT</c> - is disposed exactly once instead of leaking, and the original exception
+    /// propagates unchanged.</summary>
+    [Fact]
+    public void Register_WhenObserveCtrlCIsTrueAndFourthRegistrationThrows_DisposesEarlierRegistrationsAndRethrowsOriginalException()
+    {
+        Assert.SkipUnless(!OperatingSystem.IsWindows(), "Checks the Unix SIGINT/SIGQUIT registration path.");
+
+        // Arrange
+        var expected = new InvalidOperationException("native handler allocation failed");
+        var leases = new List<ConsoleApplicationRestoreLease>();
+        var callCount = 0;
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            callCount++;
+
+            if (callCount == 4)
+            {
+                throw expected;
+            }
+
+            var lease = new ConsoleApplicationRestoreLease();
+            leases.Add(lease);
+
+            return lease;
+        }
+
+        // Act
+        var actual = Should.Throw<InvalidOperationException>(() =>
+            CooperativeShutdownSignals.Register(observeCtrlC: true, static () => Task.CompletedTask, CreateRegistration));
+
+        // Assert
+        actual.ShouldBeSameAs(expected);
+        leases.Count.ShouldBe(3);
+        leases.ShouldAllBe(lease => lease.Disposals == 1);
+    }
+
+    /// <summary>Verifies every required argument is validated eagerly on the injectable-factory
+    /// overload, matching the public overload's own null checks.</summary>
+    [Fact]
+    public void Register_WhenOnSignalOrCreateRegistrationIsNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() =>
+            CooperativeShutdownSignals.Register(observeCtrlC: false, onSignal: null!, static (_, _) => new ConsoleApplicationRestoreLease()));
+        _ = Should.Throw<ArgumentNullException>(() =>
+            CooperativeShutdownSignals.Register(observeCtrlC: false, static () => Task.CompletedTask, createRegistration: null!));
+    }
 }

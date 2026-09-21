@@ -43,10 +43,10 @@ using System.Runtime.InteropServices;
 internal sealed class CooperativeShutdownSignals: IDisposable
 {
     private ConsoleCancelEventHandler? _onCancel;
-    private PosixSignalRegistration? _interrupt;
-    private PosixSignalRegistration? _quit;
-    private PosixSignalRegistration? _terminate;
-    private PosixSignalRegistration? _hangup;
+    private IDisposable? _interrupt;
+    private IDisposable? _quit;
+    private IDisposable? _terminate;
+    private IDisposable? _hangup;
 
     private CooperativeShutdownSignals()
     {
@@ -67,9 +67,28 @@ internal sealed class CooperativeShutdownSignals: IDisposable
     /// </param>
     /// <returns>A scope that unregisters every signal it registered when disposed.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="onSignal"/> is null.</exception>
-    public static CooperativeShutdownSignals Register(bool observeCtrlC, Func<Task> onSignal)
+    public static CooperativeShutdownSignals Register(bool observeCtrlC, Func<Task> onSignal) =>
+        Register(observeCtrlC, onSignal, CreatePosixSignalRegistration);
+
+    /// <summary>
+    /// Registers with an injected registration factory in place of <see cref="PosixSignalRegistration.Create"/>,
+    /// so a test can make any one signal's registration fail without touching a real signal, and
+    /// assert that every earlier registration is unwound rather than leaked.
+    /// </summary>
+    /// <param name="observeCtrlC">See <see cref="Register(bool, Func{Task})"/>.</param>
+    /// <param name="onSignal">See <see cref="Register(bool, Func{Task})"/>.</param>
+    /// <param name="createRegistration">
+    /// The non-null factory invoked once per Unix signal, in place of <see cref="PosixSignalRegistration.Create"/>.
+    /// </param>
+    /// <returns>A scope that unregisters every signal it registered when disposed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSignal"/> or <paramref name="createRegistration"/> is null.</exception>
+    internal static CooperativeShutdownSignals Register(
+        bool observeCtrlC,
+        Func<Task> onSignal,
+        Func<PosixSignal, Action<PosixSignalContext>, IDisposable> createRegistration)
     {
         ArgumentNullException.ThrowIfNull(onSignal);
+        ArgumentNullException.ThrowIfNull(createRegistration);
 
         var scope = new CooperativeShutdownSignals();
 
@@ -85,36 +104,58 @@ internal sealed class CooperativeShutdownSignals: IDisposable
             InvokeTerminationSignal(onSignal, OperatingSystem.IsWindows());
         }
 
-        scope._terminate = PosixSignalRegistration.Create(PosixSignal.SIGTERM, OnPosixTerminationSignal);
-        scope._hangup = PosixSignalRegistration.Create(PosixSignal.SIGHUP, OnPosixTerminationSignal);
-
-        if (observeCtrlC)
+        try
         {
-            if (OperatingSystem.IsWindows())
+            scope._terminate = createRegistration(PosixSignal.SIGTERM, OnPosixTerminationSignal);
+            scope._hangup = createRegistration(PosixSignal.SIGHUP, OnPosixTerminationSignal);
+
+            if (observeCtrlC)
             {
-                scope._onCancel = (_, eventArgs) =>
+                if (OperatingSystem.IsWindows())
                 {
-                    eventArgs.Cancel = true;
-                    _ = onSignal();
-                };
-                Console.CancelKeyPress += scope._onCancel;
+                    scope._onCancel = (_, eventArgs) =>
+                    {
+                        eventArgs.Cancel = true;
+                        _ = onSignal();
+                    };
+                    Console.CancelKeyPress += scope._onCancel;
+                }
+                else
+                {
+                    scope._interrupt = createRegistration(PosixSignal.SIGINT, OnPosixSignal);
+                    scope._quit = createRegistration(PosixSignal.SIGQUIT, OnPosixSignal);
+                }
             }
-            else
-            {
-                scope._interrupt = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnPosixSignal);
-                scope._quit = PosixSignalRegistration.Create(PosixSignal.SIGQUIT, OnPosixSignal);
-            }
+        }
+        catch
+        {
+            // Unwind whatever was already registered before the failing create, mirroring
+            // UnixConsoleHost.Open's reverse-order unwind for partial construction - otherwise an
+            // earlier registration's native handler leaks for the process lifetime with no scope
+            // left to dispose it.
+            scope.Dispose();
+
+            throw;
         }
 
         return scope;
     }
 
+    /// <summary>The production registration factory: <see cref="PosixSignalRegistration.Create"/> unchanged.</summary>
+    /// <param name="signal">The signal to register a handler for.</param>
+    /// <param name="handler">The handler to invoke when the signal is observed.</param>
+    /// <returns>The registration created for <paramref name="signal"/>.</returns>
+    private static PosixSignalRegistration CreatePosixSignalRegistration(
+        PosixSignal signal, Action<PosixSignalContext> handler) =>
+        PosixSignalRegistration.Create(signal, handler);
+
     /// <summary>
     /// Invokes a <c>SIGTERM</c>/<c>SIGHUP</c> callback, blocking synchronously until its returned
     /// task completes when <paramref name="isWindows"/> is true, and firing it without waiting
     /// otherwise - matching Unix's existing non-blocking behavior exactly. Extracted out of
-    /// <see cref="Register"/> so the blocking branch has a deterministic unit test regardless of the
-    /// platform the test process actually runs on, and without any real signal plumbing.
+    /// <see cref="Register(bool, Func{Task})"/> so the blocking branch has a deterministic unit test
+    /// regardless of the platform the test process actually runs on, and without any real signal
+    /// plumbing.
     /// </summary>
     /// <param name="onSignal">The non-null callback to invoke.</param>
     /// <param name="isWindows">Whether to block on the callback's returned task.</param>

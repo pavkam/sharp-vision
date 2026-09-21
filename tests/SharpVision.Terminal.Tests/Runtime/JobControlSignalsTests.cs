@@ -107,4 +107,99 @@ public sealed class JobControlSignalsTests
             onResume: () => { },
             raiseStop: null!));
     }
+
+    /// <summary>Verifies every required argument is validated eagerly on the injectable-factory
+    /// overload, including the factory delegate itself.</summary>
+    [Fact]
+    public void Register_WhenAnyArgumentOfFactoryOverloadIsNull_ThrowsArgumentNullException()
+    {
+        _ = Should.Throw<ArgumentNullException>(() => JobControlSignals.Register(
+            onSuspend: null!,
+            onResume: () => { },
+            raiseStop: () => { },
+            createRegistration: static (_, _) => new TrackingRestore()));
+        _ = Should.Throw<ArgumentNullException>(() => JobControlSignals.Register(
+            onSuspend: () => { },
+            onResume: null!,
+            raiseStop: () => { },
+            createRegistration: static (_, _) => new TrackingRestore()));
+        _ = Should.Throw<ArgumentNullException>(() => JobControlSignals.Register(
+            onSuspend: () => { },
+            onResume: () => { },
+            raiseStop: null!,
+            createRegistration: static (_, _) => new TrackingRestore()));
+        _ = Should.Throw<ArgumentNullException>(() => JobControlSignals.Register(
+            onSuspend: () => { },
+            onResume: () => { },
+            raiseStop: () => { },
+            createRegistration: null!));
+    }
+
+    /// <summary>Verifies the injectable-factory <c>Register</c> overload calls the factory once per
+    /// signal, in construction order, and that disposing the returned scope disposes every one of
+    /// them exactly once - the baseline the throwing-factory test below builds on.</summary>
+    [Fact]
+    public void Register_WhenCalled_CallsFactoryForSuspendAndResumeInOrderAndDisposesThemOnScopeDispose()
+    {
+        // Arrange
+        var requestedSignals = new List<PosixSignal>();
+        var registrations = new List<TrackingRestore>();
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            requestedSignals.Add(signal);
+            var registration = new TrackingRestore();
+            registrations.Add(registration);
+
+            return registration;
+        }
+
+        // Act
+        var scope = JobControlSignals.Register(
+            onSuspend: () => { }, onResume: () => { }, raiseStop: () => { }, CreateRegistration);
+
+        // Assert - registered before disposal, and not yet disposed.
+        requestedSignals.ShouldBe([PosixSignal.SIGTSTP, PosixSignal.SIGCONT]);
+        registrations.ShouldAllBe(registration => registration.Disposals == 0);
+
+        scope.Dispose();
+
+        registrations.ShouldAllBe(registration => registration.Disposals == 1);
+    }
+
+    /// <summary>Verifies that when the second registration (<c>SIGCONT</c>) fails, the first
+    /// (<c>SIGTSTP</c>) is disposed exactly once instead of leaking, and the original exception
+    /// propagates unchanged rather than being replaced by a disposal failure.</summary>
+    [Fact]
+    public void Register_WhenSecondRegistrationThrows_DisposesEarlierRegistrationAndRethrowsOriginalException()
+    {
+        // Arrange
+        var expected = new InvalidOperationException("native handler allocation failed");
+        var registrations = new List<TrackingRestore>();
+        var callCount = 0;
+
+        IDisposable CreateRegistration(PosixSignal signal, Action<PosixSignalContext> handler)
+        {
+            callCount++;
+
+            if (callCount == 2)
+            {
+                throw expected;
+            }
+
+            var registration = new TrackingRestore();
+            registrations.Add(registration);
+
+            return registration;
+        }
+
+        // Act
+        var actual = Should.Throw<InvalidOperationException>(() => JobControlSignals.Register(
+            onSuspend: () => { }, onResume: () => { }, raiseStop: () => { }, CreateRegistration));
+
+        // Assert
+        actual.ShouldBeSameAs(expected);
+        registrations.Count.ShouldBe(1);
+        registrations[0].Disposals.ShouldBe(1);
+    }
 }
