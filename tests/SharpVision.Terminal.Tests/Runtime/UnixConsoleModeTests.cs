@@ -318,4 +318,82 @@ public sealed class UnixConsoleModeTests
         RuntimeInterop.TryGetTerminalAttributes(pty.SlaveDescriptor, out var afterDispose).ShouldBeTrue();
         afterDispose.ShouldBe(before);
     }
+
+    /// <summary>
+    /// Verifies <see cref="UnixConsoleMode.Suspend"/> becomes a documented no-op once
+    /// <see cref="UnixConsoleMode.Dispose"/> has already run: it must never invoke the injected
+    /// termios-restore delegate afterward, because the terminal this lease captured has already
+    /// been handed back and a late SIGTSTP must not act on it. Before disposal, an ordinary
+    /// suspend still restores cooked mode normally.
+    /// </summary>
+    [Fact]
+    public void Suspend_AfterDispose_InvokesNoInjectedDelegateAndReturnsTrue()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
+        var restoreInvocations = 0;
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: static _ => new byte[RuntimeInterop.TermiosStateLength],
+            setAttributes: static (_, _) => true,
+            restoreAttributes: (_, _) =>
+            {
+                restoreInvocations++;
+                return true;
+            });
+
+        // Live lease: Suspend still restores cooked mode normally before Dispose.
+        mode.Suspend().ShouldBeTrue();
+        restoreInvocations.ShouldBe(1);
+
+        mode.Dispose();
+        restoreInvocations.ShouldBe(2);
+
+        // Act/Assert - once disposed, Suspend() must not invoke the injected restoration delegate
+        // again, and its documented no-op return is true (nothing left for it to restore).
+        mode.Suspend().ShouldBeTrue();
+        restoreInvocations.ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Verifies <see cref="UnixConsoleMode.Resume"/> becomes a documented no-op once
+    /// <see cref="UnixConsoleMode.Dispose"/> has already run: it must never invoke the injected
+    /// set-attributes delegate afterward, because re-entering raw mode on a terminal already
+    /// handed back to its next owner is exactly the bug a late SIGCONT must not trigger. Before
+    /// disposal, an ordinary resume still re-enters raw mode normally.
+    /// </summary>
+    [Fact]
+    public void Resume_AfterDispose_InvokesNoInjectedDelegateAndReturnsFalse()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(), "Requires Unix termios math.");
+
+        var setInvocations = 0;
+        var mode = UnixConsoleMode.Enter(
+            captureControlKeys: false,
+            getAttributes: static _ => new byte[RuntimeInterop.TermiosStateLength],
+            setAttributes: (_, _) =>
+            {
+                setInvocations++;
+                return true;
+            },
+            restoreAttributes: static (_, _) => true);
+
+        // Enter itself writes the derived raw-mode state once; only the writes from here on are
+        // Resume's own re-entry replays.
+        setInvocations.ShouldBe(1);
+        setInvocations = 0;
+
+        // Live lease: Resume still re-enters raw mode normally before Dispose.
+        mode.Resume().ShouldBeTrue();
+        setInvocations.ShouldBe(1);
+
+        mode.Dispose();
+        setInvocations.ShouldBe(1);
+
+        // Act/Assert - once disposed, Resume() must not invoke the injected set-attributes
+        // delegate again, and its documented no-op return is false (raw mode is deliberately not
+        // re-entered).
+        mode.Resume().ShouldBeFalse();
+        setInvocations.ShouldBe(1);
+    }
 }

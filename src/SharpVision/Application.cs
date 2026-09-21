@@ -112,6 +112,16 @@ public sealed class Application:
     private int _processSignalsDisposed;
     private volatile bool _signalRequestedStopBeforeStart;
 
+    // Set at most once, right after construction, by ConsoleApplicationBuilder.Build() - the only
+    // current caller of RegisterTerminalBoundResource. Unlike _processSignals above (whose
+    // CooperativeShutdownSignals callback never touches the terminal, so disposing it from a
+    // Stopped handler was already race-free), JobControlSignals' callbacks mutate termios and
+    // drive Session directly, so this must lose reachability strictly before, not just eventually
+    // before, DisposeTerminalResourcesAsync tears the Session and host lease down - see that
+    // method's own disposal of this field at its very start.
+    private IDisposable? _terminalBoundResource;
+    private int _terminalBoundResourceDisposed;
+
     // Set synchronously, on the signal-handling thread, at the very top of every
     // RequestCooperativeStop invocation - unlike _signalRequestedStopBeforeStart above, which only
     // latches before StartAsync. A caller such as ConsoleApplication.RunCoreAsync that registers its
@@ -716,6 +726,42 @@ public sealed class Application:
         if (Interlocked.Exchange(ref _processSignalsDisposed, 1) == 0)
         {
             _processSignals?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Registers one caller-owned resource whose <see cref="IDisposable.Dispose"/> must run before
+    /// this application tears down its terminal-bound resources, ahead of <see cref="Session"/>
+    /// and the host lease, inside <see cref="DisposeTerminalResourcesAsync"/>.
+    /// </summary>
+    /// <param name="resource">The non-null resource to dispose first.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="resource"/> is null.</exception>
+    /// <remarks>
+    /// <see cref="ConsoleApplicationBuilder.Build"/> is the only current caller, registering the
+    /// Unix job-control signal scope it wires straight into <see cref="Session"/>'s own
+    /// suspend/resume. That scope's callbacks mutate termios and drive <see cref="Session"/>
+    /// directly - unlike <see cref="_processSignals"/>, whose callback never touches the terminal,
+    /// so disposing it from a <c>Stopped</c> handler was already race-free regardless of timing.
+    /// Disposing the registered resource here, at the very start of
+    /// <see cref="DisposeTerminalResourcesAsync"/>, is defense in depth: it narrows, rather than
+    /// depends on, the window a signal could otherwise land in between this instance's own
+    /// terminal-resource teardown and its later <c>Stopped</c>-driven disposal. The disposed guards
+    /// on <c>UnixConsoleMode.Suspend</c>/<c>Resume</c> are what make the outcome correct regardless
+    /// of exactly when that disposal happens.
+    /// </remarks>
+    internal void RegisterTerminalBoundResource(IDisposable resource)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        Debug.Assert(_terminalBoundResource is null, "Only one terminal-bound resource is registered at a time.");
+        _terminalBoundResource = resource;
+    }
+
+    /// <summary>Disposes the registered terminal-bound resource, if any, at most once.</summary>
+    private void DisposeTerminalBoundResource()
+    {
+        if (Interlocked.Exchange(ref _terminalBoundResourceDisposed, 1) == 0)
+        {
+            _terminalBoundResource?.Dispose();
         }
     }
 
@@ -3045,6 +3091,19 @@ public sealed class Application:
     {
         var lifetimeDiagnostic = _renderer?.LastCleanupException ?? Session.LastCleanupException;
         Exception? failure = null;
+
+        // Before Session and the host lease are torn down below - see the remarks on
+        // RegisterTerminalBoundResource. Best effort, like every other step in this method: a
+        // failure disposing this resource must not block the terminal and Session teardown that
+        // still have to run.
+        try
+        {
+            DisposeTerminalBoundResource();
+        }
+        catch (Exception exception)
+        {
+            failure ??= exception;
+        }
 
         // Before the transport teardown below, because a clipboard transaction still in flight owns
         // a periodic DispatcherTimer. Left armed it posts to a stopped dispatcher, swallows the

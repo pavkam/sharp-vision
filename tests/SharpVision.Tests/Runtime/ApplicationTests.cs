@@ -6699,4 +6699,81 @@ public sealed class ApplicationTests
     }
 
     #endregion
+
+    #region Terminal-bound resource disposal
+
+    /// <summary>
+    /// Verifies a resource registered through the internal <c>RegisterTerminalBoundResource</c>
+    /// hook - the seam <c>ConsoleApplicationBuilder.Build</c> uses to register the Unix job-control
+    /// signal scope - is disposed inside <c>DisposeTerminalResourcesAsync</c> strictly before the
+    /// Session transport is torn down. This is the defense-in-depth ordering the fix for a late
+    /// SIGCONT re-entering raw mode on an already-restored terminal depends on: disposing the
+    /// job-control registration ahead of Session/host-lease teardown removes the window a stray
+    /// signal could otherwise land in, rather than depending solely on the disposed guards the
+    /// registered resource's own callbacks check.
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_DisposesRegisteredTerminalBoundResourceBeforeSessionTransportAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        var order = new List<string>();
+        terminal.IsDisposed += () => order.Add("transport");
+        var resource = new RecordingDisposable(() => order.Add("terminal-bound"));
+        application.RegisterTerminalBoundResource(resource);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+
+        resource.Disposals.ShouldBe(1);
+        order.ShouldBe(["terminal-bound", "transport"]);
+    }
+
+    /// <summary>Verifies the registered resource is disposed at most once even though both
+    /// <c>DisposeTerminalResourcesAsync</c> callers guard idempotently.</summary>
+    [Fact]
+    public async Task DisposeAsync_WhenCalledAfterStopAsync_DisposesRegisteredTerminalBoundResourceOnceAsync()
+    {
+        await using FakeTerminal terminal = new();
+        terminal.QueueResize(new Dimensions(new Size(10, 4)));
+        var application = new Application(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
+
+        var resource = new RecordingDisposable(() => { });
+        application.RegisterTerminalBoundResource(resource);
+
+        await application.StartAsync(TestContext.Current.CancellationToken);
+        await application.StopAsync(TestContext.Current.CancellationToken);
+        await application.DisposeAsync();
+
+        resource.Disposals.ShouldBe(1);
+    }
+
+    /// <summary>Records synchronous disposal calls for terminal-bound resource ordering tests.</summary>
+    private sealed class RecordingDisposable: IDisposable
+    {
+        private readonly Action _onDispose;
+
+        /// <summary>Initializes a recorder that invokes <paramref name="onDispose"/> once disposed.</summary>
+        /// <param name="onDispose">The non-null callback invoked from <see cref="Dispose"/>.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="onDispose"/> is null.</exception>
+        internal RecordingDisposable(Action onDispose)
+        {
+            ArgumentNullException.ThrowIfNull(onDispose);
+            _onDispose = onDispose;
+        }
+
+        /// <summary>Gets the number of completed disposal calls.</summary>
+        internal int Disposals { get; private set; }
+
+        /// <summary>Records one disposal call and invokes the configured callback.</summary>
+        public void Dispose()
+        {
+            Disposals++;
+            _onDispose();
+        }
+    }
+
+    #endregion
 }

@@ -491,19 +491,18 @@ public sealed class ConsoleApplicationBuilder
                         application.Session.ResumeAsync().AsTask().GetAwaiter().GetResult();
                     });
 
-                // Mirrors _processSignals' own disposal inside Application - Stopped is the one
-                // funnel every terminal path crosses, including a preflight failure after this
-                // point that routes through the catch block's application.DisposeAsync() call below.
-                // The platform check is repeated here (rather than relying on the outer one) only
-                // because this lambda is its own reachable-on-all-platforms call site as far as the
-                // platform-compatibility analyzer is concerned.
-                application.Stopped += (_, _) =>
-                {
-                    if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-                    {
-                        jobControl.Dispose();
-                    }
-                };
+                // Unlike _processSignals (disposed from a Stopped handler, which is race-free
+                // because that scope's callback never touches the terminal), jobControl's callbacks
+                // mutate termios and drive Session directly - a SIGCONT/SIGTSTP landing after
+                // DisposeTerminalResourcesAsync has already disposed UnixConsoleMode and the Session
+                // transport but before a later Stopped-driven disposal ran would otherwise resume or
+                // suspend against resources already handed back or torn down. Registering it here
+                // instead disposes it from inside DisposeTerminalResourcesAsync itself, strictly
+                // before that teardown, on every path that reaches it - including the never-started
+                // path (FinishWithoutSessionAsync also calls DisposeTerminalResourcesAsync) and a
+                // preflight failure that routes through the catch block's application.DisposeAsync()
+                // call below - so no separate Stopped registration is needed.
+                application.RegisterTerminalBoundResource(jobControl);
             }
 
             // Attach (which runs the screen's OnAttach - the documented place for theme

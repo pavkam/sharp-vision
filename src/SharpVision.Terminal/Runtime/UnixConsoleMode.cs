@@ -119,27 +119,41 @@ internal sealed class UnixConsoleMode: IDisposable
     /// Restores cooked termios ahead of a SIGTSTP job-control suspend, without releasing this
     /// lease: unlike <see cref="Dispose"/>, this can run more than once, and <see cref="Resume"/>
     /// re-derives and re-applies the identical raw state afterward instead of leaving the lease
-    /// consumed.
+    /// consumed. Once <see cref="Dispose"/> has already run, this is a documented no-op that
+    /// invokes none of the injected termios delegates - the terminal this lease captured has
+    /// already been handed back (or never existed to hand back), and a SIGTSTP delivered in that
+    /// window must not act on it.
     /// </summary>
     /// <returns>
-    /// True when cooked mode was restored, or this lease never captured a state to restore (an
-    /// unsupported host, where suspend/resume have nothing to do). False on a failed write - the
-    /// caller's job-control signal path treats this as best effort, the same way <see cref="Enter"/>'s
-    /// own best-effort undo does on a failed entry.
+    /// True when cooked mode was restored, this lease never captured a state to restore (an
+    /// unsupported host, where suspend/resume have nothing to do), or this lease is already
+    /// disposed. False on a failed write - the caller's job-control signal path treats this as
+    /// best effort, the same way <see cref="Enter"/>'s own best-effort undo does on a failed entry.
     /// </returns>
-    public bool Suspend() => _restore is null || _restoreAttributes(_fileDescriptor, _restore);
+    public bool Suspend() =>
+        Volatile.Read(ref _disposed) != 0 || _restore is null || _restoreAttributes(_fileDescriptor, _restore);
 
     /// <summary>
     /// Re-enters raw mode after a SIGCONT job-control resume, recomputing the exact raw termios
-    /// state <see cref="Enter"/> originally derived from the captured cooked state.
+    /// state <see cref="Enter"/> originally derived from the captured cooked state. Once
+    /// <see cref="Dispose"/> has already run, this is a documented no-op that invokes none of the
+    /// injected termios delegates - the terminal has already been restored and handed back to
+    /// whatever owns it next, and a SIGCONT delivered in that window must not re-enter raw mode
+    /// on it.
     /// </summary>
     /// <returns>
     /// True when raw mode was re-established, or this lease never captured a state to derive from.
     /// False on a failed write, treated as best effort by the caller for the same reason
-    /// <see cref="Suspend"/> is.
+    /// <see cref="Suspend"/> is - or because this lease is already disposed and this call
+    /// deliberately left the terminal alone instead of re-entering raw mode on it.
     /// </returns>
     public bool Resume()
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return false;
+        }
+
         if (_restore is null)
         {
             return true;
