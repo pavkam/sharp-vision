@@ -561,11 +561,12 @@ internal sealed class Interpreter
 
     private void IncrementFirstTwoParameters()
     {
-        if (_parameterCount < 2)
-        {
-            throw new ArgumentException("The terminfo increment directive requires parameters one and two.");
-        }
-
+        // ncurses' tparm/tiparm always increments parameter slots zero and one for the %i
+        // directive, independent of how many parameters the caller actually supplied: the
+        // underlying parameter array is fixed at nine slots and every unsupplied slot is
+        // zero-defaulted by Prepare/PrepareNumbers before this executes. Real single-parameter
+        // %i programs (hpa, vpa) rely on this: slot one is incremented from its zero default even
+        // though the caller only supplied slot zero.
         for (var index = 0; index < 2; index++)
         {
             if (_parameterKinds[index] != _numeric)

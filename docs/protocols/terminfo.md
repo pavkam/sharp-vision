@@ -118,9 +118,14 @@ arithmetic, bitwise and logical operators, comparisons, nested and chained
 `%X`, `%c`, and `%s` conversions. Numeric execution is a bounded tiparm-style
 signed Int32 model: `sbyte`, `byte`, `short`, `ushort`, and `int` inputs are
 accepted, while `uint`, `long`, and `ulong` are rejected. Arithmetic and `%i`
-wrap on signed Int32 overflow. Width, precision, `#`, `0`, `-`, `+`, and space
-flags are supported; `:` disambiguates flags that otherwise name an operator,
-and `.` immediately followed by a conversion means precision zero. The compiler
+wrap on signed Int32 overflow. `%i` increments parameter slots one and two of
+the fixed nine-slot parameter storage whether or not the caller supplied that
+many parameters, matching ncurses' tparm/tiparm, which increments a
+zero-defaulted parameter array regardless of caller arity; real single-parameter
+`%i` capabilities such as `hpa` and `vpa` depend on this. Width, precision, `#`,
+`0`, `-`, `+`, and space flags are supported; `:` disambiguates flags that
+otherwise name an operator, and `.` immediately followed by a conversion means
+precision zero. The compiler
 rejects malformed stack use, unsupported legacy termcap forms, output padding,
 and every configured byte, operation, stack, width, or precision overflow.
 

@@ -87,6 +87,28 @@ public sealed class ProgramsTests
         destination.WrittenSpan.ToArray().ShouldBe("0"u8.ToArray());
     }
 
+    /// <summary>Verifies a one-parameter %i program registered under an hpa-like name now expands
+    /// instead of returning false: the increment directive touches parameter slots zero and one of
+    /// the interpreter's fixed nine-slot storage regardless of how many parameters the caller
+    /// actually supplied, matching real single-parameter terminfo capabilities such as hpa and
+    /// vpa.</summary>
+    [Fact]
+    public void TryWrite_WhenSingleParameterIncrementProgramExecutes_ExpandsInsteadOfReturningFalse()
+    {
+        var programs = new Programs(new Dictionary<string, DescriptionProgram>
+        {
+            ["hpa"] = new DescriptionProgram("[%i%p1%dG"u8)
+        });
+        var interpreter = new Interpreter(ProgramLimits.Default);
+        var destination = new ArrayBufferWriter<byte>();
+
+        programs.Has("hpa").ShouldBeTrue();
+        var written = programs.TryWrite("hpa", [7], interpreter, destination);
+
+        written.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe("[8G"u8.ToArray());
+    }
+
     /// <summary>Verifies "ed" is a fully first-class intrinsic capability like its sibling "el":
     /// both are markers a <see cref="TerminalProfile"/> can register as
     /// <see cref="DescriptionProgram.Intrinsic"/> without a compiled terminfo program, and both

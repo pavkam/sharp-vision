@@ -10,6 +10,8 @@ public sealed class InterpreterTests
     /// <summary>Verifies exact current indexed, direct-color, screen, and cursor templates.</summary>
     [Theory]
     [InlineData("\u001b[%i%p1%d;%p2%dH", "\u001b[1;5H", 0, 4)]
+    [InlineData("\u001b[%i%p1%dG", "\u001b[8G", 7)]
+    [InlineData("\u001b[%i%p1%dd", "\u001b[8d", 7)]
     [InlineData("\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m", "\u001b[31m", 1)]
     [InlineData("\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m", "\u001b[94m", 12)]
     [InlineData("\u001b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m", "\u001b[38;5;200m", 200)]
@@ -62,6 +64,25 @@ public sealed class InterpreterTests
         // Assert
         actual.ShouldBe("1;5");
         parameters.ShouldBe([0, 4]);
+    }
+
+    /// <summary>
+    /// Verifies the increment directive no longer requires two caller-supplied parameters: real
+    /// single-parameter templates such as hpa and vpa declare %i with only one following %p
+    /// reference, and ncurses' tparm/tiparm increments the zero-defaulted parameter array
+    /// regardless of caller arity. This proves the directive itself tolerates zero supplied
+    /// parameters; positional reads such as %p1 and %p2 remain separately bounded by how many
+    /// parameters the caller actually supplied, so this template intentionally never reads them
+    /// back.
+    /// </summary>
+    [Fact]
+    public void Write_WhenIncrementDirectiveHasNoSuppliedParameters_DoesNotThrow()
+    {
+        // Arrange / Act
+        var actual = Expand("[%iX", []);
+
+        // Assert
+        actual.ShouldBe("[X");
     }
 
     /// <summary>Verifies decimal constants, character constants, and literal percent output.</summary>
