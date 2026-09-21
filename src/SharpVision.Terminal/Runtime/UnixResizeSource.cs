@@ -14,6 +14,7 @@ using System.Threading.Channels;
 public sealed class UnixResizeSource: IResizeSource
 {
     private readonly int _fileDescriptor;
+    private readonly Func<int, Dimensions> _getDimensions;
     private readonly Channel<bool> _changes;
     private readonly PosixSignalRegistration _registration;
     private int _disposed;
@@ -24,6 +25,22 @@ public sealed class UnixResizeSource: IResizeSource
     /// <exception cref="ArgumentOutOfRangeException">The descriptor is negative.</exception>
     /// <exception cref="PlatformNotSupportedException">The platform is not Linux or macOS.</exception>
     public UnixResizeSource(int fileDescriptor)
+        : this(fileDescriptor, getDimensions: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a Unix resize source with a substitutable measurement boundary. Internal
+    /// because production callers always measure the real terminal descriptor; tests use this to
+    /// prove that a measurement failure (getDimensions throwing) is never published as a resize,
+    /// without needing to force a real TIOCGWINSZ ioctl failure.
+    /// </summary>
+    /// <param name="fileDescriptor">The non-negative terminal file descriptor.</param>
+    /// <param name="getDimensions">The dimensions reader, or null to measure the real terminal
+    /// descriptor via <see cref="RuntimeInterop.GetDimensions"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The descriptor is negative.</exception>
+    /// <exception cref="PlatformNotSupportedException">The platform is not Linux or macOS.</exception>
+    internal UnixResizeSource(int fileDescriptor, Func<int, Dimensions>? getDimensions)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(fileDescriptor);
 
@@ -34,6 +51,7 @@ public sealed class UnixResizeSource: IResizeSource
         }
 
         _fileDescriptor = fileDescriptor;
+        _getDimensions = getDimensions ?? RuntimeInterop.GetDimensions;
         _changes = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
@@ -64,25 +82,37 @@ public sealed class UnixResizeSource: IResizeSource
 
         try
         {
-            try
+            while (true)
             {
-                _ = await _changes.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (ChannelClosedException exception) when (exception.InnerException is ObjectDisposedException disposed)
-            {
-                // DisposeAsync completes the channel with an explicit ObjectDisposedException so
-                // a concurrently pending read observes the same exception every other entry point
-                // on this type already throws once disposed; the channel API always wraps that in
-                // a ChannelClosedException, so unwrap it back to the documented contract here.
-                ExceptionDispatchInfo.Capture(disposed).Throw();
-                throw;
-            }
+                try
+                {
+                    _ = await _changes.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (ChannelClosedException exception) when (exception.InnerException is ObjectDisposedException disposed)
+                {
+                    // DisposeAsync completes the channel with an explicit ObjectDisposedException so
+                    // a concurrently pending read observes the same exception every other entry point
+                    // on this type already throws once disposed; the channel API always wraps that in
+                    // a ChannelClosedException, so unwrap it back to the documented contract here.
+                    ExceptionDispatchInfo.Capture(disposed).Throw();
+                    throw;
+                }
 
-            while (_changes.Reader.TryRead(out _))
-            {
-            }
+                while (_changes.Reader.TryRead(out _))
+                {
+                }
 
-            return RuntimeInterop.GetDimensions(_fileDescriptor);
+                // A failed measurement is distinct from an actual 0x0 suspend: TryMeasure returns
+                // false only when the ioctl itself failed, never when it successfully reported a
+                // suspended 0x0 window. Treating a transient measurement failure as a real resize
+                // would tear the session down for a condition the transport would otherwise
+                // report as its own connection-level fault; loop back and wait for the next
+                // SIGWINCH wakeup instead.
+                if (TryMeasure(out var dimensions))
+                {
+                    return dimensions;
+                }
+            }
         }
         finally
         {
@@ -108,8 +138,30 @@ public sealed class UnixResizeSource: IResizeSource
         {
         }
 
-        value = RuntimeInterop.GetDimensions(_fileDescriptor);
-        return true;
+        return TryMeasure(out value);
+    }
+
+    /// <summary>Reads the current dimensions, or fails when the terminal measurement itself
+    /// fails.</summary>
+    /// <param name="value">Receives the measured dimensions on success.</param>
+    /// <returns>Whether the measurement succeeded.</returns>
+    private bool TryMeasure(out Dimensions value)
+    {
+        try
+        {
+            value = _getDimensions(_fileDescriptor);
+            return true;
+        }
+        catch (IOException)
+        {
+            value = default;
+            return false;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            value = default;
+            return false;
+        }
     }
 
     /// <summary>Stops signal observation and completes pending wakeup production.</summary>
