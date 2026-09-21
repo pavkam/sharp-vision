@@ -410,6 +410,65 @@ public sealed class InputDecoderTests
         }
     }
 
+    /// <summary>
+    /// Verifies the SGR release rows for the base and extended-button code ranges survive every
+    /// transport split, mirroring the whole-buffer release coverage in
+    /// <see cref="Decode_WhenSgrMouseArrives_MapsSemanticPointer"/>.
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[<0;10;5m", Buttons.Primary)]
+    [InlineData("\u001b[<128;10;5m", Buttons.Back)]
+    public void Decode_WhenSgrReleaseIsFragmented_MapsReleaseAtEverySplit(string input, Buttons expectedButtons)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            var pointer = sink.Pointers.ShouldHaveSingleItem($"split {split}");
+            pointer.Cells.ShouldBe(new Point(9, 4), $"split {split}");
+            pointer.Buttons.ShouldBe(expectedButtons, $"split {split}");
+            pointer.Action.ShouldBe(InputAction.Release, $"split {split}");
+            pointer.MotionReported.ShouldBeFalse($"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies the X10 and urxvt legacy unqualified release sentinel (button code 3, which the
+    /// protocol overloads because it has no separate final byte to signal release) survives every
+    /// transport split, mirroring <see cref="Decode_WhenLegacyMouseReleaseArrives_MapsUnqualifiedRelease"/>.
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[M#*%")]
+    [InlineData("\u001b[35;10;5M")]
+    public void Decode_WhenLegacyMouseReleaseIsFragmented_MapsUnqualifiedReleaseAtEverySplit(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input);
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink);
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            var pointer = sink.Pointers.ShouldHaveSingleItem($"split {split}");
+            pointer.Cells.ShouldBe(new Point(9, 4), $"split {split}");
+            pointer.Buttons.ShouldBe(Buttons.None, $"split {split}");
+            pointer.Action.ShouldBe(InputAction.Release, $"split {split}");
+            sink.Diagnostics.ShouldBeEmpty($"split {split}");
+        }
+    }
+
     /// <summary>Verifies a legacy selector-three mouse report preserves its unqualified release
     /// identity because the protocol does not identify which button transitioned.</summary>
     [Fact]
@@ -566,6 +625,64 @@ public sealed class InputDecoderTests
         sink.Pointers.ShouldBeEmpty();
         sink.Diagnostics.ShouldNotBeEmpty();
         sink.Strokes.ShouldHaveSingleItem().Code.ShouldBe(Code.Up);
+    }
+
+    /// <summary>
+    /// Verifies a truncated raw X10 field sequence still discards the pending report and
+    /// preserves the following key at every transport split, the split-loop counterpart to
+    /// <see cref="Decode_WhenRawFieldSequenceIsTruncated_ReportsMalformedAndRecovers"/>.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenRawFieldSequenceIsTruncatedAtEverySplit_ReportsMalformedAndRecovers()
+    {
+        var options = new InputOptions { MouseCoordinates = MouseCoordinates.Default };
+        var bytes = new byte[] { 0x1b, (byte) '[', (byte) 'M', 0x20, 0x41 }
+            .Concat("\u001b[A"u8.ToArray())
+            .ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, options);
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Pointers.ShouldBeEmpty($"split {split}");
+            sink.Diagnostics.ShouldNotBeEmpty($"split {split}");
+            sink.Strokes.ShouldHaveSingleItem($"split {split}").Code.ShouldBe(Code.Up, $"split {split}");
+        }
+    }
+
+    /// <summary>
+    /// Verifies a truncated UTF-8 X10 field sequence, under the negotiated
+    /// <see cref="MouseCoordinates.Utf8"/> encoding, still discards the pending report and
+    /// preserves the following key at every transport split - the UTF-8 counterpart to
+    /// <see cref="Decode_WhenRawFieldSequenceIsTruncatedAtEverySplit_ReportsMalformedAndRecovers"/>
+    /// covering <c>MouseDecoder.TryReadUtf8Fields</c>'s own truncation branch.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenUtf8FieldSequenceIsTruncatedAtEverySplit_ReportsMalformedAndRecovers()
+    {
+        var options = new InputOptions { MouseCoordinates = MouseCoordinates.Utf8 };
+        var bytes = new byte[] { 0x1b, (byte) '[', (byte) 'M', 0x41 }
+            .Concat("\u001b[A"u8.ToArray())
+            .ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingInputSink();
+            using InputDecoder decoder = new(sink, options);
+
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+            decoder.Complete();
+
+            sink.Pointers.ShouldBeEmpty($"split {split}");
+            sink.Diagnostics.ShouldNotBeEmpty($"split {split}");
+            sink.Strokes.ShouldHaveSingleItem($"split {split}").Code.ShouldBe(Code.Up, $"split {split}");
+        }
     }
 
     /// <summary>
@@ -3891,6 +4008,35 @@ public sealed class InputDecoderTests
                 DiagnosticCode.Malformed,
                 $"split {split}");
             sink.Text[^1].Value.ShouldBe(new Rune('z'), $"split {split}");
+        }
+    }
+
+    /// <summary>Verifies each malformed Kitty CSI-u event form, and the out-of-range event-type
+    /// case that shares its shape with one of them, report once and recover at every transport
+    /// split, the split-loop counterpart to the equivalent whole-buffer Kitty CSI-u coverage.
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[97;0u")]
+    [InlineData("\u001b[97;1:4u")]
+    [InlineData("\u001b[1114112u")]
+    [InlineData("\u001b[97;;127u")]
+    [InlineData("\u001b[97;1;65;66u")]
+    [InlineData("\u001b[<97u")]
+    public void Decode_WhenKittyEventIsMalformedAtEverySplit_ReportsAndRecovers(string input)
+    {
+        var bytes = Encoding.UTF8.GetBytes(input + "x");
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var decoder = new InputDecoder(sink);
+            decoder.Decode(bytes.AsSpan(0, split));
+            decoder.Decode(bytes.AsSpan(split));
+
+            sink.Diagnostics.ShouldHaveSingleItem($"split {split}").Code.ShouldBe(
+                DiagnosticCode.Malformed,
+                $"split {split}");
+            sink.Text.ShouldHaveSingleItem($"split {split}").Value.ShouldBe(new Rune('x'), $"split {split}");
         }
     }
 

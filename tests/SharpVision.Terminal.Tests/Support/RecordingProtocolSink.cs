@@ -14,7 +14,8 @@ internal sealed class RecordingProtocolSink:
     ICapabilityResponseSink,
     IKittyGraphicsResponseSink,
     IClipboardReplySink,
-    IKittyClipboardPacketSink
+    IKittyClipboardPacketSink,
+    IItermCapabilitiesResponseSink
 {
     /// <summary>Gets key events in delivery order.</summary>
     internal List<Stroke> Strokes { get; } = [];
@@ -39,6 +40,9 @@ internal sealed class RecordingProtocolSink:
 
     /// <summary>Gets recognized color responses in delivery order.</summary>
     internal List<PaletteResponse> PaletteResponses { get; } = [];
+
+    /// <summary>Gets recognized iTerm2 OSC 1337 Capabilities responses in delivery order.</summary>
+    internal List<ItermCapabilitiesResponse> ItermCapabilitiesResponses { get; } = [];
 
     /// <summary>Gets recognized metrics responses in delivery order.</summary>
     internal List<MetricsResponse> MetricsResponses { get; } = [];
@@ -118,6 +122,13 @@ internal sealed class RecordingProtocolSink:
     {
         PaletteResponses.Add(value);
         Order.Add("palette-response");
+    }
+
+    /// <inheritdoc/>
+    public void Response(ItermCapabilitiesResponse value)
+    {
+        ItermCapabilitiesResponses.Add(value);
+        Order.Add("iterm-capabilities-response");
     }
 
     /// <inheritdoc/>

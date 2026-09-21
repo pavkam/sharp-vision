@@ -134,6 +134,7 @@ public sealed class ProtocolRouterTests
     [InlineData("\u001b[>41;410;0c", ResponseKind.SecondaryAttributes)]
     [InlineData("\u001b[?2026;1$y", ResponseKind.PrivateMode)]
     [InlineData("\u001b[?3u", ResponseKind.Keyboard)]
+    [InlineData("\u001b[>4;2m", ResponseKind.ModifyOtherKeys)]
     public void Route_WhenReplyIsFragmented_DeliversTypedResponse(
         string input,
         ResponseKind expected)
@@ -232,6 +233,29 @@ public sealed class ProtocolRouterTests
 
             sink.PaletteResponses.ShouldHaveSingleItem(
                 $"The color reply differed at split {split}.").Kind.ShouldBe(expected);
+            sink.Sequences.ShouldBeEmpty();
+            sink.Strokes.ShouldBeEmpty();
+            sink.Text.ShouldBeEmpty();
+        }
+    }
+
+    /// <summary>Verifies every transport split of an iTerm2 OSC 1337 Capabilities reply produces
+    /// one owned response instead of falling through as an untagged sequence or an unsupported
+    /// diagnostic.</summary>
+    [Fact]
+    public void Route_WhenItermCapabilitiesReplyIsFragmented_DeliversOwnedResponse()
+    {
+        var bytes = "\u001b]1337;Capabilities=F\u001b\\"u8.ToArray();
+
+        for (var split = 0; split <= bytes.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using ProtocolRouter router = new(sink);
+            router.Route(bytes.AsSpan(0, split));
+            router.Route(bytes.AsSpan(split));
+
+            sink.ItermCapabilitiesResponses.ShouldHaveSingleItem(
+                $"The iTerm2 capabilities reply differed at split {split}.").HasFileCode.ShouldBeTrue();
             sink.Sequences.ShouldBeEmpty();
             sink.Strokes.ShouldBeEmpty();
             sink.Text.ShouldBeEmpty();
