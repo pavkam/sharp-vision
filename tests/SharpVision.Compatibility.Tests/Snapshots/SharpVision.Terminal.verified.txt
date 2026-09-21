@@ -616,7 +616,7 @@ namespace SharpVision.Terminal.Graphics
 {
     public readonly struct GraphicsPlacementDiagnostic : System.IEquatable<SharpVision.Terminal.Graphics.GraphicsPlacementDiagnostic>
     {
-        public GraphicsPlacementDiagnostic(ulong ImageIdentity, SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason) { }
+        public GraphicsPlacementDiagnostic(ulong imageIdentity, SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason reason) { }
         public ulong ImageIdentity { get; }
         public SharpVision.Terminal.Graphics.GraphicsPlacementSkipReason Reason { get; }
     }
@@ -1777,7 +1777,7 @@ namespace SharpVision.Terminal.Runtime
         public SharpVision.Terminal.Abstractions.IResizeSource Resize { get; }
         public SharpVision.Terminal.Abstractions.ITransport Transport { get; }
         public System.Threading.Tasks.ValueTask DisposeAsync() { }
-        public SharpVision.Terminal.Capabilities.DescriptionResult ResolveDescription(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false, SharpVision.Terminal.Capabilities.DescriptionLimits? limits = null, SharpVision.Terminal.Protocols.ParserLimits? parserLimits = null) { }
+        public SharpVision.Terminal.Capabilities.DescriptionResult ResolveDescription(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false, SharpVision.Terminal.Capabilities.DescriptionLimits? limits = null, SharpVision.Terminal.Protocols.ParserLimits? parserLimits = null, SharpVision.Terminal.Terminfo.ProgramLimits? programLimits = null) { }
         public SharpVision.Terminal.Capabilities.TerminalProfile? ResolveProfile(SharpVision.Terminal.Capabilities.TerminalProfile? explicitProfile = null, bool allowAnsiFallback = false) { }
     }
     public static class ConsoleHost
