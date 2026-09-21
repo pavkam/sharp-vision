@@ -584,17 +584,15 @@ public sealed class TerminalServicesTests
     {
         await using FakeTerminal terminal = new();
         terminal.QueueResize(new Dimensions(new Size(20, 6)));
-        var titleWritten = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var poppedAfterConfirmFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var popped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         terminal.Written += memory =>
         {
-            if (memory.Span.SequenceEqual("[22;0t]2;first\\"u8))
+            // The pop is posted synchronously, inside the same title gate, the moment the
+            // confirmation fails, so it routinely shares one out-of-band flush with the push and
+            // title bytes it balances; match within the chunk rather than against a whole chunk.
+            if (memory.Span.IndexOf("\u001b[23;0t"u8) >= 0)
             {
-                _ = titleWritten.TrySetResult();
-            }
-            else if (memory.Span.SequenceEqual("[23;0t"u8))
-            {
-                _ = poppedAfterConfirmFailure.TrySetResult();
+                _ = popped.TrySetResult();
             }
         };
         await using Application application = new(new ProbeControl(), terminal, terminal, TerminalOptions.Minimal);
@@ -611,16 +609,40 @@ public sealed class TerminalServicesTests
             cleanupStartedField.SetValue(application.Session, true);
 
         application.Terminal.SetTitle("first");
-        await titleWritten.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        await poppedAfterConfirmFailure.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await popped.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         await application.StopAsync(TestContext.Current.CancellationToken);
 
-        // The pop reached the wire exactly once - immediately after the failed confirmation above
-        // - and reverse cleanup during Stop never had a lease to unwind, since ConfirmTitleLease
-        // never recorded one, so it never writes a second one.
-        var popCount = terminal.Writes.Count(static write => write.AsSpan().SequenceEqual("[23;0t"u8));
+        // The push and title reached the wire, and the pop reached it exactly once, after them -
+        // immediately after the failed confirmation above - while reverse cleanup during Stop never
+        // had a lease to unwind, since ConfirmTitleLease never recorded one, so it wrote no second
+        // pop.
+        var stream = terminal.Writes.SelectMany(static write => write).ToArray();
+        var pushAndTitle = stream.AsSpan().IndexOf("\u001b[22;0t\u001b]2;first\u001b\\"u8);
+        pushAndTitle.ShouldBeGreaterThanOrEqualTo(0);
+
+        var popCount = 0;
+        var firstPop = -1;
+        var remaining = stream.AsSpan();
+        var consumed = 0;
+
+        while (true)
+        {
+            var index = remaining.IndexOf("\u001b[23;0t"u8);
+
+            if (index < 0)
+            {
+                break;
+            }
+
+            popCount++;
+            firstPop = firstPop < 0 ? consumed + index : firstPop;
+            consumed += index + 1;
+            remaining = remaining[(index + 1)..];
+        }
+
         popCount.ShouldBe(1);
+        firstPop.ShouldBeGreaterThan(pushAndTitle);
     }
 
     /// <summary>Verifies non-executable described bell programs are unsupported and byte-quiet.</summary>

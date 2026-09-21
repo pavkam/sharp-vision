@@ -646,13 +646,14 @@ rest. The
 [terminal session implementation](../architecture/runtime-event-loop.md#terminal-session-implementation)
 owns how these two walks relate to `CleanupAsync`'s own reverse walk.
 
-`ConsoleApplicationBuilder` disposes the job-control registration itself, before
-it tears down terminal resources - ahead of `Session.DisposeAsync` and the host
-lease's own restore, not from a handler that would run only after both have
-already completed. `UnixConsoleMode.Suspend()` and `Resume()` are themselves
-no-ops once the lease has been disposed, so a signal landing in the disposal
-window touches neither termios nor a torn-down transport regardless of exactly
-when the registration itself finishes unregistering.
+`ConsoleApplicationBuilder` hands the job-control registration to `Application`,
+which disposes it at the very start of its terminal-resource teardown - ahead of
+`Session.DisposeAsync` and the host lease's own restore, not from a `Stopped`
+handler that would run only after both have already completed.
+`UnixConsoleMode.Suspend()` and `Resume()` are themselves no-ops once the lease
+has been disposed, so a signal landing in the disposal window touches neither
+termios nor a torn-down transport regardless of exactly when the registration
+itself finishes unregistering.
 
 ```mermaid
 sequenceDiagram
@@ -677,10 +678,10 @@ sequenceDiagram
     Signals->>Mode: Resume() (re-enter raw mode)
     Signals->>Session: ResumeAsync()
     Session->>Session: Replay every lease's enable bytes forward<br/>(re-pushes the title stack only if this session's own pop ran)
-    Session->>Session: Raise Resumed (per-subscriber isolation;<br/>first failure recorded to LastResumeException)
-    Session-->>Signals: returns
-    Signals->>App: Resumed handler runs (same signal-handling thread)
+    Session->>App: Raise Resumed (per-subscriber isolation;<br/>first failure recorded to LastResumeException)
     App->>Dispatcher: InvokeAsync (marshal off the signal-handling thread)
+    App-->>Session: handler returns
+    Session-->>Signals: returns
     Dispatcher->>App: RefreshScreen() and re-send the last title text
 ```
 
