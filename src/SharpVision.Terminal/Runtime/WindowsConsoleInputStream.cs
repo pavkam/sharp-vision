@@ -198,7 +198,12 @@ internal sealed class WindowsConsoleInputStream: Stream
     [DoesNotReturn]
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
-    /// <summary>Issues one blocking native read on the calling (pooled) thread.</summary>
+    /// <summary>
+    /// Issues one blocking native read on the calling (pooled) thread. Internal so a test can
+    /// exercise the pre-call cancellation check directly: the pooled scheduling that separates
+    /// the check from <see cref="ReadAsync(Memory{byte}, CancellationToken)"/>'s own registration cannot be ordered
+    /// deterministically from outside.
+    /// </summary>
     /// <param name="cancellationToken">
     /// The caller's cancellation token, checked immediately before the native call so a
     /// cancellation that lands after the <c>ReadAsync</c> registration but before this pooled
@@ -214,7 +219,7 @@ internal sealed class WindowsConsoleInputStream: Stream
     /// post-read handling turns it into <see cref="OperationCanceledException"/> without ever
     /// issuing the native call.
     /// </returns>
-    private (bool Succeeded, uint CharsRead, int Error) ReadConsoleOnce(CancellationToken cancellationToken)
+    internal (bool Succeeded, uint CharsRead, int Error) ReadConsoleOnce(CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
         {

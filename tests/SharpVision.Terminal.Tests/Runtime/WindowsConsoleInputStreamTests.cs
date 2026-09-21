@@ -42,43 +42,40 @@ public sealed class WindowsConsoleInputStreamTests
     }
 
     /// <summary>
-    /// Verifies a cancellation that lands before the pooled thread reaches the native call is
-    /// caught by the stream's own pre-call check, so that call is never issued. This is the
-    /// narrower race window the cancellation registration's pending-I/O abort alone cannot close,
-    /// because it has no pending I/O left to abort until the native call has actually started.
+    /// Verifies a cancellation that has already been requested by the time the pooled thread
+    /// reaches the native call is caught by the stream's own pre-call check, so that call is never
+    /// issued and the caller's post-read handling sees an abort. This is the narrower race window
+    /// the cancellation registration's pending-I/O abort alone cannot close, because it has no
+    /// pending I/O left to abort until the native call has actually started; the pooled hop that
+    /// separates the registration from the check cannot be ordered from outside, so the check is
+    /// exercised directly.
     /// </summary>
     [Fact]
-    public async Task ReadAsync_WhenCancelledBeforeNativeReadStarts_ThrowsWithoutInvokingNativeReadAsync()
+    public void ReadConsoleOnce_WhenCancellationIsAlreadyRequested_ReportsAbortWithoutInvokingNativeRead()
     {
-        var invoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var invoked = false;
         ReadConsoleDelegate fakeRead;
 
         unsafe
         {
             fakeRead = (_, _, _, out charsRead) =>
             {
-                _ = invoked.TrySetResult();
+                invoked = true;
                 charsRead = 0;
-
-                // A real ReadConsoleW blocks until input arrives; sleeping here rather than
-                // returning immediately turns a lost race into an unmistakable failure (the
-                // bounded wait below elapses first) instead of a silent false pass, without
-                // leaking a blocked thread forever if that ever happens.
-                Thread.Sleep(TimeSpan.FromSeconds(5));
                 return true;
             };
         }
 
         using var stream = new WindowsConsoleInputStream(0, fakeRead, static _ => true);
         using var cts = new CancellationTokenSource();
-        var buffer = new byte[4];
-
-        var read = stream.ReadAsync(buffer, cts.Token).AsTask();
         cts.Cancel();
 
-        _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => read.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
-        invoked.Task.IsCompleted.ShouldBeFalse();
+        var (succeeded, charsRead, error) = stream.ReadConsoleOnce(cts.Token);
+
+        succeeded.ShouldBeFalse();
+        charsRead.ShouldBe(0u);
+        error.ShouldBe(RuntimeInterop.ErrorOperationAborted);
+        invoked.ShouldBeFalse();
     }
 
     /// <summary>
