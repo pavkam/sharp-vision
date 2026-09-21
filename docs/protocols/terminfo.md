@@ -390,10 +390,19 @@ non-empty output. Unsupported bell and title service calls remain byte-quiet and
 do not attempt live expansion.
 
 `Description.AutomaticMargins`, `EatNewlineGlitch` (`xenl`), and
-`BackColorErase` retain the database Boolean semantics. Final-column output is
-followed by absolute positioning before further bytes. `el` is selected for a
-trailing blank only when `bce` is true and the projected blank style is safe;
-otherwise exact spaces preserve terminal-model equivalence.
+`BackColorErase` retain the database Boolean semantics. An `am` description that
+also declares `xenl` defers its wrap until the next byte is written, so
+final-column output on that row is followed immediately by absolute positioning,
+clearing the delayed-wrap state before another byte can wrap or scroll. An `am`
+description without `xenl` (eager wrap, the classic `vt100` shape) wraps - and
+on the bottom row scrolls - as part of writing the final column itself, too
+early for any repair to help; the encoder instead never writes into the bottom
+row's final column at all. The
+[commit and terminal-state invalidation](../architecture/rendering-pipeline.md#commit-and-terminal-state-invalidation)
+section details why that permanently skipped cell stays safe for damage
+tracking. `el` is selected for a trailing blank only when `bce` is true and the
+projected blank style is safe; otherwise exact spaces preserve terminal-model
+equivalence.
 
 Full redraw resets through exact `sgr0`, then uses exact `clear` when retained.
 The normative usable `el`/`ed` alternative instead homes through exact
