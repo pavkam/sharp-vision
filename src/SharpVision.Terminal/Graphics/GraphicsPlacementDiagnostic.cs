@@ -8,21 +8,21 @@ namespace SharpVision.Terminal.Graphics;
 public readonly record struct GraphicsPlacementDiagnostic
 {
     /// <summary>Initializes one validated skipped-placement diagnostic.</summary>
-    /// <param name="ImageIdentity">The skipped placement's stable nonzero process-local image identity.</param>
-    /// <param name="Reason">Why the placement could not be encoded.</param>
+    /// <param name="imageIdentity">The skipped placement's stable nonzero process-local image identity.</param>
+    /// <param name="reason">Why the placement could not be encoded.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="ImageIdentity"/> is zero or <paramref name="Reason"/> is undefined.
+    /// <paramref name="imageIdentity"/> is zero or <paramref name="reason"/> is undefined.
     /// </exception>
     public GraphicsPlacementDiagnostic(
-        ulong ImageIdentity,
-        GraphicsPlacementSkipReason Reason)
+        ulong imageIdentity,
+        GraphicsPlacementSkipReason reason)
     {
-        ArgumentOutOfRangeException.ThrowIfZero(ImageIdentity);
+        ArgumentOutOfRangeException.ThrowIfZero(imageIdentity);
 
-        ArgumentOutOfRangeException.ThrowIfNotDefined(Reason, nameof(Reason), "The skip reason is undefined.");
+        ArgumentOutOfRangeException.ThrowIfNotDefined(reason, nameof(reason), "The skip reason is undefined.");
 
-        this.ImageIdentity = ImageIdentity;
-        this.Reason = Reason;
+        ImageIdentity = imageIdentity;
+        Reason = reason;
     }
 
     /// <summary>Gets the skipped placement's stable nonzero process-local image identity.</summary>
