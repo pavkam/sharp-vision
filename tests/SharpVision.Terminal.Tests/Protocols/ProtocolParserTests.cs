@@ -344,6 +344,23 @@ public sealed class ProtocolParserTests
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
     }
 
+    /// <summary>Verifies a DCS header exactly at the parameter limit is accepted.</summary>
+    [Fact]
+    public void Parse_WhenDcsHeaderEqualsLimit_DeliversHeaderAndPayload()
+    {
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        parser.Parse("\u001bP12qdata\u001b\\"u8, ref sink);
+
+        sink.Observations.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Dcs:EscapeBackslash:"),
+            observation => observation.First.ShouldBe("12"u8.ToArray()),
+            observation => observation.Second.ShouldBe("data"u8.ToArray()),
+            observation => observation.Final.ShouldBe((byte) 'q'));
+    }
+
     /// <summary>
     /// Verifies a DEL byte arriving during DcsHeaderIgnore recovery is counted toward
     /// DiscardedBytes rather than silently absorbed.
@@ -387,6 +404,21 @@ public sealed class ProtocolParserTests
         sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.StringLimit);
         sink.Observations[0].Diagnostic!.Value.DiscardedBytes.ShouldBe(1);
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
+    }
+
+    /// <summary>Verifies a string payload exactly at the byte limit is accepted.</summary>
+    [Fact]
+    public void Parse_WhenStringPayloadEqualsLimit_DeliversPayload()
+    {
+        var limits = ParserLimits.Default with { MaxStringBytes = 4 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        parser.Parse("\u001b]1234\u001b\\"u8, ref sink);
+
+        sink.Observations.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Osc:EscapeBackslash"),
+            observation => observation.First.ShouldBe("1234"u8.ToArray()));
     }
 
     /// <summary>
@@ -564,6 +596,22 @@ public sealed class ProtocolParserTests
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
     }
 
+    /// <summary>Verifies parameter bytes exactly at the limit are accepted.</summary>
+    [Fact]
+    public void Parse_WhenParameterLimitIsExactlyMet_DeliversCsi()
+    {
+        var limits = ParserLimits.Default with { MaxParameterBytes = 2 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        parser.Parse("\u001b[12m"u8, ref sink);
+
+        sink.Observations.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Csi"),
+            observation => observation.First.ShouldBe("12"u8.ToArray()),
+            observation => observation.Final.ShouldBe((byte) 'm'));
+    }
+
     /// <summary>
     /// Verifies a DEL byte arriving during CsiIgnore recovery is counted toward
     /// DiscardedBytes rather than silently absorbed.
@@ -605,6 +653,22 @@ public sealed class ProtocolParserTests
         sink.Observations.Count.ShouldBe(2);
         sink.Observations[0].Diagnostic!.Value.Code.ShouldBe(DiagnosticCode.IntermediateLimit);
         sink.Observations[1].First.ShouldBe("X"u8.ToArray());
+    }
+
+    /// <summary>Verifies intermediate bytes exactly at the limit are accepted.</summary>
+    [Fact]
+    public void Parse_WhenIntermediateLimitIsExactlyMet_DeliversEscape()
+    {
+        var limits = ParserLimits.Default with { MaxIntermediateBytes = 1 };
+        using ProtocolParser parser = new(limits);
+        var sink = new RecordingSink();
+
+        parser.Parse("\u001b(B"u8, ref sink);
+
+        sink.Observations.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            observation => observation.Type.ShouldBe("Escape"),
+            observation => observation.First.ShouldBe("("u8.ToArray()),
+            observation => observation.Final.ShouldBe((byte) 'B'));
     }
 
     /// <summary>
@@ -846,7 +910,7 @@ public sealed class ProtocolParserTests
 
     private static byte[] CreateValid(Random random)
     {
-        var selector = random.Next(4);
+        var selector = random.Next(6);
         var value = random.Next(1, 10_000);
 
         return selector switch
@@ -854,7 +918,9 @@ public sealed class ProtocolParserTests
             0 => Encoding.ASCII.GetBytes($"left\u001b[{value}Aright"),
             1 => Encoding.ASCII.GetBytes($"\u001b]2;title-{value}\u001b\\"),
             2 => Encoding.ASCII.GetBytes($"\u001bP{value}$qdata-{value}\u001b\\"),
-            _ => Encoding.ASCII.GetBytes($"\u001b_payload-{value}\u001b\\")
+            3 => Encoding.ASCII.GetBytes($"\u001b_payload-{value}\u001b\\"),
+            4 => Encoding.ASCII.GetBytes($"\u001b^payload-{value}\u001b\\"),
+            _ => Encoding.ASCII.GetBytes($"\u001bXpayload-{value}\u001b\\")
         };
     }
 
@@ -1085,6 +1151,16 @@ public sealed class ProtocolParserTests
             observation => observation.Type.ShouldBe("Osc:EightBit"),
             observation => observation.First.ShouldBe("2;x"u8.ToArray()));
     }
+
+    /// <summary>Verifies PM state survives every possible transport split.</summary>
+    [Fact]
+    public void Parse_WhenPmIsFragmented_MatchesWholeInput() =>
+        Fragmentation.AssertAll("left\u001b^payload\u001b\\right"u8);
+
+    /// <summary>Verifies SOS state survives every possible transport split.</summary>
+    [Fact]
+    public void Parse_WhenSosIsFragmented_MatchesWholeInput() =>
+        Fragmentation.AssertAll("left\u001bXpayload\u001b\\right"u8);
 
     #endregion
 }
