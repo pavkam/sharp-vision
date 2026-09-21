@@ -255,13 +255,12 @@ multiplexer policy.
 
 A detected multiplexer narrows Kitty clipboard, Kitty graphics, iTerm2 image,
 and nearby OSC 52 evidence, but it never narrows `ColorDepth`. tmux re-encodes
-24-bit SGR for its own outer terminal, so the inner pane's advertised depth
-does not describe what ultimately reaches the display, and the shared
-`tmux-256color` and `screen-256color` terminfo entries under-report color
-support that `COLORTERM` evidence is honored to correct. `ColorDepth` instead
-follows its own [color-evidence lattice](#overview), which already resolves
-environment, description, and query color evidence without a
-multiplexer-specific rule.
+24-bit SGR for its own outer terminal, so the inner pane's advertised depth does
+not describe what ultimately reaches the display, and the shared `tmux-256color`
+and `screen-256color` terminfo entries under-report color support that
+`COLORTERM` evidence is honored to correct. `ColorDepth` instead follows its own
+[color-evidence lattice](#overview), which already resolves environment,
+description, and query color evidence without a multiplexer-specific rule.
 
 tmux may carry the complete approved query set. A route containing GNU screen
 permits one farthest Screen layer with surrounding tmux layers, and carries CSI

@@ -85,8 +85,8 @@ including `PendingPasteDeadline` and `ExpirePaste()`. The session schedules them
 without requiring another transport read. While
 [bracketed paste](paste-focus.md#supported-features) owns input, even a complete
 multiplexer reply envelope is literal payload. Expiry clears the partial paste
-before a diagnostic is delivered; it never replays retained bytes as input.
-A buffered multiplexer reply-prefix candidate and its discard-recovery sibling
+before a diagnostic is delivered; it never replays retained bytes as input. A
+buffered multiplexer reply-prefix candidate and its discard-recovery sibling
 share the same escape ambiguity timeout and are folded into
 `PendingEscapeDeadline`, so `ExpireEscape()` resolves either one exactly like a
 stalled lone Escape when no further transport byte arrives in time.

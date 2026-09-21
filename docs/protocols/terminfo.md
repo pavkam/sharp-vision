@@ -91,9 +91,9 @@ command is compiled or emitted. The configured ncurses native-library search
 order accepts only non-null, non-blank candidates and is copied into the
 immutable limit profile before lookup. `ProgramLimits` is carried per lookup
 request alongside `DescriptionLimits` and the key-sequence `ParserLimits`,
-defaulting to `ProgramLimits.Default` when a caller supplies none, so a
-provider always compiles capability strings against the requested ceiling
-instead of a fixed built-in one.
+defaulting to `ProgramLimits.Default` when a caller supplies none, so a provider
+always compiles capability strings against the requested ceiling instead of a
+fixed built-in one.
 
 | Limit               | Default | Hard ceiling | Unit                                                                                 |
 | ------------------- | ------: | -----------: | ------------------------------------------------------------------------------------ |
@@ -125,9 +125,9 @@ zero-defaulted parameter array regardless of caller arity; real single-parameter
 `%i` capabilities such as `hpa` and `vpa` depend on this. Width, precision, `#`,
 `0`, `-`, `+`, and space flags are supported; `:` disambiguates flags that
 otherwise name an operator, and `.` immediately followed by a conversion means
-precision zero. The compiler
-rejects malformed stack use, unsupported legacy termcap forms, output padding,
-and every configured byte, operation, stack, width, or precision overflow.
+precision zero. The compiler rejects malformed stack use, unsupported legacy
+termcap forms, output padding, and every configured byte, operation, stack,
+width, or precision overflow.
 
 Program literals and `%s` values are raw terminal bytes, not UTF-8 text. The
 interpreter validates parameter kinds and bounds, evaluates into reusable owned
@@ -233,11 +233,10 @@ The proof accounts for a `printf`-style numeric conversion compiled with an
 explicit zero precision (`%.0d`, `%.0x`): such a conversion produces no output
 bytes for a zero-value parameter unless a positive width, an explicit sign or
 leading-space flag, or the octal alternate-form flag forces at least one byte
-regardless of the digit expansion. Both members of each visibility or shape
-pair must satisfy that contract. Once
-admitted, a requested cursor transition is part of frame correctness: any
-unexpected live expansion failure aborts the staged frame before transport and
-leaves the prior semantic frame committed for retry.
+regardless of the digit expansion. Both members of each visibility or shape pair
+must satisfy that contract. Once admitted, a requested cursor transition is part
+of frame correctness: any unexpected live expansion failure aborts the staged
+frame before transport and leaves the prior semantic frame committed for retry.
 
 Renderer and service support uses the same executable-contract boundary. Known
 cursor, erasure, rendition, color/default, underline, shape, bell, and title

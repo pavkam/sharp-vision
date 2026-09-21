@@ -63,9 +63,9 @@ and xterm modifyOtherKeys (`CSI > 4 ; Pv m`) values.
 `CSI 8 ; height ; width t`; both extents must be positive and representable by a
 signed 32-bit `Size`, matching the
 [window metrics contract](xterm.md#window-metrics), before a `MetricsResponse`
-is constructed. `XtermResponses.TryOsc` owns `PaletteResponse`
-values for OSC 4, OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB
-components are validated and normalized to 16-bit values before publication. The
+is constructed. `XtermResponses.TryOsc` owns `PaletteResponse` values for OSC 4,
+OSC 10, and OSC 11. One-to-four-digit hexadecimal RGB components are validated
+and normalized to 16-bit values before publication. The
 [runtime router](runtime-routing.md#overview) delivers those typed values
 without allowing them to fall through as keyboard input. `QueryTracker` admits
 at most `QueryLimits.MaxConcurrentQueries`, one active uncorrelated query per

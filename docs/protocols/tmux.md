@@ -124,14 +124,13 @@ the full outer recovery boundary without leaking ST bytes as keys or text. A
 partial candidate or an in-progress oversized-candidate discard shares the lone
 Escape ambiguity deadline, so a transport read that ends mid-prefix or before
 the discard boundary's terminator still resolves instead of withholding or
-swallowing those bytes indefinitely.
-Diagnostics and all later parser events retain raw transport byte offsets,
-including outer framing and repeated ESC expansion. Wrong-family replies remain
-typed and observable but cannot retire the originating query. If bounded route
-encoding fails atomically, negotiation publishes absent evidence immediately
-without a write, flush, active query, optional-mode lease, cleanup sequence, or
-deadline wait. Absent transmitted replies preserve conservative evidence at the
-original exclusive deadline.
+swallowing those bytes indefinitely. Diagnostics and all later parser events
+retain raw transport byte offsets, including outer framing and repeated ESC
+expansion. Wrong-family replies remain typed and observable but cannot retire
+the originating query. If bounded route encoding fails atomically, negotiation
+publishes absent evidence immediately without a write, flush, active query,
+optional-mode lease, cleanup sequence, or deadline wait. Absent transmitted
+replies preserve conservative evidence at the original exclusive deadline.
 
 [`TmuxWriter.WritePassthrough`](../../src/SharpVision.Terminal/Multiplexing/TmuxWriter.cs)
 implements the exact one-layer grammar. `TryUnwrap` validates parser-delivered

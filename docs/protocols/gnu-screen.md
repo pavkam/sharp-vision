@@ -10,8 +10,8 @@ payload to the host terminal without interpretation.
 Screen may filter, reinterpret, or limit modern mouse, OSC, and graphics
 features. A `TERM` value associated with screen selects a conservative profile;
 outer-terminal behavior requires explicit override or verified passthrough.
-Color depth is exempt from this narrowing and instead follows its own
-documented [color-evidence lattice](../architecture/capabilities.md#overview).
+Color depth is exempt from this narrowing and instead follows its own documented
+[color-evidence lattice](../architecture/capabilities.md#overview).
 
 ## DCS framing limit
 
