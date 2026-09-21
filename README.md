@@ -93,6 +93,8 @@ interactive forms, and Markdown:
 dotnet add package SharpVision.Document
 ```
 
+It accepts the matching `SharpVision` version or later.
+
 The optional `SharpVision.SyntaxHighlighting` package adds read-only,
 selectable, foldable syntax-highlighted code display driven by
 Kate/KSyntaxHighlighting-format definitions:
@@ -100,6 +102,8 @@ Kate/KSyntaxHighlighting-format definitions:
 ```bash
 dotnet add package SharpVision.SyntaxHighlighting
 ```
+
+It accepts the matching `SharpVision` version or later.
 
 ## Find your way around
 

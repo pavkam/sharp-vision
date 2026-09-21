@@ -19,6 +19,7 @@ classDiagram
     ControlBase <|-- Container
     ControlBase <|-- ContentControl
     ControlBase <|-- CompositeControlBase
+    CompositeControlBase <|-- ScrollableCompositeControlBase
     ControlBase <|-- ItemsControl
     ItemsControl <|-- ScrollableItemsControl
     ControlBase <|-- InputBase
@@ -50,6 +51,9 @@ classDiagram
     HeaderedContentControl <|-- Expander
     CompositeControlBase <|-- Screen
     CompositeControlBase <|-- SuggestionInput
+    ScrollableCompositeControlBase <|-- JsonView
+    ScrollableCompositeControlBase <|-- NavigationView
+    ScrollableCompositeControlBase <|-- TreeView
     Container <|-- Stack
     Container <|-- Wrap
     Container <|-- Grid

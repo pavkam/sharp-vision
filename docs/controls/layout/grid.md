@@ -22,6 +22,7 @@ classDiagram
 | Member                        | Type                | Default                              | Description                                                                   |
 | ----------------------------- | ------------------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | Inherited `Children`          | `ControlCollection` | Empty                                | Owns controls whose attached placement is resolved by the grid.               |
+| Inherited `AutoScroll`        | `bool`              | `false`                              | Turns overflowing grid content into a clipped scrolling viewport.             |
 | `Rows`, `Columns`             | `TrackCollection`   | Empty, meaning one automatic track   | Own mutable row and column track definitions.                                 |
 | `RowSpacing`, `ColumnSpacing` | `int`               | `0`                                  | Non-negative cells inserted between rows or columns.                          |
 | Inherited `Border`            | `Border`            | Theme `control` profile (borderless) | Public complete local frame authoring, enabled by `EnableChromeAuthoring()`.  |
