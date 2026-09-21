@@ -440,6 +440,70 @@ export function validateSectionSpine(headings) {
 }
 
 /**
+ * Validates the required Dialog page-type H2 spine declared in the documentation guide's page-types
+ * table: `Overview`, `API`, `Interaction`, `Example`, `Expected behavior`, in that relative order.
+ * Unlike the Control-page spine, a Dialog page tolerates an optional extra H2 (`Inheritance`,
+ * `Theming`, `Presentation and ownership`, and similar) anywhere before `Example`, because the real
+ * pages under `docs/dialogs/**` place those extras in different positions relative to `API` and
+ * `Interaction` - only `Overview` first, `Example` immediately before `Expected behavior`, and the
+ * `API` < `Interaction` < `Example` relative order are load-bearing.
+ *
+ * @param {{ text: string }[]} headings The page's H2 headings, in document order.
+ * @returns {string | null} A violation description, or `null` when the spine is correct.
+ */
+export function validateDialogSectionSpine(headings) {
+    const texts = headings.map((heading) => heading.text);
+    const required = [
+        "Overview",
+        "API",
+        "Interaction",
+        "Example",
+        "Expected behavior",
+    ];
+    const missing = required.filter((name) => !texts.includes(name));
+
+    if (missing.length > 0) {
+        return (
+            `H2 spine is missing ${missing.map((name) => `"${name}"`).join(", ")} ` +
+            `(found: ${texts.length === 0 ? "none" : texts.join(", ")}); ` +
+            "expected Overview, API, Interaction, Example, Expected behavior, in order"
+        );
+    }
+
+    const problems = [];
+
+    if (texts[0] !== "Overview") {
+        problems.push(`first H2 is "${texts[0]}", expected "Overview"`);
+    }
+
+    if (texts.at(-1) !== "Expected behavior") {
+        problems.push(
+            `last H2 is "${texts.at(-1)}", expected "Expected behavior"`,
+        );
+    }
+
+    if (texts.at(-2) !== "Example") {
+        problems.push(
+            `H2 before "Expected behavior" is "${texts.at(-2)}", expected "Example"`,
+        );
+    }
+
+    const apiIndex = texts.indexOf("API");
+    const interactionIndex = texts.indexOf("Interaction");
+    const exampleIndex = texts.indexOf("Example");
+
+    if (!(apiIndex < interactionIndex && interactionIndex < exampleIndex)) {
+        problems.push(
+            '"API", "Interaction", and "Example" must appear in that relative order',
+        );
+    }
+
+    return problems.length === 0
+        ? null
+        : `H2 spine violation: ${problems.join("; ")} (full spine: ${texts.join(" > ")})`;
+}
+
+/**
  * Slices the lines belonging to one named H2 section, from immediately after its heading up to
  * (excluding) the next H2 heading or the end of the document.
  *
@@ -1227,25 +1291,72 @@ export async function validateControlDocStructure(root) {
     return { errors, warnings, stats };
 }
 
+/**
+ * Validates every non-index `docs/dialogs/**` page against the Dialog page-type's required H2 spine
+ * only - `Overview`, `API`, `Interaction`, `Example`, `Expected behavior`, in relative order, per
+ * `validateDialogSectionSpine`. Pages are enumerated live from the filesystem, never from a
+ * hardcoded list, so a newly added page is validated automatically.
+ *
+ * Unlike `validateControlDocStructure`, this does not cross-check any table against the public API
+ * compatibility snapshot: a Dialog page's `## API` table documents a protected authoring seam or
+ * dialog-specific option records (`FilePickerOptions`, `SaveFileOptions`), not a `ControlBase`
+ * member list, and `deriveDocumentedType`'s slug-to-snapshot-key mapping has no equivalent for that
+ * shape today.
+ *
+ * @param {string} root The repository root.
+ * @returns {Promise<{ errors: string[], stats: { pagesChecked: number } }>} Every spine violation and
+ * a page count.
+ */
+export async function validateDialogDocStructure(root) {
+    const dialogsRoot = join(root, "docs", "dialogs");
+    const docFiles = (await findMarkdownFiles(dialogsRoot)).sort();
+
+    const errors = [];
+    const stats = { pagesChecked: 0 };
+
+    for (const docPath of docFiles) {
+        if (basename(docPath) === "index.md") {
+            continue;
+        }
+
+        stats.pagesChecked++;
+
+        const relativePath = relative(root, docPath).split(sep).join("/");
+        const text = await readFile(docPath, "utf8");
+        const lines = text.split(/\r?\n/u);
+        const headings = extractH2Headings(lines);
+        const spineError = validateDialogSectionSpine(headings);
+
+        if (spineError !== null) {
+            errors.push(`${relativePath}: ${spineError}`);
+        }
+    }
+
+    return { errors, stats };
+}
+
 async function main() {
     const root = join(import.meta.dirname, "..");
     const { errors, warnings, stats } = await validateControlDocStructure(root);
+    const dialogResult = await validateDialogDocStructure(root);
+    const allErrors = [...errors, ...dialogResult.errors];
 
     for (const warning of warnings) {
         console.log(`PENDING_MIGRATION: ${warning}`);
     }
 
-    if (errors.length === 0) {
+    if (allErrors.length === 0) {
         console.log(
             `Control-page contract satisfied for ${stats.pagesChecked} page(s) ` +
                 `(${stats.pagesExempt} pending-migration exemption(s)). ` +
                 `Tier A checked ${stats.tierAChecked} edge(s), skipped ${stats.tierASkipped}. ` +
-                `Tier B checked ${stats.tierBChecked} member(s), skipped ${stats.tierBSkipped}.`,
+                `Tier B checked ${stats.tierBChecked} member(s), skipped ${stats.tierBSkipped}. ` +
+                `Dialog page-type spine satisfied for ${dialogResult.stats.pagesChecked} page(s).`,
         );
         return;
     }
 
-    for (const error of errors) {
+    for (const error of allErrors) {
         console.error(error);
     }
 

@@ -20,6 +20,8 @@ import {
     slugToPascalCase,
     splitTopLevelCommas,
     validateControlDocStructure,
+    validateDialogDocStructure,
+    validateDialogSectionSpine,
     validateInheritanceSection,
     validateSectionSpine,
     validateTierA,
@@ -124,6 +126,56 @@ async function buildFixtureRoot(pageText) {
 
     await mkdir(join(root, "docs", "controls"), { recursive: true });
     await writeFile(join(root, "docs", "controls", "widget.md"), pageText);
+
+    return root;
+}
+
+const validDialogPage = `# WidgetDialog
+
+## Overview
+
+\`WidgetDialog\` is a sealed \`Dialog<WidgetResult>\` specialization.
+
+## API
+
+| Member  | Type     | Default | Description         |
+| ------- | -------- | ------- | -------------------- |
+| \`Title\` | \`string\` | —       | The dialog's title.  |
+
+## Interaction
+
+- Escape and the Cancel Button complete the dialog with the cancelled result.
+
+## Example
+
+\`\`\`csharp
+var result = await WidgetDialog.ShowAsync(owner, "Pick one");
+\`\`\`
+
+## Expected behavior
+
+| Scope      | Observable evidence                        |
+| ---------- | -------------------------------------------- |
+| Public API | Arguments are validated before construction. |
+`;
+
+/**
+ * Builds an isolated fixture repository root with one `docs/dialogs/widget-dialog.md` page, so each
+ * test can mutate the page text and assert the outcome without touching the real repository.
+ * `validateDialogDocStructure` never reads the compatibility snapshot, so unlike
+ * `buildFixtureRoot`, no snapshot fixture is required here.
+ *
+ * @param {string} pageText The full Markdown content for `docs/dialogs/widget-dialog.md`.
+ * @returns {Promise<string>} The fixture root.
+ */
+async function buildDialogFixtureRoot(pageText) {
+    const root = await mkdtemp(join(tmpdir(), "dialog-doc-structure-"));
+
+    await mkdir(join(root, "docs", "dialogs"), { recursive: true });
+    await writeFile(
+        join(root, "docs", "dialogs", "widget-dialog.md"),
+        pageText,
+    );
 
     return root;
 }
@@ -496,6 +548,69 @@ test("validateSectionSpine_WhenOrderIsCorrect_ReturnsNull", () => {
     assert.equal(validateSectionSpine(headings), null);
 });
 
+test("validateDialogSectionSpine_WhenOrderIsCorrect_ReturnsNull", () => {
+    const headings = [
+        "Overview",
+        "API",
+        "Interaction",
+        "Example",
+        "Expected behavior",
+    ].map((text, line) => ({
+        text,
+        line,
+    }));
+
+    assert.equal(validateDialogSectionSpine(headings), null);
+});
+
+test("validateDialogSectionSpine_WhenOptionalTopicSectionsAreInterspersed_ReturnsNull", () => {
+    // Mirrors the real shape of file-picker-dialog.md and save-file-dialog.md: extra H2s ("Theming",
+    // "Presentation and ownership", "Errors and threading") land both before and after Interaction,
+    // as long as Overview stays first, Example stays immediately before Expected behavior, and API <
+    // Interaction < Example holds.
+    const headings = [
+        "Overview",
+        "API",
+        "Theming",
+        "Presentation and ownership",
+        "Interaction",
+        "Errors and threading",
+        "Example",
+        "Expected behavior",
+    ].map((text, line) => ({
+        text,
+        line,
+    }));
+
+    assert.equal(validateDialogSectionSpine(headings), null);
+});
+
+test("validateDialogSectionSpine_WhenInteractionIsMissing_ReportsAViolation", () => {
+    const headings = ["Overview", "API", "Example", "Expected behavior"].map(
+        (text, line) => ({ text, line }),
+    );
+
+    assert.match(
+        validateDialogSectionSpine(headings),
+        /H2 spine is missing "Interaction"/,
+    );
+});
+
+test("validateDialogSectionSpine_WhenApiFollowsInteraction_ReportsAViolation", () => {
+    const headings = [
+        "Overview",
+        "Interaction",
+        "API",
+        "Example",
+        "Expected behavior",
+    ].map((text, line) => ({ text, line }));
+
+    assert.match(
+        validateDialogSectionSpine(headings),
+        /"API", "Interaction", and "Example" must appear in that relative order/,
+    );
+});
+
 test("validateInheritanceSection_WhenTheFenceIsMissing_ReportsAViolation", () => {
     const lines = [
         "## Inheritance",
@@ -832,4 +947,63 @@ test("repository_WhenScanned_SatisfiesTheControlPageContract", async () => {
 
     assert.deepEqual(result.errors, []);
     assert.equal(result.stats.pagesExempt, PENDING_MIGRATION.size);
+});
+
+test("validateDialogDocStructure_WhenAPageIsFullyValid_ReportsNoErrors", async () => {
+    const root = await buildDialogFixtureRoot(validDialogPage);
+
+    try {
+        const result = await validateDialogDocStructure(root);
+
+        assert.deepEqual(result.errors, []);
+        assert.equal(result.stats.pagesChecked, 1);
+    } finally {
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test("validateDialogDocStructure_WhenInteractionIsMissing_ReportsASpineViolation", async () => {
+    const broken = validDialogPage.replace(
+        "## Interaction\n\n- Escape and the Cancel Button complete the dialog with the cancelled result.\n\n",
+        "",
+    );
+    const root = await buildDialogFixtureRoot(broken);
+
+    try {
+        const result = await validateDialogDocStructure(root);
+
+        assert.equal(result.errors.length, 1);
+        assert.match(
+            result.errors[0],
+            /docs\/dialogs\/widget-dialog\.md: H2 spine is missing "Interaction"/,
+        );
+    } finally {
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test("validateDialogDocStructure_WhenAPageIsNamedIndex_IsExempt", async () => {
+    const root = await mkdtemp(join(tmpdir(), "dialog-doc-structure-"));
+
+    try {
+        await mkdir(join(root, "docs", "dialogs"), { recursive: true });
+        await writeFile(
+            join(root, "docs", "dialogs", "index.md"),
+            "# Dialogs\n\nJust a catalog.\n",
+        );
+
+        const result = await validateDialogDocStructure(root);
+
+        assert.deepEqual(result.errors, []);
+        assert.equal(result.stats.pagesChecked, 0);
+    } finally {
+        await rm(root, { recursive: true, force: true });
+    }
+});
+
+test("repository_WhenScanned_SatisfiesTheDialogPageSpine", async () => {
+    const root = join(import.meta.dirname, "..");
+    const result = await validateDialogDocStructure(root);
+
+    assert.deepEqual(result.errors, []);
 });
