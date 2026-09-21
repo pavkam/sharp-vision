@@ -106,7 +106,9 @@ without treating `TERM` as a protocol identity. CSI A/B/C/D and H/F map cursor
 and Home/End keys; CSI tilde parameters map Insert/Delete, Page Up/Down,
 Home/End, and F1-F12; CSI Z maps Shift-Tab; CSI P/Q/R/S and SS3 A-D, H/F, and
 P-S map their functional equivalents. A second CSI parameter uses the xterm
-modifier convention of encoded value minus one.
+modifier convention of encoded value minus one, bounded to 1-16 (the bitmask of
+Shift, Alt, Control, and Meta) with any wider encoded value reported as
+malformed rather than accepted under Kitty's separate 1-256 range.
 
 Plain UTF-8 is decoded as Unicode scalar values. A lone ESC is resolved by the
 documented timeout in the

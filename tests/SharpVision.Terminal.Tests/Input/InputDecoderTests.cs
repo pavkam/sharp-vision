@@ -1638,6 +1638,39 @@ public sealed class InputDecoderTests
     }
 
     /// <summary>
+    /// Verifies a legacy (non-Kitty-grammar) CSI cursor or function-key modifier field outside
+    /// ctlseqs.txt's 1-16 range reports Malformed instead of falling through to
+    /// KittyKeyDecoder.TryReadModifiers' wider 1-256 CSI-u bound, on both a cursor key and a
+    /// function key.
+    /// </summary>
+    [Theory]
+    [InlineData("\u001b[1;17A")]
+    [InlineData("\u001b[1;256A")]
+    [InlineData("\u001b[1;17P")]
+    public void Decode_WhenCsiModifierExceedsLegacyRange_ReportsMalformedAndRecovers(string malformed)
+    {
+        var sink = Decode(Encoding.UTF8.GetBytes(malformed + "\u001b[B"));
+
+        sink.Diagnostics.Count.ShouldBe(1);
+        sink.Strokes.ShouldContain(static item => item.Code == Code.Down);
+    }
+
+    /// <summary>
+    /// Verifies the legacy CSI modifier field's upper boundary, 16 (Shift|Alt|Control|Meta once
+    /// the legacy Super bit is remapped), still decodes rather than being rejected by the new
+    /// ctlseqs.txt bound.
+    /// </summary>
+    [Fact]
+    public void Decode_WhenCsiModifierIsSixteen_Decodes()
+    {
+        var sink = Decode("\u001b[1;16A"u8.ToArray());
+
+        sink.Strokes.ShouldContain(static item =>
+            item.Code == Code.Up &&
+            item.Modifiers == (Modifiers.Shift | Modifiers.Alt | Modifiers.Control | Modifiers.Meta));
+    }
+
+    /// <summary>
     /// Verifies adjacent escape sequences produce distinct ordered strokes.
     /// </summary>
     [Fact]

@@ -1710,6 +1710,18 @@ public sealed class InputDecoder: IDisposable
         // disambiguation lease active), since then bit 3 already means Super.
         if (!isKittyGrammar)
         {
+            // TryReadModifiers only bounds the encoded value to Kitty's own 1-256 CSI-u range. The
+            // legacy ctlseqs.txt modifier code has its own narrower 4-bit layout (1 plus a bitmask
+            // of Shift=1, Alt=2, Control=4, Meta=8, so 1-16), the same bound TryGetModifier applies
+            // to the sibling tilde-form field, so re-derive the raw encoded value from the flags
+            // just decoded and reject anything wider before remapping.
+            var encoded = (int) modifiers + 1;
+
+            if (encoded is < 1 or > 16)
+            {
+                return false;
+            }
+
             RemapLegacySuperToMeta(ref modifiers);
         }
 
