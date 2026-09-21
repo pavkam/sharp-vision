@@ -14,6 +14,8 @@ public sealed class ProtocolRouter: IDisposable
 {
     private readonly IProtocolSink _sink;
     private readonly InputDecoder _decoder;
+    private readonly InputOptions _options;
+    private readonly TimeProvider _timeProvider;
     private readonly MultiplexerRoute? _multiplexerRoute;
     private byte[]? _multiplexerCandidate;
     private int _multiplexerLength;
@@ -23,6 +25,7 @@ public sealed class ProtocolRouter: IDisposable
     private long _multiplexerDiscardStart;
     private long _multiplexerDiscardedBytes;
     private long _rawOffset;
+    private DateTimeOffset? _multiplexerDeadline;
     private bool _multiplexerDiscarding;
 
     #region Construction
@@ -69,6 +72,8 @@ public sealed class ProtocolRouter: IDisposable
     {
         ArgumentNullException.ThrowIfNull(sink);
         _sink = sink;
+        _options = options ?? InputOptions.Default;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _decoder = new InputDecoder(sink, options, timeProvider);
 
         if (route?.Policy.Active == true)
@@ -121,8 +126,23 @@ public sealed class ProtocolRouter: IDisposable
         _decoder.Decode(input);
     }
 
-    /// <summary>Gets the pending lone-Escape ambiguity deadline, or null when none is pending.</summary>
-    public DateTimeOffset? PendingEscapeDeadline => _decoder.PendingEscapeDeadline;
+    /// <summary>Gets the pending lone-Escape ambiguity deadline, or null when none is pending.
+    /// Also covers a buffered multiplexer reply-prefix candidate or discard-recovery run: both
+    /// share the same escape ambiguity timeout, since neither resolves on its own without a
+    /// deadline (see <see cref="ExpireEscape"/>).</summary>
+    public DateTimeOffset? PendingEscapeDeadline
+    {
+        get
+        {
+            var decoderDeadline = _decoder.PendingEscapeDeadline;
+
+            return _multiplexerDeadline is not { } multiplexerDeadline
+                ? decoderDeadline
+                : decoderDeadline is { } value && value < multiplexerDeadline
+                    ? value
+                    : multiplexerDeadline;
+        }
+    }
 
     /// <summary>Gets the pending fallback key-sequence ambiguity deadline, or null when none is
     /// pending.</summary>
@@ -148,9 +168,23 @@ public sealed class ProtocolRouter: IDisposable
     /// <exception cref="ObjectDisposedException">The router is disposed.</exception>
     public bool ExpirePaste() => _decoder.ExpirePaste();
 
-    /// <summary>Expires a pending lone Escape when its deadline elapsed.</summary>
-    /// <returns>Whether an Escape key was emitted.</returns>
-    public bool ExpireEscape() => _decoder.ExpireEscape();
+    /// <summary>Expires a pending lone Escape when its deadline elapsed. Also resolves a stalled
+    /// multiplexer reply-prefix candidate or discard-recovery run when its own deadline elapsed
+    /// first, since both share the escape ambiguity timeout and would otherwise withhold or
+    /// discard bytes indefinitely.</summary>
+    /// <returns>Whether an Escape key was emitted, or a stalled multiplexer candidate or
+    /// discard-recovery run was resolved.</returns>
+    public bool ExpireEscape()
+    {
+        if (_multiplexerDeadline is { } deadline && _timeProvider.GetUtcNow() >= deadline)
+        {
+            ResolveMultiplexerState();
+            _multiplexerDeadline = null;
+            return true;
+        }
+
+        return _decoder.ExpireEscape();
+    }
 
     /// <summary>Expires a pending fallback key-sequence match when its deadline elapsed.</summary>
     /// <returns>Whether a fallback key sequence was resolved.</returns>
@@ -171,6 +205,16 @@ public sealed class ProtocolRouter: IDisposable
     /// <summary>Completes pending input and protocol framing once.</summary>
     public void Complete()
     {
+        ResolveMultiplexerState();
+        _decoder.Complete();
+    }
+
+    /// <summary>Resolves whatever multiplexer candidate or discard-recovery state is currently
+    /// buffered, choosing among discard completion, prefix rejection, and an ordinary flush the
+    /// same way regardless of whether the resolution was forced by end-of-transport completion
+    /// or by this state's own inactivity deadline elapsing.</summary>
+    private void ResolveMultiplexerState()
+    {
         if (_multiplexerDiscarding)
         {
             FinishMultiplexerDiscard();
@@ -183,8 +227,6 @@ public sealed class ProtocolRouter: IDisposable
         {
             FlushMultiplexerCandidate();
         }
-
-        _decoder.Complete();
     }
 
     /// <summary>Releases parser and input-decoder storage.</summary>
@@ -203,6 +245,7 @@ public sealed class ProtocolRouter: IDisposable
         _multiplexerDiscardStart = 0;
         _multiplexerDiscardedBytes = 0;
         _rawOffset = 0;
+        _multiplexerDeadline = null;
 
         _decoder.Dispose();
     }
@@ -313,6 +356,11 @@ public sealed class ProtocolRouter: IDisposable
                 // receives anything starting with the reply prefix never allocates it.
                 _multiplexerCandidate ??= new byte[_multiplexerRoute.Policy.MaxEnvelopeBytes];
                 _multiplexerCandidateStart = currentRawOffset;
+
+                // A partial reply-prefix match must not withhold these bytes from the decoder
+                // indefinitely: arm the same inactivity deadline the lone-Escape ambiguity uses,
+                // so a transport read that ends mid-prefix still resolves through ExpireEscape.
+                _multiplexerDeadline = _timeProvider.GetUtcNow() + _options.EscapeTimeout;
             }
 
             _multiplexerCandidate![_multiplexerLength++] = value;
@@ -337,6 +385,7 @@ public sealed class ProtocolRouter: IDisposable
                 candidate.Clear();
                 _multiplexerLength = 0;
                 _multiplexerCandidateStart = 0;
+                _multiplexerDeadline = null;
             }
             else if (_multiplexerRoute.IsCompleteRecoveryEnvelope(candidate))
             {
@@ -353,6 +402,8 @@ public sealed class ProtocolRouter: IDisposable
 
     private void FlushMultiplexerCandidate()
     {
+        _multiplexerDeadline = null;
+
         if (_multiplexerLength == 0)
         {
             return;
@@ -391,6 +442,7 @@ public sealed class ProtocolRouter: IDisposable
         _multiplexerCandidate.AsSpan(0, _multiplexerLength).Clear();
         _multiplexerLength = 0;
         _multiplexerCandidateStart = 0;
+        _multiplexerDeadline = null;
     }
 
     private void BeginMultiplexerDiscard()
@@ -415,6 +467,11 @@ public sealed class ProtocolRouter: IDisposable
         _multiplexerCandidate.AsSpan(0, _multiplexerLength).Clear();
         _multiplexerLength = 0;
         _multiplexerCandidateStart = 0;
+
+        // Discard recovery consumes every subsequent byte until a terminator run completes; left
+        // unbounded, that would swallow input forever if the terminator never arrives. It shares
+        // the escape ambiguity timeout for the same reason a partial candidate match does.
+        _multiplexerDeadline = _timeProvider.GetUtcNow() + _options.EscapeTimeout;
     }
 
     private void DiscardMultiplexerByte(byte value)
@@ -456,6 +513,7 @@ public sealed class ProtocolRouter: IDisposable
         _multiplexerDiscardTerminators = 0;
         _multiplexerDiscardStart = 0;
         _multiplexerDiscardedBytes = 0;
+        _multiplexerDeadline = null;
     }
 
     private static int CountScreenTerminators(ReadOnlySpan<byte> candidate)

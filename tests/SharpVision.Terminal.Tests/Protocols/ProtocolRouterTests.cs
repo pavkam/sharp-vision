@@ -75,6 +75,133 @@ public sealed class ProtocolRouterTests
         sink.Text.ShouldBe([new TerminalText(new Rune('x'))]);
     }
 
+    /// <summary>Verifies a partial tmux reply-prefix candidate does not withhold its bytes from
+    /// the decoder forever: its own inactivity deadline shares <see cref="ProtocolRouter.ExpireEscape"/>
+    /// with the lone-Escape ambiguity, so a transport read that ends mid-prefix still resolves
+    /// instead of stalling until more input arrives.</summary>
+    [Fact]
+    public void ExpireEscape_WhenPartialTmuxPrefixDeadlineIsReached_FlushesCandidateBytes()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All, paneVisible: true, MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+        var sink = new RecordingProtocolSink();
+        var clock = new Capabilities.ManualTimeProvider();
+        using ProtocolRouter router = new(sink, route, timeProvider: clock);
+
+        // "ESC P" matches the first two of the seven-byte tmux prefix "ESC P t m u x ;". Once
+        // flushed, ESC P is a DCS introducer per ECMA-48, not a keystroke, so this asserts through
+        // decoder invocation count rather than an invented Alt+P stroke.
+        router.Route([ControlBytes.Escape, (byte) 'P']);
+        router.PendingEscapeDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.EscapeTimeout);
+        var invocationsBeforeExpiry = router.DecoderInvocationCount;
+
+        clock.Advance(TerminalInputOptions.Default.EscapeTimeout);
+        router.ExpireEscape().ShouldBeTrue();
+
+        router.DecoderInvocationCount.ShouldBe(invocationsBeforeExpiry + 1);
+        router.PendingEscapeDeadline.ShouldBeNull();
+    }
+
+    /// <summary>Verifies the Screen route's partial reply-prefix candidate resolves through the
+    /// same shared deadline as its tmux sibling above.</summary>
+    [Fact]
+    public void ExpireEscape_WhenPartialScreenPrefixDeadlineIsReached_FlushesCandidateBytes()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Screen], TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All, paneVisible: true, MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+        var sink = new RecordingProtocolSink();
+        var clock = new Capabilities.ManualTimeProvider();
+        using ProtocolRouter router = new(sink, route, timeProvider: clock);
+
+        // "ESC P" matches the first two of the Screen route's three-byte prefix "ESC P ESC"; the
+        // terminating Escape never arrives.
+        router.Route([ControlBytes.Escape, (byte) 'P']);
+        router.PendingEscapeDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.EscapeTimeout);
+        var invocationsBeforeExpiry = router.DecoderInvocationCount;
+
+        clock.Advance(TerminalInputOptions.Default.EscapeTimeout);
+        router.ExpireEscape().ShouldBeTrue();
+
+        router.DecoderInvocationCount.ShouldBe(invocationsBeforeExpiry + 1);
+        router.PendingEscapeDeadline.ShouldBeNull();
+    }
+
+    /// <summary>Verifies discard-recovery state — entered after an oversized candidate — also
+    /// resolves through the shared deadline instead of consuming every subsequent byte forever
+    /// while it waits for a terminator that never arrives.</summary>
+    [Fact]
+    public void ExpireEscape_WhenDiscardRecoveryDeadlineIsReached_ReportsDiagnosticAndResumesInput()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Screen],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries,
+            maxDepth: 4,
+            maxEnvelopeBytes: 16);
+        var route = new MultiplexerRoute(policy);
+        var sink = new RecordingProtocolSink();
+        var clock = new Capabilities.ManualTimeProvider();
+        using ProtocolRouter router = new(sink, route, timeProvider: clock);
+
+        // Sixteen bytes fill the bounded candidate buffer while still matching the Screen prefix;
+        // the seventeenth byte overflows it and begins discard recovery. The terminator that would
+        // ordinarily end the discard run is deliberately never supplied.
+        var overflow = new byte[17];
+        overflow[0] = ControlBytes.Escape;
+        overflow[1] = (byte) 'P';
+        overflow[2] = ControlBytes.Escape;
+        Array.Fill(overflow, (byte) 'a', 3, 14);
+        router.Route(overflow);
+        router.PendingEscapeDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.EscapeTimeout);
+
+        clock.Advance(TerminalInputOptions.Default.EscapeTimeout);
+        router.ExpireEscape().ShouldBeTrue();
+
+        router.PendingEscapeDeadline.ShouldBeNull();
+        sink.Diagnostics.ShouldHaveSingleItem().Code.ShouldBe(DiagnosticCode.Unsupported);
+
+        router.Route("x"u8);
+        sink.Text.ShouldBe([new TerminalText(new Rune('x'))]);
+    }
+
+    /// <summary>Verifies <see cref="ProtocolRouter.PendingEscapeDeadline"/> surfaces a pending
+    /// multiplexer candidate's own deadline, and reverts to null once the candidate resolves
+    /// through the ordinary mismatch path rather than through expiry.</summary>
+    [Fact]
+    public void PendingEscapeDeadline_WhenMultiplexerCandidateIsPending_ReportsCandidateDeadline()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux], TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All, paneVisible: true, MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
+        var sink = new RecordingProtocolSink();
+        var clock = new Capabilities.ManualTimeProvider();
+        using ProtocolRouter router = new(sink, route, timeProvider: clock);
+
+        router.PendingEscapeDeadline.ShouldBeNull();
+
+        // A single Escape starts a tmux reply-prefix candidate without ever reaching the decoder:
+        // every configured route's prefix begins with Escape, so the router always claims a raw
+        // Escape byte for its own candidate match first.
+        router.Route([ControlBytes.Escape]);
+        router.PendingEscapeDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.EscapeTimeout);
+
+        router.Route("P"u8);
+        router.PendingEscapeDeadline.ShouldBe(clock.GetUtcNow() + TerminalInputOptions.Default.EscapeTimeout);
+
+        // "q" diverges from the tmux prefix's third byte and cannot itself start a fresh
+        // candidate, so the candidate resolves through the ordinary mismatch path, not the
+        // deadline.
+        router.Route("q"u8);
+        router.PendingEscapeDeadline.ShouldBeNull();
+    }
+
     /// <summary>Verifies wrapped-looking paste content remains byte-exact data under a route.</summary>
     [Theory]
     [InlineData(false)]

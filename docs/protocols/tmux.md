@@ -120,7 +120,11 @@ rather than through this wrapped seam: the wrapped-envelope candidate match
 fails partway through the fixed `tmux;` prefix, and `ProtocolRouter`'s ordinary
 decoder fallback recognizes the raw reply instead. A complete malformed route
 candidate produces one redacted diagnostic; oversized candidates discard through
-the full outer recovery boundary without leaking ST bytes as keys or text.
+the full outer recovery boundary without leaking ST bytes as keys or text. A
+partial candidate or an in-progress oversized-candidate discard shares the lone
+Escape ambiguity deadline, so a transport read that ends mid-prefix or before
+the discard boundary's terminator still resolves instead of withholding or
+swallowing those bytes indefinitely.
 Diagnostics and all later parser events retain raw transport byte offsets,
 including outer framing and repeated ESC expansion. Wrong-family replies remain
 typed and observable but cannot retire the originating query. If bounded route
