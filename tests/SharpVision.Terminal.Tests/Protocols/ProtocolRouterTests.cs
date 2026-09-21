@@ -712,21 +712,34 @@ public sealed class ProtocolRouterTests
         sink.Text.ShouldHaveSingleItem().Value.ShouldBe(new Rune('x'));
     }
 
-    /// <summary>Verifies a representative tmux-wrapped reply reaches the same typed router seam.</summary>
+    /// <summary>Verifies a representative tmux-wrapped reply reaches the same typed router seam
+    /// at every transport split, driving the full wrapped bytes through the router's own envelope
+    /// decode rather than pre-unwrapping with <see cref="TmuxWriter.TryUnwrap"/>.</summary>
     [Fact]
-    public void Route_WhenReplyWasWrappedByTmux_UnwrapsBeforeTypedStatusRouting()
+    public void Route_WhenReplyWasWrappedByTmux_UnwrapsBeforeTypedStatusRoutingAtEverySplit()
     {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
         var wrapped = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(wrapped, "\u001bP1$r>4;2m\u001b\\"u8);
-        var outerPayload = wrapped.WrittenSpan[2..^2];
-        var inner = new ArrayBufferWriter<byte>();
-        TmuxWriter.TryUnwrap(outerPayload, inner).ShouldBeTrue();
-        var sink = new RecordingProtocolSink();
-        using var router = new ProtocolRouter(sink);
+        var input = wrapped.WrittenSpan.ToArray();
 
-        router.Route(inner.WrittenSpan);
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
 
-        sink.StatusResponses.ShouldHaveSingleItem().Name.ShouldBe(StatusName.ModifyOtherKeys);
+            sink.StatusResponses.ShouldHaveSingleItem($"split {split}").Name.ShouldBe(
+                StatusName.ModifyOtherKeys,
+                $"split {split}");
+        }
     }
 
     #endregion
@@ -890,21 +903,33 @@ public sealed class ProtocolRouterTests
         }
     }
 
-    /// <summary>Verifies a representative tmux-wrapped reply reaches typed XTGETTCAP routing.</summary>
+    /// <summary>Verifies a representative tmux-wrapped reply reaches typed XTGETTCAP routing at
+    /// every transport split, driving the full wrapped bytes through the router's own envelope
+    /// decode rather than pre-unwrapping with <see cref="TmuxWriter.TryUnwrap"/>.</summary>
     [Fact]
-    public void Route_WhenReplyWasWrappedByTmux_UnwrapsBeforeTypedCapabilityRouting()
+    public void Route_WhenReplyWasWrappedByTmux_UnwrapsBeforeTypedCapabilityRoutingAtEverySplit()
     {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries);
+        var route = new MultiplexerRoute(policy);
         var wrapped = new ArrayBufferWriter<byte>();
         TmuxWriter.WritePassthrough(wrapped, "\u001bP1+r524742=3234\u001b\\"u8);
-        var inner = new ArrayBufferWriter<byte>();
-        TmuxWriter.TryUnwrap(wrapped.WrittenSpan[2..^2], inner).ShouldBeTrue();
-        var sink = new RecordingProtocolSink();
-        using var router = new ProtocolRouter(sink);
+        var input = wrapped.WrittenSpan.ToArray();
 
-        router.Route(inner.WrittenSpan);
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
 
-        sink.CapabilityResponses.ShouldHaveSingleItem()
-            .Items.ShouldContainKey(CapabilityName.DirectColor);
+            sink.CapabilityResponses.ShouldHaveSingleItem($"split {split}")
+                .Items.ShouldContainKey(CapabilityName.DirectColor);
+        }
     }
 
     #endregion

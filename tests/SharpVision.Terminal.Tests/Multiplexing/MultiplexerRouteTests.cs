@@ -443,6 +443,36 @@ public sealed class MultiplexerRouteTests
         new MultiplexerRoute(policy).TryUnwrapReply(wrapped.WrittenSpan, out _).ShouldBeFalse();
     }
 
+    /// <summary>Verifies four distinct well-framed but invalid or out-of-family replies are
+    /// rejected with an empty reply, each reachable only through <see cref="ReplyValidationSink"/>'s
+    /// own validation branches behind the public <see cref="MultiplexerRoute.TryUnwrapReply"/>
+    /// seam: an out-of-family typed capability kind, a structurally recognized but malformed Kitty
+    /// graphics APC, a structurally recognized but malformed Kitty clipboard OSC 5522 packet, and
+    /// an untyped OSC that only ever reaches the raw <c>Sequence</c> callback.</summary>
+    /// <param name="approved">The sole approved operation family.</param>
+    /// <param name="reply">The well-framed but invalid or out-of-family reply.</param>
+    [Theory]
+    [InlineData(MultiplexingOperation.CapabilityQueries, "\u001b[>4;2m")]
+    [InlineData(MultiplexingOperation.Graphics, "\u001b_Gi=0;OK\u001b\\")]
+    [InlineData(MultiplexingOperation.Clipboard, "\u001b]5522;***\u001b\\")]
+    [InlineData(MultiplexingOperation.CapabilityQueries, "\u001b]1337;FileEnd\u001b\\")]
+    public void TryUnwrapReply_WhenReplyIsMalformedOrOutOfFamily_RejectsWithEmptyReply(
+        MultiplexingOperation approved,
+        string reply)
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            approved);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, Encoding.ASCII.GetBytes(reply));
+
+        new MultiplexerRoute(policy).TryUnwrapReply(wrapped.WrittenSpan, out var owned).ShouldBeFalse();
+        owned.IsEmpty.ShouldBeTrue();
+    }
+
     /// <summary>Verifies a Graphics-only policy - approving Kitty graphics writes but neither
     /// CapabilityQueries nor Clipboard - authorizes and restores an exact wrapped Kitty graphics
     /// reply. Before this fix the reply was misclassified as a CapabilityQueries operation in
@@ -841,6 +871,46 @@ public sealed class MultiplexerRouteTests
         var route = new MultiplexerRoute(policy);
         var wrapped = new ArrayBufferWriter<byte>();
         GnuScreenWriter.WritePassthrough(wrapped, "\u001bP1+r524742=3234\u001b\\"u8);
+        var input = wrapped.WrittenSpan.ToArray();
+
+        for (var split = 0; split <= input.Length; split++)
+        {
+            var sink = new RecordingProtocolSink();
+            using var router = new ProtocolRouter(sink, route: route);
+            router.Route(input.AsSpan(0, split));
+            router.Route(input.AsSpan(split));
+            router.Route("\u001b[1:x"u8);
+
+            sink.Diagnostics.Count.ShouldBe(2, $"split {split}");
+            sink.Diagnostics[0].Code.ShouldBe(DiagnosticCode.Unsupported);
+            sink.Diagnostics[0].Offset.ShouldBe(0);
+            sink.Diagnostics[0].DiscardedBytes.ShouldBe(input.Length);
+            sink.Diagnostics[1].Offset.ShouldBe(input.Length + 5);
+            sink.CapabilityResponses.ShouldBeEmpty($"split {split}");
+            sink.StatusResponses.ShouldBeEmpty($"split {split}");
+            sink.Strokes.ShouldBeEmpty($"split {split}");
+            sink.Text.ShouldBeEmpty($"split {split}");
+            sink.Sequences.ShouldBeEmpty($"split {split}");
+        }
+    }
+
+    /// <summary>Verifies oversized tmux envelopes discard through the outer terminator without
+    /// leaking input, exercising the terminator-counting <c>MayEnd</c> recovery path tmux takes
+    /// instead of Screen's inner-DCS unwrap in <see cref="MultiplexerRoute.IsCompleteRecoveryEnvelope"/>.</summary>
+    [Fact]
+    public void Route_WhenTmuxEnvelopeExceedsBound_DiscardsThroughOuterTerminatorAtEverySplit()
+    {
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            TerminalProfile.CreateAnsi(TerminalCapabilities.Conservative),
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.CapabilityQueries,
+            maxDepth: 4,
+            maxEnvelopeBytes: 16);
+        var route = new MultiplexerRoute(policy);
+        var wrapped = new ArrayBufferWriter<byte>();
+        TmuxWriter.WritePassthrough(wrapped, "\u001bP1+r524742=3234\u001b\\"u8);
         var input = wrapped.WrittenSpan.ToArray();
 
         for (var split = 0; split <= input.Length; split++)

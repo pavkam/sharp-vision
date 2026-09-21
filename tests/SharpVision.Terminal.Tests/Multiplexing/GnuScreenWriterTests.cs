@@ -24,4 +24,32 @@ public sealed class GnuScreenWriterTests
     [Fact]
     public void WritePassthrough_WhenDestinationIsNull_ThrowsArgumentNullException() =>
         _ = Should.Throw<ArgumentNullException>(static () => GnuScreenWriter.WritePassthrough(null!, []));
+
+    /// <summary>Verifies a parser-delivered GNU screen DCS envelope restores the exact enclosed
+    /// sequence, with no ESC-doubling repair because screen forwards bytes unmodified.</summary>
+    [Fact]
+    public void TryUnwrap_WhenPayloadIsValid_RestoresOuterSequence()
+    {
+        var destination = new ArrayBufferWriter<byte>();
+
+        var unwrapped = GnuScreenWriter.TryUnwrap("\u001bP\u001b]52;c;YQ==\u001b\\\u001b\\"u8, destination);
+
+        unwrapped.ShouldBeTrue();
+        destination.WrittenSpan.ToArray().ShouldBe("\u001b]52;c;YQ==\u001b\\"u8.ToArray());
+    }
+
+    /// <summary>Verifies a malformed or unterminated envelope is rejected before destination
+    /// mutation.</summary>
+    [Theory]
+    [InlineData("screen;payload")]
+    [InlineData("\u001bPunterminated")]
+    public void TryUnwrap_WhenPayloadIsInvalid_RejectsWithoutWriting(string value)
+    {
+        var destination = new ArrayBufferWriter<byte>();
+
+        var unwrapped = GnuScreenWriter.TryUnwrap(Encoding.UTF8.GetBytes(value), destination);
+
+        unwrapped.ShouldBeFalse();
+        destination.WrittenCount.ShouldBe(0);
+    }
 }
