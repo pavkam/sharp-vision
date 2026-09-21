@@ -1795,6 +1795,45 @@ public sealed class ActiveQueryDiscoveryStrategyTests
         written.ShouldContain("\u001b[c");
     }
 
+    /// <summary>
+    /// Verifies a non-null route that is not approved for capability queries still suppresses
+    /// the APC graphics probe: the route is present, but <c>CanRouteCapabilityQueries</c> is
+    /// false, so the probe cannot be wrapped through it. Writing it anyway would leave it raw
+    /// and unwrapped on the nearest tmux layer, which parses a bare APC string as a pane title.
+    /// </summary>
+    [Fact]
+    public void TryStart_WhenRouteCannotCarryCapabilityQueries_OmitsApcProbe()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["TERM"] = "xterm-256color",
+            ["TMUX"] = "/tmp/tmux-1000/default,1,0"
+        };
+        var options = new NegotiationOptions(environment);
+        var strategy = new ActiveQueryDiscoveryStrategy(
+            options,
+            TerminalCapabilities.Conservative,
+            TimeProvider.System);
+        var destination = new ArrayBufferWriter<byte>();
+        var outerProfile = new TerminalProfile(
+            new Description("xterm-256color", DescriptionOrigin.BuiltIn, Suitability.Usable),
+            TerminalCapabilities.Conservative);
+        var policy = new MultiplexingPolicy(
+            [MultiplexerKind.Tmux],
+            outerProfile,
+            PassthroughMode.All,
+            paneVisible: true,
+            MultiplexingOperation.Graphics);
+        var route = new MultiplexerRoute(policy);
+
+        var started = strategy.TryStart(destination, cells: null, pixels: null, route);
+
+        started.ShouldBeTrue();
+        var written = Encoding.ASCII.GetString(destination.WrittenSpan);
+        written.ShouldNotContain("\u001b_G");
+        written.ShouldContain("\u001b[c");
+    }
+
     /// <summary>Verifies the same probe is still emitted when no multiplexer is present.</summary>
     [Fact]
     public void TryStart_WhenNoMultiplexerIsDetected_EmitsApcProbe()
