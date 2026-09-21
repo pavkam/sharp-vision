@@ -1364,6 +1364,95 @@ public sealed class SessionTests
         transport.JoinedWrites.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// Verifies a throwing cleanup-time cancellation registration never replaces a write failure
+    /// already in flight, and that the borrowed read rental is still drained and returned even
+    /// though <c>linked.Cancel()</c> itself faults.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenNegotiatedModeDeadlineFiresEarlyAndWriteFailsWithThrowingCancellationRegistration_PreservesWriteFailureAndRecordsRegistrationAsync()
+    {
+        // Arrange
+        await using ThrowingRegistrationTransport transport = new() { FailWriteAt = 2 };
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        var clock = new ManualTimeProvider();
+        var limits = QueryLimits.Default with { QueryTimeout = TimeSpan.FromSeconds(1) };
+        var options = TerminalOptions.Minimal with
+        {
+            Focus = true,
+            ReadBufferSize = 256,
+            Negotiation = new NegotiationOptions(
+                new Dictionary<string, string?>(),
+                new CapabilityOverrides { FocusReporting = true },
+                limits)
+        };
+        await using Session session = new(transport, resize, sink, options, clock);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        var createdTimerCount = clock.CreatedTimerCount;
+
+        // Act
+        clock.FireTimersEarly();
+
+        for (var attempt = 0;
+             attempt < 10_000 && !running.IsCompleted && clock.CreatedTimerCount == createdTimerCount;
+             attempt++)
+        {
+            await Task.Yield();
+        }
+
+        (running.IsCompleted || clock.CreatedTimerCount > createdTimerCount)
+            .ShouldBeTrue("The early deadline callback was not observed.");
+        clock.Advance(limits.QueryTimeout);
+
+        // The write failure propagates out of the try before the read is ever reissued, so the
+        // rental the very first read borrowed is still pending when RunAsync's finally begins -
+        // exactly the window a throwing cancellation registration must not skip past.
+        _ = await Should.ThrowAsync<TimeoutException>(
+            () => running.WaitAsync(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken));
+        transport.IsReadPending.ShouldBeTrue();
+        transport.Borrowed.Length.ShouldBe(256);
+        transport.Borrowed.ToArray().ShouldAllBe(value => value == PendingReadTransport.Sentinel);
+
+        transport.ReleaseCancelledRead();
+        var thrown = await Should.ThrowAsync<IOException>(running);
+
+        // Assert
+        thrown.ShouldBeSameAs(transport.WriteFailure);
+        var cleanup = session.LastCleanupException.ShouldBeOfType<AggregateException>();
+        cleanup.InnerException.ShouldBeSameAs(transport.RegistrationException);
+        transport.IsReadPending.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Verifies a throwing cleanup-time cancellation registration is still recorded when no
+    /// primary exception is in flight. An orderly transport closure leaves RunAsync with no
+    /// primary failure, so its own "no primary, but LastCleanupException is set" fallback
+    /// surfaces the exact recorded cleanup exception - the registration failure never silently
+    /// vanishes just because nothing else went wrong first.
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenTransportClosesAndCancellationRegistrationThrows_RecordsAndSurfacesRegistrationAsync()
+    {
+        // Arrange
+        await using ThrowingRegistrationTransport transport = new();
+        await using FakeResizeSource resize = new();
+        var sink = new RuntimeSink();
+        await using Session session = new(transport, resize, sink, TerminalOptions.Minimal);
+        var running = session.RunAsync(TestContext.Current.CancellationToken).AsTask();
+        await transport.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        transport.CompleteReadAsClosed();
+        var thrown = await Should.ThrowAsync<AggregateException>(running);
+
+        // Assert
+        thrown.ShouldBeSameAs(session.LastCleanupException);
+        thrown.InnerException.ShouldBeSameAs(transport.RegistrationException);
+        sink.ClosedCount.ShouldBe(1);
+    }
+
     /// <summary>Verifies optional-mode failure restores the attempted lease.</summary>
     [Fact]
     public async Task RunAsync_WhenNegotiatedModeDeadlineFiresEarlyAndWriteFails_RestoresAndPreservesExceptionAsync()

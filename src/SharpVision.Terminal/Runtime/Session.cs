@@ -1374,7 +1374,22 @@ public sealed class Session: IAsyncDisposable
         }
         finally
         {
-            linked.Cancel();
+            // linked.Token is a public, user-implementable extension point: the shipped Windows
+            // input stream registers CancelIoEx on a descendant of it, and a transport or resize
+            // source may register its own callback directly. CancellationTokenSource.Cancel()
+            // rethrows when a registered callback throws, and a primary write, flush, startup,
+            // read, resize, or input-handler failure can already be in flight at this point. Losing
+            // that primary failure to a cleanup-time registration exception would report the wrong
+            // root cause, so this call is guarded exactly like the reverse lease walk and
+            // DisposeCoreAsync's own CancellationTokenSource.Cancel() call.
+            try
+            {
+                linked.Cancel();
+            }
+            catch (Exception exception)
+            {
+                LastCleanupException ??= exception;
+            }
 
             // ITransport borrows the read destination until the returned operation completes,
             // and cancellation is only a request. A sink failure, an optional-mode failure, or
