@@ -29,7 +29,7 @@ public sealed class WindowsConsoleHostConPtyTests
         await using var terminal = WindowsPseudoterminal.Open(["open-apply", "false"]);
         var saved = await ReadModesLineAsync(terminal, "saved");
         var applied = await ReadModesLineAsync(terminal, "applied");
-        _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        _ = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         (applied.Input & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
         (applied.Input & RuntimeInterop.EnableLineInput).ShouldBe(0u);
@@ -49,7 +49,7 @@ public sealed class WindowsConsoleHostConPtyTests
         await using var terminal = WindowsPseudoterminal.Open(["open-apply", "true"]);
         _ = await ReadModesLineAsync(terminal, "saved");
         var applied = await ReadModesLineAsync(terminal, "applied");
-        _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        _ = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         (applied.Input & RuntimeInterop.EnableProcessedInput).ShouldBe(0u);
         (applied.Input & RuntimeInterop.EnableVirtualTerminalInput).ShouldNotBe(0u);
@@ -82,7 +82,7 @@ public sealed class WindowsConsoleHostConPtyTests
         await using var terminal = WindowsPseudoterminal.Open(["dispose-twice"]);
         var first = await ReadModesLineAsync(terminal, "first");
         var second = await ReadModesLineAsync(terminal, "second");
-        var exitCode = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        var exitCode = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         exitCode.ShouldBe(0);
         second.ShouldBe(first);
@@ -136,7 +136,7 @@ public sealed class WindowsConsoleHostConPtyTests
             }
         }
 
-        _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        _ = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         buffer.AsSpan(0, read).IndexOf("out─€中"u8).ShouldBeGreaterThanOrEqualTo(0);
     }
@@ -150,7 +150,7 @@ public sealed class WindowsConsoleHostConPtyTests
         var first = await ReadLineAsync(terminal, "cells1");
         terminal.Resize(new Size(132, 43));
         var second = await ReadLineAsync(terminal, "cells2");
-        _ = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        _ = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         first.ShouldContain("pixels1=none");
         second.ShouldContain("cells2=132x43");
@@ -175,7 +175,7 @@ public sealed class WindowsConsoleHostConPtyTests
         ready.ShouldBe("ready");
         var cancelled = await terminal.ReadLineAsync(TestContext.Current.CancellationToken);
         var restored = await ReadModesLineAsync(terminal, "restored");
-        var exitCode = await terminal.WaitForExitAsync(TestContext.Current.CancellationToken);
+        var exitCode = terminal.WaitForExit(TestContext.Current.CancellationToken);
 
         exitCode.ShouldBe(0);
         cancelled.ShouldBe("cancelled=true");

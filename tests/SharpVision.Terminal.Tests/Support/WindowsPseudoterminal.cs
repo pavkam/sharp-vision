@@ -202,7 +202,7 @@ internal sealed class WindowsPseudoterminal: IAsyncDisposable
     /// *different* "process has exited" exception once the process has actually already exited by
     /// the time it's first accessed — there is no working combination of `Process` members here.
     /// </remarks>
-    internal async Task<int> WaitForExitAsync(CancellationToken cancellationToken)
+    internal int WaitForExit(CancellationToken cancellationToken)
     {
         while (true)
         {
