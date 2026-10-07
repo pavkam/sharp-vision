@@ -1873,6 +1873,97 @@ public sealed class MarkdownDocumentReaderTests
         paragraph.Inlines.OfType<DocumentLink>().ShouldBeEmpty();
     }
 
+    /// <summary>Verifies rejected enclosing links do not recursively reparse their shared label suffix.</summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(8)]
+    [InlineData(16)]
+    [InlineData(4096)]
+    public void Read_WhenValidLinksAreDeeplyNested_PreservesInnerLinkWithBoundedWork(int depth)
+    {
+        // Arrange
+        var source = new string('[', depth) + "x" + string.Concat(Enumerable.Repeat("](u)", depth));
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = MarkdownExtension.None });
+
+        // Act
+        var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var link = DescendantLinks(paragraph.Inlines).ShouldHaveSingleItem();
+        link.Text.ShouldBe("x");
+        link.Target.ShouldBe("u");
+        string.Concat(paragraph.Inlines.OfType<DocumentTextRun>().Select(static run => run.Text))
+            .ShouldBe(new string('[', depth - 1) + string.Concat(Enumerable.Repeat("](u)", depth - 1)));
+        reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 12);
+    }
+
+    /// <summary>Verifies every supported link form deactivates enclosing labels without discarding its semantic owner.</summary>
+    [Theory]
+    [InlineData("[inner](v)", MarkdownExtension.None, "v")]
+    [InlineData("<https://example.invalid>", MarkdownExtension.None, "https://example.invalid")]
+    [InlineData("https://example.invalid ", MarkdownExtension.Autolinks, "https://example.invalid")]
+    [InlineData("[[note|inner]]", MarkdownExtension.WikiLinks, "note")]
+    [InlineData("**[inner](v)**", MarkdownExtension.None, "v")]
+    [InlineData("~~[inner](v)~~", MarkdownExtension.Strikethrough, "v")]
+    public void Read_WhenNestedLabelsContainDifferentLinkForms_PreservesInnerLinkWithBoundedWork(
+        string inner, MarkdownExtension extensions, string target)
+    {
+        // Arrange
+        var source = string.Concat(Enumerable.Repeat("[outer ", 16)) + inner +
+                     string.Concat(Enumerable.Repeat("](outer)", 16));
+        var reader = new MarkdownDocumentReader(new MarkdownOptions { Extensions = extensions });
+
+        // Act
+        var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        DescendantLinks(paragraph.Inlines).ShouldHaveSingleItem().Target.ShouldBe(target);
+        reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 12);
+    }
+
+    /// <summary>Verifies destination brackets remain literal URI content instead of becoming nested label candidates.</summary>
+    [Fact]
+    public void Read_WhenInnerLinkDestinationContainsBrackets_PreservesTargetAndFollowingSibling()
+    {
+        // Arrange and act
+        var paragraph = new MarkdownDocumentReader().Read("[outer [child](a[b](c)) tail](outer) [next](v)")
+            .Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+        // Assert
+        var links = DescendantLinks(paragraph.Inlines).ToArray();
+        links.Select(static link => link.Text).ShouldBe(["child", "next"]);
+        links.Select(static link => link.Target).ShouldBe(["a[b](c)", "v"]);
+    }
+
+    /// <summary>Verifies seeded enclosing-label shapes preserve the single inner link without multiplying candidate work.</summary>
+    [Fact]
+    public void Read_WhenEnclosingLabelsAreRandomized_PreservesInnerLinkWithBoundedWork()
+    {
+        // Arrange
+        const int seed = 0x1a8e1;
+        var random = new Random(seed);
+
+        for (var iteration = 0; iteration < 128; iteration++)
+        {
+            var depth = random.Next(1, 65);
+            var prefix = string.Concat(Enumerable.Range(0, depth).Select(level => $"[label{level} "));
+            var suffix = string.Concat(Enumerable.Range(0, depth).Select(level => $" tail](outer{level})"));
+            var source = prefix + "[leaf](leaf-target)" + suffix;
+            var reader = new MarkdownDocumentReader();
+
+            // Act
+            var paragraph = reader.Read(source).Blocks.ShouldHaveSingleItem().ShouldBeOfType<DocumentParagraph>();
+
+            // Assert
+            var link = DescendantLinks(paragraph.Inlines).ShouldHaveSingleItem();
+            link.Text.ShouldBe("leaf");
+            link.Target.ShouldBe("leaf-target");
+            string.Concat(paragraph.Inlines.OfType<DocumentTextRun>().Select(static run => run.Text))
+                .ShouldBe(prefix + suffix, $"Seed {seed}, iteration {iteration}.");
+            reader.InlineCandidateScanCount.ShouldBeLessThanOrEqualTo(source.Length * 12);
+        }
+    }
+
     /// <summary>Verifies trailing hashes close a heading only when whitespace separates them.</summary>
     [Theory]
     [InlineData("# value###", "value###")]

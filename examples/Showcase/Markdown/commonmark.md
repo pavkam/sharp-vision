@@ -7,7 +7,9 @@ emphasis_**, ~~literal tildes without the extension~~, `inline code`, and
 [Activatable links](https://github.com/pavkam/sharp-vision) and angle autolinks
 such as <https://example.com> work too.
 [Titled links](https://example.com/guide "opens the guide") keep the title out
-of their target. Angle-delimited destinations permit spaces.
+of their target. Angle-delimited destinations permit spaces. Nested candidates
+keep the inner link clickable: [outer [inner](https://example.com)
+text](https://example.invalid).
 
 Backslash escapes keep \*punctuation\* literal.
 

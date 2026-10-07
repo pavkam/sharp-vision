@@ -765,10 +765,10 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         var wikiCloserUnavailable = false;
         var codeSpanEnds = BuildCodeSpanEnds(source);
         var nextAngleClose = BuildNextAngleClose(source);
-        var labelCloses = BuildLabelCloses(source, codeSpanEnds, nextAngleClose);
+        var tokenHasAtSign = BuildTokenHasAtSign(source);
+        var labelCloses = insideLink ? [] : BuildLabelCloses(source, codeSpanEnds, nextAngleClose, tokenHasAtSign);
         var emphasisCloses = BuildEmphasisCloses(source);
         var strikethroughCloses = BuildStrikethroughCloses(source);
-        var tokenHasAtSign = BuildTokenHasAtSign(source);
 
         void Flush()
         {
@@ -932,16 +932,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
             if (!insideLink && source[index] == '[' && labelCloses[index] >= 0 &&
                 TryLink(source, index, labelCloses[index], out var linkEnd, out var label, out var target))
             {
-                var parsedLabel = new DocumentParagraph();
-                ParseInlines(label, parsedLabel.Inlines);
-
-                if (ContainsLink(parsedLabel.Inlines))
-                {
-                    _ = plain.Append(source[index]);
-                    index++;
-                    continue;
-                }
-
                 Flush();
                 var link = new DocumentLink { Target = target.Length == 0 ? null : target };
                 ParseInlines(label, link.Inlines, insideLink: true);
@@ -956,11 +946,6 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
         Flush();
     }
-
-    [Pure]
-    private static bool ContainsLink(IEnumerable<DocumentInline> inlines) =>
-        inlines.Any(static inline => inline is DocumentLink ||
-            (inline is DocumentInlineContainer container && ContainsLink(container.Inlines)));
 
     [Pure]
     private bool Has(MarkdownExtension extension) => (_extensions & extension) != 0;
@@ -997,12 +982,15 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
         return ends;
     }
 
-    private int[] BuildLabelCloses(string source, int[] codeSpanEnds, int[] nextAngleClose)
+    /// <summary>Indexes eligible link labels while deactivating enclosing openers after an inner
+    /// link wins. Rejected outer labels never require recursive parsing to discover that link.</summary>
+    private int[] BuildLabelCloses(string source, int[] codeSpanEnds, int[] nextAngleClose, bool[] tokenHasAtSign)
     {
         var closes = new int[source.Length];
         Array.Fill(closes, -1);
         var openers = new Stack<int>();
         var index = 0;
+        var wikiCloserUnavailable = false;
 
         while (index < source.Length)
         {
@@ -1026,18 +1014,53 @@ public sealed class MarkdownDocumentReader: IDocumentFormatReader
 
             if (source[index] == '<' && TryAngleAutolink(source, index, nextAngleClose, out var angleEnd, out _, out _))
             {
+                openers.Clear();
                 InlineCandidateScanCount += angleEnd - index - 1;
                 index = angleEnd;
                 continue;
+            }
+
+            if (Has(MarkdownExtension.Autolinks) &&
+                TryExtendedAutolink(source, index, tokenHasAtSign, out var urlEnd, out _, out _))
+            {
+                openers.Clear();
+                InlineCandidateScanCount += urlEnd - index - 1;
+                index = urlEnd;
+                continue;
+            }
+
+            if (!wikiCloserUnavailable && Has(MarkdownExtension.WikiLinks) &&
+                TryWikiLink(source, index, out var wikiEnd, out _, out _))
+            {
+                openers.Clear();
+                InlineCandidateScanCount += wikiEnd - index - 1;
+                index = wikiEnd;
+                continue;
+            }
+
+            if (!wikiCloserUnavailable && Has(MarkdownExtension.WikiLinks) &&
+                source.AsSpan(index).StartsWith("[[", StringComparison.Ordinal) &&
+                source.IndexOf("]]", index + 2, StringComparison.Ordinal) < 0)
+            {
+                wikiCloserUnavailable = true;
             }
 
             if (source[index] == '[')
             {
                 openers.Push(index);
             }
-            else if (source[index] == ']' && openers.TryPop(out var opener))
+            else if (source[index] == ']' && openers.TryPop(out var opener) &&
+                     TryLink(source, opener, index, out var linkEnd, out _, out _))
             {
                 closes[opener] = index;
+
+                // CommonMark's innermost link wins: earlier opening brackets become inactive.
+                // Discarding them here avoids reparsing each enclosing label, and consuming the
+                // destination prevents its literal brackets from becoming inline candidates.
+                openers.Clear();
+                InlineCandidateScanCount += linkEnd - index - 1;
+                index = linkEnd;
+                continue;
             }
 
             index++;

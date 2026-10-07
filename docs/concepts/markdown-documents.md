@@ -103,6 +103,14 @@ remain literal across those boundaries.
 
 Inline parsing builds code-span, balanced link-label, angle-autolink, and
 strikethrough closer indexes in bounded passes before consuming candidates.
+Following
+[CommonMark 0.31.2 link precedence](https://spec.commonmark.org/0.31.2/#links),
+a recognized inner link deactivates earlier label openers during indexing.
+Rejected enclosing labels remain literal without recursively reparsing their
+contents. This also applies to angle autolinks and enabled extended or wiki
+links; code spans keep their brackets literal. A surviving label is parsed once
+with links disabled, so repeated nested link candidates retain the innermost
+link without exponential work or recursion proportional to bracket nesting.
 Malformed repeated brackets, unmatched backtick runs, an unclosed run of angle
 brackets, and a long run of unmatched strikethrough openers therefore do not
 rescan the remaining suffix at every opener; an extended-autolink candidate that
