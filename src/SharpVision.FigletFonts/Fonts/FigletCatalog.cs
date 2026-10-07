@@ -62,7 +62,8 @@ public sealed class FigletCatalog
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    /// The directory contains no font files, or two files resolve to the same name.
+    /// <paramref name="limits"/> is uninitialized, the directory contains no font files,
+    /// or two files resolve to the same name.
     /// </exception>
     /// <exception cref="DirectoryNotFoundException"><paramref name="path"/> does not exist.</exception>
     /// <exception cref="InvalidDataException">A file exceeds the configured input byte limit.</exception>
@@ -71,6 +72,8 @@ public sealed class FigletCatalog
     {
         ArgumentNullException.ThrowIfNull(path);
         var effectiveLimits = limits ?? FigletLimits.Default;
+        ValidateLimits(effectiveLimits);
+
         var entries = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
         var loaders = new Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>>(StringComparer.Ordinal);
 
@@ -116,7 +119,8 @@ public sealed class FigletCatalog
     /// <returns>A new immutable catalog over the discovered entries.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="archive"/> is null.</exception>
     /// <exception cref="ArgumentException">
-    /// The archive contains no font entries, or two entries resolve to the same name.
+    /// <paramref name="limits"/> is uninitialized, the archive contains no font entries,
+    /// or two entries resolve to the same name.
     /// </exception>
     /// <exception cref="InvalidDataException">
     /// The stream is not a valid Zip archive, or an entry exceeds the configured input byte limit.
@@ -126,6 +130,8 @@ public sealed class FigletCatalog
     {
         ArgumentNullException.ThrowIfNull(archive);
         var effectiveLimits = limits ?? FigletLimits.Default;
+        ValidateLimits(effectiveLimits);
+
         var entries = new Dictionary<string, FigletFontInfo>(StringComparer.Ordinal);
         var loaders = new Dictionary<string, Func<FigletCatalog, FigletLimits, FigletFont>>(StringComparer.Ordinal);
 
@@ -233,6 +239,7 @@ public sealed class FigletCatalog
     /// <param name="limits">The finite parser and renderer limits retained on the returned font.</param>
     /// <returns>A parsed font instance.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="limits"/> is uninitialized.</exception>
     /// <exception cref="KeyNotFoundException">The exact name is absent.</exception>
     /// <exception cref="InvalidDataException">The source bytes disagree with recorded provenance.</exception>
     /// <exception cref="FormatException">The selected entry is not a supported FIGfont.</exception>
@@ -245,6 +252,7 @@ public sealed class FigletCatalog
     public FigletFont Load(string name, FigletLimits limits)
     {
         ArgumentNullException.ThrowIfNull(name);
+        ValidateLimits(limits);
 
         if (!_loaders.TryGetValue(name, out var loader))
         {
@@ -304,6 +312,19 @@ public sealed class FigletCatalog
         }
 
         return new FigletCatalog(entries, loaders, FigletLimits.Default);
+    }
+
+    /// <summary>Rejects a zero-initialized limits value before reading sources or changing the cache.</summary>
+    /// <param name="limits">The caller's parser and renderer limits.</param>
+    /// <exception cref="ArgumentException"><paramref name="limits"/> is uninitialized.</exception>
+    private static void ValidateLimits(FigletLimits limits)
+    {
+        // The immutable constructor validates all six members. Only zero initialization can
+        // bypass it, so one member distinguishes a valid profile from the default struct value.
+        if (limits.MaxInputBytes <= 0)
+        {
+            throw new ArgumentException("The limits must be explicitly initialized.", nameof(limits));
+        }
     }
 
     private FigletFont LoadEmbeddedResource(Assembly assembly, FigletFontInfo info, FigletLimits limits)

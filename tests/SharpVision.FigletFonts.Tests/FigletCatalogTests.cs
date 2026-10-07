@@ -138,6 +138,20 @@ public sealed class FigletCatalogTests
 
     #region Parsing
 
+    /// <summary>Verifies invalid limits are rejected before opening a resource or caching a failed load.</summary>
+    [Fact]
+    public void Load_WhenLimitsAreUninitialized_RejectsBeforeReadingEmbeddedResource()
+    {
+        var catalog = FigletCatalog.CreateEmbedded();
+
+        var exception = Should.Throw<ArgumentException>(() => catalog.Load("standard", default));
+
+        exception.ParamName.ShouldBe("limits");
+        catalog.EmbeddedResourceReadCount.ShouldBe(0);
+        catalog.Load("standard").Render("A").ShouldNotBeEmpty();
+        catalog.EmbeddedResourceReadCount.ShouldBe(1);
+    }
+
     /// <summary>Verifies a representative catalog font renders through the public API.</summary>
     [Fact]
     public void Load_WhenStandardIsSelected_RendersText()
@@ -183,6 +197,21 @@ public sealed class FigletCatalogTests
     #endregion
 
     #region FromFonts
+
+    /// <summary>Verifies invalid explicit limits cannot bypass validation for an already-parsed font.</summary>
+    [Fact]
+    public void Load_WhenInMemoryFontReceivesUninitializedLimits_RejectsAndPreservesFont()
+    {
+        using var source = Stream(CreateFontText());
+        var font = FigletFont.Load(source, "One");
+        var catalog = FigletCatalog.FromFonts([font]);
+
+        var exception = Should.Throw<ArgumentException>(() => catalog.Load("One", default));
+
+        exception.ParamName.ShouldBe("limits");
+        catalog.Load("One").ShouldBeSameAs(font);
+        catalog.Load("One").Render("A").ShouldBe("A");
+    }
 
     /// <summary>Verifies a catalog built from already-parsed fonts exposes them by their own name.</summary>
     [Fact]
@@ -252,6 +281,18 @@ public sealed class FigletCatalogTests
     #endregion
 
     #region FromDirectory
+
+    /// <summary>Verifies invalid limits are rejected before attempting directory enumeration.</summary>
+    [Fact]
+    public void FromDirectory_WhenLimitsAreUninitialized_RejectsBeforeAccessingDirectory()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+
+        var exception = Should.Throw<ArgumentException>(
+            () => FigletCatalog.FromDirectory(missingPath, default(FigletLimits)));
+
+        exception.ParamName.ShouldBe("limits");
+    }
 
     /// <summary>Verifies rejecting an oversized font does not allocate its complete source bytes.</summary>
     [Fact]
@@ -395,6 +436,21 @@ public sealed class FigletCatalogTests
     #endregion
 
     #region FromZip
+
+    /// <summary>Verifies invalid limits do not consume or close a caller-owned archive.</summary>
+    [Fact]
+    public void FromZip_WhenLimitsAreUninitialized_PreservesArchiveForValidRetry()
+    {
+        using var archive = CreateZip(("Alpha.flf", CreateFontText()));
+        var position = archive.Position;
+
+        var exception = Should.Throw<ArgumentException>(
+            () => FigletCatalog.FromZip(archive, default(FigletLimits)));
+
+        exception.ParamName.ShouldBe("limits");
+        archive.Position.ShouldBe(position);
+        FigletCatalog.FromZip(archive).Load("Alpha").Render("A").ShouldBe("A");
+    }
 
     /// <summary>Verifies a catalog built from a Zip archive names each font by its entry stem.</summary>
     [Fact]

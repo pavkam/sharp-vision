@@ -72,6 +72,12 @@ The record's six positive members cap parsing (`MaxInputBytes` 16 MiB,
 rendered output (`MaxOutputChars` 16 MiB), each rejecting a non-positive value
 with `ArgumentOutOfRangeException`.
 
+Omitting an optional limits argument selects `FigletLimits.Default`. Passing a
+zero-initialized `default(FigletLimits)` to a catalog factory or `Load` throws
+`ArgumentException` for `limits` before accessing sources or changing the load
+cache. A rejected archive remains open at its original position for a valid
+retry.
+
 - `FromDirectory` checks each open file's length before allocating its source
   buffer and rejects growth beyond that checked length.
 - `MaxInputBytes` applies separately to each font in a directory or archive. The

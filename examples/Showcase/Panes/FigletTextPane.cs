@@ -101,7 +101,7 @@ internal sealed class FigletTextPane: CompositeControlBase
                 "Compare a few intentional shapes before browsing the complete audited catalog.",
                 new DocExample(
                     "Standard, Slant, and Small",
-                    "Each selection loads only its own resource. Caller-supplied directory fonts have their file lengths checked before source allocation; input limits apply per font.",
+                    "Each selection loads only its own resource. Invalid limits are rejected before accessing fonts. Directory file lengths are checked before source allocation; input limits apply per font.",
                     new DocColumn(
                         new DocColumn(new Text("Standard"), standard),
                         new DocColumn(new Text("Slant"), slant),
