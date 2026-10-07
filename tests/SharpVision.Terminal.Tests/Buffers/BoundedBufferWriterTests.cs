@@ -177,6 +177,64 @@ public sealed class BoundedBufferWriterTests
         writer.WrittenSpan.ToArray().ShouldBe("abcd"u8.ToArray());
     }
 
+    /// <summary>Verifies an aliased source is preserved across shifting and pooled buffer replacement.</summary>
+    [Theory]
+    [InlineData(4)]
+    [InlineData(64)]
+    public void Prepend_WhenSourceAliasesWrittenBytes_PreservesOriginalSlice(int initialRentBytes)
+    {
+        using var writer = new BoundedBufferWriter(128, initialRentBytes);
+        "abcdefghijkl"u8.CopyTo(writer.GetSpan(12));
+        writer.Advance(12);
+        var source = writer.WrittenSpan[4..];
+
+        writer.Prepend(source);
+
+        writer.WrittenCount.ShouldBe(20);
+        writer.WrittenSpan.ToArray().ShouldBe("efghijklabcdefghijkl"u8.ToArray());
+    }
+
+    /// <summary>Verifies shifting active bytes cannot overwrite an aliased source in unused rented storage.</summary>
+    [Fact]
+    public void Prepend_WhenSourceAliasesUnwrittenBytes_PreservesBothSequences()
+    {
+        using var writer = new BoundedBufferWriter(32, 16);
+        "abc"u8.CopyTo(writer.GetSpan(3));
+        writer.Advance(3);
+        var source = writer.GetSpan(3)[..3];
+        "xyz"u8.CopyTo(source);
+
+        writer.Prepend(source);
+
+        writer.WrittenCount.ShouldBe(6);
+        writer.WrittenSpan.ToArray().ShouldBe("xyzabc"u8.ToArray());
+    }
+
+    /// <summary>Verifies every seeded overlapping slice agrees with an independent owned-byte oracle.</summary>
+    [Fact]
+    public void Prepend_WhenSourceSlicesAreRandomized_MatchesSnapshotOracle()
+    {
+        const int seed = 0x51a51ce;
+        var random = new Random(seed);
+        using var writer = new BoundedBufferWriter(128, 4);
+
+        for (var iteration = 0; iteration < 512; iteration++)
+        {
+            writer.Reset();
+            var original = new byte[random.Next(1, 65)];
+            random.NextBytes(original);
+            original.CopyTo(writer.GetSpan(original.Length));
+            writer.Advance(original.Length);
+            var start = random.Next(original.Length + 1);
+            var length = random.Next(original.Length - start + 1);
+            var expected = original.AsSpan(start, length).ToArray().Concat(original).ToArray();
+
+            writer.Prepend(writer.WrittenSpan.Slice(start, length));
+
+            writer.WrittenSpan.ToArray().ShouldBe(expected, $"Seed {seed}, iteration {iteration}.");
+        }
+    }
+
     /// <summary>Verifies Prepend cannot push the batch past the active byte budget.</summary>
     [Fact]
     public void Prepend_WhenResultWouldExceedActiveLimit_Throws()
@@ -186,6 +244,23 @@ public sealed class BoundedBufferWriterTests
         writer.Advance(2);
 
         _ = Should.Throw<InvalidOperationException>(() => writer.Prepend("xyz"u8));
+    }
+
+    /// <summary>Verifies a rejected self-prepend retains bytes and leaves the writer usable.</summary>
+    [Fact]
+    public void Prepend_WhenAliasedSourceExceedsActiveLimit_RejectsWithoutMutation()
+    {
+        using var writer = new BoundedBufferWriter(4, 4);
+        "abc"u8.CopyTo(writer.GetSpan(3));
+        writer.Advance(3);
+
+        _ = Should.Throw<InvalidOperationException>(() => writer.Prepend(writer.WrittenSpan));
+
+        writer.WrittenCount.ShouldBe(3);
+        writer.WrittenSpan.ToArray().ShouldBe("abc"u8.ToArray());
+        "d"u8.CopyTo(writer.GetSpan(1));
+        writer.Advance(1);
+        writer.WrittenSpan.ToArray().ShouldBe("abcd"u8.ToArray());
     }
 
     /// <summary>Verifies every public member throws ObjectDisposedException, not a bogus error, once disposed.</summary>

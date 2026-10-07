@@ -40,7 +40,7 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
         }
     }
 
-    /// <summary>Gets the active written bytes.</summary>
+    /// <summary>Gets active written bytes borrowed until the next writer mutation or disposal.</summary>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
     public ReadOnlySpan<byte> WrittenSpan
     {
@@ -51,7 +51,7 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
         }
     }
 
-    /// <summary>Gets active written memory borrowed until reset or disposal.</summary>
+    /// <summary>Gets active written memory borrowed until the next writer mutation or disposal.</summary>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
     public ReadOnlyMemory<byte> WrittenMemory
     {
@@ -132,15 +132,43 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 
     /// <summary>Prepends bytes to the active batch without exposing pooled storage.</summary>
     /// <param name="value">The bytes to prepend.</param>
+    /// <remarks>
+    /// The source may alias this writer's rented storage. Its original bytes are copied before
+    /// shifting active bytes or returning that storage to the pool. A rejected prepend leaves
+    /// active bytes unchanged.
+    /// </remarks>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
     /// <exception cref="InvalidOperationException">The prepended batch exceeds the active byte budget.</exception>
     public void Prepend(ReadOnlySpan<byte> value)
     {
         ThrowIfDisposed();
-        EnsureCapacity(checked(_writtenCount + value.Length));
-        _buffer.AsSpan(0, _writtenCount).CopyTo(_buffer.AsSpan(value.Length));
-        value.CopyTo(_buffer);
-        _writtenCount += value.Length;
+
+        if (value.Length > _limit - _writtenCount)
+        {
+            throw new InvalidOperationException("The write exceeds its finite byte limit.");
+        }
+
+        var required = _writtenCount + value.Length;
+
+        if (value.Overlaps(_buffer.AsSpan()))
+        {
+            // Shifting in place can overwrite the source, and growth can return its array
+            // before it is copied. Compose both sequences in a separate rent before either.
+            var replacement = ArrayPool<byte>.Shared.Rent(required);
+            value.CopyTo(replacement);
+            _buffer.AsSpan(0, _writtenCount).CopyTo(replacement.AsSpan(value.Length));
+            var previous = _buffer!;
+            _buffer = replacement;
+            ArrayPool<byte>.Shared.Return(previous, clearArray: true);
+        }
+        else
+        {
+            EnsureCapacity(required);
+            _buffer.AsSpan(0, _writtenCount).CopyTo(_buffer.AsSpan(value.Length));
+            value.CopyTo(_buffer);
+        }
+
+        _writtenCount = required;
     }
 
     /// <summary>Clears and returns pooled storage.</summary>

@@ -107,6 +107,12 @@ Back-frame memory is borrowed until `RenderAsync` completes;
 completes and must either transfer the complete memory or throw. Renderer
 disposal never disposes a borrowed transport.
 
+The shared bounded byte writer accepts prepend sources that borrow its own
+written or unused rented storage. It checks the complete resulting byte count
+before mutation and preserves both original sequences before shifting bytes or
+returning a pool buffer. Rejection leaves active bytes unchanged. Written spans
+and memory are borrowed only until the next writer mutation or disposal.
+
 `Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes
 into private immutable storage. Public callers recover bytes only through a
 complete copy into caller-owned memory. Synchronous terminal encoders may borrow
