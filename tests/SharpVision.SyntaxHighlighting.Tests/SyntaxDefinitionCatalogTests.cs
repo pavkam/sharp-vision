@@ -205,6 +205,102 @@ public sealed class SyntaxDefinitionCatalogTests
     [Fact]
     public void FindNameForFile_WhenNoExtensionMatches_ReturnsNull() => SyntaxDefinitionCatalog.Default.FindNameForFile("file.not-a-real-extension").ShouldBeNull();
 
+    /// <summary>Verifies wildcards consume a complete file name, including newline code units, and treat other punctuation literally.</summary>
+    [Theory]
+    [InlineData("*.ext", "file.ext\n", false)]
+    [InlineData("*.ext", "fi\nle.ext", true)]
+    [InlineData("?.ext", "\n.ext", true)]
+    [InlineData("?.ext", "a.ext\n", false)]
+    [InlineData("file.ext", "file.ext\n", false)]
+    [InlineData("*.ext", "FILE.EXT", true)]
+    [InlineData("a?b*?.ext", "a\nbxy.ext", true)]
+    [InlineData("x[ab].ext", "xa.ext", false)]
+    [InlineData("x[ab].ext", "x[ab].ext", true)]
+    [InlineData("?.ext", "ab.ext", false)]
+    [InlineData("*?*.ext", ".ext", false)]
+    [InlineData("*", "", true)]
+    [InlineData("a**b?.ext", "abx.ext", true)]
+    [InlineData("a*bc.ext", "axbbbcbc.ext", true)]
+    [InlineData("Δ?.ext", "δx.EXT", true)]
+    [InlineData("\u13A0?.ext", "\uAB70x.EXT", true)]
+    [InlineData("\uAB70?.ext", "\u13A0x.EXT", true)]
+    public void FindNameForFile_WhenWildcardHasBoundaryCases_MatchesWholeName(
+        string pattern, string fileName, bool expectedMatch)
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-glob-");
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "pattern.xml"), CreateLanguage("Pattern", pattern));
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            var name = catalog.FindNameForFile(fileName);
+
+            name.ShouldBe(expectedMatch ? "Pattern" : null);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies multiple star candidates cannot trigger regex backtracking failure during detection.</summary>
+    [Fact]
+    public void FindNameForFile_WhenManyStarsCannotMatch_ReturnsNullWithoutTimeout()
+    {
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-glob-");
+        var pattern = string.Concat(Enumerable.Repeat("*a", 24)) + "b.ext";
+        var fileName = new string('a', 128) + ".ext";
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory.FullName, "pattern.xml"), CreateLanguage("Pattern", pattern));
+            var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+            catalog.FindNameForFile(fileName).ShouldBeNull();
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    /// <summary>Verifies seeded wildcard combinations agree with an independent dynamic-programming matcher.</summary>
+    [Fact]
+    public void FindNameForFile_WhenPatternsAreRandomized_MatchesWildcardOracle()
+    {
+        const int seed = 0x61b012;
+        const string patternAlphabet = "abAB.*?[]";
+        const string nameAlphabet = "abAB.\n[]";
+        var random = new Random(seed);
+        var directory = Directory.CreateTempSubdirectory("sharpvision-syntax-glob-");
+
+        try
+        {
+            for (var iteration = 0; iteration < 64; iteration++)
+            {
+                var pattern = new string([.. Enumerable.Range(0, random.Next(1, 13))
+                    .Select(_ => patternAlphabet[random.Next(patternAlphabet.Length)])]);
+                File.WriteAllText(Path.Combine(directory.FullName, "pattern.xml"), CreateLanguage("Pattern", pattern));
+                var catalog = SyntaxDefinitionCatalog.FromDirectory(directory.FullName);
+
+                for (var sample = 0; sample < 32; sample++)
+                {
+                    var fileName = new string([.. Enumerable.Range(0, random.Next(17))
+                        .Select(_ => nameAlphabet[random.Next(nameAlphabet.Length)])]);
+                    var expected = MatchesWildcardOracle(pattern, fileName) ? "Pattern" : null;
+
+                    catalog.FindNameForFile(fileName).ShouldBe(expected,
+                        $"Seed {seed}, pattern {iteration}, sample {sample}.");
+                }
+            }
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
     /// <summary>Verifies an external directory's definitions load and compile.</summary>
     [Fact]
     public void FromDirectory_WhenGivenExternalDefinitions_LoadsAndCompilesThem()
@@ -505,6 +601,29 @@ public sealed class SyntaxDefinitionCatalogTests
             directory.Delete(recursive: true);
         }
     }
+    /// <summary>Evaluates every prefix pair independently so greedy-star decisions cannot bias the expected match.</summary>
+    private static bool MatchesWildcardOracle(string pattern, string name)
+    {
+        var prefixes = new bool[pattern.Length + 1, name.Length + 1];
+        prefixes[0, 0] = true;
+
+        for (var patternLength = 1; patternLength <= pattern.Length; patternLength++)
+        {
+            var token = pattern[patternLength - 1];
+            prefixes[patternLength, 0] = token == '*' && prefixes[patternLength - 1, 0];
+
+            for (var nameLength = 1; nameLength <= name.Length; nameLength++)
+            {
+                prefixes[patternLength, nameLength] = token == '*'
+                    ? prefixes[patternLength - 1, nameLength] || prefixes[patternLength, nameLength - 1]
+                    : prefixes[patternLength - 1, nameLength - 1] &&
+                      (token == '?' || char.ToUpperInvariant(token) == char.ToUpperInvariant(name[nameLength - 1]));
+            }
+        }
+
+        return prefixes[pattern.Length, name.Length];
+    }
+
     private static string CreateLanguage(string name, string extension, int? priority = null)
     {
         var priorityAttribute = priority is null ? string.Empty : $" priority=\"{priority.Value}\"";

@@ -44,8 +44,8 @@ internal sealed class CodeViewPane: CompositeControlBase
         var view = new CodeView
         {
             Code = rustSample,
-            Language = "Rust",
-            Height = Length.Cells(18),
+            Language = SyntaxDefinitionCatalog.Default.FindNameForFile("main.rs"),
+            Height = Length.Cells(12),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             ScrollBars = ScrollBars.Both,
             ShowScrollBars = ShowScrollBars.WhenNeeded,
@@ -79,7 +79,8 @@ internal sealed class CodeViewPane: CompositeControlBase
             var view = new CodeView
             {
                 Code = source,
-                Language = "Rust",
+                Language = SyntaxDefinitionCatalog.Default.FindNameForFile("main.rs"),
+                Height = Length.Cells(12),
                 ScrollBars = ScrollBars.Both
             };
 

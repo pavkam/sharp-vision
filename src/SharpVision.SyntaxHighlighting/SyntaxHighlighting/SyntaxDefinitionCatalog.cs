@@ -159,6 +159,12 @@ public sealed class SyntaxDefinitionCatalog
     /// <param name="fileName">The non-null file name (a full path is accepted; only its final segment is matched).</param>
     /// <returns>The greatest-priority match, using ordinal name order to break ties, or null.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="fileName"/> is null.</exception>
+    /// <remarks>
+    /// Patterns match the complete final path segment with case-insensitive Unicode simple
+    /// folding. A star consumes zero or more UTF-16 code units; a question mark consumes exactly
+    /// one, including a newline. Other punctuation is literal. Matching uses constant auxiliary
+    /// storage and does not invoke a regular-expression engine.
+    /// </remarks>
     [Pure]
     public string? FindNameForFile(string fileName)
     {
@@ -398,15 +404,54 @@ public sealed class SyntaxDefinitionCatalog
             : throw new InvalidDataException("The embedded syntax-definition manifest count does not match its entries.");
     }
 
-    private static bool MatchesGlob(string pattern, string fileName)
+    /// <summary>Matches a complete file name with the two KDE wildcards without recursive backtracking.</summary>
+    /// <param name="pattern">The extension glob, whose only operators are star and question mark.</param>
+    /// <param name="fileName">The final path segment, including any literal newline code units.</param>
+    /// <returns>Whether the complete file name matches under case-insensitive simple folding.</returns>
+    [Pure]
+    private static bool MatchesGlob(ReadOnlySpan<char> pattern, ReadOnlySpan<char> fileName)
     {
-        // KDE extension globs use only '*' and '?' wildcards, never full regular expressions.
-        // The resulting pattern is built entirely from Regex.Escape(pattern) plus only ".*"/"."
-        // substitutions, so it can never contain attacker-controlled metacharacters or nested
-        // quantifiers capable of catastrophic backtracking - a timeout is not a correctness
-        // requirement here the way it is for a third-party RegExpr/emptyLine pattern. It is added
-        // anyway for consistency with every other Regex this assembly constructs.
-        var regexPattern = "^" + Regex.Escape(pattern).Replace(@"\*", ".*", StringComparison.Ordinal).Replace(@"\?", ".", StringComparison.Ordinal) + "$";
-        return Regex.IsMatch(fileName, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(500));
+        var patternOffset = 0;
+        var nameOffset = 0;
+        var starOffset = -1;
+        var starNameOffset = 0;
+
+        while (nameOffset < fileName.Length)
+        {
+            if (patternOffset < pattern.Length && pattern[patternOffset] == '*')
+            {
+                starOffset = patternOffset++;
+                starNameOffset = nameOffset;
+                continue;
+            }
+
+            if (patternOffset < pattern.Length &&
+                (pattern[patternOffset] == '?' ||
+                 pattern[patternOffset] == fileName[nameOffset] ||
+                 SyntaxCaseFolding.Equals(pattern.Slice(patternOffset, 1), fileName.Slice(nameOffset, 1))))
+            {
+                patternOffset++;
+                nameOffset++;
+                continue;
+            }
+
+            if (starOffset < 0)
+            {
+                return false;
+            }
+
+            // Only the most recent star needs another candidate. Extending an earlier star
+            // cannot improve a suffix already reachable through the later one. This bounds
+            // work by the product of the two lengths instead of enumerating star combinations.
+            patternOffset = starOffset + 1;
+            nameOffset = ++starNameOffset;
+        }
+
+        while (patternOffset < pattern.Length && pattern[patternOffset] == '*')
+        {
+            patternOffset++;
+        }
+
+        return patternOffset == pattern.Length;
     }
 }

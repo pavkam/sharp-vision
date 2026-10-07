@@ -258,6 +258,15 @@ retains only their immutable definitions, not a second complete XML string. When
 several extension globs match, the greatest KDE `priority` wins, with the
 ordinal language name as a deterministic tie-break.
 
+`FindNameForFile` matches the complete final path segment, using
+case-insensitive Unicode simple folding. Its
+[`*` and `?` grammar follows the pinned KDE matcher](https://github.com/KDE/syntax-highlighting/blob/60cfa684b64cccde19bf12c74db52129709ed863/src/lib/wildcardmatcher.cpp):
+a star consumes zero or more UTF-16 code units and a question mark exactly one;
+other punctuation remains literal. Wildcards include newline code units, while
+an extra newline after an otherwise matching suffix prevents a match. Matching
+uses constant auxiliary storage and avoids regular-expression backtracking and
+timeouts.
+
 `baseCatalog.Overlay(additions)` creates a new immutable combined catalog.
 Definitions in `additions` win exact-name collisions, while every other base
 definition remains available; the combined compiler resolves cross-definition
