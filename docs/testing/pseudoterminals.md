@@ -45,6 +45,12 @@ Tests use deterministic deadlines and condition-based waits; an arbitrary sleep
 is never accepted as proof. Raw transcripts redact clipboard and credential
 payloads and are attached to failures.
 
+Fixtures that send or observe real Unix signals share a test collection with
+parallelization disabled. SIGWINCH is delivered to the process, so a signal from
+one fixture wakes every active resize source rather than only that fixture's
+pseudoterminal. The startup-snapshot test checks the pending read directly: a
+leftover construction seed would complete it synchronously.
+
 The macOS fixture initializes cell and pixel dimensions through the
 fixed-signature `openpty` call, changes the cell size through the platform
 utility, and then sends a real SIGWINCH. Linux uses the corresponding PTY and

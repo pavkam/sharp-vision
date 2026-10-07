@@ -4,12 +4,14 @@
 
 namespace SharpVision.Terminal.Tests.Transport;
 
+using SharpVision.Terminal.Tests.Runtime;
 
 /// <summary>
 /// Verifies real Unix pseudoterminal transport, EOF, and resize behavior.
 /// </summary>
 [SupportedOSPlatform("linux")]
 [SupportedOSPlatform("macos")]
+[Collection(RealProcessSignalGroup.Name)]
 public sealed class PseudoterminalTests
 {
     /// <summary>Verifies exact bytes cross a real PTY in both directions.</summary>
@@ -120,10 +122,8 @@ public sealed class PseudoterminalTests
         source.TryReadCurrent(out var snapshot).ShouldBeTrue();
         var pending = source.ReadAsync(TestContext.Current.CancellationToken).AsTask();
 
-        // The next read must be waiting on a genuine SIGWINCH, not on a leftover seed. Observed
-        // by giving it time to complete spuriously and then proving only the real resize satisfies
-        // it - a duplicate would have completed with `initial` long before this point.
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        // A buffered construction seed completes this read synchronously. Once the snapshot has
+        // consumed it, the read must instead be awaiting a signal; no timed delay is needed.
         pending.IsCompleted.ShouldBeFalse(
             "the construction wakeup belongs to the snapshot already taken");
 

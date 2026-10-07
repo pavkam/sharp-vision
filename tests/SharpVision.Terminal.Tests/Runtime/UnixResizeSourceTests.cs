@@ -10,6 +10,7 @@ namespace SharpVision.Terminal.Tests.Runtime;
 /// sibling.</summary>
 [SupportedOSPlatform("linux")]
 [SupportedOSPlatform("macos")]
+[Collection(RealProcessSignalGroup.Name)]
 public sealed class UnixResizeSourceTests
 {
     private const int _sigwinch = 28;
