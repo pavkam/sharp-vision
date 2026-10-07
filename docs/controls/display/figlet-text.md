@@ -70,8 +70,13 @@ Passing limits directly to `Load(name, limits)` overrides that catalog default.
 The record's six positive members cap parsing (`MaxInputBytes` 16 MiB,
 `MaxGlyphs` 4096, `MaxHeight` 256, `MaxRowWidth` 16384, `MaxComments` 4096) and
 rendered output (`MaxOutputChars` 16 MiB), each rejecting a non-positive value
-with `ArgumentOutOfRangeException`, so untrusted font files cannot exhaust
-memory during catalog construction or rendering.
+with `ArgumentOutOfRangeException`.
+
+- `FromDirectory` checks each open file's length before allocating its source
+  buffer and rejects growth beyond that checked length.
+- `MaxInputBytes` applies separately to each font in a directory or archive. The
+  caller controls the number of fonts and the total catalog size.
+- Rendering rejects output that would exceed the font's `MaxOutputChars`.
 
 ```csharp
 var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");

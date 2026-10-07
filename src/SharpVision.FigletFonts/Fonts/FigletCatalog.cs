@@ -56,6 +56,10 @@ public sealed class FigletCatalog
     /// <param name="path">The non-null directory to scan; not searched recursively.</param>
     /// <param name="limits">The optional default finite limits applied when <see cref="Load(string)"/> omits them.</param>
     /// <returns>A new immutable catalog over the discovered files.</returns>
+    /// <remarks>
+    /// Each file's length is checked before allocating its source buffer. The input limit
+    /// applies separately to each font; the caller controls the total catalog size.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     /// <exception cref="ArgumentException">
     /// The directory contains no font files, or two files resolve to the same name.
@@ -80,11 +84,22 @@ public sealed class FigletCatalog
             }
 
             var name = Path.GetFileNameWithoutExtension(file);
-            var bytes = File.ReadAllBytes(file);
+            using var stream = File.OpenRead(file);
+            var length = stream.Length;
 
-            if (bytes.Length > effectiveLimits.MaxInputBytes)
+            if (length > effectiveLimits.MaxInputBytes)
             {
                 throw new InvalidDataException($"Font file '{file}' exceeds the configured input byte limit.");
+            }
+
+            // Read from the same handle whose length was checked. A source that grows during
+            // the read must not make the bounded buffer grow along with it.
+            var bytes = new byte[checked((int) length)];
+            stream.ReadExactly(bytes);
+
+            if (stream.ReadByte() != -1)
+            {
+                throw new InvalidDataException($"Font file '{file}' grew beyond its checked length.");
             }
 
             AddUnauditedEntry(entries, loaders, name, Path.GetFileName(file), format, bytes);

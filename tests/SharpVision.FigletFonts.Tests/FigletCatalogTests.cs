@@ -253,6 +253,59 @@ public sealed class FigletCatalogTests
 
     #region FromDirectory
 
+    /// <summary>Verifies rejecting an oversized font does not allocate its complete source bytes.</summary>
+    [Fact]
+    public void FromDirectory_WhenFileExceedsInputLimit_RejectsWithoutAllocatingFileContents()
+    {
+        var directory = CreateTempDirectory();
+        var limits = new FigletLimits(maxInputBytes: 1024);
+
+        try
+        {
+            using (var file = File.Create(Path.Combine(directory, "Oversized.flf")))
+            {
+                file.SetLength(4 * 1024 * 1024);
+            }
+
+            // Warm the rejection path before measuring so initialization cost cannot mask the
+            // source-size allocation. The bound leaves ample room for I/O and exception objects.
+            _ = Should.Throw<InvalidDataException>(() => FigletCatalog.FromDirectory(directory, limits));
+            var before = GC.GetAllocatedBytesForCurrentThread();
+
+            _ = Should.Throw<InvalidDataException>(() => FigletCatalog.FromDirectory(directory, limits));
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            allocated.ShouldBeLessThan(256 * 1024);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>Verifies a font exactly at the input limit is retained and still parses.</summary>
+    [Fact]
+    public void FromDirectory_WhenFileEqualsInputLimit_LoadsCompleteFont()
+    {
+        var directory = CreateTempDirectory();
+        var source = Encoding.UTF8.GetBytes(CreateFontText());
+        var limits = new FigletLimits(maxInputBytes: source.Length);
+
+        try
+        {
+            File.WriteAllBytes(Path.Combine(directory, "Exact.flf"), source);
+
+            var catalog = FigletCatalog.FromDirectory(directory, limits);
+
+            catalog.GetInfo("Exact").Bytes.ShouldBe(source.Length);
+            catalog.Load("Exact").Render("A").ShouldBe("A");
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     /// <summary>Verifies a catalog built from a directory names each font by its file stem.</summary>
     [Fact]
     public void FromDirectory_WhenDirectoryContainsFontFiles_LoadsThemByFileNameStem()
