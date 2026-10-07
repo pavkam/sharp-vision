@@ -76,7 +76,15 @@ with `ArgumentOutOfRangeException`.
   buffer and rejects growth beyond that checked length.
 - `MaxInputBytes` applies separately to each font in a directory or archive. The
   caller controls the number of fonts and the total catalog size.
-- Rendering rejects output that would exceed the font's `MaxOutputChars`.
+- Rendering consumes source lines and Unicode scalars without copying the whole
+  source into temporary line or scalar arrays.
+- Rendering rejects output that would exceed the font's `MaxOutputChars` during
+  composition. Separators between generated rows count toward the limit, even
+  when the source contains only empty lines.
+- Source newlines follow .NET 10's
+  [`String.ReplaceLineEndings`](https://learn.microsoft.com/en-us/dotnet/api/system.string.replacelineendings?view=net-10.0)
+  set: CR, LF, CRLF, FF, NEL, LS, and PS. Leading, consecutive, and trailing
+  empty lines remain present in full-width output.
 
 ```csharp
 var catalog = FigletCatalog.FromDirectory("/opt/myapp/fonts");

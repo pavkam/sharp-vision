@@ -129,7 +129,7 @@ internal sealed class FigletTextPane: CompositeControlBase
                 "<info>FigletText</info> does not scale or wrap generated art; place it in an <info>AutoScroll</info> container when bounded presentation matters.",
                 new DocExample(
                     "Scrollable Banner output",
-                    "Use the thin rails to inspect output larger than the forty-by-eight viewport.",
+                    "Use the thin rails to inspect output larger than the forty-by-eight viewport. Font output limits include row separators and reject excess output during composition.",
                     viewport)),
             new DocSection(
                 "📄",

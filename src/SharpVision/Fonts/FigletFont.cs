@@ -129,6 +129,11 @@ public sealed class FigletFont
     /// <param name="text">The non-null Unicode text.</param>
     /// <param name="options">The validated rendering overrides.</param>
     /// <returns>The composed multi-line UTF-16 output.</returns>
+    /// <remarks>
+    /// Source lines and Unicode scalars are consumed without copying the complete source.
+    /// The output limit includes separators between generated rows and is enforced during
+    /// composition, including when the source consists only of empty lines.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The output limit would be exceeded.</exception>
     [Pure]

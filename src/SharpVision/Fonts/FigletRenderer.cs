@@ -6,6 +6,8 @@ namespace SharpVision.Fonts;
 /// <summary>Composes FIG-font glyph rows using version 2 horizontal rules.</summary>
 internal static class FigletRenderer
 {
+    private static readonly SearchValues<char> _lineSeparators = SearchValues.Create("\r\n\f\u0085\u2028\u2029");
+
     private const FigletLayout _horizontalRules =
         FigletLayout.Equal |
         FigletLayout.Underscore |
@@ -24,23 +26,20 @@ internal static class FigletRenderer
     {
         var direction = options.Direction ?? font.Direction;
         var layout = options.Layout ?? font.Layout;
-        var logicalLines = text.ReplaceLineEndings("\n").Split('\n');
+        var remaining = text.AsSpan();
         List<StringBuilder> composed = [];
         var composedWidth = 0;
-        var composedLength = 0;
+        var composedLength = 0L;
 
         var rightToLeft = direction == FigletDirection.RightToLeft;
 
-        foreach (var t in logicalLines)
+        while (true)
         {
-            Rune[] runes = [.. t.EnumerateRunes()];
-
-            if (rightToLeft)
-            {
-                Array.Reverse(runes);
-            }
-
-            var rows = RenderLine(font, runes, layout, rightToLeft);
+            // Borrow each line instead of normalizing and splitting the complete source before
+            // an output limit can reject it. Preserve ReplaceLineEndings' newline set and CRLF.
+            var separator = remaining.IndexOfAny(_lineSeparators);
+            var line = separator < 0 ? remaining : remaining[..separator];
+            var rows = RenderLine(font, line, layout, rightToLeft);
 
             if ((layout & (FigletLayout.HorizontalFitting | FigletLayout.HorizontalSmushing)) != 0)
             {
@@ -48,6 +47,17 @@ internal static class FigletRenderer
             }
 
             AppendVertical(font, composed, ref composedWidth, ref composedLength, rows, layout, font.HardBlank);
+
+            if (separator < 0)
+            {
+                break;
+            }
+
+            var separatorLength = remaining[separator] == '\r' &&
+                                  separator + 1 < remaining.Length && remaining[separator + 1] == '\n'
+                ? 2
+                : 1;
+            remaining = remaining[(separator + separatorLength)..];
         }
 
         var output = new StringBuilder();
@@ -69,7 +79,7 @@ internal static class FigletRenderer
     [Pure]
     private static StringBuilder[] RenderLine(
         FigletFont font,
-        ReadOnlySpan<Rune> runes,
+        ReadOnlySpan<char> source,
         FigletLayout layout,
         bool rightToLeft)
     {
@@ -80,8 +90,15 @@ internal static class FigletRenderer
             rows[row] = new StringBuilder();
         }
 
-        foreach (var rune in runes)
+        while (!source.IsEmpty)
         {
+            // Decode from the requested end so reversal needs no source-sized Rune array.
+            // Both decoders substitute U+FFFD for an unpaired surrogate and consume it once.
+            _ = rightToLeft
+                ? Rune.DecodeLastFromUtf16(source, out var rune, out var consumed)
+                : Rune.DecodeFromUtf16(source, out rune, out consumed);
+            Debug.Assert(consumed > 0, "Decoding a nonempty UTF-16 span must make progress.");
+            source = rightToLeft ? source[..^consumed] : source[consumed..];
             var glyph = font.GetGlyph(rune.Value);
             var overlap = GetOverlap(rows, glyph, layout, font.HardBlank, rightToLeft);
 
@@ -210,7 +227,7 @@ internal static class FigletRenderer
             // smushem algorithm's hardblank special case. A genuine visible-vs-visible collision
             // instead prefers whichever side represents the character that was typed later in the
             // caller's original (pre-reversal) input: Render composes right-to-left text by
-            // reversing the rune array up front and then always appending - never prepending -
+            // reading scalars backward and then always appending - never prepending -
             // each subsequent glyph, so during right-to-left composition the "right" parameter
             // here (the incoming glyph being merged in) is always the earlier-typed original
             // character, and the accumulated "left" side is always the later-typed one - the
@@ -302,7 +319,7 @@ internal static class FigletRenderer
         (left, right) is ('[', ']') or (']', '[') or ('{', '}') or ('}', '{') or
         ('(', ')') or (')', '(');
 
-    private static void EnsureLimit(FigletFont font, int length)
+    private static void EnsureLimit(FigletFont font, long length)
     {
         Debug.Assert(length >= 0, "StringBuilder lengths cannot be negative.");
 
@@ -354,7 +371,7 @@ internal static class FigletRenderer
         FigletFont font,
         List<StringBuilder> output,
         ref int outputWidth,
-        ref int outputLength,
+        ref long outputLength,
         StringBuilder[] rows,
         FigletLayout layout,
         char hardblank)
@@ -365,7 +382,7 @@ internal static class FigletRenderer
         {
             output.AddRange(rows);
             outputWidth = rowsWidth;
-            outputLength += rows.Sum(row => row.Length);
+            outputLength += rows.Sum(static row => (long) row.Length) + rows.Length - 1;
             EnsureLimit(font, outputLength);
             return;
         }
@@ -376,7 +393,9 @@ internal static class FigletRenderer
         {
             output.AddRange(rows);
             outputWidth = Math.Max(outputWidth, rowsWidth);
-            outputLength += rows.Sum(row => row.Length);
+            // Every appended row adds a separator after the existing rows. Counting only glyph
+            // characters lets arbitrarily many empty lines accumulate before final joining.
+            outputLength += rows.Sum(static row => (long) row.Length) + rows.Length;
             EnsureLimit(font, outputLength);
             return;
         }
@@ -398,7 +417,7 @@ internal static class FigletRenderer
         for (var row = overlap; row < rows.Length; row++)
         {
             output.Add(rows[row]);
-            outputLength += rows[row].Length;
+            outputLength += (long) rows[row].Length + 1;
         }
 
         outputWidth = Math.Max(outputWidth, rowsWidth);

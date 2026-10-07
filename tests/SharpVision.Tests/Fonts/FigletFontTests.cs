@@ -282,6 +282,83 @@ public sealed class FigletFontTests
 
     #region Rendering
 
+    /// <summary>Verifies output rejection does not first copy the complete source into line or scalar arrays.</summary>
+    [Theory]
+    [InlineData(FigletDirection.LeftToRight, 0)]
+    [InlineData(FigletDirection.RightToLeft, 0)]
+    [InlineData(FigletDirection.LeftToRight, 1)]
+    [InlineData(FigletDirection.RightToLeft, 1)]
+    [InlineData(FigletDirection.LeftToRight, 2)]
+    [InlineData(FigletDirection.RightToLeft, 2)]
+    public void Render_WhenSourceExceedsOutputLimit_RejectsWithoutSourceSizedAllocation(
+        FigletDirection direction,
+        int sourceKind)
+    {
+        using var stream = Stream(CreateFont());
+        var font = FigletFont.Load(stream, "bounded", new FigletLimits(maxOutputChars: 8));
+        var options = new FigletOptions(direction);
+        var source = sourceKind switch
+        {
+            1 => string.Concat(Enumerable.Repeat("A\r\n", 100_000)),
+            2 => new string('\n', 100_000),
+            _ => new string('A', 1_000_000)
+        };
+        _ = Should.Throw<InvalidOperationException>(() => font.Render(source, options));
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        _ = Should.Throw<InvalidOperationException>(() => font.Render(source, options));
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.ShouldBeLessThan(256 * 1024);
+        font.Render("AB", options).ShouldBe(direction == FigletDirection.LeftToRight ? "AB" : "BA");
+    }
+
+    /// <summary>Verifies forward and backward decoding preserve supplementary scalars and replace each unpaired surrogate.</summary>
+    [Theory]
+    [InlineData(FigletDirection.LeftToRight, "ARXRB")]
+    [InlineData(FigletDirection.RightToLeft, "BRXRA")]
+    public void Render_WhenSourceContainsSurrogates_PreservesScalarBoundaries(
+        FigletDirection direction,
+        string expected)
+    {
+        using var stream = Stream($"{CreateFont()}128512 emoji\nX@@\n65533 replacement\nR@@\n");
+        var font = FigletFont.Load(stream, "unicode");
+
+        var output = font.Render("A\ud800😀\udc00B", new FigletOptions(direction));
+
+        output.ShouldBe(expected);
+    }
+
+    /// <summary>Verifies every previously recognized newline keeps leading, consecutive, and trailing empty lines.</summary>
+    [Theory]
+    [InlineData("\r")]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    [InlineData("\f")]
+    [InlineData("\u0085")]
+    [InlineData("\u2028")]
+    [InlineData("\u2029")]
+    public void Render_WhenSourceHasLineSeparators_PreservesEmptyLines(string separator)
+    {
+        using var stream = Stream(CreateFont());
+        var font = FigletFont.Load(stream, "newlines");
+
+        var output = font.Render($"{separator}A{separator}{separator}B{separator}");
+
+        output.ShouldBe("\nA\n\nB\n");
+    }
+
+    /// <summary>Verifies row separators count toward the exact output limit, including empty rows.</summary>
+    [Fact]
+    public void Render_WhenEmptyRowsEqualOutputLimit_AcceptsExactOutputAndRejectsOneMore()
+    {
+        using var stream = Stream(CreateFont());
+        var font = FigletFont.Load(stream, "empty-rows", new FigletLimits(maxOutputChars: 8));
+
+        font.Render(new string('\n', 8)).ShouldBe(new string('\n', 8));
+        _ = Should.Throw<InvalidOperationException>(() => font.Render(new string('\n', 9)));
+    }
+
     /// <summary>Verifies an explicit right-to-left override reverses scalar order.</summary>
     [Fact]
     public void Render_WhenDirectionIsRightToLeft_ReversesGlyphOrder()
@@ -404,7 +481,7 @@ public sealed class FigletFontTests
     /// <summary>Verifies universal smushing (HorizontalSmushing with no specific rule bits set,
     /// as declared by the bundled shadow.flf, smshadow.flf, and mini.flf fonts) resolves a
     /// visible-versus-visible collision by direction: composing right-to-left text works by
-    /// reversing the rune array up front and then always appending - never prepending - each
+    /// reading scalars backward and then always appending - never prepending - each
     /// subsequent glyph, so the character that wins a collision under right-to-left rendering
     /// must be the one typed later in the original (pre-reversal) input, matching left-to-right
     /// rendering's own already-correct outcome, rather than always favoring whichever side a
