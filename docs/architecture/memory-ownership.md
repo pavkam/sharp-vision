@@ -111,7 +111,10 @@ The shared bounded byte writer accepts prepend sources that borrow its own
 written or unused rented storage. It checks the complete resulting byte count
 before mutation and preserves both original sequences before shifting bytes or
 returning a pool buffer. Rejection leaves active bytes unchanged. Written spans
-and memory are borrowed only until the next writer mutation or disposal.
+and memory are borrowed only until the next writer mutation or disposal. Size
+hints are checked against the remaining active budget before accumulating byte
+counts, so oversized requests consistently throw `InvalidOperationException` and
+leave the active batch unchanged, including at `int.MaxValue`.
 
 `Terminal.Graphics.ImageSource` copies RGBA or structurally validated PNG bytes
 into private immutable storage. Public callers recover bytes only through a

@@ -71,6 +71,64 @@ public sealed class BoundedBufferWriterTests
         _ = Should.Throw<InvalidOperationException>(() => writer.GetSpan(9));
     }
 
+    /// <summary>Verifies extreme hints fail against the budget before arithmetic and retain active bytes.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GetSpanAndMemory_WhenHintWouldOverflow_RejectsWithoutMutation(bool useMemory)
+    {
+        using var writer = new BoundedBufferWriter(8, 4);
+        "a"u8.CopyTo(writer.GetSpan(1));
+        writer.Advance(1);
+
+        _ = Should.Throw<InvalidOperationException>(() =>
+        {
+            if (useMemory)
+            {
+                _ = writer.GetMemory(int.MaxValue);
+            }
+            else
+            {
+                _ = writer.GetSpan(int.MaxValue);
+            }
+        });
+
+        writer.WrittenCount.ShouldBe(1);
+        writer.WrittenSpan.ToArray().ShouldBe("a"u8.ToArray());
+        "b"u8.CopyTo(writer.GetSpan(1));
+        writer.Advance(1);
+        writer.WrittenSpan.ToArray().ShouldBe("ab"u8.ToArray());
+    }
+
+    /// <summary>Verifies negative hints are argument errors before any active bytes change.</summary>
+    [Theory]
+    [InlineData(false, -1)]
+    [InlineData(true, -1)]
+    [InlineData(false, int.MinValue)]
+    [InlineData(true, int.MinValue)]
+    public void GetSpanAndMemory_WhenHintIsNegative_RejectsWithoutMutation(bool useMemory, int hint)
+    {
+        using var writer = new BoundedBufferWriter(8, 4);
+        "a"u8.CopyTo(writer.GetSpan(1));
+        writer.Advance(1);
+
+        var exception = Should.Throw<ArgumentOutOfRangeException>(() =>
+        {
+            if (useMemory)
+            {
+                _ = writer.GetMemory(hint);
+            }
+            else
+            {
+                _ = writer.GetSpan(hint);
+            }
+        });
+
+        exception.ParamName.ShouldBe("sizeHint");
+        writer.WrittenCount.ShouldBe(1);
+        writer.WrittenSpan.ToArray().ShouldBe("a"u8.ToArray());
+    }
+
     /// <summary>Verifies Advance with a negative count is rejected.</summary>
     [Fact]
     public void Advance_WhenCountIsNegative_Throws()

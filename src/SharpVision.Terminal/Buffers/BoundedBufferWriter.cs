@@ -5,6 +5,7 @@ namespace SharpVision.Terminal.Buffers;
 
 using MustDisposeResource = JetBrains.Annotations.MustDisposeResourceAttribute;
 using NonNegativeValue = JetBrains.Annotations.NonNegativeValueAttribute;
+using ValueRange = JetBrains.Annotations.ValueRangeAttribute;
 
 /// <summary>Provides one pooled synchronous byte writer under a finite active byte budget.</summary>
 [MustDisposeResource]
@@ -19,7 +20,9 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
     /// <param name="maximum">The positive hard byte limit no active budget may exceed.</param>
     /// <param name="initialRentBytes">The positive initial pooled rent, clamped to <paramref name="maximum"/>.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maximum"/> or <paramref name="initialRentBytes"/> is not positive.</exception>
-    public BoundedBufferWriter(int maximum, int initialRentBytes)
+    public BoundedBufferWriter(
+        [ValueRange(1, int.MaxValue)] int maximum,
+        [ValueRange(1, int.MaxValue)] int initialRentBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximum);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialRentBytes);
@@ -64,9 +67,10 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
     /// <exception cref="ArgumentException"><paramref name="count"/> exceeds the buffer granted by the last <see cref="GetSpan"/> or <see cref="GetMemory"/> call.</exception>
     /// <exception cref="InvalidOperationException">The write exceeds the active byte budget.</exception>
-    public void Advance(int count)
+    public void Advance([NonNegativeValue] int count)
     {
         ThrowIfDisposed();
         ArgumentOutOfRangeException.ThrowIfNegative(count);
@@ -86,8 +90,9 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sizeHint"/> is negative.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="sizeHint"/> exceeds the remaining active byte budget.</exception>
-    public Memory<byte> GetMemory(int sizeHint = 0)
+    public Memory<byte> GetMemory([NonNegativeValue] int sizeHint = 0)
     {
         var length = GetLength(sizeHint);
         return _buffer.AsMemory(_writtenCount, length);
@@ -95,8 +100,9 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
 
     /// <inheritdoc/>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="sizeHint"/> is negative.</exception>
     /// <exception cref="InvalidOperationException"><paramref name="sizeHint"/> exceeds the remaining active byte budget.</exception>
-    public Span<byte> GetSpan(int sizeHint = 0)
+    public Span<byte> GetSpan([NonNegativeValue] int sizeHint = 0)
     {
         var length = GetLength(sizeHint);
         return _buffer.AsSpan(_writtenCount, length);
@@ -115,7 +121,7 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
     /// <param name="limit">The next non-negative active limit, no greater than the configured maximum.</param>
     /// <exception cref="ObjectDisposedException">The writer is disposed.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="limit"/> is negative or exceeds the configured maximum.</exception>
-    public void Reset(int limit)
+    public void Reset([NonNegativeValue] int limit)
     {
         ThrowIfDisposed();
         ArgumentOutOfRangeException.ThrowIfNegative(limit);
@@ -192,6 +198,14 @@ internal sealed class BoundedBufferWriter: IBufferWriter<byte>, IDisposable
         ThrowIfDisposed();
         ArgumentOutOfRangeException.ThrowIfNegative(sizeHint);
         var requested = Math.Max(1, sizeHint);
+
+        // Compare against remaining capacity before addition so even an extreme valid hint
+        // reports the budget failure instead of overflowing the accumulated byte count.
+        if (requested > _limit - _writtenCount)
+        {
+            throw new InvalidOperationException("The write exceeds its finite byte limit.");
+        }
+
         EnsureCapacity(checked(_writtenCount + requested));
         return Math.Min(_buffer!.Length, _limit) - _writtenCount;
     }
