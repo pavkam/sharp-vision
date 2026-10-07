@@ -61,6 +61,9 @@ internal static class SyntaxCaseFolding
     // allocations.
     private static int Fold(int value) => value switch
     {
+        // Cherokee's canonical fold is uppercase; lowercasing these scalars would make them
+        // disagree with the lowercase ranges explicitly mapped back to the same uppercase form.
+        >= 0x13A0 and <= 0x13F5 => value,
         >= 0x13F8 and <= 0x13FD => value - 0x8,
         >= 0xAB70 and <= 0xABBF => value - 0x97D0,
         0x00B5 => 0x03BC,

@@ -155,6 +155,10 @@ pairs plus folds such as Kelvin sign to `k` and long s to `s` across every
 literal-rule family. Public `TryMatch` calls reject null capture elements before
 dispatching to any dynamic matcher.
 
+Cherokee folds to its uppercase form, so every uppercase/lowercase pair matches
+in both directions without changing case-sensitive behavior. The mapping follows
+[Unicode 17.0 simple case folding](https://www.unicode.org/Public/17.0.0/ucd/CaseFolding.txt).
+
 `DetectIdentifier` evaluates Unicode scalars, accepting letters at the start and
 every decimal-digit, letter-number, or other-number category afterward;
 supplementary-plane continuations are never split into UTF-16 surrogate halves.

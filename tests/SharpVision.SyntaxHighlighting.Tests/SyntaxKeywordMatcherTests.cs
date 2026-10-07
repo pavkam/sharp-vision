@@ -90,6 +90,27 @@ public sealed class SyntaxKeywordMatcherTests
         matcher.Match(text, 0).ShouldBe(text.Length);
     }
 
+    /// <summary>Verifies all Cherokee simple-fold pairs share a case-insensitive keyword while case-sensitive matching stays distinct.</summary>
+    [Fact]
+    public void Match_WhenCherokeeCaseVaries_MatchesEverySimpleFoldPair()
+    {
+        // Unicode 17 maps AB70..ABBF to 13A0..13EF and 13F8..13FD to 13F0..13F5;
+        // the uppercase ranges themselves retain their identity during simple folding.
+        for (var upper = 0x13A0; upper <= 0x13F5; upper++)
+        {
+            var lower = upper <= 0x13EF ? upper + 0x97D0 : upper + 8;
+            var uppercase = char.ConvertFromUtf32(upper);
+            var lowercase = char.ConvertFromUtf32(lower);
+            var uppercaseMatcher = new SyntaxKeywordMatcher([uppercase], caseSensitive: false, SyntaxWordDelimiters.Default);
+            var lowercaseMatcher = new SyntaxKeywordMatcher([lowercase], caseSensitive: false, SyntaxWordDelimiters.Default);
+            var sensitiveMatcher = new SyntaxKeywordMatcher([uppercase], caseSensitive: true, SyntaxWordDelimiters.Default);
+
+            uppercaseMatcher.Match(lowercase, 0).ShouldBe(1, $"Uppercase keyword U+{upper:X4}.");
+            lowercaseMatcher.Match(uppercase, 0).ShouldBe(1, $"Lowercase keyword U+{lower:X4}.");
+            sensitiveMatcher.Match(lowercase, 0).ShouldBe(0);
+        }
+    }
+
     /// <summary>Verifies candidate lookup compares the source span without allocating a temporary string.</summary>
     [Theory]
     [InlineData(true)]

@@ -231,6 +231,14 @@ public sealed class SyntaxCompiledRuleTests
             { "StringDetect", "S", "ſ" },
             { "WordDetect", "K", "K" },
             { "WordDetect", "S", "ſ" },
+            { "StringDetect", "\u13A0", "\uAB70" },
+            { "StringDetect", "\uAB70", "\u13A0" },
+            { "StringDetect", "\u13F5", "\u13FD" },
+            { "StringDetect", "\u13FD", "\u13F5" },
+            { "WordDetect", "\u13A0", "\uAB70" },
+            { "WordDetect", "\uAB70", "\u13A0" },
+            { "WordDetect", "\u13F5", "\u13FD" },
+            { "WordDetect", "\u13FD", "\u13F5" },
         };
 
     /// <summary>Verifies every case-insensitive literal rule family uses Qt-compatible Unicode folding.</summary>
